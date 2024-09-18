@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package io.github.jeddict.javadoc.ai;
+package io.github.jeddict.ai;
 
 import com.github.javaparser.JavaParser;
 import com.github.javaparser.ast.CompilationUnit;
@@ -36,9 +36,9 @@ import static com.sun.source.tree.Tree.Kind.VARIABLE;
 import com.sun.source.tree.VariableTree;
 import com.sun.source.util.DocTrees;
 import com.sun.source.util.TreePath;
-import static io.github.jeddict.javadoc.ai.Action.ENHANCE;
-import static io.github.jeddict.javadoc.ai.FileUtil.saveOpenEditor;
-import static io.github.jeddict.javadoc.ai.StringUtil.removeCodeBlockMarkers;
+import static io.github.jeddict.ai.Action.ENHANCE;
+import static io.github.jeddict.ai.FileUtil.saveOpenEditor;
+import static io.github.jeddict.ai.StringUtil.removeCodeBlockMarkers;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;

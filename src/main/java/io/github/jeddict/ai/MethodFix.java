@@ -2,30 +2,17 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package io.github.jeddict.javadoc.ai;
+package io.github.jeddict.ai;
 
 import com.github.javaparser.JavaParser;
 import com.github.javaparser.ast.CompilationUnit;
-import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
-import com.github.javaparser.ast.body.FieldDeclaration;
-import com.github.javaparser.ast.body.MethodDeclaration;
-import com.github.javaparser.ast.comments.JavadocComment;
-import com.sun.source.doctree.DocCommentTree;
-import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.MethodTree;
 import com.sun.source.tree.Tree;
-import static com.sun.source.tree.Tree.Kind.CLASS;
-import static com.sun.source.tree.Tree.Kind.INTERFACE;
 import static com.sun.source.tree.Tree.Kind.METHOD;
-import static com.sun.source.tree.Tree.Kind.VARIABLE;
-import com.sun.source.tree.VariableTree;
-import com.sun.source.util.DocTrees;
 import com.sun.source.util.TreePath;
-import static io.github.jeddict.javadoc.ai.Action.ENHANCE;
-import static io.github.jeddict.javadoc.ai.FileUtil.saveOpenEditor;
-import static io.github.jeddict.javadoc.ai.JavaParserUtil.addImports;
-import static io.github.jeddict.javadoc.ai.JavaParserUtil.addMethods;
-import static io.github.jeddict.javadoc.ai.StringUtil.removeCodeBlockMarkers;
+import static io.github.jeddict.ai.FileUtil.saveOpenEditor;
+import static io.github.jeddict.ai.JavaParserUtil.updateMethods;
+import static io.github.jeddict.ai.StringUtil.removeCodeBlockMarkers;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -43,12 +30,12 @@ import org.openide.util.NbBundle;
  *
  * @author Gaurav Gupta
  */
-public class RestEndpointFix extends JavaFix {
+public class MethodFix extends JavaFix {
 
     private final ElementHandle classType;
     private final Action action;
 
-    public RestEndpointFix(TreePathHandle tpHandle, Action action, ElementHandle classType) {
+    public MethodFix(TreePathHandle tpHandle, Action action, ElementHandle classType) {
         super(tpHandle);
         this.classType = classType;
         this.action = action;
@@ -56,7 +43,7 @@ public class RestEndpointFix extends JavaFix {
 
     @Override
     protected String getText() {
-        return NbBundle.getMessage(getClass(), "HINT_REST_ENDPOINT");
+        return NbBundle.getMessage(getClass(), "HINT_METHOD_ENHANCE");
     }
 
     @Override
@@ -69,17 +56,17 @@ public class RestEndpointFix extends JavaFix {
 
         TreePath treePath = tc.getPath();
         Tree leaf = treePath.getLeaf();
+        
         Element elm = copy.getTrees().getElement(treePath);
         if (elm == null) {
             return;
         }
 
-        String javadocContent = null;
+        String content = null;
 
         switch (leaf.getKind()) {
-            case CLASS:
-            case INTERFACE:
-                javadocContent = new JeddictChatModel().generateRestEndpointForClass(leaf.toString());
+            case METHOD:
+                content = new JeddictChatModel().createMethodFromMethodContent(treePath.getParentPath().getLeaf().toString(), leaf.toString());
         }
 
         Path filePath = Paths.get(copy.getFileObject().toURI());
@@ -88,28 +75,23 @@ public class RestEndpointFix extends JavaFix {
         JavaParser javaParser = new JavaParser();
         CompilationUnit cu = javaParser.parse(sourceCode).getResult().orElse(null);
 
-        if (cu == null || javadocContent == null) {
+        if (cu == null || content == null) {
             return;
         }
 
-        JSONObject json = new JSONObject(removeCodeBlockMarkers(javadocContent));
+           JSONObject json = new JSONObject(removeCodeBlockMarkers(content));
         JSONArray imports = json.getJSONArray("imports");
-        JSONArray methods = json.getJSONArray("methods");
-
+        String methodContent = json.getString("methodContent");
         switch (leaf.getKind()) {
-            case CLASS:
-            case INTERFACE:
-                addImports(cu, imports);
-                addMethods(cu, methods, javaParser);
+            case METHOD:
+                JavaParserUtil.addImports(cu, imports);
+                updateMethods(cu, (MethodTree) leaf, imports, methodContent, javaParser);
                 break;
-            default:
-                return;
         }
 
         String modifiedCode = cu.toString();
         Files.write(filePath, modifiedCode.getBytes());
         
         SourceUtil.fixImports(copy.getFileObject());
-
     }
 }

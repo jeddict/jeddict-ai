@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package io.github.jeddict.javadoc.ai;
+package io.github.jeddict.ai;
 
 import com.sun.source.doctree.DocCommentTree;
 import com.sun.source.tree.Tree;
@@ -47,13 +47,11 @@ import org.netbeans.spi.java.hints.Hint;
 import org.netbeans.spi.java.hints.Hint.Kind;
 import org.netbeans.spi.java.hints.Hint.Options;
 import org.netbeans.spi.java.hints.HintContext;
-import org.netbeans.spi.java.hints.TriggerPattern;
-import org.netbeans.spi.java.hints.TriggerPatterns;
 import org.netbeans.spi.java.hints.TriggerTreeKind;
 import org.openide.util.NbBundle;
 
-@Hint(displayName = "#DN_JavaDoc", description = "#DESC_JavaDoc",
-        id = "io.github.jeddict.javadoc.ai.JavaDocHint",
+@Hint(displayName = "#DN_HINT", description = "#DESC_HINT",
+        id = "io.github.jeddict.ai.JeddictHint",
         category = "suggestions",
         enabled = true,
         options = Options.QUERY,
@@ -158,21 +156,19 @@ public class JeddictHint {
                         fixes[i++] = new JavaDocFixImpl(tpHandle, Action.ENHANCE, fieldHandle).toEditorFix();
                     }
                 }
-                 fixes[i++] = new VariableNameFix(tpHandle, Action.ENHANCE, treePath).toEditorFix();
-                
+                fixes[i++] = new VariableNameFix(tpHandle, Action.ENHANCE, treePath).toEditorFix();
+
                 break;
 
             default:
                 return null;
         }
-        String desc = NbBundle.getMessage(JeddictHint.class, "ERR_JavaDoc"); //NOI18N
+        String desc = NbBundle.getMessage(JeddictHint.class, "ERR_HINT"); //NOI18N
         return ErrorDescriptionFactory.forTree(ctx, ctx.getPath(), desc, fixes); //NOI18N
     }
-    
-    
+
 //    @TriggerPatterns({
 ////        @TriggerPattern("$mods$ $type $var = $init"), //NOI18N
 //        @TriggerPattern("$mods$ $type $var"), //NOI18N
 //    })
-
 }
