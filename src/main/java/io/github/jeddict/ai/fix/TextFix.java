@@ -2,27 +2,15 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package io.github.jeddict.ai;
+package io.github.jeddict.ai.fix;
 
-import com.github.javaparser.JavaParser;
-import com.github.javaparser.ast.CompilationUnit;
 import com.sun.source.tree.LiteralTree;
-import com.sun.source.tree.MethodTree;
 import com.sun.source.tree.Tree;
-import static com.sun.source.tree.Tree.Kind.EXPRESSION_STATEMENT;
-import static com.sun.source.tree.Tree.Kind.METHOD;
 import static com.sun.source.tree.Tree.Kind.STRING_LITERAL;
 import com.sun.source.util.TreePath;
-import static io.github.jeddict.ai.FileUtil.saveOpenEditor;
-import static io.github.jeddict.ai.JavaParserUtil.updateMethods;
-import static io.github.jeddict.ai.StringUtil.removeCodeBlockMarkers;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import javax.lang.model.element.Element;
-import org.json.JSONArray;
-import org.json.JSONObject;
-import org.netbeans.api.java.source.ElementHandle;
+import io.github.jeddict.ai.Action;
+import io.github.jeddict.ai.JeddictChatModel;
+import static io.github.jeddict.ai.util.FileUtil.saveOpenEditor;
 import org.netbeans.api.java.source.JavaSource;
 import org.netbeans.api.java.source.TreePathHandle;
 import org.netbeans.api.java.source.WorkingCopy;
@@ -46,10 +34,10 @@ public class TextFix extends JavaFix {
 
     @Override
     protected String getText() {
-        if(action == Action.ENHANCE) {
-            return NbBundle.getMessage(getClass(), "HINT_ENHANCE_TEXT");
+        if (action == Action.ENHANCE) {
+            return NbBundle.getMessage(JeddictChatModel.class, "HINT_ENHANCE_TEXT");
         } else {
-        return NbBundle.getMessage(getClass(), "HINT_FIX_GRAMMAR");
+            return NbBundle.getMessage(JeddictChatModel.class, "HINT_FIX_GRAMMAR");
         }
     }
 
@@ -66,7 +54,7 @@ public class TextFix extends JavaFix {
             return;
         }
         String content;
-        if(action == Action.ENHANCE) {
+        if (action == Action.ENHANCE) {
             content = new JeddictChatModel().enhanceText(treePath.getLeaf().toString(), treePath.getCompilationUnit().toString());
         } else {
             content = new JeddictChatModel().fixGrammar(treePath.getLeaf().toString(), treePath.getCompilationUnit().toString());

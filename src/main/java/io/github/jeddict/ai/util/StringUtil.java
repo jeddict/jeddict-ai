@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package io.github.jeddict.ai;
+package io.github.jeddict.ai.util;
 
 /**
  *
@@ -35,17 +35,18 @@ public class StringUtil {
         // Check if the input starts and ends with the markers
         input = input.trim();
         if (input.startsWith("```java") && input.endsWith("```")) {
-            // Remove the starting ```java\n and the ending ```
             String content = input.substring(7);  // Remove ```java\n (7 characters)
             content = content.substring(0, content.length() - 3);  // Remove ```
             input = content.trim();
         } else if (input.startsWith("```json") && input.endsWith("```")) {
-            // Remove the starting ```java\n and the ending ```
+            String content = input.substring(7);  // Remove ```java\n (7 characters)
+            content = content.substring(0, content.length() - 3);  // Remove ```
+            input = content.trim();
+        } else if (input.startsWith("```html") && input.endsWith("```")) {
             String content = input.substring(7);  // Remove ```java\n (7 characters)
             content = content.substring(0, content.length() - 3);  // Remove ```
             input = content.trim();
         } else if (input.startsWith("```") && input.endsWith("```")) {
-            // Remove the starting ```java\n and the ending ```
             String content = input.substring(3);  // Remove ```java\n (7 characters)
             content = content.substring(0, content.length() - 3);  // Remove ```
             input = content.trim();

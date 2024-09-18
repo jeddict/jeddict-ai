@@ -2,15 +2,18 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package io.github.jeddict.ai;
+package io.github.jeddict.ai.fix;
 
 import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.tree.ImportTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.tree.VariableTree;
 import com.sun.source.util.TreePath;
-import static io.github.jeddict.ai.FileUtil.saveOpenEditor;
-import static io.github.jeddict.ai.StringUtil.removeCodeBlockMarkers;
+import io.github.jeddict.ai.Action;
+import io.github.jeddict.ai.JeddictChatModel;
+import io.github.jeddict.ai.util.SourceUtil;
+import static io.github.jeddict.ai.util.FileUtil.saveOpenEditor;
+import static io.github.jeddict.ai.util.StringUtil.removeCodeBlockMarkers;
 import javax.lang.model.element.Element;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -48,7 +51,7 @@ public class VariableFix extends JavaFix {
 
     @Override
     protected String getText() {
-        return NbBundle.getMessage(getClass(), "HINT_VARIABLE_COMPILATION_ERROR", actionTitleParam);
+        return NbBundle.getMessage(JeddictChatModel.class, "HINT_VARIABLE_COMPILATION_ERROR", actionTitleParam);
     }
 
     @Override

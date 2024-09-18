@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package io.github.jeddict.ai;
+package io.github.jeddict.ai.util;
 
 import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.CompilationUnitTree;
@@ -54,25 +54,25 @@ public class SourceUtil {
             }
         }
     }
-    
-    
+
     public static void addImports(WorkingCopy copy, JSONArray imports) {
-         CompilationUnitTree compilationUnit = copy.getCompilationUnit();
+        CompilationUnitTree compilationUnit = copy.getCompilationUnit();
         TreeMaker make = copy.getTreeMaker();
         CompilationUnitTree newcompilationUnit = compilationUnit;
-            for (int i = 0; i < imports.length(); i++) {
-                String importToAdd = imports.getString(i);
-                if (importToAdd.startsWith("import ") && importToAdd.endsWith(";")) {
-                    importToAdd = importToAdd.substring(7, importToAdd.length() - 1).trim();  // Extract the class name
-                }
-                if (!isImportPresent(copy, compilationUnit, importToAdd)) {
-                    ImportTree newImport = make.Import(make.QualIdent(importToAdd), false);
-                    newcompilationUnit = make.addCompUnitImport(newcompilationUnit, newImport);
-                }
+        for (int i = 0; i < imports.length(); i++) {
+            String importToAdd = imports.getString(i);
+            if (importToAdd.startsWith("import ") && importToAdd.endsWith(";")) {
+                importToAdd = importToAdd.substring(7, importToAdd.length() - 1).trim();  // Extract the class name
             }
-            copy.rewrite(compilationUnit,newcompilationUnit);
+            if (!isImportPresent(copy, compilationUnit, importToAdd)) {
+                ImportTree newImport = make.Import(make.QualIdent(importToAdd), false);
+                newcompilationUnit = make.addCompUnitImport(newcompilationUnit, newImport);
+            }
+        }
+        copy.rewrite(compilationUnit, newcompilationUnit);
     }
-        private static boolean isImportPresent(WorkingCopy copy, CompilationUnitTree compilationUnit, String importName) {
+
+    private static boolean isImportPresent(WorkingCopy copy, CompilationUnitTree compilationUnit, String importName) {
         for (ImportTree importTree : compilationUnit.getImports()) {
             if (importTree.getQualifiedIdentifier().toString().equals(importName)) {
                 return true; // Import already exists
@@ -80,14 +80,14 @@ public class SourceUtil {
         }
         return false;
     }
-        
-        public static void reformatClass(WorkingCopy copy, ClassTree classTree) throws Exception {
-    // NetBeans does formatting on save or during 'fix imports', but you can also trigger formatting like this:
-    copy.toPhase(JavaSource.Phase.UP_TO_DATE); // Move to the UP_TO_DATE phase
-    
-    // Create a rewriter for formatting
-    copy.rewrite(classTree, classTree);  // This rewrites the class and lets NetBeans apply default formatting
-    
-    // Alternatively, save changes and let the IDE apply auto-format on save if configured
-}
+
+    public static void reformatClass(WorkingCopy copy, ClassTree classTree) throws Exception {
+        // NetBeans does formatting on save or during 'fix imports', but you can also trigger formatting like this:
+        copy.toPhase(JavaSource.Phase.UP_TO_DATE); // Move to the UP_TO_DATE phase
+
+        // Create a rewriter for formatting
+        copy.rewrite(classTree, classTree);  // This rewrites the class and lets NetBeans apply default formatting
+
+        // Alternatively, save changes and let the IDE apply auto-format on save if configured
+    }
 }

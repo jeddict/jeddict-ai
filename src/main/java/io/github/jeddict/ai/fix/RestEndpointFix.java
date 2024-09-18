@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package io.github.jeddict.ai;
+package io.github.jeddict.ai.fix;
 
 import com.github.javaparser.JavaParser;
 import com.github.javaparser.ast.CompilationUnit;
@@ -13,8 +13,11 @@ import com.sun.source.tree.Tree;
 import static com.sun.source.tree.Tree.Kind.CLASS;
 import static com.sun.source.tree.Tree.Kind.INTERFACE;
 import com.sun.source.util.TreePath;
-import static io.github.jeddict.ai.FileUtil.saveOpenEditor;
-import static io.github.jeddict.ai.StringUtil.removeCodeBlockMarkers;
+import io.github.jeddict.ai.Action;
+import io.github.jeddict.ai.JeddictChatModel;
+import io.github.jeddict.ai.util.SourceUtil;
+import static io.github.jeddict.ai.util.FileUtil.saveOpenEditor;
+import static io.github.jeddict.ai.util.StringUtil.removeCodeBlockMarkers;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -47,7 +50,7 @@ public class RestEndpointFix extends JavaFix {
 
     @Override
     protected String getText() {
-        return NbBundle.getMessage(getClass(), "HINT_REST_ENDPOINT");
+        return NbBundle.getMessage(JeddictChatModel.class, "HINT_REST_ENDPOINT");
     }
 
     @Override

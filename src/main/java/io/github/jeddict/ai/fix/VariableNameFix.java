@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package io.github.jeddict.ai;
+package io.github.jeddict.ai.fix;
 
 import com.sun.source.tree.BlockTree;
 import com.sun.source.tree.ClassTree;
@@ -14,6 +14,8 @@ import com.sun.source.tree.Tree;
 import com.sun.source.tree.VariableTree;
 import com.sun.source.util.TreePath;
 import com.sun.source.util.TreeScanner;
+import io.github.jeddict.ai.Action;
+import io.github.jeddict.ai.JeddictChatModel;
 import java.util.List;
 import java.util.stream.Collectors;
 import javax.lang.model.element.Element;
@@ -43,7 +45,7 @@ public class VariableNameFix extends JavaFix {
 
     @Override
     protected String getText() {
-        return NbBundle.getMessage(getClass(), "HINT_VARIABLE_NAME_ENHANCE");
+        return NbBundle.getMessage(JeddictChatModel.class, "HINT_VARIABLE_NAME_ENHANCE");
     }
 
     @Override

@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package io.github.jeddict.ai;
+package io.github.jeddict.ai.fix;
 
 import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.CompilationUnitTree;
@@ -13,7 +13,10 @@ import com.sun.source.tree.StatementTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.util.JavacTask;
 import com.sun.source.util.TreePath;
-import static io.github.jeddict.ai.FileUtil.saveOpenEditor;
+import io.github.jeddict.ai.Action;
+import io.github.jeddict.ai.JeddictChatModel;
+import io.github.jeddict.ai.util.StringUtil;
+import static io.github.jeddict.ai.util.FileUtil.saveOpenEditor;
 import javax.tools.ToolProvider;
 import org.netbeans.api.java.source.JavaSource;
 import org.netbeans.api.java.source.TreeMaker;
@@ -40,7 +43,7 @@ public class ExpressionFix extends JavaFix {
 
     @Override
     protected String getText() {
-        return NbBundle.getMessage(getClass(), "HINT_ENHANCE_EXPRESSION");
+        return NbBundle.getMessage(JeddictChatModel.class, "HINT_ENHANCE_EXPRESSION");
     }
 
     @Override
@@ -56,7 +59,7 @@ public class ExpressionFix extends JavaFix {
         com.sun.source.tree.ExpressionStatementTree expressionStatement = (com.sun.source.tree.ExpressionStatementTree) leaf;
         content = new JeddictChatModel().enhanceExpressionStatement(
                 treePath.getCompilationUnit().toString(),
-                treePath.getParentPath().getLeaf().toString(), 
+                treePath.getParentPath().getLeaf().toString(),
                 treePath.getLeaf().toString()
         );
         content = StringUtil.removeCodeBlockMarkers(content);

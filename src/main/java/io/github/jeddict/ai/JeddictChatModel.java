@@ -43,10 +43,10 @@ public class JeddictChatModel {
         if (apiKey == null || apiKey.isEmpty()) {
             // Show popup with instructions if API key is not found
             JOptionPane.showMessageDialog(null,
-                "API key is not set in environment variables or system properties.\n" +
-                "Please set the environment variable '" + API_KEY_ENV_VAR + "' or system property '" + API_KEY_SYS_PROP + "'.",
-                "API Key Not Found",
-                JOptionPane.ERROR_MESSAGE);
+                    "API key is not set in environment variables or system properties.\n"
+                    + "Please set the environment variable '" + API_KEY_ENV_VAR + "' or system property '" + API_KEY_SYS_PROP + "'.",
+                    "API Key Not Found",
+                    JOptionPane.ERROR_MESSAGE);
             throw new IllegalStateException("API key is not set in environment variables or system properties.");
         }
         return apiKey;
@@ -205,25 +205,25 @@ public class JeddictChatModel {
         System.out.println(answer);
         return answer;
     }
-    
-    public String fixMethodCompilationError(String javaClassContent, String methodContent, String errorMessage) {
-    String prompt = 
-        "You are an API server that fixes compilation errors in Java methods based on the provided error messages. "
-        + "Given the following Java method content, class content, and the error message, correct the method accordingly. "
-        + "Ensure that all compilation errors indicated by the error message are resolved. "
-        + "Include any necessary imports relevant to the fixed method. "
-        + "Return only the corrected Java method and its necessary imports, without including any class declarations, constructors, or other boilerplate code. "
-        + "Do not include full Java class, any additional text, or explanation—just the imports and the corrected method source code.\n\n"
-        + "Format the output as a JSON object with two fields: 'imports' (list of necessary imports) and 'methodContent'. "
-        + "Error Message:\n" + errorMessage + "\n\n"
-        + "Java Class Content:\n" + javaClassContent + "\n\n"
-        + "Java Method Content:\n" + methodContent;
 
-    // Generate the fixed Java method
-    String answer = aiChatModel.generate(prompt);
-    System.out.println(answer);
-    return answer;
-}
+    public String fixMethodCompilationError(String javaClassContent, String methodContent, String errorMessage) {
+        String prompt
+                = "You are an API server that fixes compilation errors in Java methods based on the provided error messages. "
+                + "Given the following Java method content, class content, and the error message, correct the method accordingly. "
+                + "Ensure that all compilation errors indicated by the error message are resolved. "
+                + "Include any necessary imports relevant to the fixed method. "
+                + "Return only the corrected Java method and its necessary imports, without including any class declarations, constructors, or other boilerplate code. "
+                + "Do not include full Java class, any additional text, or explanation—just the imports and the corrected method source code.\n\n"
+                + "Format the output as a JSON object with two fields: 'imports' (list of necessary imports) and 'methodContent'. "
+                + "Error Message:\n" + errorMessage + "\n\n"
+                + "Java Class Content:\n" + javaClassContent + "\n\n"
+                + "Java Method Content:\n" + methodContent;
+
+        // Generate the fixed Java method
+        String answer = aiChatModel.generate(prompt);
+        System.out.println(answer);
+        return answer;
+    }
 
     public String fixVariableError(String javaClassContent, String errorMessage) {
         String prompt
@@ -243,15 +243,14 @@ public class JeddictChatModel {
         return answer;
     }
 
-
     public String enhanceVariableName(String variableContext, String methodContent, String classContent) {
         String prompt
                 = "You are an API server that suggests a more meaningful and descriptive name for a specific variable in a given Java class. "
                 + "Based on the provided Java class content and the variable context, suggest an improved name for the variable. "
                 + "Return only the new variable name. Do not include any additional text or explanation.\n\n"
                 + "Variable Context:\n" + variableContext + "\n\n"
-                + (methodContent != null ? ("Java Method Content:\n" + methodContent+ "\n\n") : "") 
-                + (classContent != null ? ("Java Class Content:\n" + classContent) : "") ;
+                + (methodContent != null ? ("Java Method Content:\n" + methodContent + "\n\n") : "")
+                + (classContent != null ? ("Java Class Content:\n" + classContent) : "");
 
         // Generate the new variable name
         String answer = aiChatModel.generate(prompt);
@@ -286,8 +285,8 @@ public class JeddictChatModel {
         System.out.println(enhancedText);
         return enhancedText;
     }
-    
-       public String enhanceExpressionStatement(String classContent, String parentContent, String expressionStatementContent) {
+
+    public String enhanceExpressionStatement(String classContent, String parentContent, String expressionStatementContent) {
         // Construct the prompt for enhancing the expression statement
         String prompt = "You are an API server that enhances Java code snippets. "
                 + "Given the following Java class content, the parent content of the EXPRESSION_STATEMENT, "
@@ -297,9 +296,70 @@ public class JeddictChatModel {
                 + "Parent Content of EXPRESSION_STATEMENT:\n" + parentContent + "\n\n"
                 + "EXPRESSION_STATEMENT Content:\n" + expressionStatementContent;
 
-         String enhanced = aiChatModel.generate(prompt);
+        String enhanced = aiChatModel.generate(prompt);
         System.out.println(enhanced);
         return enhanced;
     }
+
+    public String generateHtmlDescriptionForClass(String classContent) {
+    String prompt = "You are an API server that provides a detailed and interactive HTML-formatted description of a Java class. "
+            + "Given the following Java class content, generate an HTML document that includes a clear and engaging description of the class. "
+            + "Make the content visually appealing by using interactive elements such as collapsible sections, tooltips, or modals. "
+            + "Incorporate Bootstrap CSS for styling and layout, and use inline CSS or custom styles for specific design needs. "
+            + "Ensure that the HTML content is well-structured, with readable fonts, contrasting colors, and responsive design. "
+            + "Do not include additional text or explanations outside of the HTML content.\n\n"
+            + "Java Class Content:\n" + classContent;
+
+    // Generate the HTML description
+    String answer = aiChatModel.generate(prompt);
+    System.out.println(answer);
+    return answer;
+}
+
+//    public String generateHtmlDescriptionForClass(String classContent) {
+//        String prompt = "You are an API server that provides a detailed, interactive HTML-formatted description of a Java class. "
+//                + "Given the following Java class content, generate an HTML format that describes the class, including its purpose, main features, and key components. "
+//                + "Ensure that the description is clear, well-structured, and formatted properly in HTML. Use interactive elements with Bootstrap js, Bootstrap css or or inline css and other formatting to enhance readability and engagement. "
+//                + "Do not include additional text or explanations outside of the HTML content.\n\n"
+//                + "Java Class Content:\n" + classContent;
+//
+//        // Generate the HTML description
+//        String answer = aiChatModel.generate(prompt);
+//        System.out.println(answer);
+//        return answer;
+//    }
+
+    public String generateHtmlDescriptionForClass(String classContent, String userQuery) {
+    String prompt = "You are an API server that provides an interactive HTML-formatted answer to a user's query based on Java class content. "
+            + "Given the following Java class content and the user's query, generate an HTML document that directly addresses the specific query. "
+            + "Ensure the HTML content is well-structured and clearly answers the query. "
+            + "Make the response engaging by using interactive elements like collapsible panels, tooltips, or modals. "
+            + "Utilize Bootstrap CSS for overall styling and layout, and use inline CSS or custom styles for specific enhancements. "
+            + "Incorporate JavaScript for dynamic behaviors such as showing/hiding content, or interactive charts if applicable. "
+            + "Ensure that the HTML content is visually appealing with readable fonts, effective color contrast, and responsive design. "
+            + "Do not include additional text or explanations outside of the HTML content.\n\n"
+            + "Java Class Content:\n" + classContent + "\n\n"
+            + "User Query:\n" + userQuery;
+
+    // Generate the HTML description
+    String answer = aiChatModel.generate(prompt);
+    System.out.println(answer);
+    return answer;
+}
+
+//    public String generateHtmlDescriptionForClass(String classContent, String userQuery) {
+//        String prompt = "You are an API server that provides an interactive HTML-formatted answer to a user's query based on Java class content. "
+//                + "Given the following Java class content and the user's query, generate an HTML format that directly addresses the specific query related to the class. "
+//                + "Ensure that the HTML content is well-structured and answer the query. "
+//                + "Make the content engaging by using interactive elements with Bootstrap js, Bootstrap css or inline css and other formatting techniques. "
+//                + "Do not include additional text or explanations outside of the HTML content.\n\n"
+//                + "Java Class Content:\n" + classContent + "\n\n"
+//                + "User Query:\n" + userQuery;
+//
+//        // Generate the HTML description
+//        String answer = aiChatModel.generate(prompt);
+//        System.out.println(answer);
+//        return answer;
+//    }
 
 }

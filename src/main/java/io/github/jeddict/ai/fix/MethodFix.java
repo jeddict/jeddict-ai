@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package io.github.jeddict.ai;
+package io.github.jeddict.ai.fix;
 
 import com.github.javaparser.JavaParser;
 import com.github.javaparser.ast.CompilationUnit;
@@ -12,9 +12,12 @@ import com.sun.source.tree.MethodTree;
 import com.sun.source.tree.Tree;
 import static com.sun.source.tree.Tree.Kind.METHOD;
 import com.sun.source.util.TreePath;
-import static io.github.jeddict.ai.FileUtil.saveOpenEditor;
-import static io.github.jeddict.ai.JavaParserUtil.updateMethods;
-import static io.github.jeddict.ai.StringUtil.removeCodeBlockMarkers;
+import io.github.jeddict.ai.Action;
+import io.github.jeddict.ai.JeddictChatModel;
+import io.github.jeddict.ai.util.SourceUtil;
+import static io.github.jeddict.ai.util.FileUtil.saveOpenEditor;
+import static io.github.jeddict.ai.util.JavaParserUtil.updateMethods;
+import static io.github.jeddict.ai.util.StringUtil.removeCodeBlockMarkers;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -49,7 +52,7 @@ public class MethodFix extends JavaFix {
         this.classType = classType;
         this.action = action;
     }
-    
+
     public MethodFix(TreePathHandle tpHandle, String compliationError, String actionTitleParam) {
         super(tpHandle);
         this.compliationError = compliationError;
@@ -60,11 +63,11 @@ public class MethodFix extends JavaFix {
     @Override
     protected String getText() {
         if (action == Action.COMPILATION_ERROR) {
-            return NbBundle.getMessage(getClass(), "HINT_METHOD_COMPILATION_ERROR", actionTitleParam);
+            return NbBundle.getMessage(JeddictChatModel.class, "HINT_METHOD_COMPILATION_ERROR", actionTitleParam);
         } else if (action == Action.ENHANCE) {
-            return NbBundle.getMessage(getClass(), "HINT_METHOD_ENHANCE");
+            return NbBundle.getMessage(JeddictChatModel.class, "HINT_METHOD_ENHANCE");
         } else {
-            return NbBundle.getMessage(getClass(), "HINT_METHOD_QUERY");
+            return NbBundle.getMessage(JeddictChatModel.class, "HINT_METHOD_QUERY");
         }
     }
 
@@ -116,9 +119,7 @@ public class MethodFix extends JavaFix {
         SourceUtil.addImports(copy, imports);
         copy.rewrite(leaf, copy.getTreeMaker().QualIdent(methodContent));
     }
-    
 
-    
     private String askQuery() {
         // Create a JTextArea for multiline input
         JTextArea textArea = new JTextArea(10, 30); // 10 rows, 30 columns
@@ -127,18 +128,18 @@ public class MethodFix extends JavaFix {
 
         // Add the text area to a JScrollPane
         JScrollPane scrollPane = new JScrollPane(textArea);
-        
+
         // Create a JPanel to hold the scroll pane
         JPanel panel = new JPanel();
         panel.add(scrollPane);
 
         // Show the custom dialog
         int option = JOptionPane.showConfirmDialog(
-            null, 
-            panel, 
-            "Please provide details about what to update in this method:", 
-            JOptionPane.OK_CANCEL_OPTION, 
-            JOptionPane.PLAIN_MESSAGE
+                null,
+                panel,
+                "Please provide details about what to update in this method:",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.PLAIN_MESSAGE
         );
 
         // Check the user's choice
@@ -150,13 +151,13 @@ public class MethodFix extends JavaFix {
 
         if (query.isEmpty()) {
             JOptionPane.showMessageDialog(
-                null,
-                "Update details are required. Operation aborted.",
-                "No Input",
-                JOptionPane.ERROR_MESSAGE
+                    null,
+                    "Update details are required. Operation aborted.",
+                    "No Input",
+                    JOptionPane.ERROR_MESSAGE
             );
             return null; // Exit if no input is provided
         }
-        return  query;
+        return query;
     }
 }

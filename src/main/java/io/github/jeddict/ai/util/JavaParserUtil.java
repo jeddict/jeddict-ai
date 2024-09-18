@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package io.github.jeddict.ai;
+package io.github.jeddict.ai.util;
 
 import com.github.javaparser.JavaParser;
 import com.github.javaparser.ast.CompilationUnit;
@@ -30,7 +30,7 @@ import org.json.JSONArray;
  * @author Gaurav Gupta
  */
 public class JavaParserUtil {
-    
+
     public static void addImports(CompilationUnit cu, JSONArray imports) {
         for (int i = 0; i < imports.length(); i++) {
             String imp = imports.getString(i).trim();  // Trim any extra spaces
@@ -65,44 +65,44 @@ public class JavaParserUtil {
             }
         });
     }
-    
-public static void updateMethods(CompilationUnit cu, MethodTree methodTree, JSONArray imports, String javaSnippet, JavaParser javaParser) { 
-    String methodName = methodTree.getName().toString();
-    
-    cu.findFirst(ClassOrInterfaceDeclaration.class).ifPresent(classDecl -> {
-        // Find and remove the original method by its name
-        classDecl.findFirst(MethodDeclaration.class, method -> method.getNameAsString().equals(methodName))
-                .ifPresent(classDecl::remove);
-        StringBuilder importsBuilder = new StringBuilder();
-        for (int i = 0; i < imports.length(); i++) {
-            String importStatement = imports.getString(i);
-            if (importStatement.startsWith("import")) {
-                importsBuilder.append(importStatement);
-            } else {
-                importsBuilder.append("import ").append(importStatement).append(";\n");
-            }
-        }
-        String wrappedSnippet = importsBuilder.toString() // Appending the imports
-                + "public class TempClass {\n" + javaSnippet + "\n}";
-        javaParser.parse(wrappedSnippet).getResult().ifPresent(parsed -> {
-            // Iterate through all types in the parsed snippet
-            parsed.getTypes().forEach(type -> {
-                if (type instanceof ClassOrInterfaceDeclaration) {
-                    ClassOrInterfaceDeclaration tempClass = (ClassOrInterfaceDeclaration) type;
 
-                    // Add each field (variable) found in the parsed snippet
-                    tempClass.getFields().forEach(newField -> {
-                        classDecl.addMember(newField);
-                    });
+    public static void updateMethods(CompilationUnit cu, MethodTree methodTree, JSONArray imports, String javaSnippet, JavaParser javaParser) {
+        String methodName = methodTree.getName().toString();
 
-                    // Add each method found in the parsed snippet
-                    tempClass.getMethods().forEach(newMethod -> {
-                        classDecl.addMember(newMethod);
-                    });
+        cu.findFirst(ClassOrInterfaceDeclaration.class).ifPresent(classDecl -> {
+            // Find and remove the original method by its name
+            classDecl.findFirst(MethodDeclaration.class, method -> method.getNameAsString().equals(methodName))
+                    .ifPresent(classDecl::remove);
+            StringBuilder importsBuilder = new StringBuilder();
+            for (int i = 0; i < imports.length(); i++) {
+                String importStatement = imports.getString(i);
+                if (importStatement.startsWith("import")) {
+                    importsBuilder.append(importStatement);
+                } else {
+                    importsBuilder.append("import ").append(importStatement).append(";\n");
                 }
+            }
+            String wrappedSnippet = importsBuilder.toString() // Appending the imports
+                    + "public class TempClass {\n" + javaSnippet + "\n}";
+            javaParser.parse(wrappedSnippet).getResult().ifPresent(parsed -> {
+                // Iterate through all types in the parsed snippet
+                parsed.getTypes().forEach(type -> {
+                    if (type instanceof ClassOrInterfaceDeclaration) {
+                        ClassOrInterfaceDeclaration tempClass = (ClassOrInterfaceDeclaration) type;
+
+                        // Add each field (variable) found in the parsed snippet
+                        tempClass.getFields().forEach(newField -> {
+                            classDecl.addMember(newField);
+                        });
+
+                        // Add each method found in the parsed snippet
+                        tempClass.getMethods().forEach(newMethod -> {
+                            classDecl.addMember(newMethod);
+                        });
+                    }
+                });
             });
         });
-    });
-}
+    }
 
 }
