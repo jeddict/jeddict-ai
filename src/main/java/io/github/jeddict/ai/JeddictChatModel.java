@@ -23,6 +23,7 @@ package io.github.jeddict.ai;
  * @author Gaurav Gupta
  */
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import javax.swing.JOptionPane;
 
 public class JeddictChatModel {
 
@@ -40,6 +41,12 @@ public class JeddictChatModel {
             apiKey = System.getProperty(API_KEY_SYS_PROP);
         }
         if (apiKey == null || apiKey.isEmpty()) {
+            // Show popup with instructions if API key is not found
+            JOptionPane.showMessageDialog(null,
+                "API key is not set in environment variables or system properties.\n" +
+                "Please set the environment variable '" + API_KEY_ENV_VAR + "' or system property '" + API_KEY_SYS_PROP + "'.",
+                "API Key Not Found",
+                JOptionPane.ERROR_MESSAGE);
             throw new IllegalStateException("API key is not set in environment variables or system properties.");
         }
         return apiKey;

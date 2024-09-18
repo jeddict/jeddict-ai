@@ -5,8 +5,8 @@
     <artifactId>jeddict-ai</artifactId>
     <version>1.1</version>
     <packaging>nbm</packaging>
-    <name>AI Assistant for Jakarta EE</name>
-    <description>AI Assistant for Jakarta EE is a powerful and intuitive plugin designed for NetBeans IDE.
+    <name>Jeddict AI Assistant</name>
+    <description>Jeddict AI Assistant for Jakarta EE is a powerful and intuitive plugin designed for NetBeans IDE.
         It integrates AI-powered assistance to help developers work more efficiently with Jakarta EE.
         This plugin provides real-time code suggestions, documentation insights, and best practices,
         significantly reducing development time. It is ideal for developers working on complex enterprise
@@ -185,7 +185,6 @@
             </properties>
             <build>
                 <plugins>
-                    
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-source-plugin</artifactId>
@@ -215,7 +214,6 @@
                             <source>8</source>
                         </configuration>
                     </plugin>
-                    <!-- Maven Deploy Plugin -->
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-deploy-plugin</artifactId>
@@ -234,8 +232,6 @@
                             </execution>
                         </executions>
                     </plugin>
-
-                    <!-- Nexus Staging Plugin -->
                     <plugin>
                         <groupId>org.sonatype.plugins</groupId>
                         <artifactId>nexus-staging-maven-plugin</artifactId>
@@ -247,9 +243,6 @@
                             <autoReleaseAfterClose>true</autoReleaseAfterClose>
                         </configuration>
                     </plugin>
-
-                    <!-- Maven GPG Plugin -->
-                    
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-gpg-plugin</artifactId>
