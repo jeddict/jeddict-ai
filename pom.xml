@@ -3,8 +3,37 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.github.jeddict</groupId>
     <artifactId>jeddict-ai</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.0</version>
     <packaging>nbm</packaging>
+    <name>AI Assistant for Jakarta EE</name>
+    <description>AI Assistant for Jakarta EE is a powerful and intuitive plugin designed for NetBeans IDE.
+        It integrates AI-powered assistance to help developers work more efficiently with Jakarta EE.
+        This plugin provides real-time code suggestions, documentation insights, and best practices,
+        significantly reducing development time. It is ideal for developers working on complex enterprise
+        applications using Jakarta EE technologies, offering tailored recommendations based on the context
+        of the code and project structure.</description>
+    <url>https://jeddict.github.io/</url>
+    <scm>
+        <connection>scm:git:https://github.com/jeddict/jeddict-ai/</connection>
+        <url>https://github.com/jeddict/jeddict-ai/</url>
+        <developerConnection>scm:git:https://github.com/jeddict/jeddict-ai/</developerConnection>
+    </scm>
+    <licenses>
+        <license>
+            <name>Apache License v2.0</name>
+            <url>https://raw.githubusercontent.com/jeddict/jeddict-ai/master/LICENSE</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+    <developers>
+        <developer>
+            <id>gauravgupta</id>
+            <name>Gaurav Gupta</name>
+            <roles>
+                <role>developer</role>
+            </roles>
+        </developer>
+    </developers>
     <build>
         <plugins>
             <plugin>
@@ -24,10 +53,8 @@
                         </dependency>
                     </moduleDependencies>
                     <publicPackages>
-                        <publicPackage>io.github.jeddict.jeddict.ai</publicPackage>
-                        <publicPackage>io.github.jeddict.jeddict.ai.service</publicPackage>
+                        <publicPackage>io.github.jeddict.javadoc.ai</publicPackage>
                     </publicPackages>
-                    
                     <useOSGiDependencies>false</useOSGiDependencies>
                 </configuration>
             </plugin>
@@ -50,6 +77,52 @@
                     </archive>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.2.1</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.4.1</version>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <source>8</source>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <version>1.6</version>
+                <executions>
+                    <execution>
+                        <id>sign-artifacts</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>sign</goal>
+                        </goals>
+                        <configuration>
+                            <passphrase>${gpg.passphrase}</passphrase>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
     <dependencies>
@@ -68,6 +141,12 @@
             <artifactId>javaparser-core</artifactId>
             <version>3.24.0</version>
         </dependency>
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>20240303</version>
+        </dependency>
+
         <dependency>
             <groupId>org.netbeans.api</groupId>
             <artifactId>org-openide-windows</artifactId>
@@ -116,11 +195,6 @@
         </dependency>
         <dependency>
             <groupId>org.netbeans.api</groupId>
-            <artifactId>org-openide-util</artifactId>
-            <version>RELEASE220</version>
-        </dependency>
-        <dependency>
-            <groupId>org.netbeans.api</groupId>
             <artifactId>org-netbeans-libs-javacapi</artifactId>
             <version>RELEASE220</version>
         </dependency>
@@ -141,11 +215,6 @@
         </dependency>
         <dependency>
             <groupId>org.netbeans.api</groupId>
-            <artifactId>org-openide-util-lookup</artifactId>
-            <version>RELEASE220</version>
-        </dependency>
-        <dependency>
-            <groupId>org.netbeans.api</groupId>
             <artifactId>org-openide-filesystems</artifactId>
             <version>RELEASE220</version>
         </dependency>
@@ -158,4 +227,17 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
+    
+    <distributionManagement>
+        <snapshotRepository>
+            <id>ossrh</id>
+            <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
+
+        <!-- Release Repository -->
+        <repository>
+            <id>ossrh</id>
+            <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+        </repository>
+    </distributionManagement>
 </project>

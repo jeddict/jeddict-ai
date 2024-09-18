@@ -18,7 +18,7 @@
  */
 package io.github.jeddict.javadoc.ai;
 
-public enum JavadocAction {
+public enum Action {
 
     CREATE, ENHANCE
 }

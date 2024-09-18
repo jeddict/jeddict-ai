@@ -29,12 +29,16 @@ import com.sun.source.doctree.DocTree;
 import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.MethodTree;
 import com.sun.source.tree.Tree;
+import static com.sun.source.tree.Tree.Kind.CLASS;
+import static com.sun.source.tree.Tree.Kind.INTERFACE;
 import static com.sun.source.tree.Tree.Kind.METHOD;
+import static com.sun.source.tree.Tree.Kind.VARIABLE;
 import com.sun.source.tree.VariableTree;
 import com.sun.source.util.DocTrees;
 import com.sun.source.util.TreePath;
+import static io.github.jeddict.javadoc.ai.Action.ENHANCE;
 import static io.github.jeddict.javadoc.ai.FileUtil.saveOpenEditor;
-import static io.github.jeddict.javadoc.ai.JavadocAction.ENHANCE;
+import static io.github.jeddict.javadoc.ai.StringUtil.removeCodeBlockMarkers;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -42,94 +46,24 @@ import java.util.LinkedList;
 import java.util.List;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
-import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.VariableElement;
-import org.netbeans.api.java.source.CompilationInfo;
 import org.netbeans.api.java.source.ElementHandle;
-import org.netbeans.api.java.source.JavaSource.Phase;
+import org.netbeans.api.java.source.JavaSource;
 import org.netbeans.api.java.source.TreeMaker;
 import org.netbeans.api.java.source.TreePathHandle;
 import org.netbeans.api.java.source.WorkingCopy;
-import org.netbeans.spi.editor.hints.ErrorDescription;
-import org.netbeans.spi.editor.hints.Fix;
-import org.netbeans.spi.java.hints.ErrorDescriptionFactory;
-import org.netbeans.spi.java.hints.Hint;
-import org.netbeans.spi.java.hints.Hint.Kind;
-import org.netbeans.spi.java.hints.Hint.Options;
-import org.netbeans.spi.java.hints.HintContext;
 import org.netbeans.spi.java.hints.JavaFix;
-import org.netbeans.spi.java.hints.TriggerTreeKind;
 import org.openide.util.NbBundle;
 
-@Hint(displayName = "#DN_JavaDoc", description = "#DESC_JavaDoc",
-        id = "io.github.jeddict.javadoc.ai.JavaDocHint",
-        category = "suggestions",
-        enabled = true,
-        options = Options.QUERY,
-        hintKind = Kind.ACTION,
-        severity = org.netbeans.spi.editor.hints.Severity.HINT)
-public class JavaDocHint {
+/**
+ *
+ * @author Gaurav Gupta
+ */
+ public class JavaDocFixImpl extends JavaFix {
 
-    protected final WorkingCopy copy = null;
-
-    public JavaDocHint() {
-    }
-
-    @TriggerTreeKind({Tree.Kind.CLASS, Tree.Kind.INTERFACE, Tree.Kind.METHOD, Tree.Kind.VARIABLE})
-    public static ErrorDescription run(HintContext ctx) {
-        CompilationInfo compilationInfo = ctx.getInfo();
-        TreePath treePath = ctx.getPath();
-        if (treePath == null) {
-            return null;
-        }
-
-        Fix[] fixes = new Fix[2];
-        TreePathHandle tpHandle = TreePathHandle.create(treePath, compilationInfo);
-
-        Tree.Kind kind = treePath.getLeaf().getKind();
-        switch (kind) {
-            case CLASS:
-            case INTERFACE:
-                TypeElement type = (TypeElement) compilationInfo.getTrees().getElement(treePath);
-                ElementHandle<TypeElement> elementHandle = ElementHandle.create(type);
-                fixes[0] = new JavaFixImpl(tpHandle, JavadocAction.CREATE, elementHandle).toEditorFix();
-                fixes[1] = new JavaFixImpl(tpHandle, JavadocAction.ENHANCE, elementHandle).toEditorFix();
-                break;
-
-            case METHOD:
-                Element methodElement = compilationInfo.getTrees().getElement(treePath);
-                if (methodElement != null && methodElement.getKind() == ElementKind.METHOD) {
-                    ElementHandle<ExecutableElement> methodHandle = ElementHandle.create((ExecutableElement) methodElement);
-                    tpHandle = TreePathHandle.create(treePath, compilationInfo);
-                    fixes[0] = new JavaFixImpl(tpHandle, JavadocAction.CREATE, methodHandle).toEditorFix();
-                    fixes[1] = new JavaFixImpl(tpHandle, JavadocAction.ENHANCE, methodHandle).toEditorFix();
-                }
-                break;
-
-            case VARIABLE:
-                Element fieldElement = compilationInfo.getTrees().getElement(treePath);
-                if (fieldElement != null && fieldElement.getKind() == ElementKind.FIELD) {
-                    ElementHandle<VariableElement> fieldHandle = ElementHandle.create((VariableElement) fieldElement);
-                    tpHandle = TreePathHandle.create(treePath, compilationInfo);
-                    fixes[0] = new JavaFixImpl(tpHandle, JavadocAction.CREATE, fieldHandle).toEditorFix();
-                    fixes[1] = new JavaFixImpl(tpHandle, JavadocAction.ENHANCE, fieldHandle).toEditorFix();
-                }
-                break;
-
-            default:
-                return null;
-        }
-        String desc = NbBundle.getMessage(JavaDocHint.class, "ERR_JavaDoc"); //NOI18N
-        return ErrorDescriptionFactory.forTree(ctx, ctx.getPath(), desc, fixes); //NOI18N
-    }
-
-    private static final class JavaFixImpl extends JavaFix {
-
-        private final JavadocAction action;
+        private final Action action;
         private final ElementHandle classType;
 
-        public JavaFixImpl(TreePathHandle tpHandle, JavadocAction type,
+        public JavaDocFixImpl(TreePathHandle tpHandle, Action type,
                 ElementHandle classType) {
             super(tpHandle);
             this.action = type;
@@ -140,17 +74,17 @@ public class JavaDocHint {
         protected String getText() {
             switch (action) {
                 case ENHANCE:
-                    return NbBundle.getMessage(getClass(), "HINT_JavaDoc_Generated", StringUtil.convertToCapitalized(classType.getKind().toString()));//NOI18N
+                    return NbBundle.getMessage(getClass(), "HINT_JAVADOC_GENERATED", StringUtil.convertToCapitalized(classType.getKind().toString()));//NOI18N
                 default:
-                    return NbBundle.getMessage(getClass(), "HINT_JavaDoc", StringUtil.convertToCapitalized(classType.getKind().toString()));//NOI18N
+                    return NbBundle.getMessage(getClass(), "HINT_JAVADOC", StringUtil.convertToCapitalized(classType.getKind().toString()));//NOI18N
             }
         }
 
 
         @Override
-        protected void performRewrite(TransformationContext tc) throws Exception {
+        protected void performRewrite(JavaFix.TransformationContext tc) throws Exception {
             WorkingCopy copy = tc.getWorkingCopy();
-            if (copy.toPhase(Phase.RESOLVED).compareTo(Phase.RESOLVED) < 0) {
+            if (copy.toPhase(JavaSource.Phase.RESOLVED).compareTo(JavaSource.Phase.RESOLVED) < 0) {
                 return;
             }
             saveOpenEditor();
@@ -169,23 +103,23 @@ public class JavaDocHint {
                 case CLASS:
                 case INTERFACE:
                     if (action == ENHANCE) {
-                        javadocContent = new JavaDocChatModel().enhanceJavadocForClass(oldDocCommentTree.toString(), leaf.toString());
+                        javadocContent = new JeddictChatModel().enhanceJavadocForClass(oldDocCommentTree.toString(), leaf.toString());
                     } else {
-                        javadocContent = new JavaDocChatModel().generateJavadocForClass(leaf.toString());
+                        javadocContent = new JeddictChatModel().generateJavadocForClass(leaf.toString());
                     }
                     break;
                 case METHOD:
                     if (action == ENHANCE) {
-                        javadocContent = new JavaDocChatModel().enhanceJavadocForMethod(oldDocCommentTree.toString(), ((MethodTree) leaf).getName().toString());
+                        javadocContent = new JeddictChatModel().enhanceJavadocForMethod(oldDocCommentTree.toString(), ((MethodTree) leaf).getName().toString());
                     } else {
-                        javadocContent = new JavaDocChatModel().generateJavadocForMethod(((MethodTree) leaf).getName().toString());
+                        javadocContent = new JeddictChatModel().generateJavadocForMethod(((MethodTree) leaf).getName().toString());
                     }
                     break;
                 case VARIABLE:
                     if (action == ENHANCE) {
-                        javadocContent = new JavaDocChatModel().enhanceJavadocForField(oldDocCommentTree.toString(), ((VariableTree) leaf).getName().toString());
+                        javadocContent = new JeddictChatModel().enhanceJavadocForField(oldDocCommentTree.toString(), ((VariableTree) leaf).getName().toString());
                     } else {
-                        javadocContent = new JavaDocChatModel().generateJavadocForField(((VariableTree) leaf).getName().toString());
+                        javadocContent = new JeddictChatModel().generateJavadocForField(((VariableTree) leaf).getName().toString());
                     }
                     break;
                 default:
@@ -248,26 +182,7 @@ public class JavaDocHint {
             Files.write(filePath, modifiedCode.getBytes());
         }
 
-        private static String removeCodeBlockMarkers(String input) {
-            // Check if the input starts and ends with the markers
-            input = input.trim();
-            if (input.startsWith("```java") && input.endsWith("```")) {
-                // Remove the starting ```java\n and the ending ```
-                String content = input.substring(7);  // Remove ```java\n (7 characters)
-                content = content.substring(0, content.length() - 3);  // Remove ```
-                input = content.trim();
-            } else if (input.startsWith("```") && input.endsWith("```")) {
-                // Remove the starting ```java\n and the ending ```
-                String content = input.substring(3);  // Remove ```java\n (7 characters)
-                content = content.substring(0, content.length() - 3);  // Remove ```
-                input = content.trim();
-            }
-            input = input.trim();
-            if (input.startsWith("/**") && input.endsWith("*/")) {
-                input = input.substring(3, input.length() - 2).trim();
-            }
-            return input;  // Return the original input if it does not match the expected format
-        }
+       
 
         public static String trimLeadingSpaces(String str) {
             if (str == null) {
@@ -319,4 +234,4 @@ public class JavaDocHint {
         }
 
     }
-}
+   
