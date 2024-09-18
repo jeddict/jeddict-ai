@@ -20,5 +20,5 @@ package io.github.jeddict.ai;
 
 public enum Action {
 
-    CREATE, ENHANCE
+    CREATE, ENHANCE, COMPILATION_ERROR
 }

@@ -6,6 +6,8 @@ package io.github.jeddict.ai;
 
 import com.github.javaparser.JavaParser;
 import com.github.javaparser.ast.CompilationUnit;
+import com.sun.source.tree.CompilationUnitTree;
+import com.sun.source.tree.ImportTree;
 import com.sun.source.tree.MethodTree;
 import com.sun.source.tree.Tree;
 import static com.sun.source.tree.Tree.Kind.METHOD;
@@ -17,10 +19,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import javax.lang.model.element.Element;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.netbeans.api.java.source.ElementHandle;
 import org.netbeans.api.java.source.JavaSource;
+import org.netbeans.api.java.source.TreeMaker;
 import org.netbeans.api.java.source.TreePathHandle;
 import org.netbeans.api.java.source.WorkingCopy;
 import org.netbeans.spi.java.hints.JavaFix;
@@ -32,18 +39,33 @@ import org.openide.util.NbBundle;
  */
 public class MethodFix extends JavaFix {
 
-    private final ElementHandle classType;
+    private ElementHandle classType;
     private final Action action;
+    private String actionTitleParam;
+    private String compliationError;
 
     public MethodFix(TreePathHandle tpHandle, Action action, ElementHandle classType) {
         super(tpHandle);
         this.classType = classType;
         this.action = action;
     }
+    
+    public MethodFix(TreePathHandle tpHandle, String compliationError, String actionTitleParam) {
+        super(tpHandle);
+        this.compliationError = compliationError;
+        this.actionTitleParam = actionTitleParam;
+        this.action = Action.COMPILATION_ERROR;
+    }
 
     @Override
     protected String getText() {
-        return NbBundle.getMessage(getClass(), "HINT_METHOD_ENHANCE");
+        if (action == Action.COMPILATION_ERROR) {
+            return NbBundle.getMessage(getClass(), "HINT_METHOD_COMPILATION_ERROR", actionTitleParam);
+        } else if (action == Action.ENHANCE) {
+            return NbBundle.getMessage(getClass(), "HINT_METHOD_ENHANCE");
+        } else {
+            return NbBundle.getMessage(getClass(), "HINT_METHOD_QUERY");
+        }
     }
 
     @Override
@@ -56,7 +78,7 @@ public class MethodFix extends JavaFix {
 
         TreePath treePath = tc.getPath();
         Tree leaf = treePath.getLeaf();
-        
+
         Element elm = copy.getTrees().getElement(treePath);
         if (elm == null) {
             return;
@@ -64,9 +86,18 @@ public class MethodFix extends JavaFix {
 
         String content = null;
 
-        switch (leaf.getKind()) {
-            case METHOD:
-                content = new JeddictChatModel().createMethodFromMethodContent(treePath.getParentPath().getLeaf().toString(), leaf.toString());
+        if (leaf.getKind() == METHOD) {
+            if (action == Action.COMPILATION_ERROR) {
+                content = new JeddictChatModel().fixMethodCompilationError(treePath.getParentPath().getLeaf().toString(), leaf.toString(), compliationError);
+            } else if (action == Action.ENHANCE) {
+                content = new JeddictChatModel().enhanceMethodFromMethodContent(treePath.getParentPath().getLeaf().toString(), leaf.toString());
+            } else {
+                String query = askQuery();
+                if (query == null) {
+                    return;
+                }
+                content = new JeddictChatModel().updateMethodFromDevQuery(treePath.getParentPath().getLeaf().toString(), leaf.toString(), query);
+            }
         }
 
         Path filePath = Paths.get(copy.getFileObject().toURI());
@@ -79,19 +110,53 @@ public class MethodFix extends JavaFix {
             return;
         }
 
-           JSONObject json = new JSONObject(removeCodeBlockMarkers(content));
+        JSONObject json = new JSONObject(removeCodeBlockMarkers(content));
         JSONArray imports = json.getJSONArray("imports");
         String methodContent = json.getString("methodContent");
-        switch (leaf.getKind()) {
-            case METHOD:
-                JavaParserUtil.addImports(cu, imports);
-                updateMethods(cu, (MethodTree) leaf, imports, methodContent, javaParser);
-                break;
+        SourceUtil.addImports(copy, imports);
+        copy.rewrite(leaf, copy.getTreeMaker().QualIdent(methodContent));
+    }
+    
+
+    
+    private String askQuery() {
+        // Create a JTextArea for multiline input
+        JTextArea textArea = new JTextArea(10, 30); // 10 rows, 30 columns
+        textArea.setWrapStyleWord(true);
+        textArea.setLineWrap(true);
+
+        // Add the text area to a JScrollPane
+        JScrollPane scrollPane = new JScrollPane(textArea);
+        
+        // Create a JPanel to hold the scroll pane
+        JPanel panel = new JPanel();
+        panel.add(scrollPane);
+
+        // Show the custom dialog
+        int option = JOptionPane.showConfirmDialog(
+            null, 
+            panel, 
+            "Please provide details about what to update in this method:", 
+            JOptionPane.OK_CANCEL_OPTION, 
+            JOptionPane.PLAIN_MESSAGE
+        );
+
+        // Check the user's choice
+        if (option != JOptionPane.OK_OPTION) {
+            return null; // Exit if the user cancels the input
         }
 
-        String modifiedCode = cu.toString();
-        Files.write(filePath, modifiedCode.getBytes());
-        
-        SourceUtil.fixImports(copy.getFileObject());
+        String query = textArea.getText().trim();
+
+        if (query.isEmpty()) {
+            JOptionPane.showMessageDialog(
+                null,
+                "Update details are required. Operation aborted.",
+                "No Input",
+                JOptionPane.ERROR_MESSAGE
+            );
+            return null; // Exit if no input is provided
+        }
+        return  query;
     }
 }

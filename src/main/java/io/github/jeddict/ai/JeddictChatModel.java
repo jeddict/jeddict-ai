@@ -145,7 +145,7 @@ public class JeddictChatModel {
                 + "Analyze the context and functionality of the class to create meaningful and relevant REST endpoints. "
                 + "Ensure that you create new methods for various HTTP operations (GET, POST, PUT, DELETE) and include all necessary imports for JAX-RS annotations and responses. "
                 + "The generated methods should have some basic implementation and should not be empty. Avoid duplicating existing methods from the class content. "
-                + "Format the output as a JSON object with two fields: 'imports' (list of necessary imports) and 'methods' (list of newly created annotated methods with basic implementations). "
+                + "Format the output as a JSON object with two fields: 'imports' as array (list of necessary imports) and 'methodContent' as text. "
                 + "Include all required imports such as Response, GET, POST, PUT, DELETE, Path, etc. "
                 + "Example output:\n"
                 + "{\n"
@@ -156,12 +156,7 @@ public class JeddictChatModel {
                 + "    \"jakarta.ws.rs.DELETE\",\n"
                 + "    \"jakarta.ws.rs.core.Response\"\n"
                 + "  ],\n"
-                + "  \"methods\": [\n"
-                + "    \"@GET public Response getPing() { // implementation }\",\n"
-                + "    \"@POST public Response createPing() { // implementation for createPing }\",\n"
-                + "    \"@PUT public Response updatePing() { // implementation }\",\n"
-                + "    \"@DELETE public Response deletePing() { // implementation for deletePing }\"\n"
-                + "  ]\n"
+                + "  \"methodContent\": \"@GET public Response getPing() { // implementation }@POST public Response createPing() { // implementation for createPing }@PUT public Response updatePing() { // implementation }@DELETE public Response deletePing() { // implementation for deletePing }\"\n"
                 + "}\n\n"
                 + "Only return methods with annotations, implementation details, and necessary imports for the given class. "
                 + "Do not include class declarations, constructors, or unnecessary boilerplate code. Ensure the generated methods are unique and not duplicates of existing methods in the class content.\n\n"
@@ -175,12 +170,17 @@ public class JeddictChatModel {
         return answer;
     }
 
-    public String enhanceMethodFromDevQuery(String methodContent, String developerRequest) {
+    public String updateMethodFromDevQuery(String javaClassContent, String methodContent, String developerRequest) {
         String prompt
                 = "You are an API server that enhances Java methods based on user requests. "
                 + "Given the following Java method and the developer's request, modify and enhance the method accordingly. "
                 + "Incorporate any specific details or requirements mentioned by the developer. Do not include any additional text or explanation, just return the enhanced Java method source code.\n\n"
+                + "Include all necessary imports relevant to the enhanced or newly created method. "
+                + "Return only the Java method and its necessary imports, without including any class declarations, constructors, or other boilerplate code. "
+                + "Do not include full java class, any additional text or explanation, just the imports and the method source code.\n\n"
+                + "Format the output as a JSON object with two fields: 'imports' (list of necessary imports) and 'methodContent'. "
                 + "Developer Request:\n" + developerRequest + "\n\n"
+                + "Java Class Content:\n" + javaClassContent + "\n\n"
                 + "Java Method Content:\n" + methodContent;
 
         // Generate the enhanced Java method
@@ -189,7 +189,7 @@ public class JeddictChatModel {
         return answer;
     }
 
-    public String createMethodFromMethodContent(String javaClassContent, String methodContent) {
+    public String enhanceMethodFromMethodContent(String javaClassContent, String methodContent) {
         String prompt
                 = "You are an API server that enhances or creates Java methods based on the method name, comments, and its content. "
                 + "Given the following Java class content and Java method content, modify and enhance the method accordingly. "
@@ -205,6 +205,44 @@ public class JeddictChatModel {
         System.out.println(answer);
         return answer;
     }
+    
+    public String fixMethodCompilationError(String javaClassContent, String methodContent, String errorMessage) {
+    String prompt = 
+        "You are an API server that fixes compilation errors in Java methods based on the provided error messages. "
+        + "Given the following Java method content, class content, and the error message, correct the method accordingly. "
+        + "Ensure that all compilation errors indicated by the error message are resolved. "
+        + "Include any necessary imports relevant to the fixed method. "
+        + "Return only the corrected Java method and its necessary imports, without including any class declarations, constructors, or other boilerplate code. "
+        + "Do not include full Java class, any additional text, or explanation—just the imports and the corrected method source code.\n\n"
+        + "Format the output as a JSON object with two fields: 'imports' (list of necessary imports) and 'methodContent'. "
+        + "Error Message:\n" + errorMessage + "\n\n"
+        + "Java Class Content:\n" + javaClassContent + "\n\n"
+        + "Java Method Content:\n" + methodContent;
+
+    // Generate the fixed Java method
+    String answer = aiChatModel.generate(prompt);
+    System.out.println(answer);
+    return answer;
+}
+
+    public String fixVariableError(String javaClassContent, String errorMessage) {
+        String prompt
+                = "You are an API server that fixes variable-related compilation errors in Java classes based on the provided error messages. "
+                + "Given the following Java class content and the error message, correct given variable-related issues based on error message at class level. "
+                + "Ensure that all compilation errors indicated by the error message, such as undeclared variables, incorrect variable types, or misuse of variables, are resolved. "
+                + "Include any necessary imports relevant to the fixed method or class. "
+                + "Return only the corrected variable content and its necessary imports, without including any unnecessary boilerplate code. "
+                + "Do not include any additional text or explanation—just the imports and the corrected variable source code.\n\n"
+                + "Format the output as a JSON object with two fields: 'imports' (list of necessary imports) and 'variableContent' (corrected variable line or content). "
+                + "Error Message:\n" + errorMessage + "\n\n"
+                + "Java Class Content:\n" + javaClassContent;
+
+        // Generate the fixed Java class or method
+        String answer = aiChatModel.generate(prompt);
+        System.out.println(answer);
+        return answer;
+    }
+
 
     public String enhanceVariableName(String variableContext, String methodContent, String classContent) {
         String prompt

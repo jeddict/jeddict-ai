@@ -5,6 +5,7 @@
 package io.github.jeddict.ai;
 
 import com.sun.source.tree.BlockTree;
+import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.ExpressionTree;
 import com.sun.source.tree.IdentifierTree;
 import com.sun.source.tree.MethodTree;
@@ -68,7 +69,6 @@ public class VariableNameFix extends JavaFix {
                 VariableTree oldVarTree = (VariableTree) leaf;
                 TreeMaker maker = copy.getTreeMaker();
 
-                // Create a new VariableTree with the updated name
                 VariableTree newVarTree = maker.Variable(
                         oldVarTree.getModifiers(),
                         newName,
@@ -76,67 +76,142 @@ public class VariableNameFix extends JavaFix {
                         oldVarTree.getInitializer()
                 );
 
-                // Handle local variables
-                Tree parent = path.getParentPath().getLeaf();
-                if (parent instanceof BlockTree) {
-                    BlockTree blockTree = (BlockTree) parent;
-                    List<? extends StatementTree> statements = blockTree.getStatements();
+                handleLocalVariable(copy, path, oldVarTree, newVarTree);
+                handleMethodParameter(copy, path, oldVarTree, newVarTree, oldName, newName);
+                handleClassField(copy, path, oldVarTree, newVarTree, oldName, newName);
+            }
+        }
+    }
 
-                    // Replace the old variable tree with the new one in the list of statements
-                    List<StatementTree> newStatements = statements.stream()
-                            .map(s -> s.equals(oldVarTree) ? newVarTree : s)
-                            .collect(Collectors.toList());
+    private void handleLocalVariable(WorkingCopy copy, TreePath path, VariableTree oldVarTree, VariableTree newVarTree) {
+        Tree parent = path.getParentPath().getLeaf();
+        if (parent instanceof BlockTree) {
+            BlockTree blockTree = (BlockTree) parent;
+            List<? extends StatementTree> statements = blockTree.getStatements();
+            List<StatementTree> newStatements = statements.stream()
+                    .map(s -> s.equals(oldVarTree) ? newVarTree : s)
+                    .collect(Collectors.toList());
 
-                    // Create a new BlockTree with the updated statements
-                    BlockTree newBlockTree = maker.Block(newStatements, blockTree.isStatic());
-                    newBlockTree = updateBody(copy, newBlockTree, copy.getElements().getName(oldName), copy.getElements().getName(newName));
-                   
+            BlockTree newBlockTree = copy.getTreeMaker().Block(newStatements, blockTree.isStatic());
+            newBlockTree = updateBody(copy, newBlockTree, copy.getElements().getName(oldVarTree.getName().toString()), copy.getElements().getName(newVarTree.getName().toString()));
+            copy.rewrite(blockTree, newBlockTree);
+        }
+    }
 
-                    // Rewrite the old block with the new block
-                    copy.rewrite(blockTree, newBlockTree);
-                } else if (parent instanceof MethodTree) {
-                    MethodTree methodTree = (MethodTree) parent;
+    private void handleMethodParameter(WorkingCopy copy, TreePath path, VariableTree oldVarTree, VariableTree newVarTree, String oldName, String newName) {
+        Tree parent = path.getParentPath().getLeaf();
+        if (parent instanceof MethodTree) {
+            MethodTree methodTree = (MethodTree) parent;
+            List<? extends VariableTree> newParams = methodTree.getParameters().stream()
+                    .map(p -> p.equals(oldVarTree) ? newVarTree : p)
+                    .collect(Collectors.toList());
+
+            BlockTree oldBody = methodTree.getBody();
+            BlockTree newBody = updateBody(copy, oldBody, copy.getElements().getName(oldName), copy.getElements().getName(newName));
+            MethodTree newMethodTree = copy.getTreeMaker().Method(
+                    methodTree.getModifiers(),
+                    methodTree.getName().toString(),
+                    methodTree.getReturnType(),
+                    methodTree.getTypeParameters(),
+                    newParams,
+                    methodTree.getThrows(),
+                    newBody,
+                    (methodTree.getDefaultValue() instanceof ExpressionTree)
+                    ? (ExpressionTree) methodTree.getDefaultValue()
+                    : null
+            );
+
+            copy.rewrite(methodTree, newMethodTree);
+        }
+    }
+
+    private void handleClassField(WorkingCopy copy, TreePath path, VariableTree oldVarTree, VariableTree newVarTree, String oldName, String newName) {
+        Tree parent = path.getParentPath().getLeaf();
+        if (parent instanceof ClassTree) {
+            ClassTree classTree = (ClassTree) parent;
+
+            // Update class fields
+            List<? extends Tree> members = classTree.getMembers();
+            List<Tree> newMembers = members.stream()
+                    .map(m -> m.equals(oldVarTree) ? newVarTree : m)
+                    .collect(Collectors.toList());
+
+            ClassTree newClassTree = copy.getTreeMaker().Class(
+                    classTree.getModifiers(),
+                    classTree.getSimpleName(),
+                    classTree.getTypeParameters(),
+                    classTree.getExtendsClause(),
+                    classTree.getImplementsClause(),
+                    newMembers
+            );
+
+            copy.rewrite(classTree, newClassTree);
+
+            // Traverse the class to update variable names inside methods and blocks
+            new TreeScanner<Void, Void>() {
+                @Override
+                public Void visitMethod(MethodTree methodTree, Void p) {
+                    // Update variables in method parameters and bodies
                     List<? extends VariableTree> newParams = methodTree.getParameters().stream()
-                            .map(p -> p.equals(oldVarTree) ? newVarTree : p)
+                            .map(param -> param.getName().contentEquals(oldName) ? copy.getTreeMaker().Variable(
+                            param.getModifiers(), copy.getElements().getName(newName), param.getType(), param.getInitializer()) : param)
                             .collect(Collectors.toList());
 
                     BlockTree oldBody = methodTree.getBody();
-                    BlockTree newBody = updateBody(copy, oldBody, copy.getElements().getName(oldName), copy.getElements().getName(newName));
-                    MethodTree newMethodTree = maker.Method(
-                            methodTree.getModifiers(),
-                            methodTree.getName().toString(), // Convert Name to String
-                            methodTree.getReturnType(),
-                            methodTree.getTypeParameters(),
-                            newParams, // Updated parameter list
-                            methodTree.getThrows(),
-                            newBody,
-                            (methodTree.getDefaultValue() instanceof ExpressionTree)
-                            ? (ExpressionTree) methodTree.getDefaultValue()
-                            : null // Handle default value if necessary
-                    );
-
-                    copy.rewrite(methodTree, newMethodTree);
+                    if (oldBody != null) {
+                        BlockTree newBody = updateBody(copy, oldBody, copy.getElements().getName(oldName), copy.getElements().getName(newName));
+                        MethodTree newMethodTree = copy.getTreeMaker().Method(
+                                methodTree.getModifiers(),
+                                methodTree.getName(),
+                                methodTree.getReturnType(),
+                                methodTree.getTypeParameters(),
+                                newParams,
+                                methodTree.getThrows(),
+                                newBody,
+                                (methodTree.getDefaultValue() instanceof ExpressionTree)
+                                ? (ExpressionTree) methodTree.getDefaultValue()
+                                : null
+                        );
+                        copy.rewrite(methodTree, newMethodTree);
+                    }
+                    return super.visitMethod(methodTree, p);
                 }
-            }
+
+                @Override
+                public Void visitVariable(VariableTree variableTree, Void p) {
+                    if (variableTree.getName().contentEquals(oldName)) {
+                        VariableTree newVar = copy.getTreeMaker().Variable(
+                                variableTree.getModifiers(),
+                                copy.getElements().getName(newName),
+                                variableTree.getType(),
+                                variableTree.getInitializer());
+                        copy.rewrite(variableTree, newVar);
+                    }
+                    return super.visitVariable(variableTree, p);
+                }
+
+                @Override
+                public Void visitIdentifier(IdentifierTree node, Void p) {
+                    if (node.getName().contentEquals(oldName)) {
+                        copy.rewrite(node, copy.getTreeMaker().Identifier(copy.getElements().getName(newName)));
+                    }
+                    return super.visitIdentifier(node, p);
+                }
+            }.scan(newClassTree, null);
         }
     }
 
     private BlockTree updateBody(WorkingCopy copy, BlockTree oldBody, Name oldName, Name newName) {
         TreeMaker maker = copy.getTreeMaker();
-
-        // Create a new BlockTree by rewriting the old body
         new TreeScanner<Void, Void>() {
             @Override
             public Void visitIdentifier(IdentifierTree node, Void p) {
                 if (node.getName().contentEquals(oldName)) {
-                    // Rewrite the identifier with the new parameter name
                     copy.rewrite(node, maker.Identifier(newName));
                 }
                 return super.visitIdentifier(node, p);
             }
         }.scan(oldBody, null);
-
-        // Return the (potentially modified) oldBody, as modifications are done in-place
         return oldBody;
     }
 
