@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.github.jeddict</groupId>
     <artifactId>jeddict-ai</artifactId>
-    <version>1.1</version>
+    <version>1.2</version>
     <packaging>nbm</packaging>
     <name>Jeddict AI Assistant</name>
     <description>Jeddict AI Assistant for Jakarta EE is a powerful and intuitive plugin designed for NetBeans IDE.
@@ -47,7 +47,7 @@
                     <distributionUrl>https://github.com/jeddict/jeddict-ai</distributionUrl>
                     <codeNameBase>io.github.jeddict.jeddict.ai</codeNameBase>
                     <publicPackages>
-                        <publicPackage>io.github.jeddict.javadoc.ai</publicPackage>
+                        <publicPackage>io.github.jeddict.ai</publicPackage>
                     </publicPackages>
                     <useOSGiDependencies>false</useOSGiDependencies>
                 </configuration>
