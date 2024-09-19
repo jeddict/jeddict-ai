@@ -302,44 +302,45 @@ public class JeddictChatModel {
     }
 
     public String generateHtmlDescriptionForClass(String classContent) {
-    String prompt = "You are an API server that provides a detailed and interactive HTML-formatted description of a Java class. "
-            + "Given the following Java class content, generate an HTML document that includes a clear and engaging description of the class. "
-            + "Make the content visually appealing by using interactive elements such as collapsible sections, tooltips, or modals. "
-            + "Incorporate Bootstrap CSS for styling and layout, and use inline CSS or custom styles for specific design needs. "
-            + "Ensure that the HTML content is well-structured, with readable fonts, contrasting colors, and responsive design. "
-            + "Do not include additional text or explanations outside of the HTML content.\n\n"
-            + "Java Class Content:\n" + classContent;
+        String prompt = "You are an API server that provides a detailed and interactive HTML-formatted description of a Java class. "
+                + "Given the following Java class content, generate an HTML document that includes a clear and engaging description of the class. "
+                + "Ensure that the HTML content is visually appealing by utilizing Bootstrap CSS for overall styling and use highlight.js for code examples in the response. "
+                + "Wrap the code blocks in <pre> tags to preserve formatting and indentation. "
+           + "Do not include additional text or explanations outside of the HTML content.\n\n"
+                + "Java Class Content:\n" + classContent;
 
-    // Generate the HTML description
-    String answer = aiChatModel.generate(prompt);
-    System.out.println(answer);
-    return answer;
-}
-
-//    public String generateHtmlDescriptionForClass(String classContent) {
-//        String prompt = "You are an API server that provides a detailed, interactive HTML-formatted description of a Java class. "
-//                + "Given the following Java class content, generate an HTML format that describes the class, including its purpose, main features, and key components. "
-//                + "Ensure that the description is clear, well-structured, and formatted properly in HTML. Use interactive elements with Bootstrap js, Bootstrap css or or inline css and other formatting to enhance readability and engagement. "
-//                + "Do not include additional text or explanations outside of the HTML content.\n\n"
-//                + "Java Class Content:\n" + classContent;
-//
-//        // Generate the HTML description
-//        String answer = aiChatModel.generate(prompt);
-//        System.out.println(answer);
-//        return answer;
-//    }
-
-    public String generateHtmlDescriptionForClass(String classContent, String userQuery) {
-    String prompt = "You are an API server that provides an interactive HTML-formatted answer to a user's query based on Java class content. "
-            + "Given the following Java class content and the user's query, generate an HTML document that directly addresses the specific query. "
-            + "Ensure the HTML content is well-structured and clearly answers the query. "
-            + "Make the response engaging by using interactive elements like collapsible panels, tooltips, or modals. "
-            + "Utilize Bootstrap CSS for overall styling and layout, and use inline CSS or custom styles for specific enhancements. "
-            + "Incorporate JavaScript for dynamic behaviors such as showing/hiding content, or interactive charts if applicable. "
-            + "Ensure that the HTML content is visually appealing with readable fonts, effective color contrast, and responsive design. "
-            + "Do not include additional text or explanations outside of the HTML content.\n\n"
-            + "Java Class Content:\n" + classContent + "\n\n"
+        // Generate the HTML description
+        String answer = aiChatModel.generate(prompt);
+        System.out.println(answer);
+        return answer;
+    }
+public String generateHtmlDescriptionForClass(String classContent, String previousChatResponse, String userQuery) {
+    String prompt;
+    
+    if(previousChatResponse == null) {
+         prompt = "You are an API server that provides an interactive HTML-formatted answer to a user's query based on Orignal Java class content. "
+            + "Given the following Java class content, and the user's query, generate an HTML document that directly addresses the specific query. "
+            + "Ensure the HTML content is well-structured, clearly answers the query. "
+            + "Use Bootstrap CSS for overall styling and highlight.js for code examples in the response. "
+            + "Wrap the code blocks in <pre> tags to preserve formatting and indentation. "
+           + "Do not include additional text or explanations outside of the HTML content.\n\n"
+            + "If Full Java Class is in response then wrap it in <code type=\"full\" class=\"java\">. "
+            + "If partial snippet of Java Class are in response then wrap it in <code type=\"snippet\" class=\"java\">. "
+            + "Orignal Java Class Content:\n" + classContent + "\n\n"
             + "User Query:\n" + userQuery;
+    } else {
+         prompt = "You are an API server that provides an interactive HTML-formatted answer to a user's query based on Orignal Java class content and Previous Chat Content. "
+            + "Given the following Java class content, the previous chat response, and the user's query, generate an HTML document that directly addresses the specific query. "
+            + "Ensure the HTML content is well-structured, clearly answers the query, and reflects any modifications or updates suggested in the previous chat response. "
+            + "Use Bootstrap CSS for overall styling and highlight.js for code examples in the response. "
+            + "Wrap the code blocks in <pre> tags to preserve formatting and indentation. "
+           + "Do not include additional text or explanations outside of the HTML content.\n\n"
+            + "If Full Java Class is in response then wrap it in <code type=\"full\" class=\"java\">. "
+            + "If partial snippet of Java Class are in response then wrap it in <code type=\"snippet\" class=\"java\">. "
+            + "Orignal Java Class Content:\n" + classContent + "\n\n"
+            + "Previous Chat Response:\n" + previousChatResponse + "\n\n"
+            + "User Query:\n" + userQuery;
+    }
 
     // Generate the HTML description
     String answer = aiChatModel.generate(prompt);
@@ -347,19 +348,5 @@ public class JeddictChatModel {
     return answer;
 }
 
-//    public String generateHtmlDescriptionForClass(String classContent, String userQuery) {
-//        String prompt = "You are an API server that provides an interactive HTML-formatted answer to a user's query based on Java class content. "
-//                + "Given the following Java class content and the user's query, generate an HTML format that directly addresses the specific query related to the class. "
-//                + "Ensure that the HTML content is well-structured and answer the query. "
-//                + "Make the content engaging by using interactive elements with Bootstrap js, Bootstrap css or inline css and other formatting techniques. "
-//                + "Do not include additional text or explanations outside of the HTML content.\n\n"
-//                + "Java Class Content:\n" + classContent + "\n\n"
-//                + "User Query:\n" + userQuery;
-//
-//        // Generate the HTML description
-//        String answer = aiChatModel.generate(prompt);
-//        System.out.println(answer);
-//        return answer;
-//    }
 
 }

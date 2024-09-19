@@ -6,9 +6,6 @@ package io.github.jeddict.ai.fix;
 
 import com.github.javaparser.JavaParser;
 import com.github.javaparser.ast.CompilationUnit;
-import com.sun.source.tree.CompilationUnitTree;
-import com.sun.source.tree.ImportTree;
-import com.sun.source.tree.MethodTree;
 import com.sun.source.tree.Tree;
 import static com.sun.source.tree.Tree.Kind.METHOD;
 import com.sun.source.util.TreePath;
@@ -16,21 +13,16 @@ import io.github.jeddict.ai.Action;
 import io.github.jeddict.ai.JeddictChatModel;
 import io.github.jeddict.ai.util.SourceUtil;
 import static io.github.jeddict.ai.util.FileUtil.saveOpenEditor;
-import static io.github.jeddict.ai.util.JavaParserUtil.updateMethods;
 import static io.github.jeddict.ai.util.StringUtil.removeCodeBlockMarkers;
+import static io.github.jeddict.ai.util.UIUtil.askQuery;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import javax.lang.model.element.Element;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.netbeans.api.java.source.ElementHandle;
 import org.netbeans.api.java.source.JavaSource;
-import org.netbeans.api.java.source.TreeMaker;
 import org.netbeans.api.java.source.TreePathHandle;
 import org.netbeans.api.java.source.WorkingCopy;
 import org.netbeans.spi.java.hints.JavaFix;
@@ -120,44 +112,5 @@ public class MethodFix extends JavaFix {
         copy.rewrite(leaf, copy.getTreeMaker().QualIdent(methodContent));
     }
 
-    private String askQuery() {
-        // Create a JTextArea for multiline input
-        JTextArea textArea = new JTextArea(10, 30); // 10 rows, 30 columns
-        textArea.setWrapStyleWord(true);
-        textArea.setLineWrap(true);
 
-        // Add the text area to a JScrollPane
-        JScrollPane scrollPane = new JScrollPane(textArea);
-
-        // Create a JPanel to hold the scroll pane
-        JPanel panel = new JPanel();
-        panel.add(scrollPane);
-
-        // Show the custom dialog
-        int option = JOptionPane.showConfirmDialog(
-                null,
-                panel,
-                "Please provide details about what to update in this method:",
-                JOptionPane.OK_CANCEL_OPTION,
-                JOptionPane.PLAIN_MESSAGE
-        );
-
-        // Check the user's choice
-        if (option != JOptionPane.OK_OPTION) {
-            return null; // Exit if the user cancels the input
-        }
-
-        String query = textArea.getText().trim();
-
-        if (query.isEmpty()) {
-            JOptionPane.showMessageDialog(
-                    null,
-                    "Update details are required. Operation aborted.",
-                    "No Input",
-                    JOptionPane.ERROR_MESSAGE
-            );
-            return null; // Exit if no input is provided
-        }
-        return query;
-    }
 }
