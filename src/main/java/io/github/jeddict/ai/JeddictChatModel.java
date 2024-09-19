@@ -24,6 +24,7 @@ package io.github.jeddict.ai;
  */
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import javax.swing.JOptionPane;
+import org.json.JSONObject;
 
 public class JeddictChatModel {
 
@@ -73,12 +74,32 @@ public class JeddictChatModel {
                 .build();
     }
 
+    private String generate(String prompt) {
+        try {
+            return aiChatModel.generate(prompt);
+        } catch (Exception e) {
+            String errorMessage = e.getMessage();
+            if (e.getCause() != null
+                    && e.getCause() instanceof dev.ai4j.openai4j.OpenAiHttpException) {
+                JSONObject jsonObject = new JSONObject(e.getCause().getMessage());
+                if (jsonObject.has("error") && jsonObject.getJSONObject("error").has("message")) {
+                    errorMessage = jsonObject.getJSONObject("error").getString("message");
+                }
+            }
+            JOptionPane.showMessageDialog(null,
+                    "AI assistance failed to generate the requested response: " + errorMessage,
+                    "Error in AI Assistance",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+        return null;
+    }
+
     public String generateJavadocForClass(String classContent) {
         String prompt
                 = "You are an API server that responds only with Javadoc comments for class not the member of class. "
                 + "Generate only the Javadoc wrapped with in /** ${javadoc} **/ for the following Java class not the member of class. Do not include any additional text or explanation.\n\n"
                 + classContent;
-        String answer = aiChatModel.generate(prompt);
+        String answer = generate(prompt);
         System.out.println(answer);
         return answer;
     }
@@ -88,7 +109,7 @@ public class JeddictChatModel {
                 = "You are an API server that responds only with Javadoc comments for method. "
                 + "Generate only the Javadoc wrapped with in /** ${javadoc} **/ for the following Java method. Do not include any additional text or explanation.\n\n"
                 + methodContent;
-        String answer = aiChatModel.generate(prompt);
+        String answer = generate(prompt);
         System.out.println(answer);
         return answer;
     }
@@ -98,7 +119,7 @@ public class JeddictChatModel {
                 = "You are an API server that responds only with Javadoc comments for field. "
                 + "Generate only the Javadoc wrapped with in /** ${javadoc} **/ for the following Java variable. Do not include any additional text or explanation.\n\n"
                 + fieldContent;
-        String answer = aiChatModel.generate(prompt);
+        String answer = generate(prompt);
         System.out.println(answer);
         return answer;
     }
@@ -110,7 +131,7 @@ public class JeddictChatModel {
                 + "Do not include any additional text or explanation, just the enhanced Javadoc wrapped with /** ${javadoc} **/.\n\n"
                 + "Existing Javadoc:\n" + existingJavadoc + "\n\n"
                 + "Java Class Content:\n" + classContent;
-        String answer = aiChatModel.generate(prompt);
+        String answer = generate(prompt);
         System.out.println(answer);
         return answer;
     }
@@ -122,7 +143,7 @@ public class JeddictChatModel {
                 + "Do not include any additional text or explanation, just the enhanced Javadoc wrapped with /** ${javadoc} **/.\n\n"
                 + "Existing Javadoc:\n" + existingJavadoc + "\n\n"
                 + "Java Method Content:\n" + methodContent;
-        String answer = aiChatModel.generate(prompt);
+        String answer = generate(prompt);
         System.out.println(answer);
         return answer;
     }
@@ -134,7 +155,7 @@ public class JeddictChatModel {
                 + "Do not include any additional text or explanation, just the enhanced Javadoc wrapped with /** ${javadoc} **/.\n\n"
                 + "Existing Javadoc:\n" + existingJavadoc + "\n\n"
                 + "Java Field Content:\n" + fieldContent;
-        String answer = aiChatModel.generate(prompt);
+        String answer = generate(prompt);
         System.out.println(answer);
         return answer;
     }
@@ -163,7 +184,7 @@ public class JeddictChatModel {
                 + classContent;
 
         // Generate the unique JAX-RS methods with imports
-        String answer = aiChatModel.generate(prompt);
+        String answer = generate(prompt);
 
         // Print and return the generated JAX-RS methods with imports
         System.out.println(answer);
@@ -184,7 +205,7 @@ public class JeddictChatModel {
                 + "Java Method Content:\n" + methodContent;
 
         // Generate the enhanced Java method
-        String answer = aiChatModel.generate(prompt);
+        String answer = generate(prompt);
         System.out.println(answer);
         return answer;
     }
@@ -201,7 +222,7 @@ public class JeddictChatModel {
                 + "Java Method Content:\n" + methodContent;
 
         // Generate the enhanced or newly created Java method with necessary imports
-        String answer = aiChatModel.generate(prompt);
+        String answer = generate(prompt);
         System.out.println(answer);
         return answer;
     }
@@ -220,7 +241,7 @@ public class JeddictChatModel {
                 + "Java Method Content:\n" + methodContent;
 
         // Generate the fixed Java method
-        String answer = aiChatModel.generate(prompt);
+        String answer = generate(prompt);
         System.out.println(answer);
         return answer;
     }
@@ -238,7 +259,7 @@ public class JeddictChatModel {
                 + "Java Class Content:\n" + javaClassContent;
 
         // Generate the fixed Java class or method
-        String answer = aiChatModel.generate(prompt);
+        String answer = generate(prompt);
         System.out.println(answer);
         return answer;
     }
@@ -253,7 +274,7 @@ public class JeddictChatModel {
                 + (classContent != null ? ("Java Class Content:\n" + classContent) : "");
 
         // Generate the new variable name
-        String answer = aiChatModel.generate(prompt);
+        String answer = generate(prompt);
         System.out.println(answer);
         return answer;
     }
@@ -267,7 +288,7 @@ public class JeddictChatModel {
                 + "Text to Fix:\n" + text;
 
         // Generate the grammar-fixed text
-        String answer = aiChatModel.generate(prompt);
+        String answer = generate(prompt);
         System.out.println(answer);
         return answer;
     }
@@ -281,7 +302,7 @@ public class JeddictChatModel {
                 + "Text to Enhance:\n" + text;
 
         // Generate the enhanced text
-        String enhancedText = aiChatModel.generate(prompt);
+        String enhancedText = generate(prompt);
         System.out.println(enhancedText);
         return enhancedText;
     }
@@ -296,7 +317,7 @@ public class JeddictChatModel {
                 + "Parent Content of EXPRESSION_STATEMENT:\n" + parentContent + "\n\n"
                 + "EXPRESSION_STATEMENT Content:\n" + expressionStatementContent;
 
-        String enhanced = aiChatModel.generate(prompt);
+        String enhanced = generate(prompt);
         System.out.println(enhanced);
         return enhanced;
     }
@@ -306,47 +327,47 @@ public class JeddictChatModel {
                 + "Given the following Java class content, generate an HTML document that includes a clear and engaging description of the class. "
                 + "Ensure that the HTML content is visually appealing by utilizing Bootstrap CSS for overall styling and use highlight.js for code examples in the response. "
                 + "Wrap the code blocks in <pre> tags to preserve formatting and indentation. "
-           + "Do not include additional text or explanations outside of the HTML content.\n\n"
+                + "Do not include additional text or explanations outside of the HTML content.\n\n"
                 + "Java Class Content:\n" + classContent;
 
         // Generate the HTML description
-        String answer = aiChatModel.generate(prompt);
+        String answer = generate(prompt);
         System.out.println(answer);
         return answer;
     }
-public String generateHtmlDescriptionForClass(String classContent, String previousChatResponse, String userQuery) {
-    String prompt;
-    
-    if(previousChatResponse == null) {
-         prompt = "You are an API server that provides an interactive HTML-formatted answer to a user's query based on Orignal Java class content. "
-            + "Given the following Java class content, and the user's query, generate an HTML document that directly addresses the specific query. "
-            + "Ensure the HTML content is well-structured, clearly answers the query. "
-            + "Use Bootstrap CSS for overall styling and highlight.js for code examples in the response. "
-            + "Wrap the code blocks in <pre> tags to preserve formatting and indentation. "
-           + "Do not include additional text or explanations outside of the HTML content.\n\n"
-            + "If Full Java Class is in response then wrap it in <code type=\"full\" class=\"java\">. "
-            + "If partial snippet of Java Class are in response then wrap it in <code type=\"snippet\" class=\"java\">. "
-            + "Orignal Java Class Content:\n" + classContent + "\n\n"
-            + "User Query:\n" + userQuery;
-    } else {
-         prompt = "You are an API server that provides an interactive HTML-formatted answer to a user's query based on Orignal Java class content and Previous Chat Content. "
-            + "Given the following Java class content, the previous chat response, and the user's query, generate an HTML document that directly addresses the specific query. "
-            + "Ensure the HTML content is well-structured, clearly answers the query, and reflects any modifications or updates suggested in the previous chat response. "
-            + "Use Bootstrap CSS for overall styling and highlight.js for code examples in the response. "
-            + "Wrap the code blocks in <pre> tags to preserve formatting and indentation. "
-           + "Do not include additional text or explanations outside of the HTML content.\n\n"
-            + "If Full Java Class is in response then wrap it in <code type=\"full\" class=\"java\">. "
-            + "If partial snippet of Java Class are in response then wrap it in <code type=\"snippet\" class=\"java\">. "
-            + "Orignal Java Class Content:\n" + classContent + "\n\n"
-            + "Previous Chat Response:\n" + previousChatResponse + "\n\n"
-            + "User Query:\n" + userQuery;
+
+    public String generateHtmlDescriptionForClass(String classContent, String previousChatResponse, String userQuery) {
+        String prompt;
+
+        if (previousChatResponse == null) {
+            prompt = "You are an API server that provides an interactive HTML-formatted answer to a user's query based on Orignal Java class content. "
+                    + "Given the following Java class content, and the user's query, generate an HTML document that directly addresses the specific query. "
+                    + "Ensure the HTML content is well-structured, clearly answers the query. "
+                    + "Use Bootstrap CSS for overall styling and highlight.js for code examples in the response. "
+                    + "Wrap the code blocks in <pre> tags to preserve formatting and indentation. "
+                    + "Do not include additional text or explanations outside of the HTML content.\n\n"
+                    + "If Full Java Class is in response then wrap it in <code type=\"full\" class=\"java\">. "
+                    + "If partial snippet of Java Class are in response then wrap it in <code type=\"snippet\" class=\"java\">. "
+                    + "Orignal Java Class Content:\n" + classContent + "\n\n"
+                    + "User Query:\n" + userQuery;
+        } else {
+            prompt = "You are an API server that provides an interactive HTML-formatted answer to a user's query based on Orignal Java class content and Previous Chat Content. "
+                    + "Given the following Java class content, the previous chat response, and the user's query, generate an HTML document that directly addresses the specific query. "
+                    + "Ensure the HTML content is well-structured, clearly answers the query, and reflects any modifications or updates suggested in the previous chat response. "
+                    + "Use Bootstrap CSS for overall styling and highlight.js for code examples in the response. "
+                    + "Wrap the code blocks in <pre> tags to preserve formatting and indentation. "
+                    + "Do not include additional text or explanations outside of the HTML content.\n\n"
+                    + "If Full Java Class is in response then wrap it in <code type=\"full\" class=\"java\">. "
+                    + "If partial snippet of Java Class are in response then wrap it in <code type=\"snippet\" class=\"java\">. "
+                    + "Orignal Java Class Content:\n" + classContent + "\n\n"
+                    + "Previous Chat Response:\n" + previousChatResponse + "\n\n"
+                    + "User Query:\n" + userQuery;
+        }
+
+        // Generate the HTML description
+        String answer = generate(prompt);
+        System.out.println(answer);
+        return answer;
     }
-
-    // Generate the HTML description
-    String answer = aiChatModel.generate(prompt);
-    System.out.println(answer);
-    return answer;
-}
-
 
 }
