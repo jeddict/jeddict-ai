@@ -23,6 +23,7 @@ package io.github.jeddict.ai;
  * @author Gaurav Gupta
  */
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import java.util.prefs.Preferences;
 import javax.swing.JOptionPane;
 import org.json.JSONObject;
 
@@ -33,6 +34,10 @@ public class JeddictChatModel {
     private static final String API_KEY_SYS_PROP = "openai.api.key";
     private static final String MODEL_ENV_VAR = "OPENAI_MODEL";
     private static final String MODEL_SYS_PROP = "openai.model";
+    private static final String PREFERENCES_KEY = "api_key";
+
+    // Preferences for storing the API key
+    private static final Preferences prefs = Preferences.userNodeForPackage(JeddictChatModel.class);
 
     public static String getApiKey() {
         // First, try to get the API key from the environment variable
@@ -42,14 +47,30 @@ public class JeddictChatModel {
             apiKey = System.getProperty(API_KEY_SYS_PROP);
         }
         if (apiKey == null || apiKey.isEmpty()) {
-            // Show popup with instructions if API key is not found
-            JOptionPane.showMessageDialog(null,
-                    "API key is not set in environment variables or system properties.\n"
-                    + "Please set the environment variable '" + API_KEY_ENV_VAR + "' or system property '" + API_KEY_SYS_PROP + "'.",
-                    "API Key Not Found",
-                    JOptionPane.ERROR_MESSAGE);
-            throw new IllegalStateException("API key is not set in environment variables or system properties.");
+            // If not found in environment or system properties, check Preferences
+            apiKey = prefs.get(PREFERENCES_KEY, null);
         }
+
+        if (apiKey == null || apiKey.isEmpty()) {
+            // If still not found, show input dialog to enter API key
+            apiKey = JOptionPane.showInputDialog(null,
+                    "API key is not set.\nPlease enter the API key:",
+                    "Enter API Key",
+                    JOptionPane.WARNING_MESSAGE);
+
+            if (apiKey != null && !apiKey.isEmpty()) {
+                // Save the entered API key in Preferences for future use
+                prefs.put(PREFERENCES_KEY, apiKey);
+            } else {
+                // If user didn't provide a valid key, show error and throw exception
+                JOptionPane.showMessageDialog(null,
+                        "API key is not set. Please provide a valid API key.",
+                        "API Key Not Set",
+                        JOptionPane.ERROR_MESSAGE);
+                throw new IllegalStateException("API key is not set.");
+            }
+        }
+
         return apiKey;
     }
 

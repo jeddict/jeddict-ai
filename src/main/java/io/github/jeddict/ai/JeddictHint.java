@@ -138,7 +138,7 @@ public class JeddictHint {
                     if (oldDocCommentTree != null) {
                         fixes[i++] = new JavaDocFixImpl(tpHandle, Action.ENHANCE, methodHandle).toEditorFix();
                     }
-                    fixes[i++] = new MethodFix(tpHandle, Action.CREATE, methodHandle).toEditorFix();
+                    fixes[i++] = new MethodFix(tpHandle, Action.CREATE, methodHandle).toEditorFix(); // query
                     fixes[i++] = new MethodFix(tpHandle, Action.ENHANCE, methodHandle).toEditorFix();
                     for (Diagnostic<?> d : ctx.getInfo().getDiagnostics()) {
                         if (isDiagnosticRelatedToMethod(d, compilationInfo, treePath.getLeaf())) {
@@ -153,8 +153,8 @@ public class JeddictHint {
                             }
                         }
                     }
-                    fixes[i++] = new LearnFix(tpHandle, Action.LEARN, treePath).toEditorFix();
-                    fixes[i++] = new LearnFix(tpHandle, Action.QUERY, treePath).toEditorFix();
+//                    fixes[i++] = new LearnFix(tpHandle, Action.LEARN, treePath).toEditorFix();
+//                    fixes[i++] = new LearnFix(tpHandle, Action.QUERY, treePath).toEditorFix();
                 }
                 break;
 
