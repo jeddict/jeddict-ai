@@ -14,7 +14,8 @@ import javax.swing.JTextArea;
  * @author Gaurav Gupta
  */
 public class UIUtil {
-         public  static String askQuery() {
+
+    public static String askQuery() {
         // Create a JTextArea for multiline input
         JTextArea textArea = new JTextArea(10, 30); // 10 rows, 30 columns
         textArea.setWrapStyleWord(true);
@@ -54,8 +55,8 @@ public class UIUtil {
         }
         return query;
     }
-        
-         public  static String askQueryAboutClass() {
+
+    public static String askQueryAboutClass() {
         // Create a JTextArea for multiline input
         JTextArea textArea = new JTextArea(10, 30); // 10 rows, 30 columns
         textArea.setWrapStyleWord(true);

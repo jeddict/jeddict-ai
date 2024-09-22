@@ -39,6 +39,7 @@ import com.sun.source.util.SourcePositions;
 import com.sun.source.util.TreePath;
 import com.sun.source.util.Trees;
 import io.github.jeddict.ai.fix.LearnFix;
+import io.github.jeddict.ai.settings.PreferencesManager;
 import java.util.Locale;
 import java.util.logging.Logger;
 import javax.lang.model.element.Element;
@@ -61,7 +62,7 @@ import org.netbeans.spi.java.hints.HintContext;
 import org.netbeans.spi.java.hints.TriggerTreeKind;
 import org.openide.util.NbBundle;
 
-@Hint(displayName = "#DN_HINT", description = "#DESC_HINT",
+@Hint(displayName = "DN_HINT", description = "DESC_HINT",
         id = "io.github.jeddict.ai.JeddictHint",
         category = "suggestions",
         enabled = true,
@@ -73,6 +74,8 @@ public class JeddictHint {
     protected final WorkingCopy copy = null;
     private static final Logger LOGGER = Logger.getLogger(JeddictHint.class.getName());
 
+    private static final PreferencesManager prefsManager = PreferencesManager.getInstance();
+
     public JeddictHint() {
     }
 
@@ -82,6 +85,14 @@ public class JeddictHint {
         Tree.Kind.EXPRESSION_STATEMENT,
         Tree.Kind.EMPTY_STATEMENT})
     public static ErrorDescription run(HintContext ctx) {
+
+        if (!prefsManager.isAiAssistantActivated()) {
+            return null;
+        }
+        if (!prefsManager.isHintsEnabled()) {
+            return null;
+        }
+
         CompilationInfo compilationInfo = ctx.getInfo();
         TreePath treePath = ctx.getPath();
         if (treePath == null) {

@@ -25,6 +25,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.List;
 import org.json.JSONArray;
 import org.netbeans.api.java.source.JavaSource;
 import org.netbeans.api.java.source.TreeMaker;
@@ -61,6 +62,23 @@ public class SourceUtil {
         CompilationUnitTree newcompilationUnit = compilationUnit;
         for (int i = 0; i < imports.length(); i++) {
             String importToAdd = imports.getString(i);
+            if (importToAdd.startsWith("import ") && importToAdd.endsWith(";")) {
+                importToAdd = importToAdd.substring(7, importToAdd.length() - 1).trim();  // Extract the class name
+            }
+            if (!isImportPresent(copy, compilationUnit, importToAdd)) {
+                ImportTree newImport = make.Import(make.QualIdent(importToAdd), false);
+                newcompilationUnit = make.addCompUnitImport(newcompilationUnit, newImport);
+            }
+        }
+        copy.rewrite(compilationUnit, newcompilationUnit);
+    }
+
+    public static void addImports(WorkingCopy copy, List<String> imports) {
+        CompilationUnitTree compilationUnit = copy.getCompilationUnit();
+        TreeMaker make = copy.getTreeMaker();
+        CompilationUnitTree newcompilationUnit = compilationUnit;
+        for (int i = 0; i < imports.size(); i++) {
+            String importToAdd = imports.get(i);
             if (importToAdd.startsWith("import ") && importToAdd.endsWith(";")) {
                 importToAdd = importToAdd.substring(7, importToAdd.length() - 1).trim();  // Extract the class name
             }

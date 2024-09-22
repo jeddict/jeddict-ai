@@ -6,6 +6,8 @@ package io.github.jeddict.ai.fix;
 
 import com.github.javaparser.JavaParser;
 import com.github.javaparser.ast.CompilationUnit;
+import com.sun.source.tree.ExpressionTree;
+import com.sun.source.tree.MethodTree;
 import com.sun.source.tree.Tree;
 import static com.sun.source.tree.Tree.Kind.METHOD;
 import com.sun.source.util.TreePath;
@@ -23,8 +25,10 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.netbeans.api.java.source.ElementHandle;
 import org.netbeans.api.java.source.JavaSource;
+import org.netbeans.api.java.source.TreeMaker;
 import org.netbeans.api.java.source.TreePathHandle;
 import org.netbeans.api.java.source.WorkingCopy;
+import org.netbeans.modules.editor.indent.api.Reformat;
 import org.netbeans.spi.java.hints.JavaFix;
 import org.openide.util.NbBundle;
 
@@ -109,8 +113,48 @@ public class MethodFix extends JavaFix {
         JSONArray imports = json.getJSONArray("imports");
         String methodContent = json.getString("methodContent");
         SourceUtil.addImports(copy, imports);
-        copy.rewrite(leaf, copy.getTreeMaker().QualIdent(methodContent));
-    }
 
+        // remove comment by recreaing method
+        if (leaf instanceof MethodTree) {
+            MethodTree methodTree = (MethodTree) leaf;
+            TreeMaker treeMaker = copy.getTreeMaker();
+
+            MethodTree newMethodTree = treeMaker.Method(
+                    methodTree.getModifiers(),
+                    methodTree.getName(),
+                    methodTree.getReturnType(),
+                    methodTree.getTypeParameters(),
+                    methodTree.getParameters(),
+                    methodTree.getThrows(),
+                    methodTree.getBody(),
+                    methodTree.getDefaultValue() != null
+                    ? (ExpressionTree) methodTree.getDefaultValue()
+                    : null
+            );
+
+            // Rewrite the method with the new tree
+            copy.rewrite(methodTree, newMethodTree);
+        }
+
+        // Formating
+        int startPos = (int) copy.getTrees().getSourcePositions().getStartPosition(copy.getCompilationUnit(), leaf);
+        String[] lines = sourceCode.substring(0, startPos).split("\n"); // Zero-based index
+        String lastLine = lines[lines.length - 1];
+        if (lastLine.isBlank() && lastLine.length() <= 12) {
+            StringBuilder indentedContent = new StringBuilder();
+            boolean ignore = true;
+            for (String line : methodContent.split("\n")) {
+                if (ignore) {
+                    ignore = false;
+                    indentedContent.append(line).append("\n");
+                } else {
+                    indentedContent.append(lastLine).append(line).append("\n");
+                }
+            }
+            methodContent = indentedContent.toString();
+        }
+        copy.rewrite(leaf, copy.getTreeMaker().QualIdent(methodContent));
+
+    }
 
 }

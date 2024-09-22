@@ -22,76 +22,29 @@ package io.github.jeddict.ai;
  *
  * @author Gaurav Gupta
  */
+import com.sun.source.tree.Tree;
+import com.sun.source.util.TreePath;
 import dev.langchain4j.model.openai.OpenAiChatModel;
-import java.util.prefs.Preferences;
+import io.github.jeddict.ai.settings.PreferencesManager;
+import static io.github.jeddict.ai.util.StringUtil.removeCodeBlockMarkers;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import javax.swing.JOptionPane;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 public class JeddictChatModel {
 
     private final OpenAiChatModel aiChatModel;
-    private static final String API_KEY_ENV_VAR = "OPENAI_API_KEY";
-    private static final String API_KEY_SYS_PROP = "openai.api.key";
-    private static final String MODEL_ENV_VAR = "OPENAI_MODEL";
-    private static final String MODEL_SYS_PROP = "openai.model";
-    private static final String PREFERENCES_KEY = "api_key";
-
-    // Preferences for storing the API key
-    private static final Preferences prefs = Preferences.userNodeForPackage(JeddictChatModel.class);
-
-    public static String getApiKey() {
-        // First, try to get the API key from the environment variable
-        String apiKey = System.getenv(API_KEY_ENV_VAR);
-        if (apiKey == null || apiKey.isEmpty()) {
-            // If not found in environment variable, try system properties
-            apiKey = System.getProperty(API_KEY_SYS_PROP);
-        }
-        if (apiKey == null || apiKey.isEmpty()) {
-            // If not found in environment or system properties, check Preferences
-            apiKey = prefs.get(PREFERENCES_KEY, null);
-        }
-
-        if (apiKey == null || apiKey.isEmpty()) {
-            // If still not found, show input dialog to enter API key
-            apiKey = JOptionPane.showInputDialog(null,
-                    "API key is not set.\nPlease enter the API key:",
-                    "Enter API Key",
-                    JOptionPane.WARNING_MESSAGE);
-
-            if (apiKey != null && !apiKey.isEmpty()) {
-                // Save the entered API key in Preferences for future use
-                prefs.put(PREFERENCES_KEY, apiKey);
-            } else {
-                // If user didn't provide a valid key, show error and throw exception
-                JOptionPane.showMessageDialog(null,
-                        "API key is not set. Please provide a valid API key.",
-                        "API Key Not Set",
-                        JOptionPane.ERROR_MESSAGE);
-                throw new IllegalStateException("API key is not set.");
-            }
-        }
-
-        return apiKey;
-    }
-
-    public static String getModelName() {
-        // Try to get the model name from the environment variable
-        String modelName = System.getenv(MODEL_ENV_VAR);
-        if (modelName == null || modelName.isEmpty()) {
-            // If not found in environment variable, try system properties
-            modelName = System.getProperty(MODEL_SYS_PROP);
-        }
-        if (modelName == null || modelName.isEmpty()) {
-            // Fallback to default model name
-            modelName = "gpt-4o-mini";
-        }
-        return modelName;
-    }
+    private int cachedClassDatasLength = -1; // Cache the length of classDatas
 
     public JeddictChatModel() {
+        PreferencesManager preferencesManager = PreferencesManager.getInstance();
         aiChatModel = OpenAiChatModel.builder()
-                .apiKey(getApiKey())
-                .modelName(getModelName())
+                .apiKey(preferencesManager.getApiKey())
+                .modelName(preferencesManager.getModelName())
                 .build();
     }
 
@@ -298,6 +251,309 @@ public class JeddictChatModel {
         String answer = generate(prompt);
         System.out.println(answer);
         return answer;
+    }
+
+    public List<String> suggestVariableNames(String classDatas, String variablePrefix, String classContent, String variableExpression) {
+        String prompt;
+
+//    if(variablePrefix == null || variablePrefix.isEmpty()) {
+        prompt = "You are an API server that suggests a list of meaningful and descriptive names for a specific variable in a given Java class. "
+                + "Based on the provided Java class content, variable prefix, and variable expression, generate a list of improved names for the variable. "
+                + "Return only the list of suggested names, one per line, without any additional text or explanation.\n\n"
+                + "Variable Prefix: " + variablePrefix + "\n\n"
+                + "Variable Expression Line:\n" + variableExpression + "\n\n"
+                //            + "Parent Content:\n" + parentContent + "\n\n"
+                + "Java Class Content:\n" + classContent + "\n\n"
+                + "Here is the context of all classes in the project, including variable names and method signatures (method bodies are excluded to avoid sending unnecessary code):\n" + classDatas;
+//    }
+
+        // Generate the list of suggested variable names
+        String answer = generate(prompt);
+        System.out.println(answer);
+
+        // Split the response into a list and return
+        return Arrays.asList(answer.split("\n"));
+    }
+
+    private String loadClassData(String prompt, String classDatas) {
+        // Check if the length of classDatas has changed
+        if (classDatas == null) {
+            return prompt;
+        }
+        if (classDatas.length() != cachedClassDatasLength) {
+            // Add classDatas to the prompt if the length has changed
+            prompt += "\n\n" + "Here is the context of all classes in the project, including variable names and method signatures (method bodies are excluded to avoid sending unnecessary code):\n"
+                    + classDatas;
+            // Update cached length
+            cachedClassDatasLength = classDatas.length();
+        } else {
+            // Don't include classDatas if it's unchanged
+            prompt += "The class context has not changed.";
+        }
+        return prompt;
+    }
+
+    public List<String> suggestVariableNames(String classDatas, String classContent, String lineText) {
+        String prompt = "You are an API server that suggests multiple meaningful and descriptive names for a specific variable in a given Java class. "
+                + "Based on the provided Java class content and the line of code: \"" + lineText + "\", suggest a list of improved names for the variable represented by the placeholder ${SUGGEST_VAR_NAMES_LIST} in Java Class. "
+                + "Do not include additional text; return only the suggestions as a JSON array.\n\n"
+                + "Java Class Content:\n" + classContent;
+
+        prompt = loadClassData(prompt, classDatas);
+
+        // Generate the list of new variable names
+        String jsonResponse = generate(prompt);
+
+        // Parse the JSON response into a List
+        List<String> variableNames = parseJsonToList(jsonResponse);
+
+        return variableNames;
+    }
+
+    public List<String> suggestMethodNames(String classDatas, String classContent, String lineText) {
+        String prompt = "You are an API server that suggests multiple meaningful and descriptive names for a specific method in a given Java class. "
+                + "Based on the provided Java class content and the line of code: \"" + lineText + "\", suggest a list of improved names for the method represented by the placeholder ${SUGGEST_METHOD_NAMES_LIST} in Java Class. "
+                + "Do not include additional text; return only the suggestions as a JSON array.\n\n"
+                + "Java Class Content:\n" + classContent;
+
+        prompt = loadClassData(prompt, classDatas);
+        // Generate the list of new method names
+        String jsonResponse = generate(prompt);
+
+        // Parse the JSON response into a List
+        List<String> methodNames = parseJsonToList(jsonResponse);
+
+        return methodNames;
+    }
+
+    public List<String> suggestStringLiterals(String classDatas, String classContent, String lineText) {
+        String prompt = "You are an API server that suggests multiple meaningful and descriptive string literals for a specific context in a given Java class. "
+                + "Based on the provided Java class content and the line of code: \"" + lineText + "\", suggest a list of improved string literals represented by the placeholder ${SUGGEST_STRING_LITERAL_LIST} in Java Class. "
+                + "Do not include additional text; return only the suggestions as a JSON array.\n\n"
+                + "Java Class Content:\n" + classContent;
+
+        prompt = loadClassData(prompt, classDatas);
+        // Generate the list of new string literals
+        String jsonResponse = generate(prompt);
+
+        // Parse the JSON response into a List
+        List<String> stringLiterals = parseJsonToListWithSplit(jsonResponse);
+
+        return stringLiterals;
+    }
+
+    public List<String> suggestMethodInvocations(String classDatas, String classContent, String lineText) {
+        String prompt = "You are an API server that suggests multiple meaningful and appropriate method invocations for a specific context in a given Java class. "
+                + "Based on the provided Java class content and the line of code: \"" + lineText + "\", suggest a list of improved method invocations represented by the placeholder ${SUGGEST_METHOD_INVOCATION} in Java Class. "
+                + "Do not include additional text; return only the suggestions as a JSON array.\n\n"
+                + "Java Class Content:\n" + classContent;
+
+        prompt = loadClassData(prompt, classDatas);
+
+        // Generate the list of new method invocations
+        String jsonResponse = generate(prompt);
+
+        // Parse the JSON response into a List
+        List<String> methodInvocations = parseJsonToList(jsonResponse);
+
+        return methodInvocations;
+    }
+
+    public List<Snippet> suggestNextLineCode(String classDatas, String classContent, String lineText, TreePath path) {
+        String prompt;
+
+        if (path == null) {
+            prompt = "You are an API server that suggests Java code for the outermost context of a Java source file, outside of any existing class. "
+                    + "Based on the provided Java source file content, suggest relevant code to be added at the placeholder location ${SUGGEST_CODE_LIST}. "
+                    + "Suggest additional classes, interfaces, enums, or other top-level constructs. "
+                    + "Ensure that the suggestions fit the context of the entire file. "
+                    + "Return a JSON array with a few best suggestions without any additional text or explanation. Each element should be an object containing two fields: 'imports' and 'snippet'. "
+                    + "'imports' should be an array of required Java import statements (if no imports are required, return an empty array). "
+                    + "'snippet' should contain the suggested code as a text block, which may include multiple lines formatted as a single string using \\n for line breaks. \n\n"
+                    + "Make sure to escape any double quotes within the snippet using a backslash (\\) so that the JSON remains valid. \n\n"
+                    + "Java Source File Content:\n" + classContent;
+        } else if (path.getLeaf().getKind() == Tree.Kind.COMPILATION_UNIT) {
+            prompt = "You are an API server that suggests Java code for the outermost context of a Java source file, outside of any existing class. "
+                    + "Based on the provided Java source file content, suggest relevant code to be added at the placeholder location ${SUGGEST_CODE_LIST}. "
+                    + "Suggest package declarations, import statements, comments, or annotations for public class. "
+                    + "Ensure that the suggestions fit the context of the entire file. "
+                    + "Return a JSON array with a few best suggestions without any additional text or explanation. Each element should be an object containing two fields: 'imports' and 'snippet'. "
+                    + "'imports' should be an array of required Java import statements (if no imports are required, return an empty array). "
+                    + "'snippet' should contain the suggested code as a text block, which may include multiple lines formatted as a single string using \\n for line breaks. \n\n"
+                    + "Make sure to escape any double quotes within the snippet using a backslash (\\) so that the JSON remains valid. \n\n"
+                    + "Java Source File Content:\n" + classContent;
+        } else if (path.getLeaf().getKind() == Tree.Kind.MODIFIERS
+                && path.getParentPath() != null
+                && path.getParentPath().getLeaf().getKind() == Tree.Kind.CLASS) {
+            prompt = "You are an API server that suggests Java code modifications for a class. "
+                    + "At the placeholder location ${SUGGEST_CODE_LIST}, suggest either a class-level modifier such as 'public', 'protected', 'private', 'abstract', 'final', or a relevant class-level annotation. "
+                    + "Ensure that the suggestions are appropriate for the class context provided. "
+                    + "Return a JSON array with a few best suggestions without any additional text or explanation. Each element should be an object containing two fields: 'imports' and 'snippet'. "
+                    + "'imports' should be an array of required Java import statements (if no imports are required, return an empty array). "
+                    + "'snippet' should contain the suggested code as a text block, which may include multiple lines formatted as a single string using \\n for line breaks. \n\n"
+                    + "Make sure to escape any double quotes within the snippet using a backslash (\\) so that the JSON remains valid. \n\n"
+                    + "Java Class Content:\n" + classContent;
+        } else if (path.getLeaf().getKind() == Tree.Kind.CLASS
+                && path.getParentPath() != null
+                && path.getParentPath().getLeaf().getKind() == Tree.Kind.CLASS) {
+            prompt = "You are an API server that suggests Java code for an inner class at the placeholder location ${SUGGEST_CODE_LIST}. "
+                    + "Based on the provided Java class content, suggest either relevant inner class modifiers such as 'public', 'private', 'protected', 'static', 'abstract', 'final', or a full inner class definition. "
+                    + "Additionally, you may suggest class-level annotations for the inner class. Ensure that the suggestions are contextually appropriate for an inner class. "
+                    + "Return a JSON array with a few best suggestions without any additional text or explanation. Each element should be an object containing two fields: 'imports' and 'snippet'. "
+                    + "'imports' should be an array of required Java import statements (if no imports are required, return an empty array). "
+                    + "'snippet' should contain the suggested code as a text block, which may include multiple lines formatted as a single string using \\n for line breaks. \n\n"
+                    + "Make sure to escape any double quotes within the snippet using a backslash (\\) so that the JSON remains valid. \n\n"
+                    + "Java Class Content:\n" + classContent;
+        } else {
+            prompt = "You are an API server that suggests Java code for a specific context in a given Java class at the placeholder location ${SUGGEST_CODE_LIST}. "
+                    + "Based on the provided Java class content and the line of code: \"" + lineText + "\", suggest a relevant single line of code or a multi-line code block as appropriate for the context represented by the placeholder ${SUGGEST_CODE_LIST} in the Java class. "
+                    + "Ensure that the suggestions are relevant to the context. "
+                    + "Return a JSON array with few best suggestions without any additional text or explanation where each element is an object containing two fields: 'imports' and 'snippet'. "
+                    + "'imports' should be an array of required Java import statements for the suggested code (if no imports are required, return an empty array). "
+                    + "'snippet' should contain the suggested code as text block, which may include multiple lines formatted as a single string using \\n for line breaks. \n\n"
+                    + "Make sure to escape any double quotes within the snippet using a backslash (\\) so that the JSON remains valid. \n\n"
+                    + "Java Class Content:\n" + classContent;
+        }
+
+        prompt = loadClassData(prompt, classDatas);
+
+        // Generate the list of suggested next lines of code
+        String jsonResponse = generate(prompt);
+        System.out.println("jsonResponse " + jsonResponse);
+        // Parse the JSON response into a List
+        List<Snippet> nextLines = parseJsonToSnippets(jsonResponse);
+        return nextLines;
+    }
+
+    public List<String> suggestJavaComment(String classDatas, String classContent, String lineText) {
+        String prompt = "You are an API server that suggests appropriate Java comments for a specific context in a given Java class at the placeholder location ${SUGGEST_JAVA_COMMENT}. "
+                + "Based on the provided Java class content and the line of comment: \"" + lineText + " ${SUGGEST_JAVA_COMMENT} \", suggest relevant Java comment as appropriate for the context represented by the placeholder ${SUGGEST_JAVA_COMMENT} in the Java Class. "
+                + "Return a JSON array where each element must be single line comment. \n\n"
+                + "Java Class Content:\n" + classContent;
+        // Generate the list of suggested Javadoc or comments
+        String jsonResponse = generate(prompt);
+        System.out.println("jsonResponse " + jsonResponse);
+        // Parse the JSON response into a List
+        List<String> comments = parseJsonToList(jsonResponse);
+
+        return comments;
+    }
+
+    public List<String> suggestJavadocOrComment(String classDatas, String classContent, String lineText) {
+        String prompt = "You are an API server that suggests appropriate Javadoc or comments for a specific context in a given Java class at the placeholder location ${SUGGEST_JAVADOC}. "
+                + "Based on the provided Java class content and the line of code: \"" + lineText + "\", suggest relevant Javadoc or a comment block as appropriate for the context represented by the placeholder ${SUGGEST_JAVADOC} in the Java Class. "
+                + "Return a JSON array where each element can either be a single-line comment, a multi-line comment block, or a Javadoc comment formatted as a single string using \\n for line breaks. "
+                + " Do not split multi line javadoc comments to array, must be at same index in json array. \n\n"
+                //            + "Ensure that the suggestions are relevant to the context of com.sun.source.tree.Tree.Kind." + type + ". "
+                + "Java Class Content:\n" + classContent;
+        // Generate the list of suggested Javadoc or comments
+        String jsonResponse = generate(prompt);
+        System.out.println("jsonResponse " + jsonResponse);
+        // Parse the JSON response into a List
+        List<String> comments = parseJsonToList(jsonResponse);
+        return comments;
+    }
+
+    public List<String> suggestAnnotations(String classDatas, String classContent, String lineText) {
+        String prompt = "You are an API server that suggests Java annotations for a specific context in a given Java class at the placeholder location ${SUGGEST_ANNOTATION_LIST}. "
+                + "Based on the provided Java class content and the line of code: \"" + lineText + "\", suggest relevant annotations that can be applied at the placeholder location represented by ${SUGGEST_ANNOTATION_LIST} in the Java Class. "
+                + "Return a JSON array where each element is a single annotation formatted as a string. "
+                + "Ensure that the suggestions are appropriate for the given Java Class Content:\n\n" + classContent;
+
+        // Generate the list of suggested annotations
+        String jsonResponse = generate(prompt);
+        System.out.println("jsonResponse " + jsonResponse);
+
+        // Parse the JSON response into a List
+        List<String> annotations = parseJsonToList(jsonResponse);
+        return annotations;
+    }
+
+    public List<Snippet> parseJsonToSnippets(String jsonResponse) {
+        List<Snippet> snippets = new ArrayList<>();
+
+        // Parse the JSON response
+        JSONArray jsonArray = new JSONArray(removeCodeBlockMarkers(jsonResponse));
+
+        // Loop through each element in the JSON array
+        for (int i = 0; i < jsonArray.length(); i++) {
+            JSONObject jsonObject = jsonArray.getJSONObject(i);
+
+            // Extract the "imports" array
+            JSONArray importsJsonArray = jsonObject.getJSONArray("imports");
+            List<String> importsList = new ArrayList<>();
+            for (int j = 0; j < importsJsonArray.length(); j++) {
+                importsList.add(importsJsonArray.getString(j));
+            }
+
+            // Extract the "snippet" field
+            String snippet = jsonObject.getString("snippet");
+
+            // Create a new Snippet object and add it to the list
+            Snippet snippetObj = new Snippet(snippet, importsList);
+            snippets.add(snippetObj);
+        }
+
+        return snippets;
+    }
+
+    private List<String> parseJsonToList(String json) {
+        List<String> variableNames = new ArrayList<>();
+        try {
+            // Use JSONArray to parse the JSON array string
+            JSONArray jsonArray = new JSONArray(removeCodeBlockMarkers(json));
+            boolean split = false;
+            int docCount = 0;
+            for (int i = 0; i < jsonArray.length(); i++) {
+                variableNames.add(jsonArray.getString(i));
+                String line = jsonArray.getString(i).trim();
+                if (line.startsWith("}")) {
+                    split = true;
+                }
+                if (line.trim().startsWith("*")) {
+                    docCount++;
+                }
+            }
+            if (split || jsonArray.length() - 1 == docCount) {
+                return Collections.singletonList(String.join("\n", variableNames));
+            }
+        } catch (Exception e) {
+            return parseJsonToListWithSplit(removeCodeBlockMarkers(json));
+        }
+        return variableNames;
+    }
+
+    private List<String> parseJsonToListWithSplit(String json) {
+        List<String> variableNames = new ArrayList<>();
+
+        json = removeCodeBlockMarkers(json).trim();
+        String newjson = json;
+        if (json.startsWith("[") && json.endsWith("]")) {
+            newjson = json.substring(1, json.length() - 1).trim();
+        }
+        // Remove square brackets and split by new lines
+        String[] lines = newjson.split("\\n");
+
+        if (lines.length > 1) {
+            for (String line : lines) {
+                // Trim each line and add to the list if it's not empty
+                line = line.trim();
+                if (line.startsWith("\"")) {
+                    if (line.endsWith("\"")) {
+                        line = line.substring(1, line.length() - 1).trim();
+                    } else if (line.endsWith("\",")) {
+                        line = line.substring(1, line.length() - 2).trim();
+                    }
+                }
+                if (!line.isEmpty()) {
+                    variableNames.add(line);
+                }
+            }
+        } else {
+            variableNames = parseJsonToList(json);
+        }
+
+        return variableNames;
     }
 
     public String fixGrammar(String text, String classContent) {

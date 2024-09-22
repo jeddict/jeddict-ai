@@ -58,4 +58,35 @@ public class StringUtil {
         return input;  // Return the original input if it does not match the expected format
     }
 
+    public static String trimLeadingSpaces(String str) {
+        if (str == null) {
+            return null;
+        }
+        int start = 0;
+        while (start < str.length() && Character.isWhitespace(str.charAt(start))) {
+            start++;
+        }
+        return str.substring(start);
+    }
+
+    public static String trimTrailingSpaces(String str) {
+        if (str == null) {
+            return null;
+        }
+        int end = str.length();
+        while (end > 0 && Character.isWhitespace(str.charAt(end - 1))) {
+            end--;
+        }
+        return str.substring(0, end);
+    }
+
+    // remove all space from string
+    public static String removeAllSpaces(String str) {
+        if (str == null) {
+            return null;
+        } else {
+            return str.replaceAll("\\s+", "");
+        }
+    }
+
 }

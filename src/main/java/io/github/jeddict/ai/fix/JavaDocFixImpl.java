@@ -42,6 +42,7 @@ import io.github.jeddict.ai.JeddictChatModel;
 import static io.github.jeddict.ai.Action.ENHANCE;
 import static io.github.jeddict.ai.util.FileUtil.saveOpenEditor;
 import static io.github.jeddict.ai.util.StringUtil.removeCodeBlockMarkers;
+import static io.github.jeddict.ai.util.StringUtil.trimLeadingSpaces;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -181,17 +182,6 @@ public class JavaDocFixImpl extends JavaFix {
         // Write the modified code back to the file
         String modifiedCode = cu.toString();
         Files.write(filePath, modifiedCode.getBytes());
-    }
-
-    public static String trimLeadingSpaces(String str) {
-        if (str == null) {
-            return null;
-        }
-        int start = 0;
-        while (start < str.length() && Character.isWhitespace(str.charAt(start))) {
-            start++;
-        }
-        return str.substring(start);
     }
 
     private void updateJavadoc(WorkingCopy copy, TreePath treePath, TreeMaker make, String javadocContent, ElementKind elementKind) {

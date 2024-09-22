@@ -46,6 +46,94 @@
                     <licenseFile>${basedir}/LICENSE-2.0.txt</licenseFile>
                     <distributionUrl>https://github.com/jeddict/jeddict-ai</distributionUrl>
                     <codeNameBase>io.github.jeddict.jeddict.ai</codeNameBase>
+                    <moduleDependencies>
+                        
+                        <dependency>
+                            <id>org.netbeans.api:org-netbeans-modules-editor-lib</id>
+                            <type>impl</type>
+                        </dependency>
+                        <dependency>
+                            <id>org.netbeans.api:org-netbeans-modules-parsing-api</id>
+                            <type>impl</type>
+                        </dependency>
+                        <dependency>
+                            <id>org.netbeans.api:org-netbeans-modules-editor-completion</id>
+                            <type>impl</type>
+                        </dependency>
+                        <dependency>
+                            <id>org.netbeans.modules:org-netbeans-modules-java-completion</id>
+                            <type>impl</type>
+                        </dependency>
+                        <dependency>
+                            <id>org.netbeans.api:org-netbeans-modules-java-sourceui</id>
+                            <type>impl</type>
+                        </dependency>
+                        
+                        <dependency>
+                            <id>org.netbeans.api:org-netbeans-api-progress-nb</id>
+                            <type>impl</type>
+                        </dependency>
+                        <dependency>
+                            <id>org.netbeans.api:org-netbeans-modules-editor-document</id>
+                            <type>impl</type>
+                        </dependency>
+                        <dependency>
+                            <id>org.netbeans.api:org-netbeans-modules-editor-indent</id>
+                            <type>impl</type>
+                        </dependency>
+                        <dependency>
+                            <id>org.netbeans.api:org-netbeans-modules-editor-settings</id>
+                            <type>impl</type>
+                        </dependency>
+                        <dependency>
+                            <id>org.netbeans.api:org-netbeans-modules-editor-util</id>
+                            <type>impl</type>
+                        </dependency>
+                        <dependency>
+                            <id>org.netbeans.api:org-netbeans-modules-lexer</id>
+                            <type>impl</type>
+                        </dependency>
+                        <dependency>
+                            <id>org.netbeans.api:org-openide-modules</id>
+                            <type>impl</type>
+                        </dependency>
+                        <dependency>
+                            <id>org.netbeans.api:org-openide-util-ui</id>
+                            <type>impl</type>
+                        </dependency>
+                        <dependency>
+                            <id>org.netbeans.api:org-netbeans-modules-java-lexer</id>
+                            <type>impl</type>
+                        </dependency>
+                        <dependency>
+                            <id>org.netbeans.api:org-netbeans-api-java</id>
+                            <type>impl</type>
+                        </dependency>
+                        <dependency>
+                            <id>org.netbeans.api:org-netbeans-modules-options-api</id>
+                            <type>impl</type>
+                        </dependency>
+                        <dependency>
+                            <id>org.netbeans.api:org-netbeans-modules-editor-codetemplates</id>
+                            <type>impl</type>
+                        </dependency>
+                        <dependency>
+                            <id>org.netbeans.modules:org-netbeans-modules-java-editor-base</id>
+                            <type>impl</type>
+                        </dependency>
+                        <dependency>
+                            <id>org.netbeans.modules:org-netbeans-modules-whitelist</id>
+                            <type>impl</type>
+                        </dependency>
+                        <dependency>
+                            <id>org.netbeans.api:org-netbeans-swing-plaf</id>
+                            <type>impl</type>
+                        </dependency>
+                        <dependency>
+                            <id>org.netbeans.modules:org-netbeans-modules-java-editor</id>
+                            <type>impl</type>
+                        </dependency>
+                    </moduleDependencies>
                     <publicPackages>
                         <publicPackage>io.github.jeddict.ai</publicPackage>
                     </publicPackages>
@@ -93,7 +181,118 @@
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
             <version>20240303</version>
+        </dependency> 
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-modules-editor-lib</artifactId>
+            <version>RELEASE220</version>
         </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-modules-parsing-api</artifactId>
+            <version>RELEASE220</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-modules-editor-completion</artifactId>
+            <version>RELEASE220</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.modules</groupId>
+            <artifactId>org-netbeans-modules-java-completion</artifactId>
+            <version>RELEASE220</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-modules-java-sourceui</artifactId>
+            <version>RELEASE220</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-api-progress-nb</artifactId>
+            <version>RELEASE220</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-modules-editor-document</artifactId>
+            <version>RELEASE220</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-modules-editor-indent</artifactId>
+            <version>RELEASE220</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-modules-editor-settings</artifactId>
+            <version>RELEASE220</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-modules-editor-util</artifactId>
+            <version>RELEASE220</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-modules-lexer</artifactId>
+            <version>RELEASE220</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-openide-modules</artifactId>
+            <version>RELEASE220</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-openide-util-ui</artifactId>
+            <version>RELEASE220</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-modules-java-lexer</artifactId>
+            <version>RELEASE220</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-api-java</artifactId>
+            <version>RELEASE220</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-modules-options-api</artifactId>
+            <version>RELEASE220</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-modules-editor-codetemplates</artifactId>
+            <version>RELEASE220</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.modules</groupId>
+            <artifactId>org-netbeans-modules-java-editor-base</artifactId>
+            <version>RELEASE220</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.modules</groupId>
+            <artifactId>org-netbeans-modules-whitelist</artifactId>
+            <version>RELEASE220</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-swing-plaf</artifactId>
+            <version>RELEASE220</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.modules</groupId>
+            <artifactId>org-netbeans-modules-java-editor</artifactId>
+            <version>RELEASE220</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-modules-editor</artifactId>
+            <version>RELEASE220</version>
+        </dependency>
+        
         <dependency>
             <groupId>org.netbeans.api</groupId>
             <artifactId>org-openide-windows</artifactId>
@@ -173,6 +372,11 @@
         <dependency>
             <groupId>org.netbeans.api</groupId>
             <artifactId>org-openide-awt</artifactId>
+            <version>RELEASE220</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-modules-projectapi</artifactId>
             <version>RELEASE220</version>
         </dependency>
     </dependencies>
