@@ -3,10 +3,10 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.github.jeddict</groupId>
     <artifactId>jeddict-ai</artifactId>
-    <version>1.3</version>
+    <version>1.4</version>
     <packaging>nbm</packaging>
     <name>Jeddict AI Assistant</name>
-    <description>Jeddict AI Assistant for Jakarta EE is a powerful and intuitive plugin designed for NetBeans IDE.
+    <description>Jeddict AI Assistant is a powerful and intuitive plugin designed for Apache NetBeans IDE.
         It integrates AI-powered assistance to help developers work more efficiently with Jakarta EE.
         This plugin provides real-time code suggestions, documentation insights, and best practices,
         significantly reducing development time. It is ideal for developers working on complex enterprise

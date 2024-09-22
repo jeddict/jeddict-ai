@@ -1,2 +1,2 @@
 # jeddict-ai
-AI Assistant for Jakarta EE
+Jeddict AI Assistant
