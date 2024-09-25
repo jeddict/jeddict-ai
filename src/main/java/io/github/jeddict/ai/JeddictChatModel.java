@@ -21,7 +21,7 @@ package io.github.jeddict.ai;
 /**
  *
  * @author Gaurav Gupta
- * @author Shiwnai Gupta
+ * @author Shiwani Gupta
  */
 import com.sun.source.tree.Tree;
 import com.sun.source.util.TreePath;
