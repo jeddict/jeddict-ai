@@ -21,14 +21,12 @@ package io.github.jeddict.ai;
 import static com.github.javaparser.utils.Utils.trimTrailingSpaces;
 import io.github.jeddict.ai.scanner.MyTreePathScanner;
 import com.sun.source.tree.ClassTree;
-import java.awt.event.MouseEvent;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javax.swing.text.JTextComponent;
 
 import org.netbeans.api.editor.mimelookup.MimeRegistration;
-import org.netbeans.editor.ext.ToolTipSupport;
 import org.netbeans.spi.editor.completion.*;
 import org.netbeans.spi.editor.completion.support.AsyncCompletionQuery;
 import org.netbeans.spi.editor.completion.support.AsyncCompletionTask;
@@ -75,7 +73,6 @@ import org.netbeans.api.lexer.Language;
 import org.netbeans.api.lexer.LanguagePath;
 import org.netbeans.api.lexer.TokenHierarchy;
 import org.netbeans.api.lexer.TokenSequence;
-//import org.netbeans.modules.editor.NbEditorUtilities;
 import org.openide.filesystems.FileObject;
 import static io.github.jeddict.ai.scanner.ProjectClassScanner.getClassData;
 import static io.github.jeddict.ai.scanner.ProjectClassScanner.getJeddictChatModel;
@@ -88,10 +85,6 @@ import java.io.PrintWriter;
 import org.netbeans.api.editor.completion.Completion;
 import static org.netbeans.spi.editor.completion.CompletionProvider.COMPLETION_QUERY_TYPE;
 
-/**
- *
- * @author Dusan Balek
- */
 @MimeRegistration(mimeType = "text/x-java", service = CompletionProvider.class, position = 100) //NOI18N
 public class JavaCompletionProvider implements CompletionProvider {
 
@@ -99,7 +92,6 @@ public class JavaCompletionProvider implements CompletionProvider {
 
     @Override
     public int getAutoQueryTypes(JTextComponent component, String typedText) {
-        System.out.println("getAutoQueryTypes " + typedText);
         return 0;
     }
 
@@ -111,10 +103,7 @@ public class JavaCompletionProvider implements CompletionProvider {
         if (!prefsManager.isSmartCodeEnabled()) {
             return null;
         }
-        System.out.println("createTask " + type);
         if (type == COMPLETION_QUERY_TYPE) {
-
-            System.out.println("createTask AsyncCompletionTask " + type);
             return new AsyncCompletionTask(new JavaCompletionQuery(type, component.getSelectionStart()), component);
         }
         return null;
@@ -122,7 +111,6 @@ public class JavaCompletionProvider implements CompletionProvider {
 
     static final class JavaCompletionQuery extends AsyncCompletionQuery {
 
-        static final AtomicReference<CompletionDocumentation> outerDocumentation = new AtomicReference<>();
         private JTextComponent component;
         private final int queryType;
         private int caretOffset;
@@ -282,7 +270,6 @@ public class JavaCompletionProvider implements CompletionProvider {
                 done = true;
                 this.caretOffset = caretOffset;
                 if (COMPLETION_QUERY_TYPE == queryType && isJavaContext(component.getDocument(), caretOffset, true)) {
-                    System.out.println("query " + queryType);
                     JavacTask task = getJavacTask(doc);
                     Iterable<? extends CompilationUnitTree> ast = task.parse();
                     task.analyze();
@@ -309,7 +296,6 @@ public class JavaCompletionProvider implements CompletionProvider {
                     if (path == null
                             || path.getLeaf().getKind() == Tree.Kind.ERRONEOUS) {
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_CODE_LIST}");
-                        String currentVarName = getVariableNameAtCaret(doc, caretOffset);
                         List<Snippet> sugs = getJeddictChatModel(fileObject).suggestNextLineCode(classDataContent, updateddoc, line, null);
                         for (Snippet varName : sugs) {
                             int newcaretOffset = caretOffset;
@@ -332,7 +318,6 @@ public class JavaCompletionProvider implements CompletionProvider {
                         }
                     } else if (path.getLeaf().getKind() == Tree.Kind.COMPILATION_UNIT) {
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_CODE_LIST}");
-                        String currentVarName = getVariableNameAtCaret(doc, caretOffset);
                         List<Snippet> sugs = getJeddictChatModel(fileObject).suggestNextLineCode(classDataContent, updateddoc, line, path);
                         for (Snippet varName : sugs) {
                             int newcaretOffset = caretOffset;
@@ -356,7 +341,6 @@ public class JavaCompletionProvider implements CompletionProvider {
                     } else if (path.getLeaf().getKind() == Tree.Kind.MODIFIERS
                             || path.getLeaf().getKind() == Tree.Kind.IDENTIFIER) {
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_CODE_LIST}");
-                        String currentVarName = getVariableNameAtCaret(doc, caretOffset);
                         List<Snippet> sugs = getJeddictChatModel(fileObject).suggestNextLineCode(classDataContent, updateddoc, line, path);
                         for (Snippet varName : sugs) {
 
@@ -379,7 +363,6 @@ public class JavaCompletionProvider implements CompletionProvider {
                         }
                     } else if (path.getLeaf().getKind() == Tree.Kind.ANNOTATION) {
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_CODE_LIST}");
-                        String currentVarName = getVariableNameAtCaret(doc, caretOffset);
                         List<String> sugs = getJeddictChatModel(fileObject).suggestAnnotations(classDataContent, updateddoc, line);
                         for (String varName : sugs) {
                             JeddictItem var = new JeddictItem(null, null, varName, Collections.emptyList(), caretOffset - 1, true, false, -1);
@@ -388,7 +371,6 @@ public class JavaCompletionProvider implements CompletionProvider {
                         }
                     } else if (path.getLeaf().getKind() == Tree.Kind.CLASS) {
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_CODE_LIST}");
-                        String currentVarName = getVariableNameAtCaret(doc, caretOffset);
                         List<Snippet> sugs = getJeddictChatModel(fileObject).suggestNextLineCode(classDataContent, updateddoc, line, path);
                         for (Snippet varName : sugs) {
                             JeddictItem var = new JeddictItem(null, null, varName.getSnippet(), varName.getImports(), caretOffset, true, false, -1);
@@ -397,7 +379,6 @@ public class JavaCompletionProvider implements CompletionProvider {
                         }
                     } else if (path.getLeaf().getKind() == Tree.Kind.BLOCK) {
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_CODE_LIST}");
-                        String currentVarName = getVariableNameAtCaret(doc, caretOffset);
                         List<Snippet> sugs = getJeddictChatModel(fileObject).suggestNextLineCode(classDataContent, updateddoc, line, path);
                         for (Snippet varName : sugs) {
                             JeddictItem var = new JeddictItem(null, null, varName.getSnippet(), varName.getImports(), caretOffset, true, false, -1);
@@ -435,7 +416,6 @@ public class JavaCompletionProvider implements CompletionProvider {
                         }
                     } else if (path.getLeaf().getKind() == Tree.Kind.STRING_LITERAL) {
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_STRING_LITERAL_LIST}");
-                        String currentVarName = getVariableNameAtCaret(doc, caretOffset);
                         List<String> sugs = getJeddictChatModel(fileObject).suggestStringLiterals(classDataContent, updateddoc, line);
                         for (String varName : sugs) {
                             JeddictItem var = new JeddictItem(null, null, varName, Collections.emptyList(), caretOffset, true, false, -1);
@@ -446,7 +426,6 @@ public class JavaCompletionProvider implements CompletionProvider {
                         System.out.println(path.getLeaf().getKind() + " " + path.getLeaf().toString());
                     }
                 } else {
-                    System.out.println("else    fddddddddddd");
                     String line = getLineText(doc, caretOffset);
                     JavacTask task = getJavacTask(doc);
                     Iterable<? extends CompilationUnitTree> ast = task.parse();
