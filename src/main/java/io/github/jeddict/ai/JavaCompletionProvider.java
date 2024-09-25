@@ -22,7 +22,6 @@ import static com.github.javaparser.utils.Utils.trimTrailingSpaces;
 import io.github.jeddict.ai.scanner.MyTreePathScanner;
 import com.sun.source.tree.ClassTree;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
 
 import javax.swing.text.JTextComponent;
 
@@ -78,6 +77,7 @@ import static io.github.jeddict.ai.scanner.ProjectClassScanner.getClassData;
 import static io.github.jeddict.ai.scanner.ProjectClassScanner.getJeddictChatModel;
 import io.github.jeddict.ai.settings.AIClassContext;
 import io.github.jeddict.ai.settings.PreferencesManager;
+import static io.github.jeddict.ai.util.MimeUtil.JAVA_MIME;
 import static io.github.jeddict.ai.util.StringUtil.removeAllSpaces;
 import static io.github.jeddict.ai.util.StringUtil.trimLeadingSpaces;
 import java.io.OutputStream;
@@ -85,9 +85,9 @@ import java.io.PrintWriter;
 import org.netbeans.api.editor.completion.Completion;
 import static org.netbeans.spi.editor.completion.CompletionProvider.COMPLETION_QUERY_TYPE;
 
-@MimeRegistration(mimeType = "text/x-java", service = CompletionProvider.class, position = 100) //NOI18N
+@MimeRegistration(mimeType = "", service = CompletionProvider.class, position = 100) //NOI18N
 public class JavaCompletionProvider implements CompletionProvider {
-
+    
     private static final PreferencesManager prefsManager = PreferencesManager.getInstance();
 
     @Override
@@ -269,7 +269,9 @@ public class JavaCompletionProvider implements CompletionProvider {
                 }
                 done = true;
                 this.caretOffset = caretOffset;
-                if (COMPLETION_QUERY_TYPE == queryType && isJavaContext(component.getDocument(), caretOffset, true)) {
+                String mimeType = (String) doc.getProperty("mimeType");
+                if (COMPLETION_QUERY_TYPE == queryType && JAVA_MIME.equals(mimeType)
+                        && isJavaContext(component.getDocument(), caretOffset, true)) {
                     JavacTask task = getJavacTask(doc);
                     Iterable<? extends CompilationUnitTree> ast = task.parse();
                     task.analyze();
@@ -425,7 +427,7 @@ public class JavaCompletionProvider implements CompletionProvider {
                     } else {
                         System.out.println(path.getLeaf().getKind() + " " + path.getLeaf().toString());
                     }
-                } else {
+                } else if(COMPLETION_QUERY_TYPE == queryType && JAVA_MIME.equals(mimeType)) {
                     String line = getLineText(doc, caretOffset);
                     JavacTask task = getJavacTask(doc);
                     Iterable<? extends CompilationUnitTree> ast = task.parse();
@@ -464,10 +466,17 @@ public class JavaCompletionProvider implements CompletionProvider {
                             }
                             JeddictItem var = new JeddictItem(null, null, varName, Collections.emptyList(), newcaretOffset, true, false, -1);
                             resultSet.addItem(var);
-
                         }
-                    }
-
+                    } 
+                } else {
+                    String currentLine = getLineText(doc, caretOffset);
+                    FileObject fileObject = getFileObjectFromEditor(doc);
+                     String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_CODE_LIST}");
+                      List<Snippet>  sugs = getJeddictChatModel(fileObject).suggestNextLineCode(updateddoc, currentLine, mimeType);
+                        for (Snippet varName : sugs) {
+                            JeddictItem var = new JeddictItem(null, null, varName.getSnippet(), Collections.emptyList(), caretOffset, true, false, -1);
+                            resultSet.addItem(var);
+                        }
                 }
             } catch (Exception e) {
                 Exceptions.printStackTrace(e);
