@@ -35,7 +35,11 @@ public class PreferencesManager {
     }
 
     public void clearApiKey() {
-        preferences.put(API_KEY_PREFERENCES, null);
+        preferences.remove(API_KEY_PREFERENCES);
+    }
+
+    public void setApiKey(String key) {
+        preferences.put(API_KEY_PREFERENCES, key);
     }
 
     public String getApiKey() {

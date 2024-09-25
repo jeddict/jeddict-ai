@@ -33,7 +33,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JTextField;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -41,9 +46,9 @@ public class JeddictChatModel {
 
     private final OpenAiChatModel aiChatModel;
     private int cachedClassDatasLength = -1; // Cache the length of classDatas
+    PreferencesManager preferencesManager = PreferencesManager.getInstance();
 
     public JeddictChatModel() {
-        PreferencesManager preferencesManager = PreferencesManager.getInstance();
         aiChatModel = OpenAiChatModel.builder()
                 .apiKey(preferencesManager.getApiKey())
                 .modelName(preferencesManager.getModelName())
@@ -62,10 +67,27 @@ public class JeddictChatModel {
                     errorMessage = jsonObject.getJSONObject("error").getString("message");
                 }
             }
-            JOptionPane.showMessageDialog(null,
-                    "AI assistance failed to generate the requested response: " + errorMessage,
-                    "Error in AI Assistance",
-                    JOptionPane.ERROR_MESSAGE);
+            if (errorMessage != null
+                    && errorMessage.toLowerCase().contains("incorrect api key")) {
+                JTextField apiKeyField = new JTextField(20);
+                JPanel panel = new JPanel();
+                panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS)); // Set layout to BoxLayout
+
+                panel.add(new JLabel("Incorrect API key. Please enter a new key:"));
+                panel.add(Box.createVerticalStrut(10)); // Add space between label and text field
+                panel.add(apiKeyField);
+
+                int option = JOptionPane.showConfirmDialog(null, panel,
+                        "API Key Required", JOptionPane.OK_CANCEL_OPTION);
+                if (option == JOptionPane.OK_OPTION) {
+                    preferencesManager.setApiKey(apiKeyField.getText().trim());
+                }
+            } else {
+                JOptionPane.showMessageDialog(null,
+                        "AI assistance failed to generate the requested response: " + errorMessage,
+                        "Error in AI Assistance",
+                        JOptionPane.ERROR_MESSAGE);
+            }
         }
         return null;
     }
@@ -472,6 +494,9 @@ public class JeddictChatModel {
     }
 
     public List<Snippet> parseJsonToSnippets(String jsonResponse) {
+        if(jsonResponse == null) {
+            return Collections.EMPTY_LIST;
+        }
         List<Snippet> snippets = new ArrayList<>();
 
         // Parse the JSON response
