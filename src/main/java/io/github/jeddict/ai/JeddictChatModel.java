@@ -21,11 +21,13 @@ package io.github.jeddict.ai;
 /**
  *
  * @author Gaurav Gupta
+ * @author Shiwnai Gupta
  */
 import com.sun.source.tree.Tree;
 import com.sun.source.util.TreePath;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import io.github.jeddict.ai.settings.PreferencesManager;
+import static io.github.jeddict.ai.util.MimeUtil.MIME_TYPE_DESCRIPTIONS;
 import static io.github.jeddict.ai.util.StringUtil.removeCodeBlockMarkers;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -479,11 +481,13 @@ public class JeddictChatModel {
         for (int i = 0; i < jsonArray.length(); i++) {
             JSONObject jsonObject = jsonArray.getJSONObject(i);
 
-            // Extract the "imports" array
-            JSONArray importsJsonArray = jsonObject.getJSONArray("imports");
             List<String> importsList = new ArrayList<>();
-            for (int j = 0; j < importsJsonArray.length(); j++) {
-                importsList.add(importsJsonArray.getString(j));
+            if (jsonObject.has("imports")) {
+                // Extract the "imports" array
+                JSONArray importsJsonArray = jsonObject.getJSONArray("imports");
+                for (int j = 0; j < importsJsonArray.length(); j++) {
+                    importsList.add(importsJsonArray.getString(j));
+                }
             }
 
             // Extract the "snippet" field
@@ -645,6 +649,29 @@ public class JeddictChatModel {
         String answer = generate(prompt);
         System.out.println(answer);
         return answer;
+    }
+
+    public List<Snippet> suggestNextLineCode(String fileContent, String currentLine, String mimeType) {
+        StringBuilder description = new StringBuilder(MIME_TYPE_DESCRIPTIONS.getOrDefault(mimeType, "code snippets"));
+        StringBuilder prompt = new StringBuilder("You are an API server that provides ").append(description).append(" suggestions based on the file content. ");
+        if (currentLine == null || currentLine.isEmpty()) {
+            prompt.append("Analyze the content and recommend appropriate additions at the placeholder ${SUGGEST_CODE_LIST}. ");
+        } else {
+            prompt.append("Analyze the content and the current line: \n")
+                    .append(currentLine)
+                    .append("\nRecommend appropriate additions at the placeholder ${SUGGEST_CODE_LIST}. ");
+        }
+        prompt.append("""
+                  Ensure the suggestions align with the file's context and structure. 
+                  Respond with a JSON array containing a few of the best options. 
+                  Each entry should have one field, 'snippet', holding the recommended code block. 
+                  The code block can contain multiple lines, formatted as a single string using \\n for line breaks.
+                  
+                  File Content:
+                  """).append(fileContent);
+        String jsonResponse = generate(prompt.toString());
+        List<Snippet> nextLines = parseJsonToSnippets(jsonResponse);
+        return nextLines;
     }
 
 }
