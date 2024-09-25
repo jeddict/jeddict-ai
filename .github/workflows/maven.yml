@@ -1,11 +1,3 @@
-# This workflow will build a Java project with Maven, and cache/restore any dependencies to improve the workflow execution time
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-java-with-maven
-
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-
 name: Java CI with Maven
 
 on:
@@ -13,10 +5,15 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  workflow_dispatch:  # Allows manual triggering of this workflow from the GitHub UI
+    inputs:
+      release:
+        description: 'Trigger a release to Maven Central'
+        required: false
+        default: 'false'
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
@@ -33,3 +30,39 @@ jobs:
     # Optional: Uploads the full dependency graph to GitHub to improve the quality of Dependabot alerts this repository can receive
     - name: Update dependency graph
       uses: advanced-security/maven-dependency-submission-action@571e99aab1055c2e71a1e2309b9691de18d6b7d6
+
+  deploy:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.release == 'true'
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Set up GPG for signing
+      run: |
+        echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+        echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+        gpgconf --reload gpg-agent
+
+    - name: Build and deploy to Maven Central
+      env:
+        OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+        OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+        GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      run: |
+        mvn clean package deploy -Dgpg.passphrase=${{ secrets.GPG_PASSPHRASE }} \
+                                 -Dkeystorealias=${{ secrets.KEYSTORE_ALIAS }} \
+                                 -Dkeystore=${{ secrets.KEYSTORE_PATH }} \
+                                 -Dkeystore.password=${{ secrets.KEYSTORE_PASSWORD }} \
+                                 -Prelease
+
+    - name: Confirm release to Maven Central
+      run: echo "Maven Central release completed!"
