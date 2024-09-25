@@ -22,7 +22,7 @@ public enum AIClassContext {
         this.displayName = displayName;
         this.description = description;
     }
-
+    
     public String getDisplayName() {
         return displayName;
     }

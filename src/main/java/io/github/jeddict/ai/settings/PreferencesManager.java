@@ -97,16 +97,30 @@ public class PreferencesManager {
 
     public AIClassContext getClassContext() {
         String classContext = preferences.get("classContext", null);
-        return classContext != null ? AIClassContext.valueOf(classContext) : AIClassContext.REFERENCED_CLASSES;
+        if( classContext != null){
+            try {
+            return AIClassContext.valueOf(classContext);
+            } catch(IllegalArgumentException iae) {
+                // .. skip
+            }
+        }
+        return AIClassContext.REFERENCED_CLASSES;
     }
 
     public void setClassContext(AIClassContext context) {
-        preferences.put("classContext", context != null ? context.toString() : null);
+        preferences.put("classContext", context != null ? context.name() : null);
     }
 
     public GPTModel getGptModel() {
         String gptModel = preferences.get("gptModel", null);
-        return gptModel != null ? GPTModel.valueOf(gptModel) : GPTModel.GPT_4O_MINI;
+        if( gptModel != null){
+            try {
+            return GPTModel.valueOf(gptModel);
+            } catch(IllegalArgumentException iae) {
+                // .. skip
+            }
+        }
+        return GPTModel.GPT_4O_MINI;
     }
 
     public void setGptModel(GPTModel model) {
