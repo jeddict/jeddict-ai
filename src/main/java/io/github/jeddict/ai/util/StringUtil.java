@@ -32,7 +32,9 @@ public class StringUtil {
     }
 
     public static String removeCodeBlockMarkers(String input) {
-        // Check if the input starts and ends with the markers
+        if(input == null) {
+            return null;
+        }
         input = input.trim();
         if (input.startsWith("```java") && input.endsWith("```")) {
             String content = input.substring(7);  // Remove ```java\n (7 characters)
