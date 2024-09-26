@@ -54,9 +54,9 @@ public class StringUtil {
             input = content.trim();
         }
         input = input.trim();
-        if (input.startsWith("/**") && input.endsWith("*/")) {
-            input = input.substring(3, input.length() - 2).trim();
-        }
+//        if (input.startsWith("/**") && input.endsWith("*/")) {
+//            input = input.substring(3, input.length() - 2).trim();
+//        }
         return input;  // Return the original input if it does not match the expected format
     }
 

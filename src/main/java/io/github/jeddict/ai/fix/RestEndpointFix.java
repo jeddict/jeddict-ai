@@ -4,10 +4,6 @@
  */
 package io.github.jeddict.ai.fix;
 
-import com.github.javaparser.JavaParser;
-import com.github.javaparser.ast.CompilationUnit;
-import com.github.javaparser.ast.body.MethodDeclaration;
-import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.Tree;
 import static com.sun.source.tree.Tree.Kind.CLASS;
@@ -18,11 +14,6 @@ import io.github.jeddict.ai.JeddictChatModel;
 import io.github.jeddict.ai.util.SourceUtil;
 import static io.github.jeddict.ai.util.FileUtil.saveOpenEditor;
 import static io.github.jeddict.ai.util.StringUtil.removeCodeBlockMarkers;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Formatter;
 import javax.lang.model.element.Element;
 import org.json.JSONArray;
 import org.json.JSONObject;
