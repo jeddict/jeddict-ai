@@ -85,15 +85,10 @@ import java.io.PrintWriter;
 import org.netbeans.api.editor.completion.Completion;
 import static org.netbeans.spi.editor.completion.CompletionProvider.COMPLETION_QUERY_TYPE;
 
-@MimeRegistration(mimeType = "", service = CompletionProvider.class, position = 100) //NOI18N
-public class JavaCompletionProvider implements CompletionProvider {
-    
-    private static final PreferencesManager prefsManager = PreferencesManager.getInstance();
+@MimeRegistration(mimeType = "", service = CompletionProvider.class, position = 100)
+public class JeddictCompletionProvider implements CompletionProvider {
 
-    @Override
-    public int getAutoQueryTypes(JTextComponent component, String typedText) {
-        return 0;
-    }
+    private static final PreferencesManager prefsManager = PreferencesManager.getInstance();
 
     @Override
     public CompletionTask createTask(int type, JTextComponent component) {
@@ -104,18 +99,23 @@ public class JavaCompletionProvider implements CompletionProvider {
             return null;
         }
         if (type == COMPLETION_QUERY_TYPE) {
-            return new AsyncCompletionTask(new JavaCompletionQuery(type, component.getSelectionStart()), component);
+            return new AsyncCompletionTask(new JeddictCompletionQuery(type, component.getSelectionStart()), component);
         }
         return null;
     }
 
-    static final class JavaCompletionQuery extends AsyncCompletionQuery {
+    @Override
+    public int getAutoQueryTypes(JTextComponent component, String typedText) {
+        return 0;
+    }
+
+    static final class JeddictCompletionQuery extends AsyncCompletionQuery {
 
         private JTextComponent component;
         private final int queryType;
         private int caretOffset;
 
-        private JavaCompletionQuery(int queryType, int caretOffset) {
+        private JeddictCompletionQuery(int queryType, int caretOffset) {
             this.queryType = queryType;
             this.caretOffset = caretOffset;
         }
@@ -259,6 +259,55 @@ public class JavaCompletionProvider implements CompletionProvider {
             return referencedClasses;
         }
 
+        private JeddictItem createItem(Snippet varName, String line, String lineTextBeforeCaret, JavaToken javaToken, Tree.Kind kind, Document doc) throws BadLocationException {
+            int newcaretOffset = caretOffset;
+            if(javaToken.getId() == STRING_LITERAL && kind == Tree.Kind.STRING_LITERAL) {
+                lineTextBeforeCaret = doc.getText(javaToken.getOffset(), newcaretOffset - javaToken.getOffset());
+                if(lineTextBeforeCaret.startsWith("\"")) {
+                    lineTextBeforeCaret = lineTextBeforeCaret.substring(1);
+                }
+            }
+            
+            
+            String snippetWOSpace = removeAllSpaces(varName.getSnippet());
+            String tlLine = trimLeadingSpaces(line);
+             String tlLineTextBeforeCaret = trimLeadingSpaces(lineTextBeforeCaret);
+
+            // Handle line and snippet first words safely
+            String firstWordLine = "";
+            if (lineTextBeforeCaret != null && !lineTextBeforeCaret.trim().isEmpty()) {
+                firstWordLine = lineTextBeforeCaret.trim().split("[^a-zA-Z0-9]+")[0]; // Split by any non-alphanumeric character
+            }
+
+            String firstWordSnippet = "";
+            if (varName.getSnippet() != null && !varName.getSnippet().trim().isEmpty()) {
+                firstWordSnippet = varName.getSnippet().trim().split("[^a-zA-Z0-9]+")[0]; // Split by any non-alphanumeric character
+            }
+
+            if (firstWordLine.equalsIgnoreCase(firstWordSnippet)) {
+                newcaretOffset = newcaretOffset - tlLineTextBeforeCaret.length();
+            } else if (snippetWOSpace.startsWith(removeAllSpaces(line))) {
+                newcaretOffset = newcaretOffset - tlLine.length();
+            } else if (snippetWOSpace.startsWith(removeAllSpaces(lineTextBeforeCaret))) {
+                newcaretOffset = newcaretOffset - tlLineTextBeforeCaret.length();
+            }
+            if (tlLine != null && !tlLine.isEmpty() && tlLine.charAt(0) == '@'
+                    && snippetWOSpace != null && !snippetWOSpace.isEmpty() && snippetWOSpace.charAt(0) == '@') {
+                newcaretOffset = newcaretOffset - tlLine.length();
+            }
+            int caretToEndLength = -1;
+            if (javaToken.getId() == STRING_LITERAL && kind == Tree.Kind.STRING_LITERAL) {
+
+            } else if (newcaretOffset != caretOffset) {
+                caretToEndLength = line.length() - lineTextBeforeCaret.length();
+                String textAfterCaret = doc.getText(caretOffset, caretToEndLength);
+                caretToEndLength = trimTrailingSpaces(textAfterCaret).length();
+            }
+            System.out.println("varName.getSnippet(), "+ varName.getSnippet() + caretOffset + " " + newcaretOffset);
+            JeddictItem var = new JeddictItem(null, null, varName.getSnippet(), varName.getImports(), newcaretOffset, caretToEndLength, true, false, -1);
+            return var;
+        }
+
         boolean done = false;
 
         @Override
@@ -270,8 +319,12 @@ public class JavaCompletionProvider implements CompletionProvider {
                 done = true;
                 this.caretOffset = caretOffset;
                 String mimeType = (String) doc.getProperty("mimeType");
+                JavaToken javaToken = isJavaContext(component.getDocument(), caretOffset, true);
+                if(javaToken != null) {
+                    System.out.println("javaToken "  +javaToken.getId());
+                }
                 if (COMPLETION_QUERY_TYPE == queryType && JAVA_MIME.equals(mimeType)
-                        && isJavaContext(component.getDocument(), caretOffset, true)) {
+                        && javaToken.isJavaContext()) {
                     JavacTask task = getJavacTask(doc);
                     Iterable<? extends CompilationUnitTree> ast = task.parse();
                     task.analyze();
@@ -292,103 +345,55 @@ public class JavaCompletionProvider implements CompletionProvider {
                         System.out.println("path.getLeaf().getKind() " + path.getLeaf().getKind());
                         if (path.getParentPath() != null) {
                             System.out.println("path.getParentPath().getLeaf().getKind() " + path.getParentPath().getLeaf().getKind());
+                            if (path.getParentPath().getParentPath() != null) {
+                            System.out.println("path.getParentPath().getParentPath().getLeaf().getKind() " + path.getParentPath().getParentPath().getLeaf().getKind());
+                        }
                         }
                     }
 
+                    Tree.Kind kind = path.getLeaf().getKind();
                     if (path == null
-                            || path.getLeaf().getKind() == Tree.Kind.ERRONEOUS) {
-                        String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_CODE_LIST}");
-                        List<Snippet> sugs = getJeddictChatModel(fileObject).suggestNextLineCode(classDataContent, updateddoc, line, null);
-                        for (Snippet varName : sugs) {
-                            int newcaretOffset = caretOffset;
-                            String snippetWOSpace = removeAllSpaces(varName.getSnippet());
-                            if (snippetWOSpace.startsWith(removeAllSpaces(line))) {
-                                newcaretOffset = newcaretOffset - trimLeadingSpaces(line).length();
-                            } else if (snippetWOSpace.startsWith(removeAllSpaces(lineTextBeforeCaret))) {
-                                newcaretOffset = newcaretOffset - trimLeadingSpaces(lineTextBeforeCaret).length();
-                            }
-                            int caretToEndLength = -1;
-                            if (newcaretOffset != caretOffset) {
-                                caretToEndLength = line.length() - lineTextBeforeCaret.length();
-                                String textAfterCaret = doc.getText(caretOffset, caretToEndLength);
-                                caretToEndLength = trimTrailingSpaces(textAfterCaret).length();
-                            }
-
-                            JeddictItem var = new JeddictItem(null, null, varName.getSnippet(), varName.getImports(), newcaretOffset, caretToEndLength, true, false, -1);
-                            resultSet.addItem(var);
-
-                        }
-                    } else if (path.getLeaf().getKind() == Tree.Kind.COMPILATION_UNIT) {
+                            || kind == Tree.Kind.ERRONEOUS) {
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_CODE_LIST}");
                         List<Snippet> sugs = getJeddictChatModel(fileObject).suggestNextLineCode(classDataContent, updateddoc, line, path);
                         for (Snippet varName : sugs) {
-                            int newcaretOffset = caretOffset;
-                            String snippetWOSpace = removeAllSpaces(varName.getSnippet());
-                            if (snippetWOSpace.startsWith(removeAllSpaces(line))) {
-                                newcaretOffset = newcaretOffset - trimLeadingSpaces(line).length();
-                            } else if (snippetWOSpace.startsWith(removeAllSpaces(lineTextBeforeCaret))) {
-                                newcaretOffset = newcaretOffset - trimLeadingSpaces(lineTextBeforeCaret).length();
-                            }
-                            int caretToEndLength = -1;
-                            if (newcaretOffset != caretOffset) {
-                                caretToEndLength = line.length() - lineTextBeforeCaret.length();
-                                String textAfterCaret = doc.getText(caretOffset, caretToEndLength);
-                                caretToEndLength = trimTrailingSpaces(textAfterCaret).length();
-                            }
-
-                            JeddictItem var = new JeddictItem(null, null, varName.getSnippet(), varName.getImports(), newcaretOffset, caretToEndLength, true, false, -1);
-                            resultSet.addItem(var);
-
+                            resultSet.addItem(createItem(varName, line, lineTextBeforeCaret, javaToken, kind, doc));
                         }
-                    } else if (path.getLeaf().getKind() == Tree.Kind.MODIFIERS
-                            || path.getLeaf().getKind() == Tree.Kind.IDENTIFIER) {
+                    } else if (kind == Tree.Kind.COMPILATION_UNIT) {
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_CODE_LIST}");
                         List<Snippet> sugs = getJeddictChatModel(fileObject).suggestNextLineCode(classDataContent, updateddoc, line, path);
                         for (Snippet varName : sugs) {
-
-                            int newcaretOffset = caretOffset;
-                            String snippetWOSpace = removeAllSpaces(varName.getSnippet());
-                            if (snippetWOSpace.startsWith(removeAllSpaces(line))) {
-                                newcaretOffset = newcaretOffset - trimLeadingSpaces(line).length();
-                            } else if (snippetWOSpace.startsWith(removeAllSpaces(lineTextBeforeCaret))) {
-                                newcaretOffset = newcaretOffset - trimLeadingSpaces(lineTextBeforeCaret).length();
-                            }
-                            int caretToEndLength = -1;
-                            if (newcaretOffset != caretOffset) {
-                                caretToEndLength = line.length() - lineTextBeforeCaret.length();
-                                String textAfterCaret = doc.getText(caretOffset, caretToEndLength);
-                                caretToEndLength = trimTrailingSpaces(textAfterCaret).length();
-                            }
-                            JeddictItem var = new JeddictItem(null, null, varName.getSnippet(), varName.getImports(), newcaretOffset, caretToEndLength, true, false, -1);
-                            resultSet.addItem(var);
-
+                            resultSet.addItem(createItem(varName, line, lineTextBeforeCaret, javaToken, kind, doc));
                         }
-                    } else if (path.getLeaf().getKind() == Tree.Kind.ANNOTATION) {
+                    } else if ((trimLeadingSpaces(line).length() > 0
+                            && trimLeadingSpaces(line).charAt(0) == '@') || kind == Tree.Kind.ANNOTATION) {
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_CODE_LIST}");
-                        List<String> sugs = getJeddictChatModel(fileObject).suggestAnnotations(classDataContent, updateddoc, line);
-                        for (String varName : sugs) {
-                            JeddictItem var = new JeddictItem(null, null, varName, Collections.emptyList(), caretOffset - 1, true, false, -1);
-                            resultSet.addItem(var);
-
+                        List<Snippet> annotationSuggestions = getJeddictChatModel(fileObject).suggestAnnotations(classDataContent, updateddoc, line);
+                        for (Snippet annotationSuggestion : annotationSuggestions) {
+                            resultSet.addItem(createItem(annotationSuggestion, line, lineTextBeforeCaret,javaToken, kind, doc));
                         }
-                    } else if (path.getLeaf().getKind() == Tree.Kind.CLASS) {
+                    } else if (kind == Tree.Kind.MODIFIERS
+                            || kind == Tree.Kind.IDENTIFIER) {
+                        String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_CODE_LIST}");
+                        List<Snippet> sugs = getJeddictChatModel(fileObject).suggestNextLineCode(classDataContent, updateddoc, line, path);
+                        for (Snippet varName : sugs) {
+                            resultSet.addItem(createItem(varName, line, lineTextBeforeCaret, javaToken, kind, doc));
+                        }
+                    } else if (kind == Tree.Kind.CLASS) {
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_CODE_LIST}");
                         List<Snippet> sugs = getJeddictChatModel(fileObject).suggestNextLineCode(classDataContent, updateddoc, line, path);
                         for (Snippet varName : sugs) {
                             JeddictItem var = new JeddictItem(null, null, varName.getSnippet(), varName.getImports(), caretOffset, true, false, -1);
                             resultSet.addItem(var);
-
                         }
-                    } else if (path.getLeaf().getKind() == Tree.Kind.BLOCK) {
+                    } else if (kind == Tree.Kind.BLOCK) {
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_CODE_LIST}");
                         List<Snippet> sugs = getJeddictChatModel(fileObject).suggestNextLineCode(classDataContent, updateddoc, line, path);
                         for (Snippet varName : sugs) {
                             JeddictItem var = new JeddictItem(null, null, varName.getSnippet(), varName.getImports(), caretOffset, true, false, -1);
-
                             resultSet.addItem(var);
-
                         }
-                    } else if (path.getLeaf().getKind() == Tree.Kind.VARIABLE) {
+                    } else if (kind == Tree.Kind.VARIABLE) {
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_VAR_NAMES_LIST}");
                         String currentVarName = getVariableNameAtCaret(doc, caretOffset);
                         List<String> sugs = getJeddictChatModel(fileObject).suggestVariableNames(classDataContent, updateddoc, line);
@@ -397,16 +402,15 @@ public class JavaCompletionProvider implements CompletionProvider {
                             resultSet.addItem(var);
 
                         }
-                    } else if (path.getLeaf().getKind() == Tree.Kind.METHOD) {
+                    } else if (kind == Tree.Kind.METHOD) {
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_METHOD_NAMES_LIST}");
                         String currentVarName = getVariableNameAtCaret(doc, caretOffset);
                         List<String> sugs = getJeddictChatModel(fileObject).suggestMethodNames(classDataContent, updateddoc, line);
                         for (String varName : sugs) {
                             JeddictItem var = new JeddictItem(null, null, varName, Collections.emptyList(), caretOffset - currentVarName.length(), true, false, -1);
                             resultSet.addItem(var);
-
                         }
-                    } else if (path.getLeaf().getKind() == Tree.Kind.METHOD_INVOCATION) {
+                    } else if (kind == Tree.Kind.METHOD_INVOCATION) {
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_METHOD_INVOCATION}");
                         String currentVarName = getVariableNameAtCaret(doc, caretOffset);
                         List<String> sugs = getJeddictChatModel(fileObject).suggestMethodInvocations(classDataContent, updateddoc, line);
@@ -416,18 +420,21 @@ public class JavaCompletionProvider implements CompletionProvider {
                             resultSet.addItem(var);
 
                         }
-                    } else if (path.getLeaf().getKind() == Tree.Kind.STRING_LITERAL) {
+                    } else if (kind == Tree.Kind.STRING_LITERAL) {
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_STRING_LITERAL_LIST}");
                         List<String> sugs = getJeddictChatModel(fileObject).suggestStringLiterals(classDataContent, updateddoc, line);
+//                        for (String varName : sugs) {
+//                            JeddictItem var = new JeddictItem(null, null, varName, Collections.emptyList(), caretOffset, true, false, -1);
+//                            resultSet.addItem(var);
+//
+//                        }
                         for (String varName : sugs) {
-                            JeddictItem var = new JeddictItem(null, null, varName, Collections.emptyList(), caretOffset, true, false, -1);
-                            resultSet.addItem(var);
-
+                            resultSet.addItem(createItem(new Snippet(varName), line, lineTextBeforeCaret, javaToken, kind, doc));
                         }
                     } else {
-                        System.out.println(path.getLeaf().getKind() + " " + path.getLeaf().toString());
+                        System.out.println(kind + " " + path.getLeaf().toString());
                     }
-                } else if(COMPLETION_QUERY_TYPE == queryType && JAVA_MIME.equals(mimeType)) {
+                } else if (COMPLETION_QUERY_TYPE == queryType && JAVA_MIME.equals(mimeType)) {
                     String line = getLineText(doc, caretOffset);
                     JavacTask task = getJavacTask(doc);
                     Iterable<? extends CompilationUnitTree> ast = task.parse();
@@ -467,16 +474,16 @@ public class JavaCompletionProvider implements CompletionProvider {
                             JeddictItem var = new JeddictItem(null, null, varName, Collections.emptyList(), newcaretOffset, true, false, -1);
                             resultSet.addItem(var);
                         }
-                    } 
+                    }
                 } else {
                     String currentLine = getLineText(doc, caretOffset);
                     FileObject fileObject = getFileObjectFromEditor(doc);
-                     String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_CODE_LIST}");
-                      List<Snippet>  sugs = getJeddictChatModel(fileObject).suggestNextLineCode(updateddoc, currentLine, mimeType);
-                        for (Snippet varName : sugs) {
-                            JeddictItem var = new JeddictItem(null, null, varName.getSnippet(), Collections.emptyList(), caretOffset, true, false, -1);
-                            resultSet.addItem(var);
-                        }
+                    String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_CODE_LIST}");
+                    List<Snippet> sugs = getJeddictChatModel(fileObject).suggestNextLineCode(updateddoc, currentLine, mimeType);
+                    for (Snippet varName : sugs) {
+                        JeddictItem var = new JeddictItem(null, null, varName.getSnippet(), Collections.emptyList(), caretOffset, true, false, -1);
+                        resultSet.addItem(var);
+                    }
                 }
             } catch (Exception e) {
                 Exceptions.printStackTrace(e);
@@ -495,7 +502,35 @@ public class JavaCompletionProvider implements CompletionProvider {
         }
     }
 
-    public static boolean isJavaContext(final Document doc, final int offset, final boolean allowInStrings) {
+   static class JavaToken {
+        boolean javaContext;
+        JavaTokenId id;
+        int offset;
+
+        public JavaToken(boolean javaContext, JavaTokenId id, int offset) {
+            this.javaContext = javaContext;
+            this.id = id;
+            this.offset = offset;
+        }
+        
+        public JavaToken(boolean javaContext) {
+            this.javaContext = javaContext;
+        }
+
+        public boolean isJavaContext() {
+            return javaContext;
+        }
+
+        public JavaTokenId getId() {
+            return id;
+        }
+
+        public int getOffset() {
+            return offset;
+        }
+        
+    }
+    public static JavaToken isJavaContext(final Document doc, final int offset, final boolean allowInStrings) {
         if (doc instanceof AbstractDocument) {
             ((AbstractDocument) doc).readLock();
         }
@@ -505,21 +540,22 @@ public class JavaCompletionProvider implements CompletionProvider {
                 LanguagePath path = LanguagePath.get(MimeLookup.getLookup("text/x-dialog-binding").lookup(Language.class)); //NOI18N
                 Document d = (Document) attributes.getValue(path, "dialogBinding.document"); //NOI18N
                 if (d != null) {
-                    return true;//"text/x-java".equals(NbEditorUtilities.getMimeType(d)); //NOI18N
+                    return new JavaToken(true);//"text/x-java".equals(NbEditorUtilities.getMimeType(d)); //NOI18N
                 }
                 FileObject fo = (FileObject) attributes.getValue(path, "dialogBinding.fileObject"); //NOI18N
-                return "text/x-java".equals(fo.getMIMEType()); //NOI18N
+                return new JavaToken("text/x-java".equals(fo.getMIMEType())); //NOI18N
             }
             TokenSequence<JavaTokenId> ts = SourceUtils.getJavaTokenSequence(TokenHierarchy.get(doc), offset);
             if (ts == null) {
-                return false;
+                return new JavaToken(false);
             }
             if (!ts.moveNext() && !ts.movePrevious()) {
-                return true;
+                return new JavaToken(true, ts.token().id(), ts.offset());
             }
             if (offset == ts.offset()) {
-                return true;
+                return new JavaToken(true, ts.token().id(), ts.offset());
             }
+            
             switch (ts.token().id()) {
                 case DOUBLE_LITERAL:
                 case FLOAT_LITERAL:
@@ -534,15 +570,16 @@ public class JavaCompletionProvider implements CompletionProvider {
                 case JAVADOC_COMMENT:
                 case LINE_COMMENT:
                 case BLOCK_COMMENT:
-                    return false;
+                    return new JavaToken(false, ts.token().id(), ts.offset());
                 case STRING_LITERAL:
-                    return allowInStrings;
+                    return new JavaToken(allowInStrings, ts.token().id(), ts.offset());
             }
-            return true;
+            return new JavaToken(true, ts.token().id(), ts.offset());
         } finally {
             if (doc instanceof AbstractDocument) {
                 ((AbstractDocument) doc).readUnlock();
             }
         }
     }
+    
 }
