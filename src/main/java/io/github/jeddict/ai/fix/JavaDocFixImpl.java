@@ -124,7 +124,33 @@ public class JavaDocFixImpl extends JavaFix {
         }
         javadocContent = removeCodeBlockMarkers(javadocContent);
 
-         if (action == ENHANCE && oldDocCommentTree != null && document != null) {
+         
+         
+        int startOffset = (int) wc.getTrees().getSourcePositions()
+                .getStartPosition(wc.getCompilationUnit(), tree);
+
+        if (document != null) {
+            String lastLine = geIndentaion(wc, tree);
+            if (lastLine.isBlank() && lastLine.length() <= 12) {
+                StringBuilder indentedContent = new StringBuilder();
+                
+                boolean ignore = true;
+                for (String line : javadocContent.split("\n")) {
+                    if (ignore) {
+                        ignore = false;
+                        indentedContent.append(line).append("\n").append(lastLine);
+                    } else {
+                        indentedContent.append(line).append("\n").append(lastLine);
+                    }
+                }
+                javadocContent = indentedContent.toString();
+            } else {
+                javadocContent = javadocContent + '\n';
+            }
+            document.insertString(startOffset, javadocContent, null);
+        }
+        
+        if (action == ENHANCE && oldDocCommentTree != null && document != null) {
             DocTrees docTrees = wc.getDocTrees();
             CompilationUnitTree cuTree = wc.getCompilationUnit();
 
@@ -133,7 +159,7 @@ public class JavaDocFixImpl extends JavaFix {
 
             int startPos = (int) start;
             int endPos = (int) end;
-
+            
             try {
                 // Search for '*/' after the end position of the current comment
                 String content = document.getText(endPos, document.getLength() - endPos);
@@ -155,29 +181,6 @@ public class JavaDocFixImpl extends JavaFix {
             } catch (BadLocationException e) {
                 e.printStackTrace();
             }
-        }
-         
-        int startOffset = (int) wc.getTrees().getSourcePositions()
-                .getStartPosition(wc.getCompilationUnit(), tree);
-
-        if (document != null) {
-            String lastLine = geIndentaion(wc, tree);
-            if (lastLine.isBlank() && lastLine.length() <= 12) {
-                StringBuilder indentedContent = new StringBuilder();
-                boolean ignore = true;
-                for (String line : javadocContent.split("\n")) {
-                    if (ignore) {
-                        ignore = false;
-                        indentedContent.append(line).append("\n").append(lastLine);
-                    } else {
-                        indentedContent.append(line).append("\n").append(lastLine);
-                    }
-                }
-                javadocContent = indentedContent.toString();
-            } else {
-                javadocContent = javadocContent + '\n';
-            }
-            document.insertString(startOffset, javadocContent, null);
         }
        
     }

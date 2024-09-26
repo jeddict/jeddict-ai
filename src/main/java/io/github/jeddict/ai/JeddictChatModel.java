@@ -417,12 +417,35 @@ public class JeddictChatModel {
                     + "'snippet' should contain the suggested code as a text block, which may include multiple lines formatted as a single string using \\n for line breaks. \n\n"
                     + "Make sure to escape any double quotes within the snippet using a backslash (\\) so that the JSON remains valid. \n\n"
                     + "Java Class Content:\n" + classContent;
-        } else if (path.getLeaf().getKind() == Tree.Kind.CLASS
+        } else if (path.getLeaf().getKind() == Tree.Kind.MODIFIERS
+           && path.getParentPath() != null
+           && path.getParentPath().getLeaf().getKind() == Tree.Kind.METHOD) {
+    prompt = "You are an API server that suggests Java code modifications for a method. "
+            + "At the placeholder location ${SUGGEST_CODE_LIST}, suggest method-level modifiers such as 'public', 'protected', 'private', 'abstract', 'static', 'final', 'synchronized', or relevant method-level annotations. "
+            + "Additionally, you may suggest method-specific annotations like '@Override', '@Deprecated', '@Transactional', etc. "
+            + "Ensure that the suggestions are appropriate for the method context provided. "
+            + "Return a JSON array with a few best suggestions without any additional text or explanation. Each element should be an object containing two fields: 'imports' and 'snippet'. "
+            + "'imports' should be an array of required Java import statements (if no imports are required, return an empty array). "
+            + "'snippet' should contain the suggested code as a text block, which may include multiple lines formatted as a single string using \\n for line breaks. \n\n"
+            + "Make sure to escape any double quotes within the snippet using a backslash (\\) so that the JSON remains valid. \n\n"
+            + "Java Method Content:\n" + classContent;
+} else if (path.getLeaf().getKind() == Tree.Kind.CLASS
                 && path.getParentPath() != null
                 && path.getParentPath().getLeaf().getKind() == Tree.Kind.CLASS) {
             prompt = "You are an API server that suggests Java code for an inner class at the placeholder location ${SUGGEST_CODE_LIST}. "
                     + "Based on the provided Java class content, suggest either relevant inner class modifiers such as 'public', 'private', 'protected', 'static', 'abstract', 'final', or a full inner class definition. "
                     + "Additionally, you may suggest class-level annotations for the inner class. Ensure that the suggestions are contextually appropriate for an inner class. "
+                    + "Return a JSON array with a few best suggestions without any additional text or explanation. Each element should be an object containing two fields: 'imports' and 'snippet'. "
+                    + "'imports' should be an array of required Java import statements (if no imports are required, return an empty array). "
+                    + "'snippet' should contain the suggested code as a text block, which may include multiple lines formatted as a single string using \\n for line breaks. \n\n"
+                    + "Make sure to escape any double quotes within the snippet using a backslash (\\) so that the JSON remains valid. \n\n"
+                    + "Java Class Content:\n" + classContent;
+        }  else if (path.getLeaf().getKind() == Tree.Kind.CLASS
+                && path.getParentPath() != null
+                && path.getParentPath().getLeaf().getKind() == Tree.Kind.COMPILATION_UNIT) {
+            prompt = "You are an API server that suggests Java code for an class at the placeholder location ${SUGGEST_CODE_LIST}. "
+                    + "Based on the provided Java class content, suggest either relevant class level members, attributes, constants, methods or blocks. "
+                    + "Ensure that the suggestions are contextually appropriate for an class. "
                     + "Return a JSON array with a few best suggestions without any additional text or explanation. Each element should be an object containing two fields: 'imports' and 'snippet'. "
                     + "'imports' should be an array of required Java import statements (if no imports are required, return an empty array). "
                     + "'snippet' should contain the suggested code as a text block, which may include multiple lines formatted as a single string using \\n for line breaks. \n\n"
@@ -478,18 +501,21 @@ public class JeddictChatModel {
         return comments;
     }
 
-    public List<String> suggestAnnotations(String classDatas, String classContent, String lineText) {
-        String prompt = "You are an API server that suggests Java annotations for a specific context in a given Java class at the placeholder location ${SUGGEST_ANNOTATION_LIST}. "
-                + "Based on the provided Java class content and the line of code: \"" + lineText + "\", suggest relevant annotations that can be applied at the placeholder location represented by ${SUGGEST_ANNOTATION_LIST} in the Java Class. "
-                + "Return a JSON array where each element is a single annotation formatted as a string. "
-                + "Ensure that the suggestions are appropriate for the given Java Class Content:\n\n" + classContent;
+    public List<Snippet> suggestAnnotations(String classDatas, String classContent, String lineText) {
+       String prompt = "You are an API server that suggests Java annotations for a specific context in a given Java class at the placeholder location ${SUGGEST_ANNOTATION_LIST}. "
+            + "Based on the provided Java class content and the line of code: \"" + lineText + "\", suggest relevant annotations that can be applied at the placeholder location represented by ${SUGGEST_ANNOTATION_LIST} in the Java Class. "
+            + "Return a JSON array with a few best suggestions without any additional text or explanation. Each element should be an object containing two fields: 'imports' and 'snippet'. "
+            + "'imports' should be an array of required Java import statements (if no imports are required, return an empty array). "
+            + "'snippet' should contain the suggested code as a text block, which may include multiple lines formatted as a single string using \\n for line breaks. "
+            + "Make sure to escape any double quotes within the snippet using a backslash (\\) so that the JSON remains valid. \n\n"
+            + "Ensure that the suggestions are appropriate for the given Java Class Content:\n\n" + classContent;
 
         // Generate the list of suggested annotations
         String jsonResponse = generate(prompt);
         System.out.println("jsonResponse " + jsonResponse);
 
         // Parse the JSON response into a List
-        List<String> annotations = parseJsonToList(jsonResponse);
+        List<Snippet> annotations = parseJsonToSnippets(jsonResponse);
         return annotations;
     }
 
@@ -554,6 +580,9 @@ public class JeddictChatModel {
 
     private List<String> parseJsonToListWithSplit(String json) {
         List<String> variableNames = new ArrayList<>();
+        if(json == null || json.isEmpty()){
+            return variableNames;
+        }
 
         json = removeCodeBlockMarkers(json).trim();
         String newjson = json;
