@@ -21,11 +21,16 @@ package io.github.jeddict.ai.util;
 import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.tree.ImportTree;
+import com.sun.source.tree.Tree;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
+import javax.swing.text.BadLocationException;
 import org.json.JSONArray;
 import org.netbeans.api.java.source.JavaSource;
 import org.netbeans.api.java.source.TreeMaker;
@@ -107,5 +112,20 @@ public class SourceUtil {
         copy.rewrite(classTree, classTree);  // This rewrites the class and lets NetBeans apply default formatting
 
         // Alternatively, save changes and let the IDE apply auto-format on save if configured
+    }
+    
+    public static String geIndentaion(WorkingCopy copy, Tree leaf) {
+        try {
+            if (copy.getDocument() != null) {
+                String sourceCode = copy.getDocument().getText(0, copy.getDocument().getEndPosition().getOffset());
+                int startPos = (int) copy.getTrees().getSourcePositions().getStartPosition(copy.getCompilationUnit(), leaf);
+                String[] lines = sourceCode.substring(0, startPos).split("\n"); // Zero-based index
+                String lastLine = lines[lines.length - 1];
+                return lastLine;
+            }
+        } catch (Exception ex) {
+            Exceptions.printStackTrace(ex);
+        }
+        return "";
     }
 }

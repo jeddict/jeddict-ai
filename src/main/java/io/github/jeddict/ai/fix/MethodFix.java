@@ -4,8 +4,6 @@
  */
 package io.github.jeddict.ai.fix;
 
-import com.github.javaparser.JavaParser;
-import com.github.javaparser.ast.CompilationUnit;
 import com.sun.source.tree.ExpressionTree;
 import com.sun.source.tree.MethodTree;
 import com.sun.source.tree.Tree;
@@ -15,11 +13,9 @@ import io.github.jeddict.ai.Action;
 import io.github.jeddict.ai.JeddictChatModel;
 import io.github.jeddict.ai.util.SourceUtil;
 import static io.github.jeddict.ai.util.FileUtil.saveOpenEditor;
+import static io.github.jeddict.ai.util.SourceUtil.geIndentaion;
 import static io.github.jeddict.ai.util.StringUtil.removeCodeBlockMarkers;
 import static io.github.jeddict.ai.util.UIUtil.askQuery;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import javax.lang.model.element.Element;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -28,7 +24,6 @@ import org.netbeans.api.java.source.JavaSource;
 import org.netbeans.api.java.source.TreeMaker;
 import org.netbeans.api.java.source.TreePathHandle;
 import org.netbeans.api.java.source.WorkingCopy;
-import org.netbeans.modules.editor.indent.api.Reformat;
 import org.netbeans.spi.java.hints.JavaFix;
 import org.openide.util.NbBundle;
 
@@ -99,13 +94,7 @@ public class MethodFix extends JavaFix {
             }
         }
 
-        Path filePath = Paths.get(copy.getFileObject().toURI());
-
-        String sourceCode = new String(Files.readAllBytes(filePath));
-        JavaParser javaParser = new JavaParser();
-        CompilationUnit cu = javaParser.parse(sourceCode).getResult().orElse(null);
-
-        if (cu == null || content == null) {
+        if (content == null) {
             return;
         }
 
@@ -137,9 +126,7 @@ public class MethodFix extends JavaFix {
         }
 
         // Formating
-        int startPos = (int) copy.getTrees().getSourcePositions().getStartPosition(copy.getCompilationUnit(), leaf);
-        String[] lines = sourceCode.substring(0, startPos).split("\n"); // Zero-based index
-        String lastLine = lines[lines.length - 1];
+       String lastLine = geIndentaion(copy, leaf);
         if (lastLine.isBlank() && lastLine.length() <= 12) {
             StringBuilder indentedContent = new StringBuilder();
             boolean ignore = true;
@@ -156,5 +143,7 @@ public class MethodFix extends JavaFix {
         copy.rewrite(leaf, copy.getTreeMaker().QualIdent(methodContent));
 
     }
+    
+
 
 }

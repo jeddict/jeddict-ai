@@ -18,7 +18,6 @@
  */
 package io.github.jeddict.ai;
 
-import static com.github.javaparser.utils.Utils.trimTrailingSpaces;
 import io.github.jeddict.ai.scanner.MyTreePathScanner;
 import com.sun.source.tree.ClassTree;
 import java.util.*;
@@ -80,6 +79,7 @@ import io.github.jeddict.ai.settings.PreferencesManager;
 import static io.github.jeddict.ai.util.MimeUtil.JAVA_MIME;
 import static io.github.jeddict.ai.util.StringUtil.removeAllSpaces;
 import static io.github.jeddict.ai.util.StringUtil.trimLeadingSpaces;
+import static io.github.jeddict.ai.util.StringUtil.trimTrailingSpaces;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import org.netbeans.api.editor.completion.Completion;

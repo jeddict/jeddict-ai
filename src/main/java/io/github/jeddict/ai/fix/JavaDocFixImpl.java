@@ -19,15 +19,9 @@
 package io.github.jeddict.ai.fix;
 
 import io.github.jeddict.ai.util.StringUtil;
-import com.github.javaparser.JavaParser;
-import com.github.javaparser.ast.CompilationUnit;
-import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
-import com.github.javaparser.ast.body.FieldDeclaration;
-import com.github.javaparser.ast.body.MethodDeclaration;
-import com.github.javaparser.ast.comments.JavadocComment;
 import com.sun.source.doctree.DocCommentTree;
 import com.sun.source.doctree.DocTree;
-import com.sun.source.tree.ClassTree;
+import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.tree.MethodTree;
 import com.sun.source.tree.Tree;
 import static com.sun.source.tree.Tree.Kind.CLASS;
@@ -40,16 +34,15 @@ import com.sun.source.util.TreePath;
 import io.github.jeddict.ai.Action;
 import io.github.jeddict.ai.JeddictChatModel;
 import static io.github.jeddict.ai.Action.ENHANCE;
-import static io.github.jeddict.ai.util.FileUtil.saveOpenEditor;
+import static io.github.jeddict.ai.util.SourceUtil.geIndentaion;
 import static io.github.jeddict.ai.util.StringUtil.removeCodeBlockMarkers;
 import static io.github.jeddict.ai.util.StringUtil.trimLeadingSpaces;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.LinkedList;
 import java.util.List;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.Document;
 import org.netbeans.api.java.source.ElementHandle;
 import org.netbeans.api.java.source.JavaSource;
 import org.netbeans.api.java.source.TreeMaker;
@@ -86,140 +79,107 @@ public class JavaDocFixImpl extends JavaFix {
 
     @Override
     protected void performRewrite(JavaFix.TransformationContext tc) throws Exception {
-        WorkingCopy copy = tc.getWorkingCopy();
-        if (copy.toPhase(JavaSource.Phase.RESOLVED).compareTo(JavaSource.Phase.RESOLVED) < 0) {
+        WorkingCopy wc = tc.getWorkingCopy();
+        if (wc.toPhase(JavaSource.Phase.RESOLVED).compareTo(JavaSource.Phase.RESOLVED) < 0) {
             return;
         }
-        saveOpenEditor();
 
         TreePath treePath = tc.getPath();
-        Tree leaf = treePath.getLeaf();
-        Element elm = copy.getTrees().getElement(treePath);
+        Tree tree = treePath.getLeaf();
+        Element elm = wc.getTrees().getElement(treePath);
         if (elm == null) {
             return;
         }
 
+        Document document = wc.getDocument();
+
         String javadocContent;
-        DocCommentTree oldDocCommentTree = ((DocTrees) copy.getTrees()).getDocCommentTree(treePath);
+        DocCommentTree oldDocCommentTree = wc.getDocTrees().getDocCommentTree(treePath);
 
-        switch (leaf.getKind()) {
+        switch (tree.getKind()) {
             case CLASS:
             case INTERFACE:
                 if (action == ENHANCE) {
-                    javadocContent = new JeddictChatModel().enhanceJavadocForClass(oldDocCommentTree.toString(), leaf.toString());
+                    javadocContent = new JeddictChatModel().enhanceJavadocForClass(oldDocCommentTree.toString(), tree.toString());
                 } else {
-                    javadocContent = new JeddictChatModel().generateJavadocForClass(leaf.toString());
+                    javadocContent = new JeddictChatModel().generateJavadocForClass(tree.toString());
                 }
                 break;
             case METHOD:
                 if (action == ENHANCE) {
-                    javadocContent = new JeddictChatModel().enhanceJavadocForMethod(oldDocCommentTree.toString(), ((MethodTree) leaf).getName().toString());
+                    javadocContent = new JeddictChatModel().enhanceJavadocForMethod(oldDocCommentTree.toString(), ((MethodTree) tree).getName().toString());
                 } else {
-                    javadocContent = new JeddictChatModel().generateJavadocForMethod(((MethodTree) leaf).getName().toString());
+                    javadocContent = new JeddictChatModel().generateJavadocForMethod(((MethodTree) tree).getName().toString());
                 }
                 break;
             case VARIABLE:
                 if (action == ENHANCE) {
-                    javadocContent = new JeddictChatModel().enhanceJavadocForField(oldDocCommentTree.toString(), ((VariableTree) leaf).getName().toString());
+                    javadocContent = new JeddictChatModel().enhanceJavadocForField(oldDocCommentTree.toString(), ((VariableTree) tree).getName().toString());
                 } else {
-                    javadocContent = new JeddictChatModel().generateJavadocForField(((VariableTree) leaf).getName().toString());
+                    javadocContent = new JeddictChatModel().generateJavadocForField(((VariableTree) tree).getName().toString());
                 }
                 break;
             default:
                 return;
         }
+        javadocContent = removeCodeBlockMarkers(javadocContent);
 
-        Path filePath = Paths.get(copy.getFileObject().toURI());
+         if (action == ENHANCE && oldDocCommentTree != null && document != null) {
+            DocTrees docTrees = wc.getDocTrees();
+            CompilationUnitTree cuTree = wc.getCompilationUnit();
 
-        String sourceCode = new String(Files.readAllBytes(filePath));
-        JavaParser javaParser = new JavaParser();
-        CompilationUnit cu = javaParser.parse(sourceCode).getResult().orElse(null);
+            long start = docTrees.getSourcePositions().getStartPosition(cuTree, oldDocCommentTree, oldDocCommentTree);
+            long end = docTrees.getSourcePositions().getEndPosition(cuTree, oldDocCommentTree, oldDocCommentTree);
 
-        if (cu == null) {
-            return;
-        }
+            int startPos = (int) start;
+            int endPos = (int) end;
 
-        // Add the Javadoc comment to the appropriate location
-        switch (leaf.getKind()) {
-            case CLASS:
-            case INTERFACE:
-                String className = ((ClassTree) leaf).getSimpleName().toString();
-                cu.findFirst(ClassOrInterfaceDeclaration.class)
-                        .filter(decl -> decl.getNameAsString().equals(className))
-                        .ifPresent(classDecl -> {
-                            JavadocComment comment = new JavadocComment(removeCodeBlockMarkers(javadocContent));
-                            classDecl.setComment(comment);
-                        });
-                break;
-            case METHOD:
-                MethodTree methodTree = (MethodTree) leaf;
-                String methodName = methodTree.getName().toString();
+            try {
+                // Search for '*/' after the end position of the current comment
+                String content = document.getText(endPos, document.getLength() - endPos);
+                int afterEndPos = content.indexOf("*/") + endPos + 2; // Position after the '*/'
 
-                cu.findFirst(ClassOrInterfaceDeclaration.class).ifPresent(classDecl -> {
-                    classDecl.findAll(MethodDeclaration.class).stream()
-                            .filter(methodDecl -> methodDecl.getNameAsString().equals(methodName))
-                            .findFirst()
-                            .ifPresent(methodDecl -> {
-                                JavadocComment comment = new JavadocComment(removeCodeBlockMarkers(javadocContent));
-                                methodDecl.setComment(comment);
-                            });
-                });
-                break;
-            case VARIABLE:
-                cu.findFirst(FieldDeclaration.class).ifPresent(fieldDecl -> {
-                    fieldDecl.getVariables().forEach(varDecl -> {
-                        if (varDecl.getNameAsString().equals(((VariableTree) leaf).getName().toString())) {
-                            JavadocComment comment = new JavadocComment(removeCodeBlockMarkers(javadocContent));
-                            fieldDecl.setComment(comment);
-                        }
-                    });
-                });
-                break;
-            default:
-                return;
-        }
+                // Search for '/**' before the start position of the current comment
+                content = document.getText(0, startPos);
+                int beforeStartPos = content.lastIndexOf("/**");
 
-        // Write the modified code back to the file
-        String modifiedCode = cu.toString();
-        Files.write(filePath, modifiedCode.getBytes());
-    }
-
-    private void updateJavadoc(WorkingCopy copy, TreePath treePath, TreeMaker make, String javadocContent, ElementKind elementKind) {
-        List<DocTree> firstSentence = new LinkedList<>();
-        List<DocTree> tags = new LinkedList<>();
-        List<DocTree> body = new LinkedList<>();
-        boolean ci = treePath.getLeaf().getKind() == Tree.Kind.CLASS || treePath.getLeaf().getKind() == Tree.Kind.INTERFACE;
-
-        // Split the content into lines for simulation
-        String[] lines = javadocContent.split("\n");
-        for (String line : lines) {
-            line = trimLeadingSpaces(line);
-            if (line.startsWith("/**") || line.startsWith("*/")) {
-            } else if (line.startsWith("* @")) {
-                tags.add(make.Text(line.substring(1)));
-            } else if (line.startsWith("*") || line.isEmpty()) {
-                if (line.startsWith("*")) {
-                    firstSentence.add(make.Text(line.substring(1)));
-                    if (ci) {
-                        firstSentence.add(make.Text("\n * "));
-                    } else {
-                        firstSentence.add(make.Text("\n     * "));
-                    }
-                } else if (line.isEmpty()) {
-                    firstSentence.add(make.Text(""));
+                // Remove all space until a newline character is found before '/**'
+                while (beforeStartPos > 0 && content.charAt(beforeStartPos) != '\n') {
+                    beforeStartPos--; // Move backward to include spaces before the newline
                 }
+
+                // Remove the entire Javadoc, from 'beforeStartPos' to 'afterEndPos'
+                if (beforeStartPos >= 0 && afterEndPos > beforeStartPos) { // Ensure valid positions
+                    document.remove(beforeStartPos, afterEndPos - beforeStartPos);
+                }
+            } catch (BadLocationException e) {
+                e.printStackTrace();
             }
         }
-        if (!firstSentence.isEmpty() && firstSentence.get(firstSentence.size() - 1).toString().equals("\n * ")) {
-            firstSentence.remove(firstSentence.size() - 1);
-        }
-        if (!firstSentence.isEmpty() && firstSentence.get(firstSentence.size() - 1).toString().equals("\n     * ")) {
-            firstSentence.remove(firstSentence.size() - 1);
-        }
+         
+        int startOffset = (int) wc.getTrees().getSourcePositions()
+                .getStartPosition(wc.getCompilationUnit(), tree);
 
-        DocCommentTree oldDocCommentTree = ((DocTrees) copy.getTrees()).getDocCommentTree(treePath);
-        DocCommentTree newDocCommentTree = make.DocComment(firstSentence, body, tags);
-        copy.rewrite(treePath.getLeaf(), oldDocCommentTree, newDocCommentTree);
+        if (document != null) {
+            String lastLine = geIndentaion(wc, tree);
+            if (lastLine.isBlank() && lastLine.length() <= 12) {
+                StringBuilder indentedContent = new StringBuilder();
+                boolean ignore = true;
+                for (String line : javadocContent.split("\n")) {
+                    if (ignore) {
+                        ignore = false;
+                        indentedContent.append(line).append("\n").append(lastLine);
+                    } else {
+                        indentedContent.append(line).append("\n").append(lastLine);
+                    }
+                }
+                javadocContent = indentedContent.toString();
+            } else {
+                javadocContent = javadocContent + '\n';
+            }
+            document.insertString(startOffset, javadocContent, null);
+        }
+       
     }
 
 }
