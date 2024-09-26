@@ -276,12 +276,18 @@ public class JeddictCompletionProvider implements CompletionProvider {
             // Handle line and snippet first words safely
             String firstWordLine = "";
             if (lineTextBeforeCaret != null && !lineTextBeforeCaret.trim().isEmpty()) {
-                firstWordLine = lineTextBeforeCaret.trim().split("[^a-zA-Z0-9]+")[0]; // Split by any non-alphanumeric character
+                String[] textSegments = lineTextBeforeCaret.trim().split("[^a-zA-Z0-9]+");
+                if(textSegments.length > 0) {
+                firstWordLine = textSegments[0]; // Split by any non-alphanumeric character
+                }
             }
 
             String firstWordSnippet = "";
             if (varName.getSnippet() != null && !varName.getSnippet().trim().isEmpty()) {
-                firstWordSnippet = varName.getSnippet().trim().split("[^a-zA-Z0-9]+")[0]; // Split by any non-alphanumeric character
+                 String[] textSegments =  varName.getSnippet().trim().split("[^a-zA-Z0-9]+");
+                if(textSegments.length > 0) {
+                firstWordSnippet = textSegments[0]; // Split by any non-alphanumeric character
+                }
             }
 
             if (firstWordLine.equalsIgnoreCase(firstWordSnippet)) {
