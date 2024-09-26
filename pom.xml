@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.github.jeddict</groupId>
     <artifactId>jeddict-ai</artifactId>
-    <version>1.6</version>
+    <version>1.7</version>
     <packaging>nbm</packaging>
     <name>Jeddict AI Assistant</name>
     <description>Jeddict AI Assistant is a powerful and intuitive plugin designed for Apache NetBeans IDE.
