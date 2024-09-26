@@ -179,11 +179,6 @@
             <artifactId>langchain4j</artifactId>
             <version>0.34.0</version>
         </dependency>
-<!--        <dependency>
-            <groupId>com.github.javaparser</groupId>
-            <artifactId>javaparser-core</artifactId>
-            <version>3.24.0</version>
-        </dependency>-->
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
