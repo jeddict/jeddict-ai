@@ -133,7 +133,7 @@ public class JavaDocFixImpl extends JavaFix {
 
             int startPos = (int) start;
             int endPos = (int) end;
-            
+
             try {
                 // Search for '*/' after the end position of the current comment
                 String content = document.getText(endPos, document.getLength() - endPos);
@@ -164,7 +164,6 @@ public class JavaDocFixImpl extends JavaFix {
             String lastLine = geIndentaion(wc, tree);
             if (lastLine.isBlank() && lastLine.length() <= 12) {
                 StringBuilder indentedContent = new StringBuilder();
-                
                 boolean ignore = true;
                 for (String line : javadocContent.split("\n")) {
                     if (ignore) {

@@ -22,10 +22,6 @@ public class Snippet {
         this.imports = imports;
     }
 
-    public Snippet(String snippet) {
-        this.snippet = snippet;
-    }
-
     public List<String> getImports() {
         return imports;
     }
