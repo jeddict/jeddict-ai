@@ -52,7 +52,6 @@ public class ExpressionFix extends JavaFix {
         if (copy.toPhase(JavaSource.Phase.RESOLVED).compareTo(JavaSource.Phase.RESOLVED) < 0) {
             return;
         }
-        saveOpenEditor();
 
         Tree leaf = treePath.getLeaf();
         String content;

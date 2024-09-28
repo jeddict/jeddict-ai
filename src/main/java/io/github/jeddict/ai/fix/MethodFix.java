@@ -68,7 +68,6 @@ public class MethodFix extends JavaFix {
         if (copy.toPhase(JavaSource.Phase.RESOLVED).compareTo(JavaSource.Phase.RESOLVED) < 0) {
             return;
         }
-        saveOpenEditor();
 
         TreePath treePath = tc.getPath();
         Tree leaf = treePath.getLeaf();

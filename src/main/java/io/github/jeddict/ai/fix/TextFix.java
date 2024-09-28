@@ -47,7 +47,6 @@ public class TextFix extends JavaFix {
         if (copy.toPhase(JavaSource.Phase.RESOLVED).compareTo(JavaSource.Phase.RESOLVED) < 0) {
             return;
         }
-        saveOpenEditor();
 
         Tree leaf = treePath.getLeaf();
         if (leaf.getKind() != STRING_LITERAL) {
