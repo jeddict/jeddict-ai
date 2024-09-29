@@ -83,6 +83,8 @@ import static io.github.jeddict.ai.util.StringUtil.trimTrailingSpaces;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import org.netbeans.api.editor.completion.Completion;
+import org.netbeans.api.project.FileOwnerQuery;
+import org.netbeans.api.project.Project;
 import static org.netbeans.spi.editor.completion.CompletionProvider.COMPLETION_QUERY_TYPE;
 
 @MimeRegistration(mimeType = "", service = CompletionProvider.class, position = 100)
@@ -344,9 +346,9 @@ public class JeddictCompletionProvider implements CompletionProvider {
                     Set<String> findReferencedClasses = findReferencedClasses(compilationUnit);
                     List<ClassData> classDatas = getClassData(fileObject, findReferencedClasses, activeClassContext);
                     String classDataContent = classDatas.stream()
-                            //                                .peek(s -> System.out.println("Sending: " + s.getClassSignature()))
                             .map(cd -> cd.toString())
                             .collect(Collectors.joining("\n--------------------\n"));
+                    
                     if (path != null) {
                         System.out.println("path.getLeaf().getKind() " + path.getLeaf().getKind());
                         if (path.getParentPath() != null) {
@@ -358,6 +360,7 @@ public class JeddictCompletionProvider implements CompletionProvider {
                     }
 
                     Tree.Kind kind = path.getLeaf().getKind();
+                    Tree.Kind parentKind = path.getParentPath().getLeaf().getKind();
                     if (path == null
                             || kind == Tree.Kind.ERRONEOUS) {
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_CODE_LIST}");
@@ -429,16 +432,20 @@ public class JeddictCompletionProvider implements CompletionProvider {
                     } else if (kind == Tree.Kind.STRING_LITERAL) {
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_STRING_LITERAL_LIST}");
                         List<String> sugs = getJeddictChatModel(fileObject).suggestStringLiterals(classDataContent, updateddoc, line);
-//                        for (String varName : sugs) {
-//                            JeddictItem var = new JeddictItem(null, null, varName, Collections.emptyList(), caretOffset, true, false, -1);
-//                            resultSet.addItem(var);
-//
-//                        }
                         for (String varName : sugs) {
                             resultSet.addItem(createItem(new Snippet(varName), line, lineTextBeforeCaret, javaToken, kind, doc));
                         }
+                    } else if (kind == Tree.Kind.PARENTHESIZED
+                            && parentKind != null
+                            && parentKind == Tree.Kind.IF) {
+                        String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_IF_CONDITIONS}");
+                        List<Snippet> sugs = getJeddictChatModel(fileObject).suggestNextLineCode(classDataContent, updateddoc, line, path);
+                        for (Snippet varName : sugs) {
+                            JeddictItem var = new JeddictItem(null, null, varName.getSnippet(), varName.getImports(), caretOffset, true, false, -1);
+                            resultSet.addItem(var);
+                        }
                     } else {
-                        System.out.println(kind + " " + path.getLeaf().toString());
+                        System.out.println("Skipped : " +kind + " " + path.getLeaf().toString());
                     }
                 } else if (COMPLETION_QUERY_TYPE == queryType && JAVA_MIME.equals(mimeType)) {
                     String line = getLineText(doc, caretOffset);
@@ -508,34 +515,6 @@ public class JeddictCompletionProvider implements CompletionProvider {
         }
     }
 
-   static class JavaToken {
-        boolean javaContext;
-        JavaTokenId id;
-        int offset;
-
-        public JavaToken(boolean javaContext, JavaTokenId id, int offset) {
-            this.javaContext = javaContext;
-            this.id = id;
-            this.offset = offset;
-        }
-        
-        public JavaToken(boolean javaContext) {
-            this.javaContext = javaContext;
-        }
-
-        public boolean isJavaContext() {
-            return javaContext;
-        }
-
-        public JavaTokenId getId() {
-            return id;
-        }
-
-        public int getOffset() {
-            return offset;
-        }
-        
-    }
     public static JavaToken isJavaContext(final Document doc, final int offset, final boolean allowInStrings) {
         if (doc instanceof AbstractDocument) {
             ((AbstractDocument) doc).readLock();

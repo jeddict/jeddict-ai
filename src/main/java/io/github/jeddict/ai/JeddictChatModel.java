@@ -451,7 +451,18 @@ public class JeddictChatModel {
                     + "'snippet' should contain the suggested code as a text block, which may include multiple lines formatted as a single string using \\n for line breaks. \n\n"
                     + "Make sure to escape any double quotes within the snippet using a backslash (\\) so that the JSON remains valid. \n\n"
                     + "Java Class Content:\n" + classContent;
-        } else {
+        } else if (path.getLeaf().getKind() == Tree.Kind.PARENTHESIZED
+               && path.getParentPath() != null
+               && path.getParentPath().getLeaf().getKind() == Tree.Kind.IF) {
+        prompt = "You are an API server that suggests Java code to enhance an if-statement. "
+                + "At the placeholder location ${SUGGEST_IF_CONDITIONS}, suggest additional conditional checks or actions within the if-statement. "
+                + "Ensure that the suggestions are contextually appropriate for the condition. "
+                + "Return a JSON array with a few best suggestions without any additional text or explanation. Each element should be an object containing two fields: 'imports' and 'snippet'. "
+                + "'imports' should be an array of required Java import statements (if no imports are required, return an empty array). "
+                + "'snippet' should contain the suggested code as a text block, which may include multiple lines formatted as a single string using \\n for line breaks. \n\n"
+                + "Make sure to escape any double quotes within the snippet using a backslash (\\) so that the JSON remains valid. \n\n"
+                + "Java If Statement Content:\n" + classContent;
+    } else {
             prompt = "You are an API server that suggests Java code for a specific context in a given Java class at the placeholder location ${SUGGEST_CODE_LIST}. "
                     + "Based on the provided Java class content and the line of code: \"" + lineText + "\", suggest a relevant single line of code or a multi-line code block as appropriate for the context represented by the placeholder ${SUGGEST_CODE_LIST} in the Java class. "
                     + "Ensure that the suggestions are relevant to the context. "
@@ -471,7 +482,7 @@ public class JeddictChatModel {
         List<Snippet> nextLines = parseJsonToSnippets(jsonResponse);
         return nextLines;
     }
-
+ 
     public List<String> suggestJavaComment(String classDatas, String classContent, String lineText) {
         String prompt = "You are an API server that suggests appropriate Java comments for a specific context in a given Java class at the placeholder location ${SUGGEST_JAVA_COMMENT}. "
                 + "Based on the provided Java class content and the line of comment: \"" + lineText + " ${SUGGEST_JAVA_COMMENT} \", suggest relevant Java comment as appropriate for the context represented by the placeholder ${SUGGEST_JAVA_COMMENT} in the Java Class. "
