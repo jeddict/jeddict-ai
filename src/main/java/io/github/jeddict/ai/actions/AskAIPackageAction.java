@@ -30,31 +30,51 @@ import org.openide.awt.ActionID;
 import org.openide.awt.ActionReference;
 import org.openide.awt.ActionReferences;
 import org.openide.awt.ActionRegistration;
-import org.openide.awt.DynamicMenuContent;
 import org.openide.filesystems.FileObject;
 import org.openide.util.ContextAwareAction;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle.Messages;
 
+/**
+ * An action that allows the user to ask AI questions about a package or a file.
+ * This action is available in the context menu of a package or a file in the
+ * Projects view.
+ */
 @ActionID(
-        category = "Project",
-        id = "io.github.jeddict.ai.actions.AskAIPackageAction")
+    category = "Project",
+    id = "io.github.jeddict.ai.actions.AskAIPackageAction"
+)
 @ActionRegistration(
-        displayName = "#CTL_AskAIPackageAction", lazy = true, asynchronous = true, iconBase = "icons/logo28.png")
+    displayName = "#CTL_AskAIPackageAction",
+        lazy = false,
+        asynchronous = true,
+        iconBase = "icons/logo16.png"
+)
 @ActionReferences({
     @ActionReference(path = "Projects/package/Actions", position = 100),
-    @ActionReference(path="Loaders/text/x-java/Actions", position=100),
+    @ActionReference(path = "Loaders/text/x-java/Actions", position=100),
     @ActionReference(path = "Loaders/folder/any/Actions", position = 300),
     @ActionReference(path = "Toolbars/Build", position = 100)})
 @Messages({"CTL_AskAIPackageAction=AI Assistant"})
 public final class AskAIPackageAction extends AbstractAction implements ContextAwareAction {
 
+    /**
+     * Opens the AI assistant chat window.
+     *
+     * @param ev the action event.
+     */
     @Override
     public void actionPerformed(ActionEvent ev) {
         AssistantChatManager learnFix = new AssistantChatManager(io.github.jeddict.ai.completion.Action.QUERY);
         learnFix.openChat(null, "", null, "AI Assistant", null);
     }
 
+    /**
+     * Creates a context-aware instance of this action.
+     *
+     * @param actionContext the lookup context.
+     * @return a new instance of the context-aware action.
+     */
     @Override
     public Action createContextAwareInstance(Lookup actionContext) {
         if (actionContext != null) {
@@ -70,17 +90,30 @@ public final class AskAIPackageAction extends AbstractAction implements ContextA
         return new AskAIPackageAction.ContextAction(false, null);
     }
 
-    private static final class ContextAction extends AbstractAction {
+    /**
+     * The context-aware action that opens the AI chat window for the selected
+     * package or file.
+     */
+    private static final class ContextAction extends BaseContextAction {
 
         private final List<FileObject> selectedFileObjects;
 
+        /**
+         * Constructs a new ContextAction.
+         *
+         * @param enable true to enable the action, false to disable it.
+         * @param selectedPackages the list of selected packages or files.
+         */
         private ContextAction(boolean enable, List<FileObject> selectedPackages) {
-            super(Bundle.CTL_AskAIPackageAction());
-            this.putValue(DynamicMenuContent.HIDE_WHEN_DISABLED, true);
-            this.setEnabled(enable);
+            super(Bundle.CTL_AskAIPackageAction(), enable);
             this.selectedFileObjects = selectedPackages;
         }
 
+        /**
+         * Opens the AI chat window for the selected package or file.
+         *
+         * @param evt the action event.
+         */
         @Override
         public void actionPerformed(ActionEvent evt) {
             AssistantChatManager learnFix = new AssistantChatManager(io.github.jeddict.ai.completion.Action.QUERY, selectedFileObjects);

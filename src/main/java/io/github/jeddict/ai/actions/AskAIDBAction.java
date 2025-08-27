@@ -27,16 +27,26 @@ import org.openide.awt.ActionID;
 import org.openide.awt.ActionReference;
 import org.openide.awt.ActionReferences;
 import org.openide.awt.ActionRegistration;
-import org.openide.awt.DynamicMenuContent;
 import org.openide.util.ContextAwareAction;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle.Messages;
 
+/**
+ * An action that allows the user to ask AI questions about a database
+ * connection. This action is available in the context menu of a database
+ * connection in the Services window.
+ */
 @ActionID(
-        category = "File",
-        id = "io.github.jeddict.ai.actions.AskAIDBAction")
+    category = "File",
+    id = "io.github.jeddict.ai.actions.AskAIDBAction"
+)
 @ActionRegistration(
-        displayName = "#CTL_AskAIDBAction", lazy = false, asynchronous = true)
+    displayName = "#CTL_AskAIDBAction",
+    lazy = false,
+    asynchronous = true,
+    iconInMenu = true,
+    iconBase = "icons/logo16.png"
+)
 @ActionReferences({
  @ActionReference(path = "Databases/Explorer/Connection/Actions", position = 350),
 //    @ActionReference(path = "Databases/Explorer/Catalog/Actions", position = 350),
@@ -50,10 +60,22 @@ import org.openide.util.NbBundle.Messages;
 @Messages({"CTL_AskAIDBAction=AI Assistant"})
 public final class AskAIDBAction extends AbstractAction implements ContextAwareAction {
 
+    /**
+     * This method is never called directly. The action is handled by the
+     * context-aware instance.
+     *
+     * @param ev the action event.
+     */
     @Override
     public void actionPerformed(ActionEvent ev) {
     }
 
+    /**
+     * Creates a context-aware instance of this action.
+     *
+     * @param actionContext the lookup context.
+     * @return a new instance of the context-aware action.
+     */
     @Override
     public Action createContextAwareInstance(Lookup actionContext) {
         if (actionContext != null) {
@@ -65,17 +87,30 @@ public final class AskAIDBAction extends AbstractAction implements ContextAwareA
         return new AskAIDBAction.ContextAction(false, null);
     }
 
-    private static final class ContextAction extends AbstractAction {
+    /**
+     * The context-aware action that opens the AI chat window for the selected
+     * database connection.
+     */
+    private static final class ContextAction extends BaseContextAction {
 
         private final DatabaseConnection connection;
 
+        /**
+         * Constructs a new ContextAction.
+         *
+         * @param enable true to enable the action, false to disable it.
+         * @param connection the database connection.
+         */
         private ContextAction(boolean enable, DatabaseConnection connection) {
-            super(Bundle.CTL_AskAIDBAction());
-            this.putValue(DynamicMenuContent.HIDE_WHEN_DISABLED, true);
-            this.setEnabled(enable);
+            super(Bundle.CTL_AskAIDBAction(), enable);
             this.connection = connection;
         }
 
+        /**
+         * Opens the AI chat window for the selected database connection.
+         *
+         * @param evt the action event.
+         */
         @Override
         public void actionPerformed(ActionEvent evt) {
             if (connection == null) {

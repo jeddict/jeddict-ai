@@ -18,8 +18,6 @@ package io.github.jeddict.ai.actions;
 import io.github.jeddict.ai.hints.AssistantChatManager;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import javax.swing.AbstractAction;
-import static javax.swing.Action.NAME;
 import javax.swing.JOptionPane;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.JTextComponent;
@@ -37,26 +35,42 @@ import org.openide.text.NbDocument;
 import org.openide.util.Exceptions;
 import org.openide.util.NbBundle;
 
+/**
+ * A popup action that provides AI assistance in the editor. This action is
+ * available in the editor's context menu and can be invoked with a shortcut.
+ * It opens a chat window with the selected text and allows the user to interact
+ * with the AI assistant to modify the code.
+ */
 @ActionID(
-        category = "Edit/Chat",
-        id = "io.github.jeddict.ai.actions.AIAssistantPopupAction"
+    category = "Edit/Chat",
+    id = "io.github.jeddict.ai.actions.AIAssistantPopupAction"
 )
 @ActionRegistration(
-        displayName = "#CTL_AIAssistantPopupAction", lazy = false
+    displayName = "#CTL_AIAssistantPopupAction",
+    lazy = false,
+    iconInMenu = true,
+    iconBase = "icons/logo16.png"
 )
 @ActionReferences({
     @ActionReference(path = "Editors/Popup", position = 101),
     @ActionReference(path = "Shortcuts", name = "C-QUOTE")
 })
 @NbBundle.Messages("CTL_AIAssistantPopupAction=AI Assistant")
-public final class AIAssistantPopupAction extends AbstractAction implements ActionListener {
+public final class AIAssistantPopupAction extends BaseContextAction implements ActionListener {
 
+    /**
+     * Constructs a new AIAssistantPopupAction.
+     */
     public AIAssistantPopupAction() {
-        putValue(NAME, Bundle.CTL_AIAssistantPopupAction());
-        setEnabled(true);
+        super(Bundle.CTL_AIAssistantPopupAction(), true);
     }
 
-    
+    /**
+     * Opens the AI assistant chat window with the selected text from the
+     * editor.
+     *
+     * @param e the action event.
+     */
     @Override
     public void actionPerformed(ActionEvent e) {
 
@@ -101,6 +115,15 @@ public final class AIAssistantPopupAction extends AbstractAction implements Acti
         });
     }
 
+    /**
+     * Inserts the given content into the document and reformats the inserted
+     * text.
+     *
+     * @param document the document to modify.
+     * @param content the content to insert.
+     * @param startPosition the position at which to insert the content.
+     * @param lengthToRemove the length of the text to remove.
+     */
     private void insertAndReformat(StyledDocument document, String content, int startPosition, int lengthToRemove) {
         try {
             if (lengthToRemove > 0) {

@@ -15,9 +15,10 @@
  */
 package io.github.jeddict.ai.review;
 
+import io.github.jeddict.ai.actions.BaseGitAction;
+import io.github.jeddict.ai.actions.BaseProjectContextAction;
 import io.github.jeddict.ai.components.AssistantChat;
 import io.github.jeddict.ai.hints.AssistantChatManager;
-import io.github.jeddict.ai.settings.PreferencesManager;
 import static io.github.jeddict.ai.util.EditorUtil.getBackgroundColorFromMimeType;
 import static io.github.jeddict.ai.util.EditorUtil.getTextColorFromMimeType;
 import static io.github.jeddict.ai.util.MimeUtil.MIME_PLAIN_TEXT;
@@ -30,7 +31,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -50,12 +50,14 @@ import org.openide.awt.ActionID;
 import org.openide.awt.ActionReference;
 import org.openide.awt.ActionReferences;
 import org.openide.awt.ActionRegistration;
-import org.openide.awt.DynamicMenuContent;
 import org.openide.filesystems.FileUtil;
-import org.openide.util.ContextAwareAction;
-import org.openide.util.Lookup;
 import org.openide.util.NbBundle.Messages;
 
+/**
+ * An action that performs a code review on the git diff of the current project using AI.
+ * This action is available in the project's context menu and is only enabled
+ * for Git projects.
+ */
 @ActionID(
         category = "Project",
         id = "io.github.jeddict.ai.review.CTL_ReviewAction")
@@ -64,46 +66,37 @@ import org.openide.util.NbBundle.Messages;
 @ActionReferences({
     @ActionReference(path = "Projects/Actions", position = 100),})
 @Messages({"CTL_ReviewAction=AI Git Diff Code Review"})
-public final class ReviewAction extends AbstractAction implements ContextAwareAction {
+public final class ReviewAction extends BaseGitAction {
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public void actionPerformed(ActionEvent ev) {
-        // No direct action; context aware instance is used
+    protected Action createContextAction(boolean enable, Project project) {
+        return new ContextAction(enable, project);
     }
 
-    @Override
-    public Action createContextAwareInstance(Lookup actionContext) {
-        if (actionContext != null) {
-            Project project = actionContext.lookup(Project.class);
-            boolean isGitProject = project != null && isGitRepository(project);
-            return new ReviewAction.ContextAction(
-                    isGitProject && PreferencesManager.getInstance().isAiAssistantActivated(),
-                    project
-            );
-        }
-        return new ReviewAction.ContextAction(false, null);
-    }
+    /**
+     * The context-aware action that performs the code review.
+     */
+    private static final class ContextAction extends BaseProjectContextAction {
 
-    private boolean isGitRepository(Project project) {
-        File projectDir = FileUtil.toFile(project.getProjectDirectory());
-        if (projectDir != null) {
-            File gitDir = new File(projectDir, ".git");
-            return gitDir.exists() && gitDir.isDirectory();
-        }
-        return false;
-    }
-
-    private static final class ContextAction extends AbstractAction {
-
-        private final Project project;
-
+        /**
+         * Constructs a new ContextAction.
+         *
+         * @param enable true to enable the action, false to disable it.
+         * @param project the project to which the action belongs.
+         */
         private ContextAction(boolean enable, Project project) {
-            super(Bundle.CTL_ReviewAction());
-            this.putValue(DynamicMenuContent.HIDE_WHEN_DISABLED, true);
-            this.setEnabled(enable);
-            this.project = project;
+            super(Bundle.CTL_ReviewAction(), project, enable);
         }
 
+        /**
+         * Asks the user for code review input, gathers the git diff, and then
+         * uses the AI assistant to perform a code review.
+         *
+         * @param evt the action event.
+         */
         @Override
         public void actionPerformed(ActionEvent evt) {
             CodeReviewInput input = ReviewAction.askForCodeReview(project);
@@ -175,6 +168,13 @@ public final class ReviewAction extends AbstractAction implements ContextAwareAc
         }
     }
 
+    /**
+     * Runs a Git command in the project's root directory.
+     *
+     * @param command the command to run.
+     * @param project the project in which to run the command.
+     * @return the output of the command.
+     */
     private static String runGitCommand(String command, Project project) {
         StringBuilder output = new StringBuilder();
         try {
@@ -201,6 +201,12 @@ public final class ReviewAction extends AbstractAction implements ContextAwareAc
         return output.toString();
     }
 
+    /**
+     * Prompts the user for code review input.
+     *
+     * @param project the project for which the code review is being performed.
+     * @return the user's input, or null if the user cancels the dialog.
+     */
     private static CodeReviewInput askForCodeReview(Project project) {
         Color textColor = getTextColorFromMimeType(MIME_PLAIN_TEXT);
         Color backgroundColor = getBackgroundColorFromMimeType(MIME_PLAIN_TEXT);
@@ -362,10 +368,10 @@ public final class ReviewAction extends AbstractAction implements ContextAwareAc
                 filesPanel.revalidate();
                 filesPanel.repaint();
             });
-            
+
             String selected = (String) commitComboBox.getSelectedItem();
             java.util.Set<String> filesSet = new java.util.LinkedHashSet<>();
-            
+
             if ("Uncommitted Changes".equals(selected)) {
                 filesSet.addAll(runGitDiffNameOnly(project, "diff --name-only HEAD"));
                 filesSet.addAll(runGitDiffNameOnly(project, "diff --name-only --cached"));
@@ -375,9 +381,9 @@ public final class ReviewAction extends AbstractAction implements ContextAwareAc
                 String diffCmd = "diff --name-only " + commitHash + "~1 HEAD";
                 filesSet.addAll(runGitDiffNameOnly(project, diffCmd));
             }
-            
+
             java.util.List<String> files = new java.util.ArrayList<>(filesSet);
-            
+
             SwingUtilities.invokeLater(() -> {
                 filesPanel.removeAll();
                 if (files.isEmpty()) {
@@ -385,7 +391,7 @@ public final class ReviewAction extends AbstractAction implements ContextAwareAc
                     selectAllCheckBox.setEnabled(false);
                 } else {
                     selectAllCheckBox.setEnabled(true);
-                    
+
                     for (String file : files) {
                         JCheckBox cb = new JCheckBox(file, true);
                         cb.setForeground(textColor);
@@ -393,7 +399,7 @@ public final class ReviewAction extends AbstractAction implements ContextAwareAc
                         filesPanel.add(cb);
                     }
                     selectAllCheckBox.setSelected(true);
-                    
+
                     // Add listener for selectAll checkbox
                     selectAllCheckBox.addActionListener(ev -> {
                         boolean selectedAll = selectAllCheckBox.isSelected();
@@ -404,7 +410,7 @@ public final class ReviewAction extends AbstractAction implements ContextAwareAc
                         }
                         updateOkButton.run();
                     });
-                    
+
                     // Add listeners to checkboxes to update OK button state
                     for (Component comp : filesPanel.getComponents()) {
                         if (comp instanceof JCheckBox) {
@@ -479,6 +485,13 @@ public final class ReviewAction extends AbstractAction implements ContextAwareAc
         return new CodeReviewInput(gitCommand, contextMessage, selectedGranularity, selectedFiles);
     }
 
+    /**
+     * Runs a git diff command and returns a list of file names.
+     *
+     * @param project the project in which to run the command.
+     * @param gitCommand the git command to run.
+     * @return a list of file names.
+     */
     private static java.util.List<String> runGitDiffNameOnly(Project project, String gitCommand) {
         java.util.List<String> files = new java.util.ArrayList<>();
         try {
@@ -507,6 +520,13 @@ public final class ReviewAction extends AbstractAction implements ContextAwareAc
         return files;
     }
 
+    /**
+     * Runs a git ls-files command and returns a list of file names.
+     *
+     * @param project the project in which to run the command.
+     * @param gitCommand the git command to run.
+     * @return a list of file names.
+     */
     private static java.util.List<String> runGitLsFiles(Project project, String gitCommand) {
         java.util.List<String> files = new java.util.ArrayList<>();
         try {
@@ -535,6 +555,9 @@ public final class ReviewAction extends AbstractAction implements ContextAwareAc
         return files;
     }
 
+    /**
+     * A data class to hold the input for a code review.
+     */
     public static class CodeReviewInput {
 
         String gitCommand;

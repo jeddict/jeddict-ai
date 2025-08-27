@@ -16,78 +16,84 @@
 package io.github.jeddict.ai.actions;
 
 import io.github.jeddict.ai.hints.AssistantChatManager;
-import io.github.jeddict.ai.settings.PreferencesManager;
 import io.github.jeddict.ai.util.UIUtil;
 import java.awt.event.ActionEvent;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import javax.swing.AbstractAction;
+import java.util.logging.Logger;
 import javax.swing.Action;
 import org.netbeans.api.project.Project;
 import org.openide.awt.ActionID;
 import org.openide.awt.ActionReference;
 import org.openide.awt.ActionReferences;
 import org.openide.awt.ActionRegistration;
-import org.openide.awt.DynamicMenuContent;
 import org.openide.filesystems.FileUtil;
-import org.openide.util.ContextAwareAction;
-import org.openide.util.Lookup;
 import org.openide.util.NbBundle.Messages;
 
 /**
  *
  * @author Shiwani Gupta
  */
+/**
+ * An action that generates a commit message for the current project using AI.
+ * This action is available in the project's context menu and is only enabled
+ * for Git projects.
+ *
+ * @author Shiwani Gupta
+ */
 @ActionID(
-        category = "Project",
-        id = "io.github.jeddict.ai.actions.GenerateCommitMessageAction")
+    category = "Project",
+    id = "io.github.jeddict.ai.actions.GenerateCommitMessageAction"
+)
 @ActionRegistration(
-        displayName = "#CTL_GenerateCommitMessageAction", lazy = false, asynchronous = true)
+    displayName = "#CTL_GenerateCommitMessageAction",
+    lazy = false,
+    iconInMenu = true,
+    asynchronous = true,
+    iconBase = "icons/logo16.png"
+)
 @ActionReferences({
-    @ActionReference(path = "Projects/Actions", position = 100),})
-@Messages({"CTL_GenerateCommitMessageAction=AI Commit Message"})
-public final class GenerateCommitMessageAction extends AbstractAction implements ContextAwareAction {
+    @ActionReference(path = "Projects/Actions", position = 100),}
+)
+@Messages(
+    {"CTL_GenerateCommitMessageAction=AI Commit Message"}
+)
+public final class GenerateCommitMessageAction extends BaseGitAction {
 
+    private static final Logger LOG = Logger.getLogger(GenerateCommitMessageAction.class.getPackageName());
+
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public void actionPerformed(ActionEvent ev) {
-        // This can remain empty as the context action will handle the logic
+    protected Action createContextAction(boolean enable, Project project) {
+        return new GenerateCommitMessageAction.ContextAction(enable, project);
     }
 
-    @Override
-    public Action createContextAwareInstance(Lookup actionContext) {
-        if (actionContext != null) {
-            Project project = actionContext.lookup(Project.class);
-            boolean isGitProject = project != null && isGitRepository(project);
-            return new GenerateCommitMessageAction.ContextAction(
-                    isGitProject && PreferencesManager.getInstance().isAiAssistantActivated(),
-                    project
-            );
-        }
-        return new GenerateCommitMessageAction.ContextAction(false, null);
-    }
+    /**
+     * The context-aware action that generates the commit message.
+     */
+    private static final class ContextAction extends BaseProjectContextAction {
 
-    private boolean isGitRepository(Project project) {
-        File projectDir = FileUtil.toFile(project.getProjectDirectory()); // Get the project directory as a File
-        if (projectDir != null) {
-            File gitDir = new File(projectDir, ".git"); // Check for .git directory
-            return gitDir.exists() && gitDir.isDirectory(); // Ensure it exists and is a directory
-        }
-        return false;
-    }
-
-    private static final class ContextAction extends AbstractAction {
-
-        private final Project project;
-
+        /**
+         * Constructs a new ContextAction.
+         *
+         * @param enable true to enable the action, false to disable it.
+         * @param project the project to which the action belongs.
+         */
         private ContextAction(boolean enable, Project project) {
-            super(Bundle.CTL_GenerateCommitMessageAction());
-            this.putValue(DynamicMenuContent.HIDE_WHEN_DISABLED, true);
-            this.setEnabled(enable);
-            this.project = project;
+            super(Bundle.CTL_GenerateCommitMessageAction(), project, enable);
         }
 
+        /**
+         * Gathers the git diff and status, prompts the user for an initial
+         * commit message, and then uses the AI assistant to generate a commit
+         * message.
+         *
+         * @param evt the action event.
+         */
         @Override
         public void actionPerformed(ActionEvent evt) {
             StringBuilder sb = new StringBuilder();
@@ -102,12 +108,23 @@ public final class GenerateCommitMessageAction extends AbstractAction implements
             learnFix.askQueryForProjectCommit(project, sb.toString(), intitalCommitMessage);
         }
 
+        /**
+         * Runs a Git command in the project's root directory.
+         *
+         * @param command the command to run.
+         * @return the output of the command.
+         */
         private String runGitCommand(String command) {
             StringBuilder output = new StringBuilder();
             try {
-                ProcessBuilder processBuilder = new ProcessBuilder("git", command);
-                File projectDir = FileUtil.toFile(project.getProjectDirectory()); // Convert FileObject to File
-                processBuilder.directory(projectDir); // Set the working directory to the project root
+                String[] args = command.split("\s+");
+                String[] commandArray = new String[args.length + 1];
+                commandArray[0] = "git";
+                System.arraycopy(args, 0, commandArray, 1, args.length);
+
+                ProcessBuilder processBuilder = new ProcessBuilder(commandArray);
+                File projectDir = FileUtil.toFile(project.getProjectDirectory());
+                processBuilder.directory(projectDir);
                 Process process = processBuilder.start();
 
                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
@@ -118,10 +135,10 @@ public final class GenerateCommitMessageAction extends AbstractAction implements
                 }
                 process.waitFor();
             } catch (IOException | InterruptedException e) {
-                e.printStackTrace(); // Handle exceptions appropriately in your production code
+                // In a real application, proper logging should be used.
+                e.printStackTrace();
             }
             return output.toString();
         }
-
     }
 }

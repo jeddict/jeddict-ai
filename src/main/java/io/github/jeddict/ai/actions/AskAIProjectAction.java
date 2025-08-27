@@ -26,26 +26,46 @@ import org.openide.awt.ActionID;
 import org.openide.awt.ActionReference;
 import org.openide.awt.ActionReferences;
 import org.openide.awt.ActionRegistration;
-import org.openide.awt.DynamicMenuContent;
 import org.openide.util.ContextAwareAction;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle.Messages;
 
+/**
+ * An action that allows the user to ask AI questions about a project. This
+ * action is available in the context menu of a project in the Projects view.
+ */
 @ActionID(
-        category = "Edit",
-        id = "io.github.jeddict.ai.actions.AskAIProjectAction")
+    category = "Edit",
+    id = "io.github.jeddict.ai.actions.AskAIProjectAction"
+)
 @ActionRegistration(
-        displayName = "#CTL_AskAIProjectAction", lazy = false, asynchronous = true)
+    displayName = "#CTL_AskAIProjectAction",
+    lazy = false,
+    asynchronous = true,
+    iconBase = "icons/logo16.png"
+)
 @ActionReferences({
     @ActionReference(path = "Projects/Actions", position = 100),
 })
 @Messages({"CTL_AskAIProjectAction=AI Assistant"})
 public final class AskAIProjectAction extends AbstractAction implements ContextAwareAction {
 
+    /**
+     * This method is never called directly. The action is handled by the
+     * context-aware instance.
+     *
+     * @param ev the action event.
+     */
     @Override
     public void actionPerformed(ActionEvent ev) {
     }
 
+    /**
+     * Creates a context-aware instance of this action.
+     *
+     * @param actionContext the lookup context.
+     * @return a new instance of the context-aware action.
+     */
     @Override
     public Action createContextAwareInstance(Lookup actionContext) {
         if (actionContext != null) {
@@ -57,17 +77,27 @@ public final class AskAIProjectAction extends AbstractAction implements ContextA
         return new AskAIProjectAction.ContextAction(false, null);
     }
 
-    private static final class ContextAction extends AbstractAction {
+    /**
+     * The context-aware action that opens the AI chat window for the selected
+     * project.
+     */
+    private static final class ContextAction extends BaseProjectContextAction {
 
-        private final Project project;
-
+        /**
+         * Constructs a new ContextAction.
+         *
+         * @param enable true to enable the action, false to disable it.
+         * @param project the project.
+         */
         private ContextAction(boolean enable, Project project) {
-            super(Bundle.CTL_AskAIProjectAction());
-            this.putValue(DynamicMenuContent.HIDE_WHEN_DISABLED, true);
-            this.setEnabled(enable);
-            this.project = project;
+            super(Bundle.CTL_AskAIProjectAction(), project, true);
         }
 
+        /**
+         * Opens the AI chat window for the selected project.
+         *
+         * @param evt the action event.
+         */
         @Override
         public void actionPerformed(ActionEvent evt) {
             AssistantChatManager learnFix = new AssistantChatManager(io.github.jeddict.ai.completion.Action.QUERY, project);
