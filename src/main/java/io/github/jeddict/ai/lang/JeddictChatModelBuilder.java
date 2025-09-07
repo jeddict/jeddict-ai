@@ -226,7 +226,7 @@ public class JeddictChatModelBuilder {
                     JOptionPane.ERROR_MESSAGE);
         }
         if (project != null) {
-            prompt = prompt + ProjectMetadataInfo.get(project);
+            prompt = prompt + "\n" + ProjectMetadataInfo.get(project);
         }
         String systemMessage = null;
         String globalRules = PreferencesManager.getInstance().getGlobalRules();
