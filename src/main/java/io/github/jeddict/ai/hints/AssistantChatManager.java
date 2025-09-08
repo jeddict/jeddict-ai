@@ -87,6 +87,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -737,14 +738,23 @@ public class AssistantChatManager extends JavaFix {
                     String question = questionPane.getText();
                     Map<String, String> prompts = PreferencesManager.getInstance().getPrompts();
 
-                    for (Map.Entry<String, String> entry : prompts.entrySet()) {
-                        String promptKey = entry.getKey();
-                        String promptValue = entry.getValue();
+                    //
+                    // To make sure the longest matching shortcut matches (i.e.
+                    // 'shortcutlong' is 'shortcut' is defined as well) let's
+                    // sort the shurtcuts in descending order; this guarantees
+                    // 'shortcut2' is matched before "shortcut" in the for loop
+                    //
+                    ArrayList<String> promptKeys = new ArrayList();
+                    promptKeys.addAll(prompts.keySet());
+                    promptKeys.sort(Comparator.reverseOrder());
 
-                        String toReplace = "/" + promptKey;
+                    for (String key: promptKeys) {
+                        String prompt = prompts.get(key);
+
+                        String toReplace = "/" + key;
 
                         if (question.contains(toReplace)) {
-                            question = question.replace(toReplace, promptValue);
+                            question = question.replace(toReplace, prompt);
                         }
                     }
                     if (!question.isEmpty()) {
