@@ -30,4 +30,28 @@
                 <netbeans.run.params.debug>-J-agentlib:jdwp=transport=dt_socket,suspend=n,server=n,address=${jpda.address}</netbeans.run.params.debug>
             </properties>
         </action>
+        <action>
+            <actionName>CUSTOM-Start AIMockServer</actionName>
+            <displayName>Start AIMockServer</displayName>
+            <goals>
+                <goal>package</goal>
+                <goal>exec:java</goal>
+            </goals>
+            <properties>
+                <exec.mainClass>io.github.jeddict.ai.test.AIMockServer</exec.mainClass>
+                <exec.classpathScope>test</exec.classpathScope>
+                <exec.args>7777</exec.args>
+                <skipTests>true</skipTests>
+            </properties>
+        </action>
+        <action>
+        <actionName>CUSTOM-Quick build</actionName>
+        <displayName>Quick build</displayName>
+        <goals>
+            <goal>package</goal>
+        </goals>
+        <properties>
+            <skipTests>true</skipTests>
+        </properties>
+    </action>
     </actions>

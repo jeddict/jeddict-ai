@@ -18,7 +18,7 @@ package io.github.jeddict.ai.components.diff;
 import java.io.IOException;
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.BDDAssertions.thenThrownBy;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
 

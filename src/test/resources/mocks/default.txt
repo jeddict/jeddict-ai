@@ -1,0 +1,11 @@
+To use the mock server, send a prompt containing the following instruction:
+
+  use mock <file_path>
+
+Where <file_path> is the path to a mock file relative to "src/test/resources/mocks".
+
+The file name can be unquoted or enclosed in single quotes.
+For example:
+
+- use mock my_file.txt
+- use mock 'my file with spaces.json'

@@ -17,46 +17,10 @@ package io.github.jeddict.ai.agent;
 
 /**
  *
- * @author Gaurav Gupta
+
+ *
  */
-public class FileAction {
-
-    private String path;
-    private String action;
-    private String content;
-
-    public FileAction() {
-    }
-
-    public FileAction(String path, String action, String content) {
-        this.path = path;
-        this.action = action;
-        this.content = content;
-    }
-
-    public String getPath() {
-        return path;
-    }
-
-    public void setPath(String path) {
-        this.path = path;
-    }
-
-    public String getAction() {
-        return action;
-    }
-
-    public void setAction(String action) {
-        this.action = action;
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    public void setContent(String content) {
-        this.content = content;
-    }
+public record FileAction(String action, String path, String content) {
 
     @Override
     public String toString() {

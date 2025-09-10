@@ -16,7 +16,6 @@
 package io.github.jeddict.ai.util;
 
 import io.github.jeddict.ai.agent.FileAction;
-import io.github.jeddict.ai.agent.FileActionExecutor;
 import io.github.jeddict.ai.agent.FileActionParser;
 import io.github.jeddict.ai.components.AssistantChat;
 import io.github.jeddict.ai.response.Block;
@@ -70,7 +69,7 @@ public class EditorUtil {
 
     private static final Parser parser = Parser.builder().build();
     private static final HtmlRenderer renderer = HtmlRenderer.builder().build();
-    private static final Logger LOGGER = Logger.getLogger(EditorUtil.class.getName());
+    private static final Logger LOG = Logger.getLogger(EditorUtil.class.getName());
 
     public static String updateEditors(BiConsumer<String, Set<FileObject>> queryUpdate, Project project, AssistantChat topComponent, Response response, Set<FileObject> threadContext) {
         StringBuilder code = new StringBuilder();
@@ -82,13 +81,20 @@ public class EditorUtil {
         }
 
         JComponent firstPane = null;
-        Block prevBlock = null;
+
+        Block actionBlock = null;
         for (Block block : response.getBlocks()) {
-            JComponent pane = printBlock(code, prevBlock, block, project, topComponent);
+            LOG.finest(() -> ("block:\n" + block));
+            if ("action".equals(block.getType())) {
+                actionBlock = block;
+                continue;
+            }
+            LOG.finest("printing\n" + actionBlock + "\nand\n" + block);
+            JComponent pane = printBlock(code, actionBlock, block, project, topComponent);
+            actionBlock = null;
             if (firstPane == null) {
                 firstPane = pane;
             }
-            prevBlock = block;
         }
 
         if (firstPane != null) {
@@ -108,17 +114,31 @@ public class EditorUtil {
         return code.toString();
     }
 
-    public static JComponent printBlock(StringBuilder code, Block prevBlock, Block block, Project project, AssistantChat topComponent) {
+    public static JComponent printBlock(
+        final StringBuilder code,
+        final Block actionBlock,
+        final Block contentBlock,
+        final Project project,
+        final AssistantChat assistantChat
+    ) {
+        LOG.finest(
+            () -> "\n" + code + "\n"
+                + actionBlock + "\n"
+                + contentBlock + "\n"
+                + project + "\n"
+                + assistantChat
+        );
         JComponent pane;
-        if (block != null && (block.getType().equals("text") || block.getType().equals("web"))) {
+        if (contentBlock != null && (contentBlock.getType().equals("text") || contentBlock.getType().equals("web"))) {
+            LOG.finest(() -> "Creating a text/web pane");
             String html;
-            if (block.getType().equals("text")) {
-                html = renderer.render(parser.parse(block.getContent()));
+            if (contentBlock.getType().equals("text")) {
+                html = renderer.render(parser.parse(contentBlock.getContent()));
                 html = wrapClassNamesWithAnchor(html);
             } else {
-                html = block.getContent();
+                html = contentBlock.getContent();
             }
-            JEditorPane htmlPane = topComponent.createHtmlPane(html);
+            JEditorPane htmlPane = assistantChat.createHtmlPane(html);
             pane = htmlPane;
             htmlPane.addHyperlinkListener(e -> {
                 if (HyperlinkEvent.EventType.ACTIVATED.equals(e.getEventType())) {
@@ -152,31 +172,38 @@ public class EditorUtil {
                     }
                 }
             });
-        } else if (prevBlock != null && block != null && block.getType().equals("action")) {
-           FileAction action = FileActionParser.parse(block.getContent(), prevBlock.getContent());
-            code.append('\n').append(block.getContent()).append('\n');
-            pane = topComponent.createPane();
-            if (project != null) {
-                ((JEditorPane) pane).setText("> " + action.getAction() + " " + action.getPath());
-                try {
-                    FileActionExecutor.applyFileActionsToProject(project, action);
-                } catch (Exception ex) {
-                    Exceptions.printStackTrace(ex);
-                }
-            } else {
-                ((JEditorPane) pane).setText("> Project instance not found to " + action.getAction() + " " + action.getPath());
-            }
+        } else if (
+            actionBlock != null &&
+            contentBlock != null &&
+            project != null
+        ) {
+            LOG.finest(() -> "Creating an action pane");
+
+            //
+            // This is text for which we have an action and the chat is attached
+            // to a project. In the case the project is null the block can be
+            // handled as a normal block.
+            //
+
+            FileAction action = FileActionParser.parse(actionBlock.getContent(), contentBlock.getContent());
+            code.append('\n').append(contentBlock.getContent()).append('\n');
+            pane = assistantChat.createActionPane(action);
         } else {
-            code.append('\n').append(block.getContent()).append('\n');
-            String mimeType = getMimeType(block.getType());
+            LOG.finest(() -> "Creating specialized pane");
+            code.append('\n').append(contentBlock.getContent()).append('\n');
+            String mimeType = getMimeType(contentBlock.getType());
             if (MIME_PUML.equals(mimeType)) {
-                pane = topComponent.createSVGPane(block);
+                LOG.finest(() -> "Creating an SVG pane");
+                pane = assistantChat.createSVGPane(contentBlock);
             } else if (MIME_MARKDOWN.equals(mimeType)) {
-                pane = topComponent.createMarkdownPane(block);
+                LOG.finest(() -> "Creating a Markdown pane");
+                pane = assistantChat.createMarkdownPane(contentBlock);
             } else if (MIME_MERMAID.equals(mimeType)) {
-                pane = topComponent.createMermaidPane(block);
+                LOG.finest(() -> "Creating an Mermaid pane");
+                pane = assistantChat.createMermaidPane(contentBlock);
             } else {
-                pane = topComponent.createCodePane(mimeType, block);
+                LOG.finest(() -> "Creating an generic code pane");
+                pane = assistantChat.createCodePane(mimeType, contentBlock);
             }
         }
         return pane;
@@ -572,7 +599,7 @@ public class EditorUtil {
         try {
             return document.getText(startOffset, endOffset - startOffset);
         } catch (BadLocationException ex) {
-            LOGGER.log(Level.WARNING, ex.getMessage());
+            LOG.log(Level.WARNING, ex.getMessage());
         }
         return ""; // NOI18N
     }
