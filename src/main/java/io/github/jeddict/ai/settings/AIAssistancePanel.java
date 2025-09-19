@@ -1103,7 +1103,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
     private void modelComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_modelComboBoxActionPerformed
         String selectedContext = (String) modelComboBox.getSelectedItem();
         if (selectedContext != null && getModel(selectedContext) != null) {
-            modelHelp.setText("<html><p>" + getModel(selectedContext).getDescription() + "</p></html>");
+            modelHelp.setText("<html><p>" + getModel(selectedContext).description() + "</p></html>");
         } else {
             modelHelp.setText("");
         }
@@ -1413,8 +1413,8 @@ final class AIAssistancePanel extends javax.swing.JPanel {
 
         if (models == null) {
             models = MODELS.values().stream()
-                .filter(model -> model.getProvider().equals(selectedProvider))
-                .map(GenAIModel::getName)
+                .filter(model -> model.provider().equals(selectedProvider))
+                .map(GenAIModel::name)
                 .collect(Collectors.toList());
         }
         Collections.sort(models);
