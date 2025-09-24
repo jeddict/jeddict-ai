@@ -21,7 +21,7 @@ import static com.sun.source.tree.Tree.Kind.METHOD;
 import com.sun.source.util.TreePath;
 import io.github.jeddict.ai.JeddictUpdateManager;
 import io.github.jeddict.ai.completion.Action;
-import io.github.jeddict.ai.lang.JeddictChatModel;
+import io.github.jeddict.ai.lang.JeddictBrain;
 import static io.github.jeddict.ai.scanner.ProjectClassScanner.getClassDataContent;
 import io.github.jeddict.ai.settings.PreferencesManager;
 import io.github.jeddict.ai.util.SourceUtil;
@@ -105,14 +105,14 @@ public class MethodFix extends JavaFix {
                         prefsManager.getClassContext()
                 );
                     
-                content = new JeddictChatModel().fixMethodCompilationError(
+                content = new JeddictBrain().fixMethodCompilationError(
                 FileOwnerQuery.getOwner(copy.getFileObject()), 
                 treePath.getParentPath().getLeaf().toString(), 
                 leaf.toString(), 
                 compliationError,
                 classDataContent);
             } else if (action == Action.ENHANCE) {
-                content = new JeddictChatModel().enhanceMethodFromMethodContent(
+                content = new JeddictBrain().enhanceMethodFromMethodContent(
                 FileOwnerQuery.getOwner(copy.getFileObject()), 
                 treePath.getParentPath().getLeaf().toString(), leaf.toString());
             } else {
@@ -120,7 +120,7 @@ public class MethodFix extends JavaFix {
                 if (query == null) {
                     return;
                 }
-                content = new JeddictChatModel().updateMethodFromDevQuery(
+                content = new JeddictBrain().updateMethodFromDevQuery(
                 FileOwnerQuery.getOwner(copy.getFileObject()), 
                 treePath.getParentPath().getLeaf().toString(), leaf.toString(), query);
             }

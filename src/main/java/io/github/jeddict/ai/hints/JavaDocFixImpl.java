@@ -29,7 +29,7 @@ import com.sun.source.util.TreePath;
 import io.github.jeddict.ai.JeddictUpdateManager;
 import io.github.jeddict.ai.completion.Action;
 import static io.github.jeddict.ai.completion.Action.ENHANCE;
-import io.github.jeddict.ai.lang.JeddictChatModel;
+import io.github.jeddict.ai.lang.JeddictBrain;
 import static io.github.jeddict.ai.util.SourceUtil.geIndentaion;
 import io.github.jeddict.ai.util.StringUtil;
 import static io.github.jeddict.ai.util.StringUtil.removeCodeBlockMarkers;
@@ -93,33 +93,33 @@ public class JavaDocFixImpl extends JavaFix {
             case CLASS:
             case INTERFACE:
                 if (action == ENHANCE) {
-                    javadocContent = new JeddictChatModel().enhanceJavadocForClass(
+                    javadocContent = new JeddictBrain().enhanceJavadocForClass(
                 FileOwnerQuery.getOwner(copy.getFileObject()), 
                 oldDocCommentTree.toString(), tree.toString());
                 } else {
-                    javadocContent = new JeddictChatModel().generateJavadocForClass(
+                    javadocContent = new JeddictBrain().generateJavadocForClass(
                 FileOwnerQuery.getOwner(copy.getFileObject()), 
                 tree.toString());
                 }
                 break;
             case METHOD:
                 if (action == ENHANCE) {
-                    javadocContent = new JeddictChatModel().enhanceJavadocForMethod(
+                    javadocContent = new JeddictBrain().enhanceJavadocForMethod(
                 FileOwnerQuery.getOwner(copy.getFileObject()), 
                 oldDocCommentTree.toString(), ((MethodTree) tree).toString());
                 } else {
-                    javadocContent = new JeddictChatModel().generateJavadocForMethod(
+                    javadocContent = new JeddictBrain().generateJavadocForMethod(
                 FileOwnerQuery.getOwner(copy.getFileObject()), 
                 ((MethodTree) tree).toString());
                 }
                 break;
             case VARIABLE:
                 if (action == ENHANCE) {
-                    javadocContent = new JeddictChatModel().enhanceJavadocForField(
+                    javadocContent = new JeddictBrain().enhanceJavadocForField(
                 FileOwnerQuery.getOwner(copy.getFileObject()), 
                 oldDocCommentTree.toString(), ((VariableTree) tree).toString());
                 } else {
-                    javadocContent = new JeddictChatModel().generateJavadocForField(
+                    javadocContent = new JeddictBrain().generateJavadocForField(
                 FileOwnerQuery.getOwner(copy.getFileObject()), 
                 ((VariableTree) tree).toString());
                 }

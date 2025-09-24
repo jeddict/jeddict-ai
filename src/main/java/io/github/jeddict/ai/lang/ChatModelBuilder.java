@@ -20,8 +20,11 @@ import java.time.Duration;
 import java.util.Map;
 
 /**
- * A specialized builder interface for constructing ChatLanguageModel instances. This interface extends ChatModelBaseBuilder to provide specific building capabilities for
- * chat-based language models. It inherits all configuration methods from the base builder while specifically targeting ChatLanguageModel as the build output type.
+ * A specialized builder interface for constructing ChatLanguageModel instances.
+ * This interface extends ChatModelBaseBuilder to provide specific building
+ * capabilities for chat-based language models. It inherits all configuration
+ * methods from the base builder while specifically targeting ChatLanguageModel
+ * as the build output type.
  *
  * @author Francois Steyn
  * @see ChatModel

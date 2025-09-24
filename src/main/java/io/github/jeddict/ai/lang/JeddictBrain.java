@@ -21,57 +21,314 @@ package io.github.jeddict.ai.lang;
  */
 import com.sun.source.tree.Tree;
 import com.sun.source.util.TreePath;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.TokenStream;
+import io.github.jeddict.ai.agent.AbstractTool;
+import io.github.jeddict.ai.agent.Assistant;
+import io.github.jeddict.ai.agent.ExecutionTools;
+import io.github.jeddict.ai.agent.ExplorationTools;
+import io.github.jeddict.ai.agent.FileSystemTools;
+import io.github.jeddict.ai.agent.GradleTools;
+import io.github.jeddict.ai.agent.MavenTools;
+import io.github.jeddict.ai.agent.RefactoringTools;
 import io.github.jeddict.ai.response.Response;
+import io.github.jeddict.ai.response.TokenHandler;
+import io.github.jeddict.ai.scanner.ProjectMetadataInfo;
 import io.github.jeddict.ai.settings.PreferencesManager;
 import static io.github.jeddict.ai.util.MimeUtil.MIME_TYPE_DESCRIPTIONS;
-import static io.github.jeddict.ai.util.ProjectUtil.getSourceFilesRelativePath;
 import static io.github.jeddict.ai.util.StringUtil.removeCodeBlockMarkers;
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JTextField;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.netbeans.api.project.Project;
+import org.openide.filesystems.FileUtil;
 
-public class JeddictChatModel extends JeddictChatModelBuilder {
+//
+// TODO: shall we combine the processing in using always StreamingModels
+// providing an adapter for not streaming mode?
+//
+public class JeddictBrain {
+
+    public final Optional<StreamingChatResponseHandler> streamHandler;
+    public final Optional<ChatModel> chatModel;
+    public final Optional<StreamingChatModel> streamingChatModel;
+    public final String modelName;
+
+    protected final PreferencesManager pm = PreferencesManager.getInstance(); // TODO: P2 - remove dependencies on PM
+    protected final PropertyChangeSupport progressListeners = new PropertyChangeSupport(this);
 
     private static final String jsonRequest = """
-    Return a JSON array with a few best suggestions without any additional text or explanation. Each element should be an object containing two fields: 'imports' and 'snippet'. 
-    'imports' should be an array of required Java import statements (if no imports are required, return an empty array). 
-    'snippet' should contain the suggested code as a text block, which may include multiple lines formatted as a single string using \\n for line breaks. 
-    Make sure to escape any double quotes within the snippet using a backslash (\\) so that the JSON remains valid. 
+    Return a JSON array with a few best suggestions without any additional text or explanation. Each element should be an object containing two fields: 'imports' and 'snippet'.
+    'imports' should be an array of required Java import statements (if no imports are required, return an empty array).
+    'snippet' should contain the suggested code as a text block, which may include multiple lines formatted as a single string using \\n for line breaks.
+    Make sure to escape any double quotes within the snippet using a backslash (\\) so that the JSON remains valid.
 
     """;
 
     private static final String singleJsonRequest = """
-    Return a JSON object with a single best suggestion without any additional text or explanation. The object should contain two fields: 'imports' and 'snippet'. 
-    'imports' should be an array of required Java import statements (if no imports are required, return an empty array). 
-    'snippet' should contain the suggested code as a text block, which may include multiple lines formatted as a single string using \\n for line breaks. 
-    Make sure to escape any double quotes within the snippet using a backslash (\\) so that the JSON remains valid. 
+    Return a JSON object with a single best suggestion without any additional text or explanation. The object should contain two fields: 'imports' and 'snippet'.
+    'imports' should be an array of required Java import statements (if no imports are required, return an empty array).
+    'snippet' should contain the suggested code as a text block, which may include multiple lines formatted as a single string using \\n for line breaks.
+    Make sure to escape any double quotes within the snippet using a backslash (\\) so that the JSON remains valid.
 
     """;
 
     private static final String jsonRequestWithDescription = """
-    Return a JSON array with a few best suggestions without any additional text or explanation. Each element should be an object containing three fields: 'imports', 'snippet', and 'description'. 
-    'imports' should be an array of required Java import statements (if no imports are required, return an empty array). 
-    'snippet' should contain the suggested code as a text block, which may include multiple lines formatted as a single string using \\n for line breaks. 
-    'description' should be a very short explanation of what the snippet does and why it might be appropriate in this context, formatted with <b>, <br> and optionally, if required, include any important link with <a href=''> tags. 
-    Make sure to escape any double quotes within the snippet and description using a backslash (\\) so that the JSON remains valid. 
+    Return a JSON array with a few best suggestions without any additional text or explanation. Each element should be an object containing three fields: 'imports', 'snippet', and 'description'.
+    'imports' should be an array of required Java import statements (if no imports are required, return an empty array).
+    'snippet' should contain the suggested code as a text block, which may include multiple lines formatted as a single string using \\n for line breaks.
+    'description' should be a very short explanation of what the snippet does and why it might be appropriate in this context, formatted with <b>, <br> and optionally, if required, include any important link with <a href=''> tags.
+    Make sure to escape any double quotes within the snippet and description using a backslash (\\) so that the JSON remains valid.
 
     """;
 
-    public JeddictChatModel() {
+    public JeddictBrain() {
+        this.streamHandler = Optional.empty();
+        this.streamingChatModel = Optional.empty();
+        this.chatModel = Optional.empty();
+        this.modelName = null;
     }
 
-    public JeddictChatModel(JeddictStreamHandler handler) {
-        super(handler);
+    public JeddictBrain(StreamingChatResponseHandler handler) {
+        this(handler, null);
     }
 
-    public JeddictChatModel(JeddictStreamHandler handler, String modelName) {
-        super(handler, modelName);
+    public JeddictBrain(StreamingChatResponseHandler handler, String modelName) {
+        this.streamHandler = (handler != null) ? Optional.of(handler) : Optional.empty();
+        this.modelName = (modelName == null) ? pm.getModelName() : modelName;
+
+        JeddictChatModelBuilder builder = new JeddictChatModelBuilder(handler, this.modelName);
+
+        if (pm.isStreamEnabled() && handler != null) {
+            this.streamingChatModel = Optional.of(builder.buildStreaming());  // TODO: P2 - turn this into a Factory
+            this.chatModel = Optional.empty();
+        } else {
+            this.chatModel = Optional.of(builder.build());
+            this.streamingChatModel = Optional.empty(); // TODO: P2 - turn this into a Factory
+        }
+    }
+
+    public String generate(final Project project, final String prompt) {
+        return generateInternal(project, false, prompt, null, null);
+    }
+
+    public String generate(final Project project, final String prompt, List<String> images, List<Response> responseHistory) {
+        return generateInternal(project, false, prompt, images, responseHistory);
+    }
+
+    public String generate(final Project project, boolean agentEnabled, final String prompt) {
+        return generateInternal(project, agentEnabled, prompt, null, null);
+    }
+
+    public String generate(final Project project, boolean agentEnabled, final String prompt, List<String> images, List<Response> responseHistory) {
+        return generateInternal(project, agentEnabled, prompt, images, responseHistory);
+    }
+
+    public UserMessage buildUserMessage(String prompt, List<String> imageBase64Urls) {
+        List<Content> parts = new ArrayList<>();
+
+        // Add the prompt text
+        parts.add(new TextContent(prompt));
+
+        // Add each image as ImageContent
+        for (String imageUrl : imageBase64Urls) {
+            parts.add(new ImageContent(imageUrl));
+        }
+
+        // Convert list to varargs
+        return UserMessage.from(parts.toArray(new Content[0]));
+    }
+
+    private String generateInternal(Project project, boolean agentEnabled, String prompt, List<String> images, List<Response> responseHistory) {
+        if (chatModel.isEmpty() && streamHandler.isEmpty()) {
+            throw new IllegalStateException("AI assistance model not intitalized, this looks like a bug!");
+        }
+
+        if (project != null) {
+            prompt = prompt + "\n" + ProjectMetadataInfo.get(project);
+        }
+        String systemMessage = null;
+        String globalRules = PreferencesManager.getInstance().getGlobalRules();
+        if (globalRules != null) {
+            systemMessage = globalRules;
+        }
+        if (project != null) {
+            String projectRules = PreferencesManager.getInstance().getProjectRules(project);
+            if (projectRules != null) {
+                systemMessage = systemMessage + '\n' + projectRules;
+            }
+        }
+        List<ChatMessage> messages = new ArrayList<>();
+        if (systemMessage != null && !systemMessage.trim().isEmpty()) {
+            messages.add(SystemMessage.from(systemMessage));
+        }
+
+        // add conversation history (multiple responses)
+        if (responseHistory != null && !responseHistory.isEmpty()) {
+            for (Response res : responseHistory) {
+                messages.add(UserMessage.from(res.getQuery()));
+                messages.add(AiMessage.from(res.toString()));
+            }
+        }
+
+        if (images != null && !images.isEmpty()) {
+            messages.add(buildUserMessage(prompt, images));
+        } else {
+            messages.add(UserMessage.from(prompt));
+        }
+        //
+        // TODO: P3 - decouple token counting from saving stats; saving stats should listen to this event
+        //
+        progressListeners.firePropertyChange("tokens", 0, TokenHandler.saveInputToken(messages));
+
+        try {
+            if (streamHandler.isPresent()) {
+                final StreamingChatResponseHandler handler = streamHandler.get();
+                //streamHandler.setHandle(handle);  // TODO: P1 - this must be done by the caller
+                if(agentEnabled) {
+                    AiServices<Assistant> builder = AiServices.builder(Assistant.class)
+                        .tools(buildToolsList(project).toArray());
+
+                    if (streamingChatModel.isPresent()) {
+                        builder = builder.streamingChatModel(streamingChatModel.get());
+                    } else {
+                        builder = builder.chatModel(chatModel.get());
+                    }
+
+                    final Assistant assistant = builder.build();
+
+                    TokenStream tokenStream = assistant.stream(messages);
+                    tokenStream
+                            .onCompleteResponse(partial -> {
+                                handler.onCompleteResponse(partial);
+                            })
+                            .onPartialResponse(partial -> {
+                                handler.onPartialResponse(partial);
+                            })
+                            .onError(error -> {
+                                handler.onError(error);
+                            })
+                            .start();
+                } else {
+                    streamingChatModel.get().chat(messages, handler);
+                }
+            } else {
+                ChatModel model = chatModel.get();
+                String response;
+                if (agentEnabled) {
+                    Assistant assistant = AiServices.builder(Assistant.class)
+                            .chatModel(model)
+                            .tools(buildToolsList(project).toArray())
+                            .build();
+                    response = assistant.chat(messages).aiMessage().text();
+                } else {
+                    response = model.chat(messages).aiMessage().text();
+                }
+                CompletableFuture.runAsync(() -> TokenHandler.saveOutputToken(response));
+                return response;
+            }
+        } catch (Exception e) {
+            String errorMessage = e.getMessage();
+            if (e.getCause() != null && e.getCause().getMessage() != null) {
+                //
+                // let's pretend it is a JSON object, if not, ignore it
+                //
+                try {
+                    JSONObject jsonObject = new JSONObject(e.getCause().getMessage());
+                    if (jsonObject.has("error") && jsonObject.getJSONObject("error").has("message")) {
+                        errorMessage = jsonObject.getJSONObject("error").getString("message");
+                    }
+                } catch (Throwable x) {
+                    //
+                    // It was not a proper JSON
+                    //
+                }
+            }
+            if (errorMessage != null
+                    && errorMessage.toLowerCase().contains("incorrect api key")) {
+                //
+                // TODO: P2 - remove dependencies on swing, this must be done by the caller
+                //
+                JTextField apiKeyField = new JTextField(20);
+                JPanel panel = new JPanel();
+                panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS)); // Set layout to BoxLayout
+
+                panel.add(new JLabel("Incorrect API key. Please enter a new key:"));
+                panel.add(Box.createVerticalStrut(10)); // Add space between label and text field
+                panel.add(apiKeyField);
+
+                int option = JOptionPane.showConfirmDialog(null, panel,
+                        pm.getProvider().name() + " API Key Required", JOptionPane.OK_CANCEL_OPTION);
+                if (option == JOptionPane.OK_OPTION) {
+                    pm.setApiKey(apiKeyField.getText().trim());
+                }
+            } else {
+                JOptionPane.showMessageDialog(null,
+                        "AI assistance failed to generate the requested response: " + errorMessage,
+                        "Error in AI Assistance",
+                        JOptionPane.ERROR_MESSAGE);
+                streamHandler.ifPresent((handler) -> handler.onError(e));
+            }
+        }
+        return null;
+    }
+
+    private List<AbstractTool> buildToolsList(Project project) {
+        //
+        // TODO: make this automatic with some discoverability approach (maybe
+        // NB lookup registration?)
+        //
+        final String basedir =
+            FileUtil.toPath(project.getProjectDirectory())
+            .toAbsolutePath().normalize()
+            .toString();
+
+        final List<AbstractTool> toolsList = List.of(
+            new ExecutionTools(
+                basedir, project.getProjectDirectory().getName(),
+                pm.getBuildCommand(project), pm.getTestCommand(project)
+            ),
+            new ExplorationTools(basedir, project.getLookup()),
+            new FileSystemTools(basedir),
+            new GradleTools(basedir),
+            new MavenTools(basedir),
+            new RefactoringTools(basedir)
+        );
+
+        //
+        // The handler wants to know about tool execution
+        //
+        toolsList.forEach((tool) -> tool.addPropertyChangeListener(
+            (PropertyChangeListener)streamHandler.get()
+        )); // TODO: P2 - improve the design here .... we want a PropertyChangeListener
+            //       without bringing too many dependencies
+
+        return toolsList;
     }
 
     public String generateJavadocForClass(Project project, String classContent) {
@@ -174,15 +431,15 @@ public class JeddictChatModel extends JeddictChatModelBuilder {
 
     public String updateMethodFromDevQuery(Project project, String javaClassContent, String methodContent, String developerRequest) {
         String prompt = """
-            You are an API server that enhances Java methods based on user requests. 
-            Given the following Java method and the developer's request, modify and enhance the method accordingly. 
+            You are an API server that enhances Java methods based on user requests.
+            Given the following Java method and the developer's request, modify and enhance the method accordingly.
             Incorporate any specific details or requirements mentioned by the developer. Do not include any additional text or explanation, just return the enhanced Java method source code.
 
-            Include all necessary imports relevant to the enhanced or newly created method. 
-            Return only the Java method and its necessary imports, without including any class declarations, constructors, or other boilerplate code. 
+            Include all necessary imports relevant to the enhanced or newly created method.
+            Return only the Java method and its necessary imports, without including any class declarations, constructors, or other boilerplate code.
             Do not include full java class, any additional text or explanation, just the imports and the method source code.
 
-            Format the output as a JSON object with two fields: 'imports' (list of necessary imports) and 'methodContent'. 
+            Format the output as a JSON object with two fields: 'imports' (list of necessary imports) and 'methodContent'.
             Developer Request:
             """ + developerRequest + """
 
@@ -199,13 +456,13 @@ public class JeddictChatModel extends JeddictChatModelBuilder {
 
     public String enhanceMethodFromMethodContent(Project project, String javaClassContent, String methodContent) {
         String prompt = """
-            You are an API server that enhances or creates Java methods based on the method name, comments, and its content. 
-            Given the following Java class content and Java method content, modify and enhance the method accordingly. 
-            Include all necessary imports relevant to the enhanced or newly created method. 
-            Return only the Java method and its necessary imports, without including any class declarations, constructors, or other boilerplate code. 
+            You are an API server that enhances or creates Java methods based on the method name, comments, and its content.
+            Given the following Java class content and Java method content, modify and enhance the method accordingly.
+            Include all necessary imports relevant to the enhanced or newly created method.
+            Return only the Java method and its necessary imports, without including any class declarations, constructors, or other boilerplate code.
             Do not include full java class, any additional text or explanation, just the imports and the method source code.
 
-            Format the output as a JSON object with two fields: 'imports' (list of necessary imports) and 'methodContent'. 
+            Format the output as a JSON object with two fields: 'imports' (list of necessary imports) and 'methodContent'.
             Java Class Content:
             """ + javaClassContent + """
 
@@ -219,14 +476,14 @@ public class JeddictChatModel extends JeddictChatModelBuilder {
 
     public String fixMethodCompilationError(Project project, String javaClassContent, String methodContent, String errorMessage, String classDatas) {
         String prompt = """
-            You are an API server that fixes compilation errors in Java methods based on the provided error messages. 
-            Given the following Java method content, class content, and the error message, correct the method accordingly. 
-            Ensure that all compilation errors indicated by the error message are resolved. 
-            Include any necessary imports relevant to the fixed method. 
-            Return only the corrected Java method and its necessary imports, without including any class declarations, constructors, or other boilerplate code. 
+            You are an API server that fixes compilation errors in Java methods based on the provided error messages.
+            Given the following Java method content, class content, and the error message, correct the method accordingly.
+            Ensure that all compilation errors indicated by the error message are resolved.
+            Include any necessary imports relevant to the fixed method.
+            Return only the corrected Java method and its necessary imports, without including any class declarations, constructors, or other boilerplate code.
             Do not include full Java class, any additional text, or explanation—just the imports and the corrected method source code.
 
-            Format the output as a JSON object with two fields: 'imports' (list of necessary imports) and 'methodContent'. 
+            Format the output as a JSON object with two fields: 'imports' (list of necessary imports) and 'methodContent'.
             Error Message:
             """ + errorMessage + """
 
@@ -244,14 +501,14 @@ public class JeddictChatModel extends JeddictChatModelBuilder {
 
     public String fixVariableError(Project project, String javaClassContent, String errorMessage, String classDatas) {
         String prompt = """
-            You are an API server that fixes variable-related compilation errors in Java classes based on the provided error messages. 
-            Given the following Java class content and the error message, correct given variable-related issues based on error message at class level. 
-            Ensure that all compilation errors indicated by the error message, such as undeclared variables, incorrect variable types, or misuse of variables, are resolved. 
-            Include any necessary imports relevant to the fixed method or class. 
-            Return only the corrected variable content and its necessary imports, without including any unnecessary boilerplate code. 
+            You are an API server that fixes variable-related compilation errors in Java classes based on the provided error messages.
+            Given the following Java class content and the error message, correct given variable-related issues based on error message at class level.
+            Ensure that all compilation errors indicated by the error message, such as undeclared variables, incorrect variable types, or misuse of variables, are resolved.
+            Include any necessary imports relevant to the fixed method or class.
+            Return only the corrected variable content and its necessary imports, without including any unnecessary boilerplate code.
             Do not include any additional text or explanation—just the imports and the corrected variable source code.
 
-            Format the output as a JSON object with two fields: 'imports' (list of necessary imports) and 'variableContent' (corrected variable line or content). 
+            Format the output as a JSON object with two fields: 'imports' (list of necessary imports) and 'variableContent' (corrected variable line or content).
             Error Message:
             """ + errorMessage + """
 
@@ -266,8 +523,8 @@ public class JeddictChatModel extends JeddictChatModelBuilder {
 
     public String enhanceVariableName(String variableContext, String methodContent, String classContent) {
         StringBuilder prompt = new StringBuilder("""
-            You are an API server that suggests a more meaningful and descriptive name for a specific variable in a given Java class. 
-            Based on the provided Java class content and the variable context, suggest an improved name for the variable. 
+            You are an API server that suggests a more meaningful and descriptive name for a specific variable in a given Java class.
+            Based on the provided Java class content and the variable context, suggest an improved name for the variable.
             Return only the new variable name. Do not include any additional text or explanation.
 
             Variable Context:
@@ -287,8 +544,8 @@ public class JeddictChatModel extends JeddictChatModelBuilder {
 
     public List<String> suggestVariableNames(String classDatas, String variablePrefix, String classContent, String variableExpression) {
         String prompt = """
-        You are an API server that suggests a list of meaningful and descriptive names for a specific variable in a given Java class. 
-        Based on the provided Java class content, variable prefix, and variable expression, generate a list of improved names for the variable. 
+        You are an API server that suggests a list of meaningful and descriptive names for a specific variable in a given Java class.
+        Based on the provided Java class content, variable prefix, and variable expression, generate a list of improved names for the variable.
         Return only the list of suggested names, one per line, without any additional text or explanation.
 
         Variable Prefix: %s
@@ -723,7 +980,7 @@ public class JeddictChatModel extends JeddictChatModelBuilder {
         StringBuilder prompt = new StringBuilder();
         prompt.append("You are an API server that generates commit message suggestions based on the provided 'git diff' and 'git status' output. ")
                 .append("""
-                    Please provide various types of commit messages based on the changes: 
+                    Please provide various types of commit messages based on the changes:
                     Your goal is to create commit messages that reflect business or domain features rather than technical details like dependency updates or refactoring.
                     """)
                 .append("- Very Short\n")
@@ -809,15 +1066,15 @@ Expected YAML format:
                 .append("\n")
                 .append("""
                     There are two possible scenarios for your response:
-                    
-                    1. **SQL Queries and Database-Related Questions**: 
+
+                    1. **SQL Queries and Database-Related Questions**:
                        - Analyze the provided metadata and generate a relevant SQL query that addresses the developer's inquiry.
                        - Include a detailed explanation of the query, clarifying its purpose and how it relates to the developer's question.
                        - Ensure that the SQL syntax adheres to the database structure, constraints, and relationships.
                        - The full SQL query should be wrapped in ```sql for proper formatting.
                        - Avoid wrapping individual SQL keywords or table/column names in <code> tags, and do not wrap any partial SQL query segments in <code> tags.
 
-                    2. **Generating Specific Code from Database Metadata**: 
+                    2. **Generating Specific Code from Database Metadata**:
                        - If the developer requests specific code snippets related to the database metadata, generate the appropriate code and include a clear description of its functionality and relevance.
                     """);
 
@@ -1020,11 +1277,11 @@ Expected YAML format:
                         .append("\nRecommend appropriate additions at the placeholder ${SUGGEST_CODE}. ");
             }
             prompt.append("""
-                  Ensure the suggestions align with the file's context and structure. 
-                  Respond with a JSON array containing a few of the best options. 
-                  Each entry should have one field, 'snippet', holding the recommended code block. 
+                  Ensure the suggestions align with the file's context and structure.
+                  Respond with a JSON array containing a few of the best options.
+                  Each entry should have one field, 'snippet', holding the recommended code block.
                   The code block can contain multiple lines, formatted as a single string using \\n for line breaks.
-                  
+
                   File Content:
                   """).append(fileContent);
         }
@@ -1046,15 +1303,15 @@ Expected YAML format:
         }
 
         prompt.append("""
-          Ensure the SQL queries match the database structure, constraints, and relationships. 
-          Respond with a JSON array containing the best SQL query options. 
+          Ensure the SQL queries match the database structure, constraints, and relationships.
+          Respond with a JSON array containing the best SQL query options.
           Each entry should have one field, 'snippet', holding the recommended SQL query block, which may include multiple lines formatted as a single string using \\n for line breaks.
           """);
 
         // Include description if enabled
         if (pm.isDescriptionEnabled()) {
             prompt.append("""
-          Additionally, each entry should contain a 'description' field providing a very short explanation of what the query does and why it might be appropriate in this context, 
+          Additionally, each entry should contain a 'description' field providing a very short explanation of what the query does and why it might be appropriate in this context,
           formatted with <b>, <br> tags, and optionally, if required, include any important link with <a href=''> tags.
           """);
         }
@@ -1064,6 +1321,14 @@ Expected YAML format:
         String jsonResponse = generate(null, prompt.toString());
         List<Snippet> sqlQueries = parseJsonToSnippets(jsonResponse);
         return sqlQueries;
+    }
+
+    public void addProgressListener(final PropertyChangeListener listener) {
+        progressListeners.addPropertyChangeListener(listener);
+    }
+
+    public void removeProgressListener(final PropertyChangeListener listener) {
+        progressListeners.removePropertyChangeListener(listener);
     }
 
 }

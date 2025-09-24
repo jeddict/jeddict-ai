@@ -15,26 +15,9 @@
  */
 package io.github.jeddict.ai.lang;
 
-import io.github.jeddict.ai.agent.Assistant;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.Content;
-import dev.langchain4j.data.message.ImageContent;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.service.AiServices;
-import dev.langchain4j.service.TokenStream;
-import io.github.jeddict.ai.JeddictUpdateManager;
-import io.github.jeddict.ai.agent.AbstractTool;
-import io.github.jeddict.ai.agent.ExecutionTools;
-import io.github.jeddict.ai.agent.ExplorationTools;
-import io.github.jeddict.ai.agent.FileSystemTools;
-import io.github.jeddict.ai.agent.GradleTools;
-import io.github.jeddict.ai.agent.MavenTools;
-import io.github.jeddict.ai.agent.RefactoringTools;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import io.github.jeddict.ai.lang.impl.AnthropicBuilder;
 import io.github.jeddict.ai.lang.impl.AnthropicStreamingBuilder;
 import io.github.jeddict.ai.lang.impl.GoogleBuilder;
@@ -48,10 +31,8 @@ import io.github.jeddict.ai.lang.impl.OllamaBuilder;
 import io.github.jeddict.ai.lang.impl.OllamaStreamingBuilder;
 import io.github.jeddict.ai.lang.impl.OpenAiBuilder;
 import io.github.jeddict.ai.lang.impl.OpenAiStreamingBuilder;
-import io.github.jeddict.ai.response.Response;
-import io.github.jeddict.ai.response.TokenHandler;
-import io.github.jeddict.ai.scanner.ProjectMetadataInfo;
 import static io.github.jeddict.ai.settings.GenAIProvider.ANTHROPIC;
+import static io.github.jeddict.ai.settings.GenAIProvider.COPILOT_PROXY;
 import static io.github.jeddict.ai.settings.GenAIProvider.CUSTOM_OPEN_AI;
 import static io.github.jeddict.ai.settings.GenAIProvider.DEEPINFRA;
 import static io.github.jeddict.ai.settings.GenAIProvider.DEEPSEEK;
@@ -65,23 +46,9 @@ import static io.github.jeddict.ai.settings.GenAIProvider.OPEN_AI;
 import static io.github.jeddict.ai.settings.GenAIProvider.PERPLEXITY;
 import io.github.jeddict.ai.settings.PreferencesManager;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import javax.swing.Box;
-import javax.swing.BoxLayout;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JTextField;
-import org.json.JSONObject;
-import org.netbeans.api.progress.ProgressHandle;
-import org.netbeans.api.project.Project;
-import org.openide.filesystems.FileUtil;
-import org.openide.util.NbBundle;
 
 /**
  *
@@ -89,75 +56,87 @@ import org.openide.util.NbBundle;
  */
 public class JeddictChatModelBuilder {
 
-    private ChatModel model;
-    private StreamingChatModel streamModel;
     protected static PreferencesManager pm = PreferencesManager.getInstance();
-    private JeddictStreamHandler handler;
+    private StreamingChatResponseHandler handler;
+    private String modelName;
 
     public JeddictChatModelBuilder() {
         this(null);
     }
 
-    public JeddictChatModelBuilder(JeddictStreamHandler handler) {
+    public JeddictChatModelBuilder(StreamingChatResponseHandler handler) {
         this(handler, pm.getModel());
     }
 
-    public JeddictChatModelBuilder(JeddictStreamHandler handler, String modelName) {
+    public JeddictChatModelBuilder(StreamingChatResponseHandler handler, String modelName) {
         this.handler = handler;
+        this.modelName = modelName; // P2 - TODO: can this be null?
+    }
 
-        if (null != modelName) {
-            if (pm.isStreamEnabled() && handler != null) {
-                switch (pm.getProvider()) {
+    public ChatModel build() {
+        if (modelName == null) {
+            throw new IllegalArgumentException("modelName can not be null");
+        }
 
-                    case GOOGLE -> {
-                        streamModel = buildModel(new GoogleStreamingBuilder(), modelName);
-                    }
-                    case OPEN_AI, DEEPINFRA, DEEPSEEK, GROQ, CUSTOM_OPEN_AI, COPILOT_PROXY, PERPLEXITY -> {
-                        streamModel = buildModel(new OpenAiStreamingBuilder(), modelName);
-                    }
-                    case MISTRAL -> {
-                        streamModel = buildModel(new MistralStreamingBuilder(), modelName);
-                    }
-                    case ANTHROPIC -> {
-                        streamModel = buildModel(new AnthropicStreamingBuilder(), modelName);
-                    }
-                    case OLLAMA -> {
-                        streamModel = buildModel(new OllamaStreamingBuilder(), modelName);
-                    }
-                    case LM_STUDIO -> {
-                        model = buildModel(new LMStudioBuilder(), modelName);
-                    }
-                    case GPT4ALL -> {
-                        streamModel = buildModel(new LocalAiStreamingBuilder(), modelName);
-                    }
-                }
-            } else {
-                switch (pm.getProvider()) {
-
-                    case GOOGLE -> {
-                        model = buildModel(new GoogleBuilder(), modelName);
-                    }
-                    case OPEN_AI, DEEPINFRA, DEEPSEEK, GROQ, CUSTOM_OPEN_AI, COPILOT_PROXY, PERPLEXITY -> {
-                        model = buildModel(new OpenAiBuilder(), modelName);
-                    }
-                    case MISTRAL -> {
-                        model = buildModel(new MistralBuilder(), modelName);
-                    }
-                    case ANTHROPIC -> {
-                        model = buildModel(new AnthropicBuilder(), modelName);
-                    }
-                    case OLLAMA -> {
-                        model = buildModel(new OllamaBuilder(), modelName);
-                    }
-                    case LM_STUDIO -> {
-                        model = buildModel(new LMStudioBuilder(), modelName);
-                    }
-                    case GPT4ALL -> {
-                        model = buildModel(new LocalAiBuilder(), modelName);
-                    }
-                }
+        ChatModel model = null;
+        switch (pm.getProvider()) {
+            case GOOGLE -> {
+                model = buildModel(new GoogleBuilder(), modelName);
+            }
+            case OPEN_AI, DEEPINFRA, DEEPSEEK, GROQ, CUSTOM_OPEN_AI, COPILOT_PROXY, PERPLEXITY -> {
+                model = buildModel(new OpenAiBuilder(), modelName);
+            }
+            case MISTRAL -> {
+                model = buildModel(new MistralBuilder(), modelName);
+            }
+            case ANTHROPIC -> {
+                model = buildModel(new AnthropicBuilder(), modelName);
+            }
+            case OLLAMA -> {
+                model = buildModel(new OllamaBuilder(), modelName);
+            }
+            case LM_STUDIO -> {
+                model = buildModel(new LMStudioBuilder(), modelName);
+            }
+            case GPT4ALL -> {
+                model = buildModel(new LocalAiBuilder(), modelName);
             }
         }
+
+        // TODO: P2 - what if none of those?
+
+        return model;
+    }
+
+    public StreamingChatModel buildStreaming() {
+        // TODO: P3 - if (!pm.isStreamEnabled() || handler != null) throw IllegalStateException
+
+        StreamingChatModel model = null;
+        switch (pm.getProvider()) {
+            case GOOGLE -> {
+                model = buildModel(new GoogleStreamingBuilder(), modelName);
+            }
+            case OPEN_AI, DEEPINFRA, DEEPSEEK, GROQ, CUSTOM_OPEN_AI, COPILOT_PROXY, PERPLEXITY -> {
+                model = buildModel(new OpenAiStreamingBuilder(), modelName);
+            }
+            case MISTRAL -> {
+                model = buildModel(new MistralStreamingBuilder(), modelName);
+            }
+            case ANTHROPIC -> {
+                model = buildModel(new AnthropicStreamingBuilder(), modelName);
+            }
+            case OLLAMA -> {
+                model = buildModel(new OllamaStreamingBuilder(), modelName);
+            }
+            case GPT4ALL -> {
+                model = buildModel(new LocalAiStreamingBuilder(), modelName);
+            }
+        }
+
+        // TODO: what if none of those?
+
+        return model;
+
     }
 
     private <T> void setIfValid(final Consumer<T> setter, final T value, final T invalidValue) {
@@ -205,193 +184,4 @@ public class JeddictChatModelBuilder {
     private <T> T buildModel(final ChatModelBaseBuilder<T> builder, String modelName) {
         return builderModel(builder, modelName).build();
     }
-
-    public String generate(final Project project, final String prompt) {
-        return generateInternal(project, false, prompt, null, null);
-    }
-
-    public String generate(final Project project, final String prompt, List<String> images, List<Response> responseHistory) {
-        return generateInternal(project, false, prompt, images, responseHistory);
-    }
-
-    public String generate(final Project project, boolean agentEnabled, final String prompt) {
-        return generateInternal(project, agentEnabled, prompt, null, null);
-    }
-
-    public String generate(final Project project, boolean agentEnabled, final String prompt, List<String> images, List<Response> responseHistory) {
-        return generateInternal(project, agentEnabled, prompt, images, responseHistory);
-    }
-
-    public UserMessage buildUserMessage(String prompt, List<String> imageBase64Urls) {
-        List<Content> parts = new ArrayList<>();
-
-        // Add the prompt text
-        parts.add(new TextContent(prompt));
-
-        // Add each image as ImageContent
-        for (String imageUrl : imageBase64Urls) {
-            parts.add(new ImageContent(imageUrl));
-        }
-
-        // Convert list to varargs
-        return UserMessage.from(parts.toArray(new Content[0]));
-    }
-
-    private String generateInternal(Project project, boolean agentEnabled, String prompt, List<String> images, List<Response> responseHistory) {
-        if (model == null && handler == null) {
-            JOptionPane.showMessageDialog(null,
-                    "AI assistance model not intitalized.",
-                    "Error in AI Assistance",
-                    JOptionPane.ERROR_MESSAGE);
-        }
-        if (project != null) {
-            prompt = prompt + "\n" + ProjectMetadataInfo.get(project);
-        }
-        String systemMessage = null;
-        String globalRules = PreferencesManager.getInstance().getGlobalRules();
-        if (globalRules != null) {
-            systemMessage = globalRules;
-        }
-        if (project != null) {
-            String projectRules = PreferencesManager.getInstance().getProjectRules(project);
-            if (projectRules != null) {
-                systemMessage = systemMessage + '\n' + projectRules;
-            }
-        }
-        List<ChatMessage> messages = new ArrayList<>();
-        if (systemMessage != null && !systemMessage.trim().isEmpty()) {
-            messages.add(SystemMessage.from(systemMessage));
-        }
-
-        // add conversation history (multiple responses)
-        if (responseHistory != null && !responseHistory.isEmpty()) {
-            for (Response res : responseHistory) {
-                messages.add(UserMessage.from(res.getQuery()));
-                messages.add(AiMessage.from(res.toString()));
-            }
-        }
-
-        if (images != null && !images.isEmpty()) {
-            messages.add(buildUserMessage(prompt, images));
-        } else {
-            messages.add(UserMessage.from(prompt));
-        }
-        int tokenCount = TokenHandler.saveInputToken(messages);
-        String handleMessage = NbBundle.getMessage(JeddictUpdateManager.class, "ProgressHandle", tokenCount);
-        ProgressHandle handle = ProgressHandle.createHandle(handleMessage);
-        handle.start();
-
-        try {
-            if (streamModel != null) {
-                handler.setHandle(handle);
-                if(agentEnabled) {
-                    Assistant assistant = AiServices.builder(Assistant.class)
-                            .streamingChatModel(streamModel)
-                            .tools(buildToolsList(project).toArray())
-                            .build();
-
-                    TokenStream tokenStream = assistant.stream(messages);
-                    tokenStream
-                            .onCompleteResponse(partial -> {
-                                handler.onCompleteResponse(partial);
-                            })
-                            .onPartialResponse(partial -> {
-                                handler.onPartialResponse(partial);
-                            })
-                            .onError(error -> {
-                                handler.onError(error);
-                            })
-                            .start();
-                } else {
-                    streamModel.chat(messages, handler);
-                }
-            } else {
-                String response;
-                if (agentEnabled) {
-                    Assistant assistant = AiServices.builder(Assistant.class)
-                            .chatModel(model)
-                            .tools(buildToolsList(project).toArray())
-                            .build();
-                    response = assistant.chat(messages).aiMessage().text();
-                } else {
-                    response = model.chat(messages).aiMessage().text();
-                }
-                CompletableFuture.runAsync(() -> TokenHandler.saveOutputToken(response));
-                handle.finish();
-                return response;
-            }
-        } catch (Exception e) {
-            String errorMessage = e.getMessage();
-            if (e.getCause() != null && e.getCause().getMessage() != null) {
-                //
-                // let's pretend it is a JSON object, if not, ignore it
-                //
-                try {
-                    JSONObject jsonObject = new JSONObject(e.getCause().getMessage());
-                    if (jsonObject.has("error") && jsonObject.getJSONObject("error").has("message")) {
-                        errorMessage = jsonObject.getJSONObject("error").getString("message");
-                    }
-                } catch (Throwable x) {
-                    //
-                    // It was not a proper JSON
-                    //
-                }
-            }
-            if (errorMessage != null
-                    && errorMessage.toLowerCase().contains("incorrect api key")) {
-                JTextField apiKeyField = new JTextField(20);
-                JPanel panel = new JPanel();
-                panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS)); // Set layout to BoxLayout
-
-                panel.add(new JLabel("Incorrect API key. Please enter a new key:"));
-                panel.add(Box.createVerticalStrut(10)); // Add space between label and text field
-                panel.add(apiKeyField);
-
-                int option = JOptionPane.showConfirmDialog(null, panel,
-                        pm.getProvider().name() + " API Key Required", JOptionPane.OK_CANCEL_OPTION);
-                if (option == JOptionPane.OK_OPTION) {
-                    pm.setApiKey(apiKeyField.getText().trim());
-                }
-            } else {
-                JOptionPane.showMessageDialog(null,
-                        "AI assistance failed to generate the requested response: " + errorMessage,
-                        "Error in AI Assistance",
-                        JOptionPane.ERROR_MESSAGE);
-                handler.onError(e);
-            }
-            handle.finish();
-        }
-        return null;
-    }
-
-    private List<AbstractTool> buildToolsList(Project project) {
-        //
-        // TODO: make this automatic with some discoverability approach (maybe
-        // NB lookup registration?)
-        //
-        final String basedir =
-            FileUtil.toPath(project.getProjectDirectory())
-            .toAbsolutePath().normalize()
-            .toString();
-
-        final List<AbstractTool> toolsList = List.of(
-            new ExecutionTools(
-                basedir, project.getProjectDirectory().getName(),
-                pm.getBuildCommand(project), pm.getTestCommand(project)
-            ),
-            new ExplorationTools(basedir, project.getLookup()),
-            new FileSystemTools(basedir),
-            new GradleTools(basedir),
-            new MavenTools(basedir),
-            new RefactoringTools(basedir)
-        );
-
-        //
-        // The hanlder wants to know about tool execution
-        //
-        toolsList.forEach((tool) -> tool.addPropertyChangeListener(handler));
-
-        return toolsList;
-    }
-
 }

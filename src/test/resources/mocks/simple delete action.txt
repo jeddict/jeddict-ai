@@ -1,0 +1,118 @@
+We can cleanly decouple the WireMock response transformation logic by moving it to a dedicated class, e.g., `MockFileResponseTransformer`. This makes the code more maintainable and extensible. Below are the changes required.
+
+---
+
+**1. Delete the not needed  transformer class**
+
+```action
+path=src/test/java/io/github/jeddict/ai/test/MockFileResponseTransformer.java
+action=delete
+```
+```java
+/**
+ * Copyright 2025 the original author or authors from the Jeddict project (https://jeddict.github.io/).
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package io.github.jeddict.ai.test;
+
+import com.github.tomakehurst.wiremock.extension.Parameters;
+import com.github.tomakehurst.wiremock.http.HttpHeaders;
+import com.github.tomakehurst.wiremock.http.Request;
+import com.github.tomakehurst.wiremock.http.Response;
+import com.github.tomakehurst.wiremock.http.ResponseDefinition;
+import com.github.tomakehurst.wiremock.http.ResponseDefinitionBuilder;
+import com.github.tomakehurst.wiremock.extension.ResponseTransformer;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+/**
+ * ResponseTransformer for serving mock files based on "use mock <file>".
+ *
+ * To use: Register with WireMock server using .extensions(this) and refer via name().
+ */
+public class MockFileResponseTransformer extends ResponseTransformer {
+
+    // Pattern to extract "use mock <path>" instruction from request body
+    private static final Pattern MOCK_INSTRUCTION_PATTERN =
+            Pattern.compile("use mock\\s+([\\w/\\\\.-]+\\.txt)", Pattern.CASE_INSENSITIVE);
+
+    @Override
+    public ResponseDefinition transform(
+        Request request,
+        ResponseDefinition responseDefinition,
+        com.github.tomakehurst.wiremock.common.FileSource files,
+        Parameters parameters
+    ) {
+        String body = request.getBodyAsString();
+        Matcher matcher = MOCK_INSTRUCTION_PATTERN.matcher(body);
+
+        if (matcher.find()) {
+            String mockFile = matcher.group(1);
+            Path mockPath = Path.of("src/test/resources/mocks").resolve(mockFile).normalize();
+
+            if (!mockPath.startsWith(Path.of("src/test/resources/mocks"))) {
+                // Security: prevent directory traversal
+                return ResponseDefinitionBuilder.responseDefinition()
+                        .withStatus(400)
+                        .withBody("Invalid mock file path: " + mockFile)
+                        .build();
+            }
+
+            if (!Files.exists(mockPath)) {
+                return ResponseDefinitionBuilder.responseDefinition()
+                        .withStatus(404)
+                        .withBody("Mock file not found: " + mockFile)
+                        .build();
+            }
+            try {
+                String mockContent = Files.readString(mockPath, StandardCharsets.UTF_8);
+                return ResponseDefinitionBuilder.responseDefinition()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "text/plain; charset=UTF-8")
+                        .withBody(mockContent)
+                        .build();
+            } catch (IOException ex) {
+                return ResponseDefinitionBuilder.responseDefinition()
+                        .withStatus(500)
+                        .withBody("Error reading mock file: " + ex.getMessage())
+                        .build();
+            }
+        }
+
+        // Fall-through: request does not specify a mock instruction.
+        return ResponseDefinitionBuilder.responseDefinition()
+                .withStatus(400)
+                .withBody("No 'use mock <mock-file>' instruction found in POST body.")
+                .build();
+    }
+
+    @Override
+    public String getName() {
+        return "mock-file-response";
+    }
+
+    @Override
+    public boolean applyGlobally() {
+        return false;
+    }
+}
+```
+
+---
+
+With this change the code will be cleaner and easier to mantain.
