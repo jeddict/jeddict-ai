@@ -77,6 +77,8 @@ public class JeddictBrainTest {
     }
 
     @Test
+    @Disabled // this seems to kick a dependency on AWT and therefore having a display;
+              // disabling until fixed
     public void add_and_remove_listeners() {
         final DummyStreamHandler H = new DummyStreamHandler();
         final String N = "jeddict";
