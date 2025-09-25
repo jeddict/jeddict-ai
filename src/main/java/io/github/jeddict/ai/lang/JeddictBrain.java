@@ -114,15 +114,16 @@ public class JeddictBrain {
         this.modelName = null;
     }
 
-    public JeddictBrain(StreamingChatResponseHandler handler) {
+    public JeddictBrain(final StreamingChatResponseHandler handler) {
         this(handler, null);
     }
 
-    public JeddictBrain(StreamingChatResponseHandler handler, String modelName) {
+    public JeddictBrain(final StreamingChatResponseHandler handler, final String modelName) {
         this.streamHandler = (handler != null) ? Optional.of(handler) : Optional.empty();
         this.modelName = (modelName == null) ? pm.getModelName() : modelName;
 
-        JeddictChatModelBuilder builder = new JeddictChatModelBuilder(handler, this.modelName);
+        final JeddictChatModelBuilder builder =
+            new JeddictChatModelBuilder(handler, this.modelName);
 
         if (pm.isStreamEnabled() && handler != null) {
             this.streamingChatModel = Optional.of(builder.buildStreaming());  // TODO: P2 - turn this into a Factory
@@ -207,33 +208,26 @@ public class JeddictBrain {
         progressListeners.firePropertyChange("tokens", 0, TokenHandler.saveInputToken(messages));
 
         try {
-            if (streamHandler.isPresent()) {
+            if (streamingChatModel.isPresent()) {
                 final StreamingChatResponseHandler handler = streamHandler.get();
-                //streamHandler.setHandle(handle);  // TODO: P1 - this must be done by the caller
                 if(agentEnabled) {
-                    AiServices<Assistant> builder = AiServices.builder(Assistant.class)
-                        .tools(buildToolsList(project).toArray());
+                    final Assistant assistant = AiServices.builder(Assistant.class)
+                        .streamingChatModel(streamingChatModel.get())
+                        .tools(buildToolsList(project).toArray())
+                        .build();
 
-                    if (streamingChatModel.isPresent()) {
-                        builder = builder.streamingChatModel(streamingChatModel.get());
-                    } else {
-                        builder = builder.chatModel(chatModel.get());
-                    }
-
-                    final Assistant assistant = builder.build();
-
-                    TokenStream tokenStream = assistant.stream(messages);
+                    final TokenStream tokenStream = assistant.stream(messages);
                     tokenStream
-                            .onCompleteResponse(partial -> {
-                                handler.onCompleteResponse(partial);
-                            })
-                            .onPartialResponse(partial -> {
-                                handler.onPartialResponse(partial);
-                            })
-                            .onError(error -> {
-                                handler.onError(error);
-                            })
-                            .start();
+                        .onCompleteResponse(partial -> {
+                            handler.onCompleteResponse(partial);
+                        })
+                        .onPartialResponse(partial -> {
+                            handler.onPartialResponse(partial);
+                        })
+                        .onError(error -> {
+                            handler.onError(error);
+                        })
+                        .start();
                 } else {
                     streamingChatModel.get().chat(messages, handler);
                 }
