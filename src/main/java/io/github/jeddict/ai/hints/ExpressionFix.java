@@ -21,7 +21,7 @@ import com.sun.source.tree.Tree;
 import com.sun.source.util.TreePath;
 import io.github.jeddict.ai.JeddictUpdateManager;
 import io.github.jeddict.ai.completion.Action;
-import io.github.jeddict.ai.lang.JeddictChatModel;
+import io.github.jeddict.ai.lang.JeddictBrain;
 import io.github.jeddict.ai.util.StringUtil;
 import org.netbeans.api.java.source.JavaSource;
 import org.netbeans.api.java.source.TreePathHandle;
@@ -60,7 +60,7 @@ public class ExpressionFix extends JavaFix {
         Tree leaf = treePath.getLeaf();
         String content;
         com.sun.source.tree.ExpressionStatementTree expressionStatement = (com.sun.source.tree.ExpressionStatementTree) leaf;
-        content = new JeddictChatModel().enhanceExpressionStatement(
+        content = new JeddictBrain().enhanceExpressionStatement(
                 FileOwnerQuery.getOwner(copy.getFileObject()),
                 treePath.getCompilationUnit().toString(),
                 treePath.getParentPath().getLeaf().toString(),

@@ -41,7 +41,7 @@ import io.github.jeddict.ai.components.MessageContextComponentAdapter;
 import static io.github.jeddict.ai.components.QueryPane.createIconButton;
 import static io.github.jeddict.ai.components.QueryPane.createStyledComboBox;
 import io.github.jeddict.ai.components.TokenUsageChartDialog;
-import io.github.jeddict.ai.lang.JeddictChatModel;
+import io.github.jeddict.ai.lang.JeddictBrain;
 import io.github.jeddict.ai.lang.JeddictStreamHandler;
 import io.github.jeddict.ai.response.Block;
 import io.github.jeddict.ai.response.Response;
@@ -100,11 +100,9 @@ import java.util.function.Consumer;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 import javax.swing.AbstractAction;
-import javax.swing.ActionMap;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
-import javax.swing.InputMap;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
@@ -122,7 +120,6 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.event.HyperlinkEvent;
 import javax.swing.text.Document;
-import org.netbeans.api.editor.completion.Completion;
 import org.netbeans.api.java.source.JavaSource;
 import org.netbeans.api.java.source.TreePathHandle;
 import org.netbeans.api.java.source.WorkingCopy;
@@ -146,7 +143,7 @@ import org.openide.windows.WindowManager;
  */
 public class AssistantChatManager extends JavaFix {
 
-    private static final Logger LOGGER = Logger.getLogger(AssistantChatManager.class.getCanonicalName());
+    private static final Logger LOG = Logger.getLogger(AssistantChatManager.class.getCanonicalName());
 
     private static final ExecutorService executorService = Executors.newSingleThreadExecutor();
     public static final String ASSISTANT_CHAT_MANAGER_KEY = "ASSISTANT_CHAT_MANAGER_KEY";
@@ -277,15 +274,15 @@ public class AssistantChatManager extends JavaFix {
                     String response;
                     if (action == Action.TEST) {
                         if (leaf instanceof MethodTree) {
-                            response = new JeddictChatModel(handler, getModelName()).generateTestCase(getProject(), null, null, leaf.toString(), null, null);
+                            response = newJeddictBrain(handler, getModelName()).generateTestCase(getProject(), null, null, leaf.toString(), null, null);
                         } else {
-                            response = new JeddictChatModel(handler, getModelName()).generateTestCase(getProject(), null, treePath.getCompilationUnit().toString(), null, null, null);
+                            response = newJeddictBrain(handler, getModelName()).generateTestCase(getProject(), null, treePath.getCompilationUnit().toString(), null, null, null);
                         }
                     } else {
                         if (leaf instanceof MethodTree) {
-                            response = new JeddictChatModel(handler, getModelName()).assistJavaMethod(getProject(), leaf.toString());
+                            response = newJeddictBrain(handler, getModelName()).assistJavaMethod(getProject(), leaf.toString());
                         } else {
-                            response = new JeddictChatModel(handler, getModelName()).assistJavaClass(getProject(), treePath.getCompilationUnit().toString());
+                            response = newJeddictBrain(handler, getModelName()).assistJavaClass(getProject(), treePath.getCompilationUnit().toString());
                         }
                     }
                     if (response != null && !response.isEmpty()) {
@@ -663,7 +660,7 @@ public class AssistantChatManager extends JavaFix {
         questionPane.setEditorKit(createEditorKit("text/x-" + (type == null ? "java" : type)));
         Document doc = questionPane.getDocument();
         doc.putProperty(JEDDICT_EDITOR_CALLBACK, (Consumer<FileObject>) this::addFileTab);
-        
+
         questionScrollPane = new JScrollPane(questionPane);
         questionScrollPane.setBorder(BorderFactory.createEmptyBorder());
         questionScrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
@@ -954,11 +951,14 @@ public class AssistantChatManager extends JavaFix {
                     public void onCompleteResponse(ChatResponse response) {
                         super.onCompleteResponse(response);
 
-                        String textResponse = response.aiMessage().text();
+                        final StringBuilder textResponse = new StringBuilder(response.aiMessage().text());
+
+                        LOG.finest(() -> "response completed with\ntext\n" + textResponse + "\nand\ntooling\n" + toolingResponse);
+
                         if(!toolingResponse.isEmpty()) {
-                            textResponse = "```tooling\n" + toolingResponse.toString() + "\n```\n" + textResponse;
+                            textResponse.insert(0, "```tooling\n" + toolingResponse.toString() + "\n```\n");
                         }
-                        final Response r = new Response(question, textResponse, messageContextCopy);
+                        final Response r = new Response(question, textResponse.toString(), messageContextCopy);
                         if (responseHistory.isEmpty() || !textResponse.equals(responseHistory.get(responseHistory.size() - 1))) {
                             responseHistory.add(r);
                             currentResponseIndex = responseHistory.size() - 1;
@@ -991,7 +991,7 @@ public class AssistantChatManager extends JavaFix {
                         context = context + "\n\n Files:\n" + messageScopeContent;
                     }
                     List<String> messageScopeImages = getImageFilesContext(messageContext);
-                    response = new JeddictChatModel(handler, getModelName()).assistDbMetadata(context, question, messageScopeImages, prevChatResponses);
+                    response = newJeddictBrain(handler, getModelName()).assistDbMetadata(context, question, messageScopeImages, prevChatResponses);
                 } else if (commitMessage && commitChanges != null) {
                     String context = commitChanges;
                     String messageScopeContent = getTextFilesContext(messageContext, project, agentEnabled);
@@ -999,7 +999,7 @@ public class AssistantChatManager extends JavaFix {
                         context = context + "\n\n Files:\n" + messageScopeContent;
                     }
                     List<String> messageScopeImages = getImageFilesContext(messageContext);
-                    response = new JeddictChatModel(handler, getModelName()).generateCommitMessageSuggestions(context, question, messageScopeImages, prevChatResponses);
+                    response = newJeddictBrain(handler, getModelName()).generateCommitMessageSuggestions(context, question, messageScopeImages, prevChatResponses);
                 } else if (codeReview && commitChanges != null) {
                     String context = commitChanges;
                     String messageScopeContent = getTextFilesContext(messageContext, project, agentEnabled);
@@ -1007,7 +1007,7 @@ public class AssistantChatManager extends JavaFix {
                         context = context + "\n\n Files:\n" + messageScopeContent;
                     }
                     List<String> messageScopeImages = getImageFilesContext(messageContext);
-                    response = new JeddictChatModel(handler, getModelName()).generateCodeReviewSuggestions(context, question, messageScopeImages, prevChatResponses);
+                    response = newJeddictBrain(handler, getModelName()).generateCodeReviewSuggestions(context, question, messageScopeImages, prevChatResponses);
                 } else if (projectContext != null || sessionContext != null) {
                     Set<FileObject> mainSessionContext;
                     String sessionScopeContent;
@@ -1027,17 +1027,17 @@ public class AssistantChatManager extends JavaFix {
                     List<String> images = new ArrayList<>();
                     images.addAll(sessionScopeImages);
                     images.addAll(messageScopeImages);
-                    response = new JeddictChatModel(handler, getModelName()).generateDescription(getProject(), agentEnabled, sessionScopeContent + '\n' + messageScopeContent, null, images, prevChatResponses, question);
+                    response = newJeddictBrain(handler, getModelName()).generateDescription(getProject(), agentEnabled, sessionScopeContent + '\n' + messageScopeContent, null, images, prevChatResponses, question);
                 } else if (treePath == null) {
-                    response = new JeddictChatModel(handler, getModelName()).generateDescription(getProject(), null, null, null, prevChatResponses, question);
+                    response = newJeddictBrain(handler, getModelName()).generateDescription(getProject(), null, null, null, prevChatResponses, question);
                 } else if (action == Action.TEST) {
                     if (leaf instanceof MethodTree) {
-                        response = new JeddictChatModel(handler, getModelName()).generateTestCase(getProject(), null, null, leaf.toString(), prevChatResponses, question);
+                        response = newJeddictBrain(handler, getModelName()).generateTestCase(getProject(), null, null, leaf.toString(), prevChatResponses, question);
                     } else {
-                        response = new JeddictChatModel(handler, getModelName()).generateTestCase(getProject(), null, treePath.getCompilationUnit().toString(), null, prevChatResponses, question);
+                        response = newJeddictBrain(handler, getModelName()).generateTestCase(getProject(), null, treePath.getCompilationUnit().toString(), null, prevChatResponses, question);
                     }
                 } else {
-                    response = new JeddictChatModel(handler, getModelName()).generateDescription(getProject(), treePath.getCompilationUnit().toString(), treePath.getLeaf() instanceof MethodTree ? treePath.getLeaf().toString() : null, null, prevChatResponses, question);
+                    response = newJeddictBrain(handler, getModelName()).generateDescription(getProject(), treePath.getCompilationUnit().toString(), treePath.getLeaf() instanceof MethodTree ? treePath.getLeaf().toString() : null, null, prevChatResponses, question);
                 }
 
                 if (response != null && !response.isEmpty()) {
@@ -1072,6 +1072,12 @@ public class AssistantChatManager extends JavaFix {
 //        saveButton.setVisible(javaEditorCount > 0);
 
         openInBrowserButton.setVisible(topComponent.getAllEditorCount() > 0);
+    }
+
+    private JeddictBrain newJeddictBrain(final JeddictStreamHandler handler, final String name) {
+        final JeddictBrain brain = new JeddictBrain(handler, name);
+        brain.addProgressListener(handler);
+        return brain;
     }
 
     public void addToSessionContext(List<FileObject> files) {

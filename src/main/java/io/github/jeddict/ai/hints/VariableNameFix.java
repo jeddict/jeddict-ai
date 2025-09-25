@@ -27,7 +27,7 @@ import com.sun.source.util.TreePath;
 import com.sun.source.util.TreeScanner;
 import io.github.jeddict.ai.JeddictUpdateManager;
 import io.github.jeddict.ai.completion.Action;
-import io.github.jeddict.ai.lang.JeddictChatModel;
+import io.github.jeddict.ai.lang.JeddictBrain;
 import java.util.List;
 import java.util.stream.Collectors;
 import javax.lang.model.element.Element;
@@ -73,7 +73,7 @@ public class VariableNameFix extends JavaFix {
 
         if (elm instanceof VariableElement) {
             String oldName = elm.toString();
-            String newName = new JeddictChatModel().enhanceVariableName(
+            String newName = new JeddictBrain().enhanceVariableName(
                     oldName,
                     path.getParentPath().getLeaf().toString(),
                     copy.getCompilationUnit().toString()

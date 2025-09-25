@@ -19,7 +19,7 @@ import com.sun.source.tree.Tree;
 import com.sun.source.util.TreePath;
 import io.github.jeddict.ai.JeddictUpdateManager;
 import io.github.jeddict.ai.completion.Action;
-import io.github.jeddict.ai.lang.JeddictChatModel;
+import io.github.jeddict.ai.lang.JeddictBrain;
 import static io.github.jeddict.ai.scanner.ProjectClassScanner.getClassDataContent;
 import io.github.jeddict.ai.settings.PreferencesManager;
 import io.github.jeddict.ai.util.SourceUtil;
@@ -90,7 +90,7 @@ public class VariableFix extends JavaFix {
                         copy.getCompilationUnit(),
                         prefsManager.getClassContext()
                 );
-            content = new JeddictChatModel().fixVariableError(
+            content = new JeddictBrain().fixVariableError(
                 FileOwnerQuery.getOwner(copy.getFileObject()), 
                 leaf.toString(), compliationError, classDataContent);
         }
