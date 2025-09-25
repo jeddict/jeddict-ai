@@ -202,9 +202,27 @@
                     </includes>
                     <forkCount>1</forkCount>
                     <reuseForks>false</reuseForks>
-                    <argLine>--add-opens java.base/java.net=ALL-UNNAMED</argLine>
+                    <!-- JVM options required for headless testing -->
+                    <argLine>
+                        --add-opens=java.base/java.net=ALL-UNNAMED
+                        --add-opens=java.desktop/sun.awt=ALL-UNNAMED
+                        --add-opens=java.desktop/sun.awt.X11=ALL-UNNAMED
+                        --add-opens=java.desktop/java.awt=ALL-UNNAMED
+                        --add-opens=java.base/java.lang.reflect=ALL-UNNAMED
+                        --add-opens=java.desktop/sun.java2d=ALL-UNNAMED
+                        --add-exports=java.desktop/sun.java2d=ALL-UNNAMED
+                        --add-exports=java.desktop/sun.awt.image=ALL-UNNAMED
+                        --add-exports=java.desktop/java.awt.peer=ALL-UNNAMED
+                        --add-exports=java.desktop/sun.awt.event=ALL-UNNAMED
+                        --add-exports=java.base/sun.security.action=ALL-UNNAMED
+                    </argLine>
                     <systemPropertyVariables>
                         <java.util.logging.config.file>src/test/resources/logging.properties</java.util.logging.config.file>
+                        <env>test</env>
+                        <jdk.module.access>open</jdk.module.access>
+                        <awt.toolkit>com.github.caciocavallosilano.cacio.ctc.CTCToolkit</awt.toolkit>
+                        <java.awt.graphicsenv>com.github.caciocavallosilano.cacio.ctc.CTCGraphicsEnvironment</java.awt.graphicsenv>
+                        <java.awt.headless>false</java.awt.headless>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
@@ -618,6 +636,15 @@
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
             <version>3.27.4</version>
+            <scope>test</scope>
+        </dependency>
+        <!--
+            Headless testing
+        -->
+        <dependency>
+            <groupId>com.github.caciocavallosilano</groupId>
+            <artifactId>cacio-tta</artifactId>
+            <version>1.18</version>
             <scope>test</scope>
         </dependency>
         <dependency>
