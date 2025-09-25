@@ -39,27 +39,27 @@ import org.netbeans.api.project.Project;
 public class JeddictChatModel extends JeddictChatModelBuilder {
 
     private static final String jsonRequest = """
-    Return a JSON array with a few best suggestions without any additional text or explanation. Each element should be an object containing two fields: 'imports' and 'snippet'. 
-    'imports' should be an array of required Java import statements (if no imports are required, return an empty array). 
-    'snippet' should contain the suggested code as a text block, which may include multiple lines formatted as a single string using \\n for line breaks. 
-    Make sure to escape any double quotes within the snippet using a backslash (\\) so that the JSON remains valid. 
+    Return a JSON array with a few best suggestions without any additional text or explanation. Each element should be an object containing two fields: 'imports' and 'snippet'.
+    'imports' should be an array of required Java import statements (if no imports are required, return an empty array).
+    'snippet' should contain the suggested code as a text block, which may include multiple lines formatted as a single string using \\n for line breaks.
+    Make sure to escape any double quotes within the snippet using a backslash (\\) so that the JSON remains valid.
 
     """;
 
     private static final String singleJsonRequest = """
-    Return a JSON object with a single best suggestion without any additional text or explanation. The object should contain two fields: 'imports' and 'snippet'. 
-    'imports' should be an array of required Java import statements (if no imports are required, return an empty array). 
-    'snippet' should contain the suggested code as a text block, which may include multiple lines formatted as a single string using \\n for line breaks. 
-    Make sure to escape any double quotes within the snippet using a backslash (\\) so that the JSON remains valid. 
+    Return a JSON object with a single best suggestion without any additional text or explanation. The object should contain two fields: 'imports' and 'snippet'.
+    'imports' should be an array of required Java import statements (if no imports are required, return an empty array).
+    'snippet' should contain the suggested code as a text block, which may include multiple lines formatted as a single string using \\n for line breaks.
+    Make sure to escape any double quotes within the snippet using a backslash (\\) so that the JSON remains valid.
 
     """;
 
     private static final String jsonRequestWithDescription = """
-    Return a JSON array with a few best suggestions without any additional text or explanation. Each element should be an object containing three fields: 'imports', 'snippet', and 'description'. 
-    'imports' should be an array of required Java import statements (if no imports are required, return an empty array). 
-    'snippet' should contain the suggested code as a text block, which may include multiple lines formatted as a single string using \\n for line breaks. 
-    'description' should be a very short explanation of what the snippet does and why it might be appropriate in this context, formatted with <b>, <br> and optionally, if required, include any important link with <a href=''> tags. 
-    Make sure to escape any double quotes within the snippet and description using a backslash (\\) so that the JSON remains valid. 
+    Return a JSON array with a few best suggestions without any additional text or explanation. Each element should be an object containing three fields: 'imports', 'snippet', and 'description'.
+    'imports' should be an array of required Java import statements (if no imports are required, return an empty array).
+    'snippet' should contain the suggested code as a text block, which may include multiple lines formatted as a single string using \\n for line breaks.
+    'description' should be a very short explanation of what the snippet does and why it might be appropriate in this context, formatted with <b>, <br> and optionally, if required, include any important link with <a href=''> tags.
+    Make sure to escape any double quotes within the snippet and description using a backslash (\\) so that the JSON remains valid.
 
     """;
 
@@ -174,15 +174,15 @@ public class JeddictChatModel extends JeddictChatModelBuilder {
 
     public String updateMethodFromDevQuery(Project project, String javaClassContent, String methodContent, String developerRequest) {
         String prompt = """
-            You are an API server that enhances Java methods based on user requests. 
-            Given the following Java method and the developer's request, modify and enhance the method accordingly. 
+            You are an API server that enhances Java methods based on user requests.
+            Given the following Java method and the developer's request, modify and enhance the method accordingly.
             Incorporate any specific details or requirements mentioned by the developer. Do not include any additional text or explanation, just return the enhanced Java method source code.
 
-            Include all necessary imports relevant to the enhanced or newly created method. 
-            Return only the Java method and its necessary imports, without including any class declarations, constructors, or other boilerplate code. 
+            Include all necessary imports relevant to the enhanced or newly created method.
+            Return only the Java method and its necessary imports, without including any class declarations, constructors, or other boilerplate code.
             Do not include full java class, any additional text or explanation, just the imports and the method source code.
 
-            Format the output as a JSON object with two fields: 'imports' (list of necessary imports) and 'methodContent'. 
+            Format the output as a JSON object with two fields: 'imports' (list of necessary imports) and 'methodContent'.
             Developer Request:
             """ + developerRequest + """
 
@@ -199,13 +199,13 @@ public class JeddictChatModel extends JeddictChatModelBuilder {
 
     public String enhanceMethodFromMethodContent(Project project, String javaClassContent, String methodContent) {
         String prompt = """
-            You are an API server that enhances or creates Java methods based on the method name, comments, and its content. 
-            Given the following Java class content and Java method content, modify and enhance the method accordingly. 
-            Include all necessary imports relevant to the enhanced or newly created method. 
-            Return only the Java method and its necessary imports, without including any class declarations, constructors, or other boilerplate code. 
+            You are an API server that enhances or creates Java methods based on the method name, comments, and its content.
+            Given the following Java class content and Java method content, modify and enhance the method accordingly.
+            Include all necessary imports relevant to the enhanced or newly created method.
+            Return only the Java method and its necessary imports, without including any class declarations, constructors, or other boilerplate code.
             Do not include full java class, any additional text or explanation, just the imports and the method source code.
 
-            Format the output as a JSON object with two fields: 'imports' (list of necessary imports) and 'methodContent'. 
+            Format the output as a JSON object with two fields: 'imports' (list of necessary imports) and 'methodContent'.
             Java Class Content:
             """ + javaClassContent + """
 
@@ -219,14 +219,14 @@ public class JeddictChatModel extends JeddictChatModelBuilder {
 
     public String fixMethodCompilationError(Project project, String javaClassContent, String methodContent, String errorMessage, String classDatas) {
         String prompt = """
-            You are an API server that fixes compilation errors in Java methods based on the provided error messages. 
-            Given the following Java method content, class content, and the error message, correct the method accordingly. 
-            Ensure that all compilation errors indicated by the error message are resolved. 
-            Include any necessary imports relevant to the fixed method. 
-            Return only the corrected Java method and its necessary imports, without including any class declarations, constructors, or other boilerplate code. 
+            You are an API server that fixes compilation errors in Java methods based on the provided error messages.
+            Given the following Java method content, class content, and the error message, correct the method accordingly.
+            Ensure that all compilation errors indicated by the error message are resolved.
+            Include any necessary imports relevant to the fixed method.
+            Return only the corrected Java method and its necessary imports, without including any class declarations, constructors, or other boilerplate code.
             Do not include full Java class, any additional text, or explanation—just the imports and the corrected method source code.
 
-            Format the output as a JSON object with two fields: 'imports' (list of necessary imports) and 'methodContent'. 
+            Format the output as a JSON object with two fields: 'imports' (list of necessary imports) and 'methodContent'.
             Error Message:
             """ + errorMessage + """
 
@@ -244,14 +244,14 @@ public class JeddictChatModel extends JeddictChatModelBuilder {
 
     public String fixVariableError(Project project, String javaClassContent, String errorMessage, String classDatas) {
         String prompt = """
-            You are an API server that fixes variable-related compilation errors in Java classes based on the provided error messages. 
-            Given the following Java class content and the error message, correct given variable-related issues based on error message at class level. 
-            Ensure that all compilation errors indicated by the error message, such as undeclared variables, incorrect variable types, or misuse of variables, are resolved. 
-            Include any necessary imports relevant to the fixed method or class. 
-            Return only the corrected variable content and its necessary imports, without including any unnecessary boilerplate code. 
+            You are an API server that fixes variable-related compilation errors in Java classes based on the provided error messages.
+            Given the following Java class content and the error message, correct given variable-related issues based on error message at class level.
+            Ensure that all compilation errors indicated by the error message, such as undeclared variables, incorrect variable types, or misuse of variables, are resolved.
+            Include any necessary imports relevant to the fixed method or class.
+            Return only the corrected variable content and its necessary imports, without including any unnecessary boilerplate code.
             Do not include any additional text or explanation—just the imports and the corrected variable source code.
 
-            Format the output as a JSON object with two fields: 'imports' (list of necessary imports) and 'variableContent' (corrected variable line or content). 
+            Format the output as a JSON object with two fields: 'imports' (list of necessary imports) and 'variableContent' (corrected variable line or content).
             Error Message:
             """ + errorMessage + """
 
@@ -266,8 +266,8 @@ public class JeddictChatModel extends JeddictChatModelBuilder {
 
     public String enhanceVariableName(String variableContext, String methodContent, String classContent) {
         StringBuilder prompt = new StringBuilder("""
-            You are an API server that suggests a more meaningful and descriptive name for a specific variable in a given Java class. 
-            Based on the provided Java class content and the variable context, suggest an improved name for the variable. 
+            You are an API server that suggests a more meaningful and descriptive name for a specific variable in a given Java class.
+            Based on the provided Java class content and the variable context, suggest an improved name for the variable.
             Return only the new variable name. Do not include any additional text or explanation.
 
             Variable Context:
@@ -287,8 +287,8 @@ public class JeddictChatModel extends JeddictChatModelBuilder {
 
     public List<String> suggestVariableNames(String classDatas, String variablePrefix, String classContent, String variableExpression) {
         String prompt = """
-        You are an API server that suggests a list of meaningful and descriptive names for a specific variable in a given Java class. 
-        Based on the provided Java class content, variable prefix, and variable expression, generate a list of improved names for the variable. 
+        You are an API server that suggests a list of meaningful and descriptive names for a specific variable in a given Java class.
+        Based on the provided Java class content, variable prefix, and variable expression, generate a list of improved names for the variable.
         Return only the list of suggested names, one per line, without any additional text or explanation.
 
         Variable Prefix: %s
@@ -723,7 +723,7 @@ public class JeddictChatModel extends JeddictChatModelBuilder {
         StringBuilder prompt = new StringBuilder();
         prompt.append("You are an API server that generates commit message suggestions based on the provided 'git diff' and 'git status' output. ")
                 .append("""
-                    Please provide various types of commit messages based on the changes: 
+                    Please provide various types of commit messages based on the changes:
                     Your goal is to create commit messages that reflect business or domain features rather than technical details like dependency updates or refactoring.
                     """)
                 .append("- Very Short\n")
@@ -809,15 +809,15 @@ Expected YAML format:
                 .append("\n")
                 .append("""
                     There are two possible scenarios for your response:
-                    
-                    1. **SQL Queries and Database-Related Questions**: 
+
+                    1. **SQL Queries and Database-Related Questions**:
                        - Analyze the provided metadata and generate a relevant SQL query that addresses the developer's inquiry.
                        - Include a detailed explanation of the query, clarifying its purpose and how it relates to the developer's question.
                        - Ensure that the SQL syntax adheres to the database structure, constraints, and relationships.
                        - The full SQL query should be wrapped in ```sql for proper formatting.
                        - Avoid wrapping individual SQL keywords or table/column names in <code> tags, and do not wrap any partial SQL query segments in <code> tags.
 
-                    2. **Generating Specific Code from Database Metadata**: 
+                    2. **Generating Specific Code from Database Metadata**:
                        - If the developer requests specific code snippets related to the database metadata, generate the appropriate code and include a clear description of its functionality and relevance.
                     """);
 
@@ -892,7 +892,67 @@ Expected YAML format:
         prompt.append("User Query:\n")
                 .append(userQuery);
 
-        String answer = generate(project, agentEnabled, prompt.toString(), images, previousChatResponse);
+        String answer = generate(project, prompt.toString(), images, previousChatResponse);
+        System.out.println(answer);
+        return answer;
+    }
+
+    public String agent(
+            Project project, String source, String methodContent, List<String> images,
+            List<Response> previousChatResponse, String userQuery) {
+
+        String projectMap = String.join("\n", getSourceFilesRelativePath(project));
+        String sessionRules = pm.getSessionRules();
+        if (sessionRules != null && !sessionRules.isEmpty()) {
+            sessionRules = "\n\n" + sessionRules + "\n\n";
+        } else {
+            sessionRules = "";
+        }
+        if (source != null && !source.isEmpty()) {
+            source = "\n\n Existing Source: " + source + "\n\n";
+        } else {
+            source = "";
+        }
+        String prompt = """
+    You are an intelligent code generation assistant.
+
+    Your task is to generate or modify code based on a user query. The output must include a list of file actions (create, update, delete) with the full file path (relative to the project base directory) and the corresponding file content.
+
+    Assume the project base directory is: %s
+
+    Project Files are:
+    %s
+
+    %s
+
+    User query:
+    %s
+
+    %s
+
+Instructions:
+  - Do NOT add action for any build files (e.g., pom.xml, build.gradle, etc.).
+  - Interpret the user’s intent and break it down into one or more file operations.
+  - For each file that needs to be created, updated, or deleted:
+    - Start with a short natural-language description of what the file is or does.
+    - Then immediately follow it with:
+      1. an `action` block in this format (note that both path= and action= are important):
+         ```action
+            path=relative/path/to/file
+            action=create|update|delete
+         ```
+      1. directly after the action block, include a code block containing the
+         full file content (use proper language tag like ```java).
+    - For delete actions, omit the code block and only include the `action` block.
+  - Ensure that each file’s action block is **immediately followed** by its corresponding code block.
+  - All code must be syntactically correct, valid, and follow standard conventions unless otherwise stated.
+
+    Respond in Markdown format as described above.
+
+    ]
+    """.formatted(project.getProjectDirectory().getPath(), projectMap, source, userQuery, sessionRules);
+
+        String answer = generate(project, prompt, images, previousChatResponse);
         System.out.println(answer);
         return answer;
     }
@@ -1020,11 +1080,11 @@ Expected YAML format:
                         .append("\nRecommend appropriate additions at the placeholder ${SUGGEST_CODE}. ");
             }
             prompt.append("""
-                  Ensure the suggestions align with the file's context and structure. 
-                  Respond with a JSON array containing a few of the best options. 
-                  Each entry should have one field, 'snippet', holding the recommended code block. 
+                  Ensure the suggestions align with the file's context and structure.
+                  Respond with a JSON array containing a few of the best options.
+                  Each entry should have one field, 'snippet', holding the recommended code block.
                   The code block can contain multiple lines, formatted as a single string using \\n for line breaks.
-                  
+
                   File Content:
                   """).append(fileContent);
         }
@@ -1046,15 +1106,15 @@ Expected YAML format:
         }
 
         prompt.append("""
-          Ensure the SQL queries match the database structure, constraints, and relationships. 
-          Respond with a JSON array containing the best SQL query options. 
+          Ensure the SQL queries match the database structure, constraints, and relationships.
+          Respond with a JSON array containing the best SQL query options.
           Each entry should have one field, 'snippet', holding the recommended SQL query block, which may include multiple lines formatted as a single string using \\n for line breaks.
           """);
 
         // Include description if enabled
         if (pm.isDescriptionEnabled()) {
             prompt.append("""
-          Additionally, each entry should contain a 'description' field providing a very short explanation of what the query does and why it might be appropriate in this context, 
+          Additionally, each entry should contain a 'description' field providing a very short explanation of what the query does and why it might be appropriate in this context,
           formatted with <b>, <br> tags, and optionally, if required, include any important link with <a href=''> tags.
           """);
         }

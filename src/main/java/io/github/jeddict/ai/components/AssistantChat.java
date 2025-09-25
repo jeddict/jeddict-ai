@@ -15,13 +15,14 @@
  */
 package io.github.jeddict.ai.components;
 
+import io.github.jeddict.ai.components.actions.ActionPane;
 import com.github.javaparser.ParserConfiguration;
-import com.github.javaparser.Range;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.expr.ObjectCreationExpr;
+import io.github.jeddict.ai.agent.FileAction;
 import static io.github.jeddict.ai.classpath.JeddictQueryCompletionQuery.JEDDICT_EDITOR_CALLBACK;
 import io.github.jeddict.ai.components.mermaid.MermaidPane;
 import io.github.jeddict.ai.response.Block;
@@ -61,13 +62,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -107,6 +107,8 @@ import org.openide.windows.TopComponent;
  */
 public class AssistantChat extends TopComponent {
 
+    private final static Logger LOG = Logger.getLogger(AssistantChat.class.getCanonicalName());
+
     private List<Review> reviews;
     public static final ImageIcon icon = new ImageIcon(AssistantChat.class.getResource("/icons/logo16.png"));
     public static final ImageIcon logoIcon = new ImageIcon(AssistantChat.class.getResource("/icons/logo28.png"));
@@ -135,7 +137,7 @@ public class AssistantChat extends TopComponent {
         add(parentPanel, BorderLayout.CENTER);
     }
 
-    public void lastRemove() {
+    public void removeLast() {
         parentPanel.remove(parentPanel.getComponentCount() - 1);
     }
 
@@ -381,6 +383,16 @@ public class AssistantChat extends TopComponent {
         addContextMenu(sourcePane);
         addEditorPaneRespectingTextArea(pane);
         return pane;
+    }
+
+    public ActionPane createActionPane(FileAction action) {
+        LOG.finest(() -> "createActionPane for action " + action + " in project " + project);
+        ActionPane actionPane = new ActionPane(project, action);
+        JEditorPane sourcePane = actionPane.createPane();
+        addContextMenu(sourcePane);
+        addEditorPaneRespectingTextArea(actionPane);
+
+        return actionPane;
     }
 
     private void addContextMenu(JEditorPane editorPane) {
@@ -761,7 +773,7 @@ public class AssistantChat extends TopComponent {
             }
         }
     }
-    
+
     /**
      * Add the menus to the relevant editor's context menu
      */
@@ -793,7 +805,7 @@ public class AssistantChat extends TopComponent {
             }
         }
 
-   
+
         for (Map.Entry<JEditorPane, List<JMenuItem>> entry : menuItems.entrySet()) {
             JPopupMenu mainMenu = menus.get(entry.getKey());
             if (mainMenu != null) {
@@ -853,13 +865,13 @@ public class AssistantChat extends TopComponent {
             });
         }
     }
-    
+
     private void extractMethod(Map<String, String> snippetSignatures, String editorText) {
         MethodDeclaration aiMethod = StaticJavaParser.parseMethodDeclaration(editorText);
         String signature = aiMethod.getNameAsString();
         snippetSignatures.put(signature, editorText);
     }
-   
+
     private String extractSource(String[] lines, int startLine, int endLine) {
         StringBuilder sb = new StringBuilder();
         for (int i = startLine - 1; i <= endLine - 1; i++) {

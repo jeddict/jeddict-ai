@@ -30,11 +30,11 @@ public class DummyProject implements Project {
 
     public DummyProject(final File projectDir) {
         if (projectDir == null) {
-            throw new IllegalArgumentException("project directory cannot be null");
+            throw new IllegalArgumentException("projectDir cannot be null");
         }
         FileObject fo = FileUtil.toFileObject(FileUtil.normalizeFile(projectDir));
         if (fo == null) {
-            throw new IllegalArgumentException("project directory cannot be null or invalid");
+            throw new IllegalArgumentException("projectDir cannot be null or invalid");
         }
         this.projectDir = fo;
     }
@@ -46,6 +46,10 @@ public class DummyProject implements Project {
         this.projectDir = projectDir;
     }
 
+    public DummyProject(final String projectDir) {
+        this((projectDir == null) ? (File)null : new File(projectDir));
+    }
+
     @Override
     public FileObject getProjectDirectory() {
         return projectDir;
@@ -55,5 +59,5 @@ public class DummyProject implements Project {
     public Lookup getLookup() {
         return Lookup.getDefault();
     }
-    
+
 }
