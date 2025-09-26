@@ -27,6 +27,9 @@ import io.github.jeddict.ai.response.TokenHandler;
 import io.github.jeddict.ai.util.Utilities;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.lang.reflect.InvocationTargetException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.concurrent.CompletableFuture;
@@ -41,6 +44,7 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import org.netbeans.api.progress.ProgressHandle;
+import org.openide.util.Exceptions;
 import org.openide.util.NbBundle;
 
 /**
@@ -102,14 +106,21 @@ public abstract class JeddictBrainListener
     }
 
     public void onPartialResponse(String partialResponse) {
-        LOG.finest(() -> "partial response: " + partialResponse);
-        if (init) {
-            topComponent.clear();
-            textArea = topComponent.createTextAreaPane();
-            textArea.setText(partialResponse);
-            init = false;
-        } else {
-            textArea.append(partialResponse);
+        try {
+            LOG.finest(() -> "partial response: " + partialResponse);
+
+            SwingUtilities.invokeAndWait(() -> {
+                if (init) {
+                    topComponent.clear();
+                    textArea = topComponent.createTextAreaPane();
+                    textArea.setText(partialResponse);
+                    init = false;
+                } else {
+                    textArea.append(partialResponse);
+                }
+            });
+        } catch (InterruptedException | InvocationTargetException ex) {
+            Exceptions.printStackTrace(ex);
         }
     }
 
