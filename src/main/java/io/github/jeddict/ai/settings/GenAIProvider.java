@@ -78,7 +78,7 @@ public enum GenAIProvider {
 
         for (GenAIProvider provider : configuredProviders) {
             for (Map.Entry<String, GenAIModel> entry : GenAIModel.MODELS.entrySet()) {
-                if (entry.getValue().getProvider() == provider) {
+                if (entry.getValue().provider() == provider) {
                     modelsByProvider.put(entry.getKey(), provider);
                 }
             }
@@ -101,7 +101,7 @@ public enum GenAIProvider {
         }
         Set<String> models = new TreeSet<>();
         for (Map.Entry<String, GenAIModel> entry : GenAIModel.MODELS.entrySet()) {
-            if (entry.getValue().getProvider() == provider) {
+            if (entry.getValue().provider() == provider) {
                 models.add(entry.getKey());
             }
         }
