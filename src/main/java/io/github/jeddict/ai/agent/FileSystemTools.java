@@ -164,6 +164,22 @@ public class FileSystemTools extends AbstractCodeTool {
     }
 
     /**
+     * Replaces parts of a file using a literal string match instead of regex.
+     * Escapes the literal string to a regex pattern internally.
+     *
+     * @param path the file path relative to the project
+     * @param literalText the literal string to search and replace
+     * @param replacement the replacement text
+     * @return a status message
+     */
+    @Tool("Replace parts of a file content matching a literal string with replacement text. Special regex characters are escaped automatically")
+    public String replaceSnippetByLiteral(String path, String literalText, String replacement)
+            throws Exception {
+        String escapedPattern = Pattern.quote(literalText);
+        return replaceSnippetByRegex(path, escapedPattern, replacement);
+    }
+    
+    /**
      * Replaces parts of a file content matching a regex pattern with
      * replacement text.
      *
@@ -172,7 +188,7 @@ public class FileSystemTools extends AbstractCodeTool {
      * @param replacement the replacement text
      * @return a status message
      */
-    @Tool("Replace parts of a file content by regex pattern with replacement text")
+    @Tool("Replace parts of a file content matching a regex pattern with replacement text")
     public String replaceSnippetByRegex(String path, String regexPattern, String replacement)
     throws Exception {
         progress("🔄 Replacing text matching regex '" + regexPattern + "' in file: " + path);

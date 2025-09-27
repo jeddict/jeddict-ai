@@ -27,6 +27,7 @@ import org.apache.commons.io.FileUtils;
 import org.assertj.core.api.BDDAssertions;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.AfterEach;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 public class FileSystemToolsTest extends BaseTest {
@@ -151,8 +152,8 @@ public class FileSystemToolsTest extends BaseTest {
         final Path fullPathKO = Paths.get(projectDir, pathKO);
         events.clear();
 
-        BDDAssertions.thenThrownBy( () ->
-            tools.readFile(pathKO)
+        BDDAssertions.thenThrownBy(()
+                -> tools.readFile(pathKO)
         );
         then(events).hasSize(2);
         then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
@@ -191,4 +192,41 @@ public class FileSystemToolsTest extends BaseTest {
         // TODO: logging
         //
     }
+
+    @Test
+    public void replaceSnippetByLiteral_success_and_no_match() throws Exception {
+        // Read file content
+        final String pathOK = "folder/testfile.txt";
+        final Path testFile = Paths.get(projectDir, pathOK);
+        String content = Files.readString(testFile);
+
+        // Replace literal text
+        String replaced = content.replace("test file", "replaced text");
+
+        // Write back to file
+        Files.writeString(testFile, replaced);
+
+        // Verify replacement
+        String updatedContent = Files.readString(testFile);
+        assertTrue(updatedContent.contains("replaced text"), "File should contain replaced text");
+    }
+
+    @Test
+    public void replaceSnippetByRegex_success_and_no_match() throws Exception {
+        // Read file content
+        final String pathOK = "folder/testfile.txt";
+        final Path testFile = Paths.get(projectDir, pathOK);
+        String content = Files.readString(testFile);
+
+        // Replace using regex
+        String replaced = content.replaceAll("test\\s+file", "replaced regex");
+
+        // Write back to file
+        Files.writeString(testFile, replaced);
+
+        // Verify replacement
+        String updatedContent = Files.readString(testFile);
+        assertTrue(updatedContent.contains("replaced regex"), "File should contain replaced regex text");
+    }
+
 }
