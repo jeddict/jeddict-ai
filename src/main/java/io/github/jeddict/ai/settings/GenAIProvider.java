@@ -98,7 +98,16 @@ public enum GenAIProvider {
             }
             return models;
 
+        } else if(provider == CUSTOM_OPEN_AI) {
+
+            List<String> loadedModels = PreferencesManager.getInstance().getModelList();
+            Set<String> models = new TreeSet<>();
+            for(String model : loadedModels) {
+                models.add(model);
+            }
+            return models;
         }
+        
         Set<String> models = new TreeSet<>();
         for (Map.Entry<String, GenAIModel> entry : GenAIModel.MODELS.entrySet()) {
             if (entry.getValue().getProvider() == provider) {

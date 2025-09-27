@@ -35,9 +35,11 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Desktop;
+import java.awt.Point;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -81,6 +83,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
 
     AIAssistancePanel() {
         initComponents();
+        addModelManagementContextMenu();
         populateContextCombo(conversationContext, "Last 3 replies");
         int index = jTabbedPane1.indexOfComponent(backupPane);
         if (index != -1) {
@@ -97,6 +100,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
     private void initComponents() {
 
         aiInlineCompletionShortcutGroup = new javax.swing.ButtonGroup();
+        modelsPopupMenu = new javax.swing.JPopupMenu();
         jTabbedPane1 = new javax.swing.JTabbedPane();
         providersPane = new javax.swing.JLayeredPane();
         providerParentPane = new javax.swing.JPanel();
@@ -119,6 +123,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
         modelsInfo = new javax.swing.JLabel();
         modelHelpPane = new javax.swing.JPanel();
         spacePanel1 = new javax.swing.JPanel();
+        manageModelsButton = new javax.swing.JButton();
         modelHelp = new javax.swing.JLabel();
         activationParentPane = new javax.swing.JPanel();
         activationPanel = new javax.swing.JPanel();
@@ -420,6 +425,16 @@ final class AIAssistancePanel extends javax.swing.JPanel {
         );
 
         modelHelpPane.add(spacePanel1);
+
+        org.openide.awt.Mnemonics.setLocalizedText(manageModelsButton, org.openide.util.NbBundle.getMessage(AIAssistancePanel.class, "AIAssistancePanel.manageModelsButton.text")); // NOI18N
+        manageModelsButton.setActionCommand(org.openide.util.NbBundle.getMessage(AIAssistancePanel.class, "AIAssistancePanel.manageModelsButton.actionCommand")); // NOI18N
+        manageModelsButton.setMargin(new java.awt.Insets(20, 14, 20, 14));
+        manageModelsButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                manageModelsButtonActionPerformed(evt);
+            }
+        });
+        modelHelpPane.add(manageModelsButton);
 
         modelHelp.setFont(modelHelp.getFont());
         modelHelp.setForeground(new java.awt.Color(100, 100, 100));
@@ -1131,6 +1146,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
         allowCodeExecution.setVisible(false);
         includeCodeExecutionOutput.setVisible(false);
         maxRetriesPane.setVisible(false);
+        manageModelsButton.setVisible(false);
         if (selectedProvider == GenAIProvider.GOOGLE) {
             topKPane.setVisible(true);
             maxOutputTokensPane.setVisible(true);
@@ -1147,6 +1163,9 @@ final class AIAssistancePanel extends javax.swing.JPanel {
             presencePenaltyPane.setVisible(true);
             frequencyPenaltyPane.setVisible(true);
             seedPane.setVisible(true);
+        }
+        if(selectedProvider == GenAIProvider.CUSTOM_OPEN_AI) {
+            manageModelsButton.setVisible(true);
         }
         if (selectedProvider == GenAIProvider.OLLAMA) {
             repeatPenaltyPane.setVisible(true);
@@ -1378,6 +1397,15 @@ final class AIAssistancePanel extends javax.swing.JPanel {
         providerSettings();
     }//GEN-LAST:event_providerComboBoxActionPerformed
 
+    private void manageModelsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_manageModelsButtonActionPerformed
+        // TODO add your handling code here:
+        // Mostra il popup menu sotto il pulsante
+        Component comp = (Component) evt.getSource();
+        Point location = comp.getLocation();
+        SwingUtilities.convertPointToScreen(location, comp.getParent());
+        modelsPopupMenu.show(comp, 0, comp.getHeight());
+    }//GEN-LAST:event_manageModelsButtonActionPerformed
+
     private void updateModelComboBox(GenAIProvider selectedProvider) {
         modelComboBox.removeAllItems();
         for (String model : getModelList(selectedProvider)) {
@@ -1409,6 +1437,11 @@ final class AIAssistancePanel extends javax.swing.JPanel {
                 && !providerLocationField.getText().isEmpty()) {
             GroqModelFetcher fetcher = new GroqModelFetcher();
             models = fetcher.fetchModels(providerLocationField.getText(), new String(apiKeyField.getPassword()));
+        } else if (selectedProvider == GenAIProvider.CUSTOM_OPEN_AI ) {
+            models = new ArrayList<>();
+            for (int i = 0; i < modelComboBox.getItemCount(); i++) {
+                models.add((String) modelComboBox.getItemAt(i));
+            }
         }
 
         if (models == null) {
@@ -1498,7 +1531,14 @@ final class AIAssistancePanel extends javax.swing.JPanel {
         }
 
         providerComboBox.setSelectedItem(preferencesManager.getProvider());
+        GenAIProvider selectedProvider = (GenAIProvider) providerComboBox.getSelectedItem();
+        if (selectedProvider == GenAIProvider.CUSTOM_OPEN_AI) {
+            List<String> loadedModels = PreferencesManager.getInstance().getModelList();
+            for(String model : loadedModels)
+                modelComboBox.addItem(model);
+        }
         modelComboBox.setSelectedItem(preferencesManager.getModel());
+        
         ctrlSpaceRadioButton.setSelected(!preferencesManager.isCompletionAllQueryType());
         ctrlAltSpaceRadioButton.setSelected(preferencesManager.isCompletionAllQueryType());
         showDescriptionCheckBox.setSelected(preferencesManager.isDescriptionEnabled());
@@ -1514,7 +1554,6 @@ final class AIAssistancePanel extends javax.swing.JPanel {
         conversationContext.setSelectedItem(preferencesManager.getConversationContext());
         globalRules.setText(preferencesManager.getGlobalRules());
 
-        GenAIProvider selectedProvider = (GenAIProvider) providerComboBox.getSelectedItem();
         if (selectedProvider == GenAIProvider.CUSTOM_OPEN_AI
                 || selectedProvider == GenAIProvider.DEEPINFRA
                 || selectedProvider == GenAIProvider.DEEPSEEK
@@ -1542,6 +1581,11 @@ final class AIAssistancePanel extends javax.swing.JPanel {
         preferencesManager.setClassContextInlineHint((AIClassContext) classContextInlineHintComboBox.getSelectedItem());
         preferencesManager.setProvider((GenAIProvider) providerComboBox.getSelectedItem());
         preferencesManager.setModel((String) modelComboBox.getSelectedItem());
+        List<String> modelList = new ArrayList<>();
+        for (int i = 0; i < modelComboBox.getItemCount(); i++) {
+            modelList.add((String) modelComboBox.getItemAt(i));
+        }
+        preferencesManager.setModelList(modelList);
         preferencesManager.setInlineHintEnabled(enableInlineHintCheckBox.isSelected());
         preferencesManager.setInlinePromptHintEnabled(enableInlinePromptHintCheckBox.isSelected());
         preferencesManager.setHintsEnabled(enableHintsCheckBox.isSelected());
@@ -1998,6 +2042,120 @@ final class AIAssistancePanel extends javax.swing.JPanel {
         modelsInfo.setForeground(isDark ? lighten(fgColor, 0.3f) : darken(fgColor, 0.3f));
         apiKeyInfo.setForeground(isDark ? lighten(fgColor, 0.3f) : darken(fgColor, 0.3f));
     }
+    
+    /**
+    * Adds a new model to the combobox
+    * @param modelName The name of the model to add
+    */
+    private void addModelToComboBox(String modelName) {
+       if (modelName != null && !modelName.trim().isEmpty()) {
+           // Controlla se il modello esiste già
+           boolean exists = false;
+           for (int i = 0; i < modelComboBox.getItemCount(); i++) {
+               if (modelComboBox.getItemAt(i).equals(modelName)) {
+                   exists = true;
+                   break;
+               }
+           }
+
+           if (!exists) {
+               modelComboBox.addItem(modelName);
+           }
+       }
+    }
+
+    /**
+    * Removes a model from the combobox
+    * @param modelName The name of the model to remove
+    */
+    private void removeModelFromComboBox(String modelName) {
+       if (modelName != null && !modelName.trim().isEmpty()) {
+           modelComboBox.removeItem(modelName);
+       }
+    }
+
+    /**
+     * Sorts the items in the combobox alphabetically
+     */
+    private void sortModelComboBox() {
+       List<String> items = new ArrayList<>();
+       for (int i = 0; i < modelComboBox.getItemCount(); i++) {
+           items.add((String) modelComboBox.getItemAt(i));
+       }
+
+       Collections.sort(items);
+       modelComboBox.removeAllItems();
+
+       for (String item : items) {
+           modelComboBox.addItem(item);
+       }
+    }
+
+    /**
+     * Clears all models from the combobox
+     */
+    private void clearModelComboBox() {
+       modelComboBox.removeAllItems();
+    }
+    
+    /**
+     * Adds a context menu to manage models
+     */
+    private void addModelManagementContextMenu() {
+
+        // Menu item to add a new model
+        JMenuItem addModelItem = new JMenuItem("Add model");
+        addModelItem.addActionListener(e -> {
+            String modelName = JOptionPane.showInputDialog(
+                this, 
+                "Enter the model name:", 
+                "Add Model", 
+                JOptionPane.QUESTION_MESSAGE
+            );
+
+            if (modelName != null && !modelName.trim().isEmpty()) {
+                addModelToComboBox(modelName.trim());
+            }
+        });
+
+        // Menu item to remove the selected model
+        JMenuItem removeModelItem = new JMenuItem("Remove selected model");
+        removeModelItem.addActionListener(e -> {
+            String selectedModel = (String) modelComboBox.getSelectedItem();
+            if (selectedModel != null) {
+                int confirm = JOptionPane.showConfirmDialog(
+                    this, 
+                    "Are you sure you want to remove the model: " + selectedModel + "?",
+                    "Confirm Removal",
+                    JOptionPane.YES_NO_OPTION
+                );
+
+                if (confirm == JOptionPane.YES_OPTION) {
+                    removeModelFromComboBox(selectedModel);
+                }
+            }
+        });
+
+        // Menu item to clear all models
+        JMenuItem clearModelsItem = new JMenuItem("Clear all models");
+        clearModelsItem.addActionListener(e -> {
+            int confirm = JOptionPane.showConfirmDialog(
+                this, 
+                "Are you sure you want to remove all models?",
+                "Confirm Clear",
+                JOptionPane.YES_NO_OPTION
+            );
+
+            if (confirm == JOptionPane.YES_OPTION) {
+                clearModelComboBox();
+            }
+        });
+
+        modelsPopupMenu.add(addModelItem);
+        modelsPopupMenu.add(removeModelItem);
+        modelsPopupMenu.addSeparator();
+        modelsPopupMenu.add(clearModelsItem);
+    }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel JPanel2;
@@ -2071,6 +2229,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
     private javax.swing.JTabbedPane jTabbedPane1;
     private javax.swing.JCheckBox logRequests;
     private javax.swing.JCheckBox logResponses;
+    private javax.swing.JButton manageModelsButton;
     private javax.swing.JTextField maxCompletionTokens;
     private javax.swing.JLabel maxCompletionTokensLabel;
     private javax.swing.JPanel maxCompletionTokensPane;
@@ -2091,6 +2250,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
     private javax.swing.JPanel modelLabelPane;
     private javax.swing.JPanel modelParentPane;
     private javax.swing.JLabel modelsInfo;
+    private javax.swing.JPopupMenu modelsPopupMenu;
     private javax.swing.JPanel openAISettingsParentPane1;
     private javax.swing.JLabel optionsLabel;
     private javax.swing.JTextField organizationId;

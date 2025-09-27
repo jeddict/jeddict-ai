@@ -28,6 +28,7 @@ import java.io.InputStreamReader;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -53,7 +54,9 @@ public class PreferencesManager {
     private static final String PROVIDER_LOCATION_PREFERENCES = "provider_location";
     private static final String PROVIDER_PREFERENCE = "provider";
     private static final String MODEL_PREFERENCE = "model";
+    private static final String MODEL_LIST = "modelList";
     private static final String CHAT_MODEL_PREFERENCE = "chatModel";
+    private static final String CHAT_MODEL_LIST = "chatModelList";
     private static final String GLOBAL_RULES_PREFERENCE = "globalRules";
     private static final String PROJECT_RULES_PREFERENCE = "projectRules";
     private static final String BUILD_COMMAND_PREFERENCE = "buildCommand";
@@ -335,6 +338,24 @@ public class PreferencesManager {
         preferences.put(MODEL_PREFERENCE, model);
     }
     
+    public void setModelList(List<String> models) {
+        JSONArray jsonArray = new JSONArray();
+        for (String model : models) {
+            jsonArray.put(model);
+        }
+        preferences.put(MODEL_LIST, jsonArray.toString());
+    }
+
+    public List<String> getModelList() {
+        String jsonString = preferences.get(MODEL_LIST, "[\"" + getModel() + "\"]");
+        JSONArray jsonArray = new JSONArray(jsonString);
+        List<String> models = new ArrayList();
+        for (int i = 0; i < jsonArray.length(); i++) {
+            models.add(jsonArray.getString(i));
+        }
+        return models;
+    }
+    
     public String getChatModel() {
         return preferences.get(CHAT_MODEL_PREFERENCE, getModel());
     }
@@ -343,7 +364,23 @@ public class PreferencesManager {
         preferences.put(CHAT_MODEL_PREFERENCE, model);
     }
     
-    
+    public void setChatModelList(List<String> models) {
+        JSONArray jsonArray = new JSONArray();
+        for (String model : models) {
+            jsonArray.put(model);
+        }
+        preferences.put(CHAT_MODEL_LIST, jsonArray.toString());
+    }
+
+    public List<String> getChatModelList() {
+        String jsonString = preferences.get(CHAT_MODEL_LIST, "[\"" + getChatModel() + "\"]");
+        JSONArray jsonArray = new JSONArray(jsonString);
+        List<String> models = new ArrayList();
+        for (int i = 0; i < jsonArray.length(); i++) {
+            models.add(jsonArray.getString(i));
+        }
+        return models;
+    }
 
     public void setProvider(GenAIProvider provider) {
         if (provider != null) {
