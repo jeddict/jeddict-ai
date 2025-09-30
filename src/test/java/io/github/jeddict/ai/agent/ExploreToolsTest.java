@@ -15,13 +15,14 @@
  */
 package io.github.jeddict.ai.agent;
 
-import io.github.jeddict.ai.agent.BaseTest;
+import com.github.caciocavallosilano.cacio.ctc.junit.CacioTest;
 import java.io.File;
 import org.apache.commons.io.FileUtils;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
+@CacioTest
 public class ExploreToolsTest extends BaseTest {
 
     @Test

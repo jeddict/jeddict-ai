@@ -15,6 +15,7 @@
  */
 package io.github.jeddict.ai.components.diff;
 
+import com.github.caciocavallosilano.cacio.ctc.junit.CacioTest;
 import java.io.IOException;
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.BDDAssertions.thenThrownBy;
@@ -25,6 +26,7 @@ import org.openide.filesystems.FileUtil;
 /**
  *
  */
+@CacioTest
 public class FileStreamSourceTest {
 
     @Test

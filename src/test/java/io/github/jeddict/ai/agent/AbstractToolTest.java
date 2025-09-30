@@ -1,5 +1,6 @@
 package io.github.jeddict.ai.agent;
 
+import static io.github.jeddict.ai.agent.AbstractTool.PROPERTY_MESSAGE;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.nio.file.Paths;
@@ -53,7 +54,7 @@ public class AbstractToolTest extends BaseTest {
 
         // then
         then(events).hasSize(1);
-        then(events.get(0).getPropertyName()).isEqualTo("progress");
+        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
         then(events.get(0).getNewValue()).isEqualTo("a message");
     }
 

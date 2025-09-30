@@ -1,0 +1,25 @@
+The file `SayHello.java` is a simple Java class with a constructor that prints a hello message to the given name. We now add JavaDoc comments to the class and its constructor for better documentation and clarity.
+
+```action
+path=src/test/java/io/github/jeddict/ai/test/SayHello.java
+action=update
+```
+```java
+package io.github.jeddict.ai.test;
+
+/**
+ * A simple class that prints a greeting message to the specified name.
+ */
+public class SayHello {
+
+    /**
+     * Constructs a {@code SayHello} instance and prints a greeting message
+     * with the given name to the standard output.
+     *
+     * @param name the name to greet
+     */
+    public SayHello(String name) {
+        System.out.println("Hello " + name);
+    }
+}
+```

@@ -21,7 +21,7 @@ import com.sun.source.tree.MethodTree;
 import com.sun.source.tree.ModifiersTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.tree.VariableTree;
-import io.github.jeddict.ai.lang.JeddictChatModel;
+import io.github.jeddict.ai.lang.JeddictBrain;
 import io.github.jeddict.ai.settings.AIClassContext;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -223,7 +223,7 @@ public class ProjectClassScanner {
 
     private static final Map<String, Map<FileObject, ClassData>> classData = new HashMap<>(); // project is key
     private static final Map<String, ProjectClassListener> projectClassListeners = new HashMap<>(); // project is key
-    private static final Map<String, JeddictChatModel> models = new HashMap<>(); // class file is key
+    private static final Map<String, JeddictBrain> models = new HashMap<>(); // class file is key
 
     public static void clear() {
         classData.clear();
@@ -231,13 +231,13 @@ public class ProjectClassScanner {
         models.clear();
     }
 
-    public static JeddictChatModel getJeddictChatModel(FileObject fileObject) {
+    public static JeddictBrain getJeddictChatModel(FileObject fileObject) {
 //        String key = fileObject.toURL().toString();
 //        if (models.get(key) == null) {
 //            models.put(key, new JeddictChatModel());
 //        }
 //        return models.get(key);
-        return new JeddictChatModel();
+        return new JeddictBrain();
     }
 
     public static FileObject getFileObjectFromEditor(Document document) {

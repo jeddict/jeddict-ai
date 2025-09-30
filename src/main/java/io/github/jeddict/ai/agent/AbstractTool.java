@@ -24,6 +24,11 @@ import java.util.logging.Logger;
 
 public abstract class AbstractTool {
 
+    /**
+     * property notified for changes: status, progress or any other log
+     */
+    public static final String PROPERTY_MESSAGE = "toolMessage";
+
     protected final String basedir;
     protected final Path basepath;
     protected final Logger log;
@@ -62,6 +67,6 @@ public abstract class AbstractTool {
 
     public void progress(String message) {
         log(() -> message);
-        toolListener.firePropertyChange("progress", null, message);
+        toolListener.firePropertyChange(PROPERTY_MESSAGE, null, message);
     }
 }

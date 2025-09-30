@@ -207,6 +207,7 @@ public class PreferencesManager {
         return preferences.get(provider.name() + API_KEY_PREFERENCES, null);
     }
 
+    // TODO: P3 - PreferencesManger should not provide UI
     public String getApiKey(boolean headless) {
         // First, try to get the API key from the environment variable
         String apiKey = System.getenv(API_KEY_ENV_VAR);
@@ -255,7 +256,7 @@ public class PreferencesManager {
     public String getProviderLocation() {
         return getProviderLocation(getProvider());
     }
-    
+
      public String getProviderLocation(GenAIProvider provider) {
         return preferences.get(provider.name() + PROVIDER_LOCATION_PREFERENCES, null);
     }
@@ -408,7 +409,7 @@ public class PreferencesManager {
         preferences.putBoolean("enableInlineHint", enabled);
         setInlineHintsEnabled(isInlineHintEnabled() || isInlinePromptHintEnabled());
     }
-    
+
     public boolean isInlinePromptHintEnabled() {
         return preferences.getBoolean("enableInlinePromptHint", false);
     }
@@ -470,7 +471,7 @@ public class PreferencesManager {
         preferences.putBoolean("excludeJavadoc", enabled);
     }
 
-    
+
     public String getChatPlacement() {
         return preferences.get("chatPlacement", "Right");
     }
@@ -559,7 +560,7 @@ public class PreferencesManager {
         preferences.save();
         headerKeyValueMap = map;
     }
-    
+
 
     /**
      * Loads all default prompts from resource files in /prompts/
@@ -622,7 +623,7 @@ public class PreferencesManager {
                 changed = true;
             }
         }
-        
+
         if(changed) {
             preferences.save();
         }
@@ -928,7 +929,7 @@ public class PreferencesManager {
         this.tokenGranularity = granularity;
         preferences.put(TOKEN_GRANULARITY_KEY, granularity.name());
     }
-    
+
     public String getLastBrowseDirectory() {
         return preferences.get(LAST_BROWSE_DIRECTORY_PREFERENCE, "");
     }

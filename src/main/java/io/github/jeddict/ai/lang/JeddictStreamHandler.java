@@ -18,6 +18,8 @@ package io.github.jeddict.ai.lang;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import io.github.jeddict.ai.JeddictUpdateManager;
+import io.github.jeddict.ai.agent.AbstractTool;
 import io.github.jeddict.ai.components.AssistantChat;
 import io.github.jeddict.ai.response.TokenHandler;
 import java.beans.PropertyChangeEvent;
@@ -32,6 +34,7 @@ import java.util.logging.Logger;
 import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 import org.netbeans.api.progress.ProgressHandle;
+import org.openide.util.NbBundle;
 
 /**
  *
@@ -48,31 +51,37 @@ public abstract class JeddictStreamHandler
     private boolean complete;
     protected final StringBuilder toolingResponse = new StringBuilder();
 
-    private static final Logger LOGGER = Logger.getLogger(JeddictStreamHandler.class.getName());
-
+    private static final Logger LOG = Logger.getLogger(JeddictStreamHandler.class.getName());
 
     public JeddictStreamHandler(AssistantChat topComponent) {
         this.topComponent = topComponent;
+
+        handle = ProgressHandle.createHandle(NbBundle.getMessage(JeddictUpdateManager.class, "ProgressHandle", 0));
+        handle.start();
     }
 
     public ProgressHandle getProgressHandle() {
         return handle;
     }
 
-    public void setHandle(ProgressHandle handle) {
-        this.handle = handle;
-    }
-
     @Override
     public void propertyChange(PropertyChangeEvent e) {
-        final String msg = (String)e.getNewValue();
-        toolingResponse.append(msg);
-        onPartialResponse(msg);
+        LOG.finest(() -> String.valueOf(e));
+        final String name = e.getPropertyName();
+        if (JeddictBrain.PROPERTY_TOKENS.equals(name)) {
+            final String progress = NbBundle.getMessage(JeddictUpdateManager.class, "ProgressHandle", (int)e.getNewValue());
+            handle.progress(progress);
+            handle.setDisplayName(progress);
+        } else if (AbstractTool.PROPERTY_MESSAGE.equals(name)) {
+            final String msg = (String)e.getNewValue();
+            toolingResponse.append(msg).append('\n');
+            onPartialResponse(msg);
+        }
     }
 
     @Override
     public void onPartialResponse(String partialResponse) {
-        LOGGER.finest(() -> "partial response: " + partialResponse);
+        LOG.finest(() -> "partial response: " + partialResponse);
         if (init) {
             topComponent.clear();
             textArea = topComponent.createTextAreaPane();
@@ -89,13 +98,13 @@ public abstract class JeddictStreamHandler
 
     @Override
     public void onError(Throwable throwable) {
-        LOGGER.finest(() -> "error received: " + throwable);
+        LOG.finest(() -> "error received: " + throwable);
         complete = true;
         // Log the error with timestamp and thread info
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
         String threadName = Thread.currentThread().getName();
-        LOGGER.log(Level.SEVERE, "Error occurred at {0} on thread [{1}]", new Object[] { timestamp, threadName });
-        LOGGER.log(Level.SEVERE, "Exception in JeddictStreamHandler", throwable);
+        LOG.log(Level.SEVERE, "Error occurred at {0} on thread [{1}]", new Object[] { timestamp, threadName });
+        LOG.log(Level.SEVERE, "Exception in JeddictStreamHandler", throwable);
 
         //
         // Build the error message
@@ -126,16 +135,14 @@ public abstract class JeddictStreamHandler
 
     @Override
     public void onCompleteResponse(ChatResponse completeResponse) {
-        LOGGER.finest(() -> "complete response received: " + completeResponse);
+        LOG.finest(() -> "complete response received: " + completeResponse);
         complete = true;
         SwingUtilities.invokeLater(() -> {
             String response = completeResponse.aiMessage().text();
             if (response != null && !response.isEmpty()) {
                 CompletableFuture.runAsync(() -> TokenHandler.saveOutputToken(response));
             }
-            if (handle != null) {
-                handle.finish();
-            }
+            handle.finish();
         });
     }
 

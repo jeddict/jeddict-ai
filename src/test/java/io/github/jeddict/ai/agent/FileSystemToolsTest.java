@@ -15,7 +15,7 @@
  */
 package io.github.jeddict.ai.agent;
 
-import io.github.jeddict.ai.agent.BaseTest;
+import static io.github.jeddict.ai.agent.AbstractTool.PROPERTY_MESSAGE;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.nio.file.Files;
@@ -51,7 +51,7 @@ public class FileSystemToolsTest extends BaseTest {
 
         then(tools.searchInFile(path, pattern)).contains("Match at").contains("test file");
         then(events).hasSize(1);
-        then(events.get(0).getPropertyName()).isEqualTo("progress");
+        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
         then(events.get(0).getNewValue()).isEqualTo("🔎 Looking for '" + pattern + "' inside '" + path + "'");
     }
 
@@ -71,7 +71,7 @@ public class FileSystemToolsTest extends BaseTest {
 
         then(tools.searchInFile(path, pattern)).isEqualTo("No matches found");
         then(events).hasSize(1);
-        then(events.get(0).getPropertyName()).isEqualTo("progress");
+        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
         then(events.get(0).getNewValue()).isEqualTo("🔎 Looking for '" + pattern + "' inside '" + path + "'");
     }
 
@@ -141,7 +141,7 @@ public class FileSystemToolsTest extends BaseTest {
         //
         then(tools.readFile(pathOK)).isEqualTo(expectedContent);
         then(events).hasSize(1);
-        then(events.get(0).getPropertyName()).isEqualTo("progress");
+        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
         then(events.get(0).getNewValue()).isEqualTo("📖 Reading file " + pathOK);
 
         //
@@ -155,9 +155,9 @@ public class FileSystemToolsTest extends BaseTest {
             tools.readFile(pathKO)
         );
         then(events).hasSize(2);
-        then(events.get(0).getPropertyName()).isEqualTo("progress");
+        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
         then(events.get(0).getNewValue()).isEqualTo("📖 Reading file " + pathKO);
-        then(events.get(1).getPropertyName()).isEqualTo("progress");
+        then(events.get(1).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
         then(events.get(1).getNewValue()).isEqualTo("❌ Failed to read file: " + fullPathKO);
     }
 

@@ -19,7 +19,8 @@ import java.time.Duration;
 import java.util.Map;
 
 /**
- * Builder interface for configuring chat model parameters. This interface provides methods to set various configuration options for chat models.
+ * Builder interface for configuring chat model parameters. This interface
+ * provides methods to set various configuration options for chat models.
  *
  * @author Francois Steyn
  * @param <T> The type of chat model being built

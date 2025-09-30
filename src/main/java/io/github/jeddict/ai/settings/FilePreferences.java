@@ -30,11 +30,12 @@ import org.json.JSONObject;
  */
 public class FilePreferences {
 
-    private static final Path PREFS_PATH = Paths.get(System.getProperty("user.home"), "jeddict.json");
+    private final Path PREFS_PATH;
 
     private JSONObject data;
 
     public FilePreferences() {
+        PREFS_PATH = Paths.get(System.getProperty("user.home"), "jeddict.json");
         load();
     }
 
@@ -135,7 +136,7 @@ public class FilePreferences {
         data.put(key, value);
         save();
     }
-    
+
     public void putChild(String nodeKey, String key, String value) {
         JSONObject node = data.optJSONObject(nodeKey);
         if (node == null) {
@@ -153,7 +154,7 @@ public class FilePreferences {
         }
         return def;
     }
-    
+
      public JSONObject getChild(String nodeKey) {
         JSONObject node = data.optJSONObject(nodeKey);
         if(node == null) {
@@ -167,7 +168,7 @@ public class FilePreferences {
         data.put(nodeKey, metadata);
         save();
     }
-     
+
      public JSONArray getChildArray(String nodeKey, List<String> defaultValues) {
         JSONArray node = data.optJSONArray(nodeKey);
         if(node == null) {
