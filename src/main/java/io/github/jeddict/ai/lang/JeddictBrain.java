@@ -35,18 +35,13 @@ import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
 import io.github.jeddict.ai.agent.AbstractTool;
 import io.github.jeddict.ai.agent.Assistant;
-import io.github.jeddict.ai.agent.ExecutionTools;
-import io.github.jeddict.ai.agent.ExplorationTools;
-import io.github.jeddict.ai.agent.FileSystemTools;
-import io.github.jeddict.ai.agent.GradleTools;
-import io.github.jeddict.ai.agent.MavenTools;
-import io.github.jeddict.ai.agent.RefactoringTools;
 import io.github.jeddict.ai.response.Response;
 import io.github.jeddict.ai.response.TokenHandler;
 import io.github.jeddict.ai.scanner.ProjectMetadataInfo;
 import io.github.jeddict.ai.settings.PreferencesManager;
 import static io.github.jeddict.ai.util.MimeUtil.MIME_TYPE_DESCRIPTIONS;
 import static io.github.jeddict.ai.util.StringUtil.removeCodeBlockMarkers;
+import io.github.jeddict.ai.util.Utilities;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.util.ArrayList;
@@ -57,16 +52,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import javax.swing.Box;
-import javax.swing.BoxLayout;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JTextField;
+import java.util.logging.Logger;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.netbeans.api.project.Project;
-import org.openide.filesystems.FileUtil;
 
 //
 // TODO: shall we combine the processing in using always StreamingModels
@@ -74,17 +63,21 @@ import org.openide.filesystems.FileUtil;
 //
 public class JeddictBrain {
 
+    private final Logger LOG = Logger.getLogger(JeddictBrain.class.getCanonicalName());
+
     /**
      * property notified for changes: # of input tokens
      */
     public static final String PROPERTY_TOKENS = "tokens";
+    public static final String PROPERTY_ERROR = "error";
 
     public final Optional<StreamingChatResponseHandler> streamHandler;
     public final Optional<ChatModel> chatModel;
     public final Optional<StreamingChatModel> streamingChatModel;
+    protected final List<AbstractTool> tools;
+
     public final String modelName;
 
-    protected final PreferencesManager pm = PreferencesManager.getInstance(); // TODO: P2 - remove dependencies on PM
     protected final PropertyChangeSupport progressListeners = new PropertyChangeSupport(this);
 
     private static final String jsonRequest = """
@@ -117,26 +110,41 @@ public class JeddictBrain {
         this.streamingChatModel = Optional.empty();
         this.chatModel = Optional.empty();
         this.modelName = null;
+        this.tools = List.of();
     }
 
-    public JeddictBrain(final StreamingChatResponseHandler handler) {
-        this(handler, null);
+    public JeddictBrain(
+        final StreamingChatResponseHandler handler,
+        final boolean streaming
+    ) {
+        this("", handler, streaming, List.of());
     }
 
-    public JeddictBrain(final StreamingChatResponseHandler handler, final String modelName) {
+    public JeddictBrain(
+        final String modelName,
+        final StreamingChatResponseHandler handler,
+        final boolean streaming,
+        final List<AbstractTool> tools
+    ) {
+        if (modelName == null) {
+            throw new IllegalArgumentException("modelName can not be null");
+        }
+        this.modelName = modelName;
         this.streamHandler = (handler != null) ? Optional.of(handler) : Optional.empty();
-        this.modelName = (modelName == null) ? pm.getModelName() : modelName;
 
         final JeddictChatModelBuilder builder =
             new JeddictChatModelBuilder(handler, this.modelName);
 
-        if (pm.isStreamEnabled() && handler != null) {
-            this.streamingChatModel = Optional.of(builder.buildStreaming());  // TODO: P2 - turn this into a Factory
+        if (streaming && handler != null) {
+            this.streamingChatModel = Optional.of(builder.buildStreaming());
             this.chatModel = Optional.empty();
         } else {
             this.chatModel = Optional.of(builder.build());
-            this.streamingChatModel = Optional.empty(); // TODO: P2 - turn this into a Factory
+            this.streamingChatModel = Optional.empty();
         }
+        this.tools = (tools != null)
+                   ? List.of(tools.toArray(new AbstractTool[0])) // immutable
+                   : List.of();
     }
 
     public String generate(final Project project, final String prompt) {
@@ -171,11 +179,17 @@ public class JeddictBrain {
     }
 
     //
+    // TODO: P2 - StreamingChatResponseHandler shall be created in both
+    //       streaming or not streaming chats; in the case of streaming
+    //       onPartialResponse will be called, otherwise only onCompleteResponse
+    //       and onError
+    //       This method should then not return any value.
+    //
     // TODO: P3 - better use of langchain4j functionalities (see https://docs.langchain4j.dev/tutorials/agents)
     //
     private String generateInternal(Project project, boolean agentEnabled, String prompt, List<String> images, List<Response> responseHistory) {
         if (chatModel.isEmpty() && streamHandler.isEmpty()) {
-            throw new IllegalStateException("AI assistance model not intitalized, this looks like a bug!");
+            throw new IllegalStateException("AI assistant model not intitalized, this looks like a bug!");
         }
 
         if (project != null) {
@@ -215,13 +229,15 @@ public class JeddictBrain {
         //
         progressListeners.firePropertyChange(PROPERTY_TOKENS, 0, TokenHandler.saveInputToken(messages));
 
+        final StringBuilder response = new StringBuilder();
         try {
+
             if (streamingChatModel.isPresent()) {
                 final StreamingChatResponseHandler handler = streamHandler.get();
                 if(agentEnabled) {
                     final Assistant assistant = AiServices.builder(Assistant.class)
                         .streamingChatModel(streamingChatModel.get())
-                        .tools(buildToolsList(project).toArray())
+                        .tools(tools.toArray())
                         .build();
 
                     final TokenStream tokenStream = assistant.stream(messages);
@@ -241,96 +257,30 @@ public class JeddictBrain {
                 }
             } else {
                 ChatModel model = chatModel.get();
-                String response;
                 if (agentEnabled) {
                     Assistant assistant = AiServices.builder(Assistant.class)
                             .chatModel(model)
-                            .tools(buildToolsList(project).toArray())
+                            .tools(tools.toArray())
                             .build();
-                    response = assistant.chat(messages).aiMessage().text();
+                    response.append(assistant.chat(messages).aiMessage().text());
                 } else {
-                    response = model.chat(messages).aiMessage().text();
+                    response.append(model.chat(messages).aiMessage().text());
                 }
-                CompletableFuture.runAsync(() -> TokenHandler.saveOutputToken(response));
-                return response;
-            }
-        } catch (Exception e) {
-            String errorMessage = e.getMessage();
-            if (e.getCause() != null && e.getCause().getMessage() != null) {
-                //
-                // let's pretend it is a JSON object, if not, ignore it
-                //
-                try {
-                    JSONObject jsonObject = new JSONObject(e.getCause().getMessage());
-                    if (jsonObject.has("error") && jsonObject.getJSONObject("error").has("message")) {
-                        errorMessage = jsonObject.getJSONObject("error").getString("message");
-                    }
-                } catch (Throwable x) {
-                    //
-                    // It was not a proper JSON
-                    //
-                }
-            }
-            if (errorMessage != null
-                    && errorMessage.toLowerCase().contains("incorrect api key")) {
-                //
-                // TODO: P2 - remove dependencies on swing, this must be done by the caller
-                //
-                JTextField apiKeyField = new JTextField(20);
-                JPanel panel = new JPanel();
-                panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS)); // Set layout to BoxLayout
 
-                panel.add(new JLabel("Incorrect API key. Please enter a new key:"));
-                panel.add(Box.createVerticalStrut(10)); // Add space between label and text field
-                panel.add(apiKeyField);
-
-                int option = JOptionPane.showConfirmDialog(null, panel,
-                        pm.getProvider().name() + " API Key Required", JOptionPane.OK_CANCEL_OPTION);
-                if (option == JOptionPane.OK_OPTION) {
-                    pm.setApiKey(apiKeyField.getText().trim());
-                }
-            } else {
-                JOptionPane.showMessageDialog(null,
-                        "AI assistance failed to generate the requested response: " + errorMessage,
-                        "Error in AI Assistance",
-                        JOptionPane.ERROR_MESSAGE);
-                streamHandler.ifPresent((handler) -> handler.onError(e));
+                CompletableFuture.runAsync(() -> TokenHandler.saveOutputToken(response.toString()));
             }
+        } catch (Exception x) {
+            LOG.finest(() -> "Communication error: " + x.getMessage());
+            response.append(Utilities.errorHTMLBlock(x));
+            //
+            // TODO: P2 - remove this and use onError
+            //
+            progressListeners.firePropertyChange(PROPERTY_ERROR, null, x);
         }
-        return null;
-    }
 
-    private List<AbstractTool> buildToolsList(Project project) {
-        //
-        // TODO: make this automatic with some discoverability approach (maybe
-        // NB lookup registration?)
-        //
-        final String basedir =
-            FileUtil.toPath(project.getProjectDirectory())
-            .toAbsolutePath().normalize()
-            .toString();
+        LOG.finest(() -> "Returning " + response);
 
-        final List<AbstractTool> toolsList = List.of(
-            new ExecutionTools(
-                basedir, project.getProjectDirectory().getName(),
-                pm.getBuildCommand(project), pm.getTestCommand(project)
-            ),
-            new ExplorationTools(basedir, project.getLookup()),
-            new FileSystemTools(basedir),
-            new GradleTools(basedir),
-            new MavenTools(basedir),
-            new RefactoringTools(basedir)
-        );
-
-        //
-        // The handler wants to know about tool execution
-        //
-        toolsList.forEach((tool) -> tool.addPropertyChangeListener(
-            (PropertyChangeListener)streamHandler.get()
-        )); // TODO: P2 - improve the design here .... we want a PropertyChangeListener
-            //       without bringing too many dependencies
-
-        return toolsList;
+        return response.toString();
     }
 
     public String generateJavadocForClass(Project project, String classContent) {
@@ -338,9 +288,9 @@ public class JeddictBrain {
                 = "You are an API server that responds only with Javadoc comments for class not the member of class. "
                 + "Generate only the Javadoc wrapped with in /** ${javadoc} **/ for the following Java class not the member of class. Do not include any additional text or explanation.\n\n"
                 + classContent;
-        String answer = generate(project, prompt);
-        System.out.println(answer);
-        return answer;
+        String response = generate(project, prompt);
+        LOG.finest(response);
+        return response;
     }
 
     public String generateJavadocForMethod(Project project, String methodContent) {
@@ -348,9 +298,9 @@ public class JeddictBrain {
                 = "You are an API server that responds only with Javadoc comments for method. "
                 + "Generate only the Javadoc wrapped with in /** ${javadoc} **/ for the following Java method. Do not include any additional text or explanation.\n\n"
                 + methodContent;
-        String answer = generate(project, prompt);
-        System.out.println(answer);
-        return answer;
+        String response = generate(project, prompt);
+        LOG.finest(response);
+        return response;
     }
 
     public String generateJavadocForField(Project project, String fieldContent) {
@@ -358,9 +308,9 @@ public class JeddictBrain {
                 = "You are an API server that responds only with Javadoc comments for field. "
                 + "Generate only the Javadoc wrapped with in /** ${javadoc} **/ for the following Java variable. Do not include any additional text or explanation.\n\n"
                 + fieldContent;
-        String answer = generate(project, prompt);
-        System.out.println(answer);
-        return answer;
+        String response = generate(project, prompt);
+        LOG.finest(response);
+        return response;
     }
 
     public String enhanceJavadocForClass(Project project, String existingJavadoc, String classContent) {
@@ -370,9 +320,9 @@ public class JeddictBrain {
                 + "Do not include any additional text or explanation, just the enhanced Javadoc wrapped with /** ${javadoc} **/.\n\n"
                 + "Existing Javadoc:\n" + existingJavadoc + "\n\n"
                 + "Java Class Content:\n" + classContent;
-        String answer = generate(project, prompt);
-        System.out.println(answer);
-        return answer;
+        String response = generate(project, prompt);
+        LOG.finest(response);
+        return response;
     }
 
     public String enhanceJavadocForMethod(Project project, String existingJavadoc, String methodContent) {
@@ -382,9 +332,9 @@ public class JeddictBrain {
                 + "Do not include any additional text or explanation, just the enhanced Javadoc wrapped with /** ${javadoc} **/.\n\n"
                 + "Existing Javadoc:\n" + existingJavadoc + "\n\n"
                 + "Java Method Content:\n" + methodContent;
-        String answer = generate(project, prompt);
-        System.out.println(answer);
-        return answer;
+        String response = generate(project, prompt);
+        LOG.finest(response);
+        return response;
     }
 
     public String enhanceJavadocForField(Project project, String existingJavadoc, String fieldContent) {
@@ -394,9 +344,9 @@ public class JeddictBrain {
                 + "Do not include any additional text or explanation, just the enhanced Javadoc wrapped with /** ${javadoc} **/.\n\n"
                 + "Existing Javadoc:\n" + existingJavadoc + "\n\n"
                 + "Java Field Content:\n" + fieldContent;
-        String answer = generate(project, prompt);
-        System.out.println(answer);
-        return answer;
+        String response = generate(project, prompt);
+        LOG.finest(response);
+        return response;
     }
 
     public String generateRestEndpointForClass(Project project, String classContent) {
@@ -424,11 +374,9 @@ public class JeddictBrain {
         """ + classContent;
 
         // Generate the unique JAX-RS methods with imports
-        String answer = generate(project, prompt);
-
-        // Print and return the generated JAX-RS methods with imports
-        System.out.println(answer);
-        return answer;
+        String response = generate(project, prompt);
+        LOG.finest(response);
+        return response;
     }
 
     public String updateMethodFromDevQuery(Project project, String javaClassContent, String methodContent, String developerRequest) {
@@ -451,9 +399,9 @@ public class JeddictBrain {
             Java Method Content:
             """ + methodContent;
 
-        String answer = generate(project, prompt);
-        System.out.println(answer);
-        return answer;
+        String response = generate(project, prompt);
+        LOG.finest(response);
+        return response;
     }
 
     public String enhanceMethodFromMethodContent(Project project, String javaClassContent, String methodContent) {
@@ -471,9 +419,9 @@ public class JeddictBrain {
             Java Method Content:
             """ + methodContent;
 
-        String answer = generate(project, prompt);
-        System.out.println(answer);
-        return answer;
+        String response = generate(project, prompt);
+        LOG.finest(response);
+        return response;
     }
 
     public String fixMethodCompilationError(Project project, String javaClassContent, String methodContent, String errorMessage, String classDatas) {
@@ -496,9 +444,9 @@ public class JeddictBrain {
             """ + methodContent;
 
         prompt = loadClassData(prompt, classDatas);
-        String answer = generate(project, prompt);
-        System.out.println(answer);
-        return answer;
+        String response = generate(project, prompt);
+        LOG.finest(response);
+        return response;
     }
 
     public String fixVariableError(Project project, String javaClassContent, String errorMessage, String classDatas) {
@@ -518,9 +466,9 @@ public class JeddictBrain {
             """ + javaClassContent;
 
         prompt = loadClassData(prompt, classDatas);
-        String answer = generate(project, prompt);
-        System.out.println(answer);
-        return answer;
+        String response = generate(project, prompt);
+        LOG.finest(response);
+        return response;
     }
 
     public String enhanceVariableName(String variableContext, String methodContent, String classContent) {
@@ -539,9 +487,9 @@ public class JeddictBrain {
             prompt.append("Java Class Content:\n").append(classContent);
         }
 
-        String answer = generate(null, prompt.toString());
-        System.out.println(answer);
-        return answer;
+        String response = generate(null, prompt.toString());
+        LOG.finest(response);
+        return response;
     }
 
     public List<String> suggestVariableNames(String classDatas, String variablePrefix, String classContent, String variableExpression) {
@@ -562,11 +510,11 @@ public class JeddictBrain {
         %s
         """.formatted(variablePrefix, variableExpression, classContent, classDatas);
 
-        String answer = generate(null, prompt);
-        System.out.println(answer);
+        String response = generate(null, prompt);
+        LOG.finest(response);
 
         // Split the response into a list and return
-        return Arrays.asList(answer.split("\n"));
+        return Arrays.asList(response.split("\n"));
     }
 
     private String loadClassData(String prompt, String classDatas) {
@@ -644,7 +592,11 @@ public class JeddictBrain {
         return methodInvocations;
     }
 
-    public List<Snippet> suggestNextLineCode(Project project, String classDatas, String classContent, String lineText, TreePath path, String hintContext, boolean hint) {
+    public List<Snippet> suggestNextLineCode(
+        final Project project, final String classDatas, final String classContent,
+        final String lineText, final TreePath path, final String hintContext,
+        final boolean hint, final boolean description
+    ) {
         String prompt;
         if (hint) {
             prompt = "You are an API server that suggests relevant Java code to be inserted at the placeholder ${SUGGEST_CODE}.\n"
@@ -658,19 +610,20 @@ public class JeddictBrain {
                 prompt = prompt + "\n" + hintContext;
             }
         } else {
+            final String descriptionText = (description ? jsonRequestWithDescription : jsonRequest);
             if (path == null) {
                 prompt = "You are an API server that suggests Java code for the outermost context of a Java source file, outside of any existing class. "
                         + "Based on the provided Java source file content, suggest relevant code to be added at the placeholder location ${SUGGEST_CODE}. "
                         + "Suggest additional classes, interfaces, enums, or other top-level constructs. "
                         + "Ensure that the suggestions fit the context of the entire file. "
-                        + (pm.isDescriptionEnabled() ? jsonRequestWithDescription : jsonRequest)
+                        + descriptionText
                         + "Java Source File Content:\n" + classContent;
             } else if (path.getLeaf().getKind() == Tree.Kind.COMPILATION_UNIT) {
                 prompt = "You are an API server that suggests Java code for the outermost context of a Java source file, outside of any existing class. "
                         + "Based on the provided Java source file content, suggest relevant code to be added at the placeholder location ${SUGGEST_CODE}. "
                         + "Suggest package declarations, import statements, comments, or annotations for public class. "
                         + "Ensure that the suggestions fit the context of the entire file. "
-                        + (pm.isDescriptionEnabled() ? jsonRequestWithDescription : jsonRequest)
+                        + descriptionText
                         + "Java Source File Content:\n" + classContent;
             } else if (path.getLeaf().getKind() == Tree.Kind.MODIFIERS
                     && path.getParentPath() != null
@@ -678,7 +631,7 @@ public class JeddictBrain {
                 prompt = "You are an API server that suggests Java code modifications for a class. "
                         + "At the placeholder location ${SUGGEST_CODE}, suggest either a class-level modifier such as 'public', 'protected', 'private', 'abstract', 'final', or a relevant class-level annotation. "
                         + "Ensure that the suggestions are appropriate for the class context provided. "
-                        + (pm.isDescriptionEnabled() ? jsonRequestWithDescription : jsonRequest)
+                        + descriptionText
                         + "Java Class Content:\n" + classContent;
             } else if (path.getLeaf().getKind() == Tree.Kind.MODIFIERS
                     && path.getParentPath() != null
@@ -687,7 +640,7 @@ public class JeddictBrain {
                         + "At the placeholder location ${SUGGEST_CODE}, suggest method-level modifiers such as 'public', 'protected', 'private', 'abstract', 'static', 'final', 'synchronized', or relevant method-level annotations. "
                         + "Additionally, you may suggest method-specific annotations. "
                         + "Ensure that the suggestions are appropriate for the method context provided. "
-                        + (pm.isDescriptionEnabled() ? jsonRequestWithDescription : jsonRequest)
+                        + descriptionText
                         + "Java Method Content:\n" + classContent;
             } else if (path.getLeaf().getKind() == Tree.Kind.CLASS
                     && path.getParentPath() != null
@@ -695,7 +648,7 @@ public class JeddictBrain {
                 prompt = "You are an API server that suggests Java code for an inner class at the placeholder location ${SUGGEST_CODE}. "
                         + "Based on the provided Java class content, suggest either relevant inner class modifiers such as 'public', 'private', 'protected', 'static', 'abstract', 'final', or a full inner class definition. "
                         + "Additionally, you may suggest class-level annotations for the inner class. Ensure that the suggestions are contextually appropriate for an inner class. "
-                        + (pm.isDescriptionEnabled() ? jsonRequestWithDescription : jsonRequest)
+                        + descriptionText
                         + "Java Class Content:\n" + classContent;
             } else if (path.getLeaf().getKind() == Tree.Kind.CLASS
                     && path.getParentPath() != null
@@ -703,7 +656,7 @@ public class JeddictBrain {
                 prompt = "You are an API server that suggests Java code for an class at the placeholder location ${SUGGEST_CODE}. "
                         + "Based on the provided Java class content, suggest either relevant class level members, attributes, constants, methods or blocks. "
                         + "Ensure that the suggestions are contextually appropriate for an class. "
-                        + (pm.isDescriptionEnabled() ? jsonRequestWithDescription : jsonRequest)
+                        + descriptionText
                         + "Java Class Content:\n" + classContent;
             } else if (path.getLeaf().getKind() == Tree.Kind.PARENTHESIZED
                     && path.getParentPath() != null
@@ -711,13 +664,13 @@ public class JeddictBrain {
                 prompt = "You are an API server that suggests Java code to enhance an if-statement. "
                         + "At the placeholder location ${SUGGEST_IF_CONDITIONS}, suggest additional conditional checks or actions within the if-statement. "
                         + "Ensure that the suggestions are contextually appropriate for the condition. "
-                        + (pm.isDescriptionEnabled() ? jsonRequestWithDescription : jsonRequest)
+                        + descriptionText
                         + "Java If Statement Content:\n" + classContent;
             } else {
                 prompt = "You are an API server that suggests Java code for a specific context in a given Java class at the placeholder location ${SUGGEST_CODE}. "
                         + "Based on the provided Java class content and the line of code: \"" + lineText + "\", suggest a relevant single line of code or a multi-line code block as appropriate for the context represented by the placeholder ${SUGGEST_CODE} in the Java class. "
                         + "Ensure that the suggestions are relevant to the context. "
-                        + (pm.isDescriptionEnabled() ? jsonRequestWithDescription : jsonRequest)
+                        + descriptionText
                         + "Java Class Content:\n" + classContent;
             }
         }
@@ -725,13 +678,17 @@ public class JeddictBrain {
 
         // Generate the list of suggested next lines of code
         String jsonResponse = generate(project, prompt);
-        System.out.println("jsonResponse " + jsonResponse);
+        LOG.finest(() -> "jsonResponse " + jsonResponse);
         // Parse the JSON response into a List
         List<Snippet> nextLines = parseJsonToSnippets(jsonResponse);
         return nextLines;
     }
 
-    public List<Snippet> hintNextLineCode(Project project, String classDatas, String classContent, String lineText, TreePath path, String hintContext, boolean singleCodeSnippet) {
+    public List<Snippet> hintNextLineCode(
+        final Project project, final String classDatas, final String classContent,
+        final String lineText, final TreePath path, final String hintContext,
+        final boolean singleCodeSnippet, final boolean description
+    ) {
         StringBuilder promptBuilder = new StringBuilder();
 
         promptBuilder.append("You are an API server that suggests relevant Java code at the placeholder ${SUGGEST_CODE}.\n")
@@ -751,7 +708,7 @@ public class JeddictBrain {
         // Choose the appropriate JSON request variant
         String request = singleCodeSnippet
                 ? singleJsonRequest
-                : (pm.isDescriptionEnabled() ? jsonRequestWithDescription : jsonRequest);
+                : (description ? jsonRequestWithDescription : jsonRequest);
 
         promptBuilder.append(request);
 
@@ -760,7 +717,8 @@ public class JeddictBrain {
 
         // Generate suggestions using the AI model
         String jsonResponse = generate(project, prompt);
-        System.out.println("jsonResponse " + jsonResponse);
+
+        LOG.finest(() -> "jsonResponse " + jsonResponse);
 
         // Parse and return results
         return parseJsonToSnippets(jsonResponse);
@@ -773,7 +731,9 @@ public class JeddictBrain {
                 + "Java Class Content:\n" + classContent;
         // Generate the list of suggested Javadoc or comments
         String jsonResponse = generate(project, prompt);
-        System.out.println("jsonResponse " + jsonResponse);
+
+        LOG.finest(() -> "jsonResponse " + jsonResponse);
+
         // Parse the JSON response into a List
         List<String> comments = parseJsonToList(jsonResponse);
 
@@ -788,33 +748,34 @@ public class JeddictBrain {
                 + "Java Class Content:\n" + classContent;
         // Generate the list of suggested Javadoc or comments
         String jsonResponse = generate(project, prompt);
-        System.out.println("jsonResponse " + jsonResponse);
+        LOG.finest(() -> "jsonResponse " + jsonResponse);
         // Parse the JSON response into a List
         List<String> comments = parseJsonToList(jsonResponse);
         return comments;
     }
 
-    public List<Snippet> suggestAnnotations(Project project, String classDatas, String classContent, String lineText, String hintContext, boolean singleCodeSnippet) {
+    public List<Snippet> suggestAnnotations(
+        final Project project, final String classDatas, final String classContent,
+        final String lineText, final String hintContext,
+        final boolean singleCodeSnippet, final boolean description) {
         String prompt;
-        if (hintContext == null) {
-            hintContext = "";
-        } else {
-            hintContext = hintContext + "\n";
-        }
+
         boolean hasHint = hintContext != null && !hintContext.isEmpty();
         if (hasHint) {
             prompt = "You are an API server that suggest relevant code for ${SUGGEST_ANNOTATION_LIST} in the given Java class based on the line: "
-                    + lineText + "\n\n Class: \n" + classContent + "\n" + singleJsonRequest + "\n" + hintContext;
+                    + lineText + "\n\n Class: \n" + classContent + "\n" + singleJsonRequest + "\n"
+                    + ((hintContext != null) ? hintContext + "\n" : "");
         } else {
             prompt = "You are an API server that suggests Java annotations for a specific context in a given Java class at the placeholder location ${SUGGEST_ANNOTATION_LIST}. "
                     + "Based on the provided Java class content and the line of code: \"" + lineText + "\", suggest relevant annotations that can be applied at the placeholder location represented by ${SUGGEST_ANNOTATION_LIST} in the Java Class. "
-                    + (pm.isDescriptionEnabled() ? jsonRequestWithDescription : jsonRequest)
+                    + (description ? jsonRequestWithDescription : jsonRequest)
                     + "Ensure that the suggestions are appropriate for the given Java Class Content:\n\n" + classContent;
         }
 
         // Generate the list of suggested annotations
         String jsonResponse = generate(project, prompt);
-        System.out.println("jsonResponse " + jsonResponse);
+
+        LOG.finest(() -> "jsonResponse " + jsonResponse);
 
         // Parse the JSON response into a List
         List<Snippet> annotations = parseJsonToSnippets(jsonResponse);
@@ -943,9 +904,9 @@ public class JeddictBrain {
                 + "Text to Fix:\n" + text;
 
         // Generate the grammar-fixed text
-        String answer = generate(null, prompt);
-        System.out.println(answer);
-        return answer;
+        String response = generate(null, prompt);
+        LOG.finest(response);
+        return response;
     }
 
     public String enhanceText(String text, String classContent) {
@@ -958,7 +919,7 @@ public class JeddictBrain {
 
         // Generate the enhanced text
         String enhancedText = generate(null, prompt);
-        System.out.println(enhancedText);
+        LOG.finest(enhancedText);
         return enhancedText;
     }
 
@@ -974,7 +935,7 @@ public class JeddictBrain {
                 + "EXPRESSION_STATEMENT Content:\n" + expressionStatementContent;
 
         String enhanced = generate(project, prompt);
-        System.out.println(enhanced);
+        LOG.finest(enhanced);
         return enhanced;
     }
 
@@ -1006,60 +967,68 @@ public class JeddictBrain {
         }
 
         // Generate the commit message suggestions
-        String answer = generate(null, prompt.toString(), images, previousChatResponse);
-        System.out.println(answer);
-        answer = removeCodeBlockMarkers(answer);
-        return answer;
+        String response = generate(null, prompt.toString(), images, previousChatResponse);
+        LOG.finest(response);
+        response = removeCodeBlockMarkers(response);
+        return response;
     }
 
-    public String generateCodeReviewSuggestions(String gitDiffOutput, String query, List<String> images, List<Response> previousChatResponse) {
+    public String generateCodeReviewSuggestions(
+            final String gitDiffOutput, final String query,
+            final List<String> images, final List<Response> previousChatResponse,
+            final String reviewPrompt
+    ) {
 
         String prompt = """
-Instructions:
-- Base your review strictly on the provided Git diff.
-- Anchor each suggestion to a specific hunk header from the diff.
-- DO NOT infer or hallucinate line numbers not present in the diff.
-- DO NOT reference line numbers or attempt to estimate exact start/end lines.
+            Instructions:
+            - Base your review strictly on the provided Git diff.
+            - Anchor each suggestion to a specific hunk header from the diff.
+            - DO NOT infer or hallucinate line numbers not present in the diff.
+            - DO NOT reference line numbers or attempt to estimate exact start/end lines.
 
-%s
+            %s
 
-Respond only with a YAML array of review suggestions. Each suggestion must include:
-- file: the file name
-- hunk: the Git diff hunk header (e.g., "@@ -10,7 +10,9 @@")
-- type: one of "security", "warning", "info", or "suggestion"
-    - "security" for vulnerabilities or high-risk flaws
-    - "warning" for potential bugs or unsafe behavior
-    - "info" for minor issues or readability
-    - "suggestion" for non-critical improvements or refactoring
-- title: a short title summarizing the issue
-- description: a longer explanation or recommendation
+            Respond only with a YAML array of review suggestions. Each suggestion must include:
+            - file: the file name
+            - hunk: the Git diff hunk header (e.g., "@@ -10,7 +10,9 @@")
+            - type: one of "security", "warning", "info", or "suggestion"
+                - "security" for vulnerabilities or high-risk flaws
+                - "warning" for potential bugs or unsafe behavior
+                - "info" for minor issues or readability
+                - "suggestion" for non-critical improvements or refactoring
+            - title: a short title summarizing the issue
+            - description: a longer explanation or recommendation
 
-Output raw YAML with no markdown, code block, or extra formatting.
+            Output raw YAML with no markdown, code block, or extra formatting.
 
-Expected YAML format:
+            Expected YAML format:
 
-- file: src/com/example/MyService.java
-  hunk: "@@ -42,6 +42,10 @@"
-  type: warning
-  title: "Possible null pointer exception"
-  description: "The 'items' list might be null before iteration. Add a null check to avoid NPE."
+            - file: src/com/example/MyService.java
+              hunk: "@@ -42,6 +42,10 @@"
+              type: warning
+              title: "Possible null pointer exception"
+              description: "The 'items' list might be null before iteration. Add a null check to avoid NPE."
 
-%s
-""".formatted(query, gitDiffOutput);
+            %s
+            """.formatted(query, gitDiffOutput);
 
-        return generate(null, pm.getPrompts().get("codereview") + '\n' + prompt, images, previousChatResponse);
+        // pm.getPrompts().get("codereview")
+
+        return generate(null, reviewPrompt  + '\n' + prompt, images, previousChatResponse);
     }
 
-    public String assistDbMetadata(String dbMetadata, String query, List<String> images, List<Response> previousChatResponse) {
+    public String assistDbMetadata(
+        final String dbMetadata, final String query, final List<String> images,
+        final List<Response> previousChatResponse, final String sessionRules
+    ) {
         StringBuilder dbPrompt = new StringBuilder("You are an API server that provides assistance. ");
 
         dbPrompt.append("Given the following database schema metadata:\n")
                 .append(dbMetadata);
 
-        String rules = pm.getSessionRules();
-        if (rules != null && !rules.isEmpty()) {
+        if (sessionRules != null && !sessionRules.isEmpty()) {
             dbPrompt.append("\n\n")
-                    .append(rules)
+                    .append(sessionRules)
                     .append("\n\n");
         }
 
@@ -1081,62 +1050,73 @@ Expected YAML format:
                     """);
 
         String response = generate(null, dbPrompt.toString(), images, previousChatResponse);
-        System.out.println(response);
+
+        LOG.finest(() -> response);
+
         return response;
     }
 
     public String assistJavaClass(
-            Project project, String classContent) {
+        final Project project, final String classContent, final String sessionRules
+    ) {
         StringBuilder promptBuilder = new StringBuilder();
         promptBuilder.append("You are an API server that provides a description of the following class. ");
-        String rules = pm.getSessionRules();
-        if (rules != null && !rules.isEmpty()) {
+        if (sessionRules != null && !sessionRules.isEmpty()) {
             promptBuilder.append("\n\n")
-                    .append(rules)
+                    .append(sessionRules)
                     .append("\n\n");
         }
         promptBuilder.append("Java Class:\n")
                 .append(classContent);
 
         String prompt = promptBuilder.toString();
-        String answer = generate(project, prompt);
-        System.out.println(answer);
-        return answer;
+        String response = generate(project, prompt);
+
+        LOG.finest(() -> response);
+
+        return response;
     }
 
     public String assistJavaMethod(
-            Project project, String methodContent) {
+        final Project project, final String methodContent, final String sessionRules
+    ) {
         StringBuilder promptBuilder = new StringBuilder();
         promptBuilder.append("You are an API server that provides a description of the following Method. ");
-        String rules = pm.getSessionRules();
-        if (rules != null && !rules.isEmpty()) {
+
+        if (sessionRules != null && !sessionRules.isEmpty()) {
             promptBuilder.append("\n\n")
-                    .append(rules)
+                    .append(sessionRules)
                     .append("\n\n");
         }
         promptBuilder.append("Java Method:\n")
                 .append(methodContent);
 
         String prompt = promptBuilder.toString();
-        String answer = generate(project, prompt);
-        System.out.println(answer);
-        return answer;
+        String response = generate(project, prompt);
+
+        LOG.finest(response);
+
+        return response;
     }
 
     public String generateDescription(
-            Project project, String source, String methodContent, List<String> images,
-            List<Response> previousChatResponse, String userQuery) {
-        return generateDescription(project, false, source, methodContent, images, previousChatResponse, userQuery);
+        final Project project,
+        final String source, final String methodContent, final List<String> images,
+        final List<Response> previousChatResponse, final String userQuery,
+        final String sessionRules
+    ) {
+        return generateDescription(project, false, source, methodContent, images, previousChatResponse, userQuery, sessionRules);
     }
 
     public String generateDescription(
-            Project project, boolean agentEnabled, String source, String methodContent, List<String> images,
-            List<Response> previousChatResponse, String userQuery) {
+        final Project project, final boolean agentEnabled,
+        final String source, final String methodContent, final List<String> images,
+        final List<Response> previousChatResponse, final String userQuery,
+        final String sessionRules
+    ) {
         StringBuilder prompt = new StringBuilder();
-        String rules = pm.getSessionRules();
-        if (rules != null && !rules.isEmpty()) {
-            prompt.append(rules)
-                    .append("\n\n");
+        if (sessionRules != null && !sessionRules.isEmpty()) {
+            prompt.append(sessionRules).append("\n\n");
         }
 
         if (methodContent != null) {
@@ -1151,74 +1131,80 @@ Expected YAML format:
         prompt.append("User Query:\n")
                 .append(userQuery);
 
-        String answer = generate(project, agentEnabled, prompt.toString(), images, previousChatResponse);
-        System.out.println(answer);
-        return answer;
+        String response = generate(project, agentEnabled, prompt.toString(), images, previousChatResponse);
+
+        LOG.finest(response);
+
+        return response;
     }
 
     public String generateTestCase(
-            Project project,
-            String projectContent, String classContent, String methodContent,
-            List<Response> previousChatResponse, String userQuery) {
-
+        final Project project,
+        final String projectContent, final String classContent, final String methodContent,
+        final List<Response> previousChatResponse, final String userQuery,
+        final String testPrompts, final String sessionRules
+    ) {
         StringBuilder promptBuilder = new StringBuilder();
         StringBuilder promptExtend = new StringBuilder();
         Set<String> testCaseTypes = new HashSet<>(); // Using a Set to avoid duplicates
 
-        // Determine the test case type based on the user query
-        String prompt = PreferencesManager.getInstance().getPrompts().get("test");
-        if (prompt == null || prompt.isEmpty()) {
-            prompt = "";
-        }
+        StringBuilder userQueryBuilder = new StringBuilder("User Query: ");
         if (userQuery != null) {
-            userQuery = userQuery + " ,\n " + prompt;
-        } else {
-            userQuery = prompt;
+            userQueryBuilder.append(userQuery).append(" ,\n ");
+
+            //
+            // If we have a valid query, let's check if any testing framework
+            // has been mentioned to reinforce the prompt
+            //
+            // TODO: do we really need it, or the model takes care of it already?
+            //
+            if (userQuery.toLowerCase().contains("junit5")) {
+                testCaseTypes.add("JUnit5");
+            } else if (userQuery.toLowerCase().contains("junit")) {
+                testCaseTypes.add("JUnit");
+            }
+
+            if (userQuery.toLowerCase().contains("testng")) {
+                testCaseTypes.add("TestNG");
+            }
+
+            if (userQuery.toLowerCase().contains("mockito")) {
+                testCaseTypes.add("Mockito");
+            }
+
+            if (userQuery.toLowerCase().contains("spock")) {
+                testCaseTypes.add("Spock");
+            }
+
+            if (userQuery.toLowerCase().contains("assertj")) {
+                testCaseTypes.add("AssertJ");
+            }
+
+            if (userQuery.toLowerCase().contains("hamcrest")) {
+                testCaseTypes.add("Hamcrest");
+            }
+
+            if (userQuery.toLowerCase().contains("powermock")) {
+                testCaseTypes.add("PowerMock");
+            }
+
+            if (userQuery.toLowerCase().contains("cucumber")) {
+                testCaseTypes.add("Cucumber");
+            }
+
+            if (userQuery.toLowerCase().contains("spring test")) {
+                testCaseTypes.add("Spring Test");
+            }
+
+            if (userQuery.toLowerCase().contains("arquillian")) {
+                testCaseTypes.add("Arquillian Test");
+            }
+
+        }
+        if (testPrompts != null) {
+            userQueryBuilder.append(testPrompts);
         }
 
-        if (userQuery.toLowerCase().contains("junit5")) {
-            testCaseTypes.add("JUnit5");
-        } else if (userQuery.toLowerCase().contains("junit")) {
-            testCaseTypes.add("JUnit");
-        }
-
-        if (userQuery.toLowerCase().contains("testng")) {
-            testCaseTypes.add("TestNG");
-        }
-
-        if (userQuery.toLowerCase().contains("mockito")) {
-            testCaseTypes.add("Mockito");
-        }
-
-        if (userQuery.toLowerCase().contains("spock")) {
-            testCaseTypes.add("Spock");
-        }
-
-        if (userQuery.toLowerCase().contains("assertj")) {
-            testCaseTypes.add("AssertJ");
-        }
-
-        if (userQuery.toLowerCase().contains("hamcrest")) {
-            testCaseTypes.add("Hamcrest");
-        }
-
-        if (userQuery.toLowerCase().contains("powermock")) {
-            testCaseTypes.add("PowerMock");
-        }
-
-        if (userQuery.toLowerCase().contains("cucumber")) {
-            testCaseTypes.add("Cucumber");
-        }
-
-        if (userQuery.toLowerCase().contains("spring test")) {
-            testCaseTypes.add("Spring Test");
-        }
-
-        if (userQuery.toLowerCase().contains("arquillian")) {
-            testCaseTypes.add("Arquillian Test");
-        }
-
-        userQuery = "User Query: " + userQuery;
         String testCaseType = String.join(", ", testCaseTypes);
 
         // Build the promptExtend based on available content
@@ -1234,10 +1220,9 @@ Expected YAML format:
         }
 
         promptBuilder.append("You are an API server that provides ");
-        String rules = pm.getSessionRules();
-        if (rules != null && !rules.isEmpty()) {
+        if (sessionRules != null && !sessionRules.isEmpty()) {
             promptBuilder.append("\n\n")
-                    .append(rules)
+                    .append(sessionRules)
                     .append("\n\n");
         }
 
@@ -1245,22 +1230,24 @@ Expected YAML format:
                 .append("Given the following Java class or method content and the user's query, generate ")
                 .append(testCaseType).append(" test cases that are well-structured and functional. ")
                 .append(promptExtend)
-                .append(userQuery);
+                .append(userQueryBuilder);
 
         // Generate the test cases
-        String answer = generate(project, promptBuilder.toString(), null, previousChatResponse);
-        System.out.println(answer);
-        return answer;
+        String response = generate(project, promptBuilder.toString(), null, previousChatResponse);
+
+        LOG.finest(response);
+
+        return response;
     }
 
-    public List<Snippet> suggestNextLineCode(Project project, String fileContent, String currentLine, String mimeType, String hintContext, boolean singleCodeSnippet) {
-        StringBuilder description = new StringBuilder(MIME_TYPE_DESCRIPTIONS.getOrDefault(mimeType, "code snippets"));
+    public List<Snippet> suggestNextLineCode(
+        final Project project,
+        final String fileContent, final String currentLine, final String mimeType,
+        final String hintContext, final boolean singleCodeSnippet
+    ) {
+        final StringBuilder description = new StringBuilder(MIME_TYPE_DESCRIPTIONS.getOrDefault(mimeType, "code snippets"));
         StringBuilder prompt = new StringBuilder("You are an API server that provides ").append(description).append(" suggestions based on the file content. ");
-        if (hintContext == null) {
-            hintContext = "";
-        } else {
-            hintContext = hintContext + "\n";
-        }
+
         boolean hasHint = hintContext != null && !hintContext.isEmpty();
         if (hasHint) {
             prompt.append("Suggest code for ${SUGGEST_CODE} based on the file's context. ");
@@ -1268,7 +1255,7 @@ Expected YAML format:
                 prompt.append("Current line:\n").append(currentLine).append("\n");
             }
             prompt.append("Return a JSON object with 'snippet' as a single string using \\n for line breaks.\n\nFile Content:\n")
-                    .append(fileContent).append(hintContext);
+                    .append(fileContent).append(hintContext).append("\n");
 
         } else {
             if (currentLine == null || currentLine.isEmpty()) {
@@ -1289,11 +1276,16 @@ Expected YAML format:
         }
 
         String jsonResponse = generate(project, prompt.toString());
-        List<Snippet> nextLines = parseJsonToSnippets(jsonResponse);
-        return nextLines;
+
+        LOG.finest(jsonResponse);
+
+        return parseJsonToSnippets(jsonResponse);
     }
 
-    public List<Snippet> suggestSQLQuery(String dbMetadata, String editorContent) {
+    public List<Snippet> suggestSQLQuery(
+        final String dbMetadata, final String editorContent,
+        final boolean description
+    ) {
         StringBuilder prompt = new StringBuilder("You are an API server that provides SQL query suggestions based on the provided database schema metadata. ");
 
         if (editorContent == null || editorContent.isEmpty()) {
@@ -1311,7 +1303,7 @@ Expected YAML format:
           """);
 
         // Include description if enabled
-        if (pm.isDescriptionEnabled()) {
+        if (description) {
             prompt.append("""
           Additionally, each entry should contain a 'description' field providing a very short explanation of what the query does and why it might be appropriate in this context,
           formatted with <b>, <br> tags, and optionally, if required, include any important link with <a href=''> tags.
@@ -1332,5 +1324,4 @@ Expected YAML format:
     public void removeProgressListener(final PropertyChangeListener listener) {
         progressListeners.removePropertyChangeListener(listener);
     }
-
 }

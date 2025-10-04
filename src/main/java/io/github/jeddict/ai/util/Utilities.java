@@ -19,6 +19,7 @@ import java.awt.Color;
 import java.util.EnumSet;
 import java.util.Set;
 import javax.lang.model.type.TypeMirror;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.netbeans.api.java.source.CompilationInfo;
 import org.netbeans.api.java.source.TypeUtilities;
 import org.netbeans.swing.plaf.LFCustoms;
@@ -51,5 +52,20 @@ public class Utilities {
             options.add(TypeUtilities.TypeNameOptions.PRINT_AS_VARARG);
         }
         return info.getTypeUtilities().getTypeName(type, options.toArray(new TypeUtilities.TypeNameOptions[0]));
+    }
+
+    public static String errorHTMLBlock(Throwable x) {
+        return String.format("""
+```html
+<table border="1" bgcolor="#FFFFCC" cellpadding="5" cellspacing="0" width="100%%">
+  <tr>
+    <td>
+        <b>An error occurred communicating with the model:</b><br>
+        <pre><font color="#666666">%s</font></pre>
+    </td>
+  </tr>
+</table>
+```
+        """, ExceptionUtils.getStackTrace(x));
     }
 }

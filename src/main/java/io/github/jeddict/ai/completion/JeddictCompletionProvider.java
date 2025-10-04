@@ -283,7 +283,7 @@ public class JeddictCompletionProvider implements CompletionProvider {
         }
         return null;
     }
-       
+
     public static void highlightLoading(JTextComponent component, int caretOffset) {
         try {
             Document doc = component.getDocument();
@@ -338,7 +338,7 @@ public class JeddictCompletionProvider implements CompletionProvider {
 
         @Override
         protected void filter(CompletionResultSet resultSet) {
-//            CompletionContext context = new CompletionContext(component.getDocument(), 
+//            CompletionContext context = new CompletionContext(component.getDocument(),
 //                    component.getCaretPosition(), queryType);
 //            SpringCompletionResult springCompletionResult = completor.filter(context);
             resultSet.finish();
@@ -498,6 +498,9 @@ public class JeddictCompletionProvider implements CompletionProvider {
 
         @Override
         protected void query(CompletionResultSet resultSet, Document doc, int caretOffset) {
+            final PreferencesManager pm = PreferencesManager.getInstance();
+            final boolean description = pm.isDescriptionEnabled();
+
             try {
                 FileObject fileObject = getFileObjectFromEditor(doc);
                 if (fileObject == null) {
@@ -532,7 +535,7 @@ public class JeddictCompletionProvider implements CompletionProvider {
                     if (path == null || kind == Tree.Kind.ERRONEOUS) {
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_CODE}");
                         List<Snippet> sugs = getJeddictChatModel(fileObject)
-                                .suggestNextLineCode(FileOwnerQuery.getOwner(fileObject), classDataContent, updateddoc, line, path, hintContext, queryType == -1);
+                                .suggestNextLineCode(FileOwnerQuery.getOwner(fileObject), classDataContent, updateddoc, line, path, hintContext, queryType == -1, description);
                         for (Snippet snippet : sugs) {
                             if (resultSet == null) {
                                 highlightMultiline(component, caretOffset, snippet);
@@ -544,7 +547,7 @@ public class JeddictCompletionProvider implements CompletionProvider {
                     } else if (kind == Tree.Kind.COMPILATION_UNIT) {
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_CODE}");
                         List<Snippet> sugs = getJeddictChatModel(fileObject)
-                                .suggestNextLineCode(FileOwnerQuery.getOwner(fileObject), classDataContent, updateddoc, line, path, hintContext, queryType == -1);
+                                .suggestNextLineCode(FileOwnerQuery.getOwner(fileObject), classDataContent, updateddoc, line, path, hintContext, queryType == -1, description);
                         for (Snippet snippet : sugs) {
                             if (resultSet == null) {
                                 highlightMultiline(component, caretOffset, snippet);
@@ -558,7 +561,7 @@ public class JeddictCompletionProvider implements CompletionProvider {
                             && trimLeadingSpaces(line).charAt(0) == '@') || kind == Tree.Kind.ANNOTATION)) {
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_CODE}");
                         List<Snippet> annotationSuggestions = getJeddictChatModel(fileObject)
-                                .suggestAnnotations(FileOwnerQuery.getOwner(fileObject), classDataContent, updateddoc, line, hintContext, queryType == -1);
+                                .suggestAnnotations(FileOwnerQuery.getOwner(fileObject), classDataContent, updateddoc, line, hintContext, queryType == -1, description);
                         for (Snippet annotationSuggestion : annotationSuggestions) {
                             resultSet.addItem(createItem(annotationSuggestion, line, lineTextBeforeCaret, javaToken, kind, doc));
                         }
@@ -566,7 +569,7 @@ public class JeddictCompletionProvider implements CompletionProvider {
                             || kind == Tree.Kind.IDENTIFIER) {
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_CODE}");
                         List<Snippet> sugs = getJeddictChatModel(fileObject)
-                                .suggestNextLineCode(FileOwnerQuery.getOwner(fileObject), classDataContent, updateddoc, line, path, hintContext, queryType == -1);
+                                .suggestNextLineCode(FileOwnerQuery.getOwner(fileObject), classDataContent, updateddoc, line, path, hintContext, queryType == -1, description);
                         for (Snippet snippet : sugs) {
                             if (resultSet == null) {
                                 highlightMultiline(component, caretOffset, snippet);
@@ -578,7 +581,7 @@ public class JeddictCompletionProvider implements CompletionProvider {
                     } else if (kind == Tree.Kind.CLASS) {
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_CODE}");
                         List<Snippet> sugs = getJeddictChatModel(fileObject)
-                                .suggestNextLineCode(FileOwnerQuery.getOwner(fileObject), classDataContent, updateddoc, line, path, hintContext, queryType == -1);
+                                .suggestNextLineCode(FileOwnerQuery.getOwner(fileObject), classDataContent, updateddoc, line, path, hintContext, queryType == -1, description);
                         for (Snippet snippet : sugs) {
                             if (resultSet == null) {
                                 highlightMultiline(component, caretOffset, snippet);
@@ -591,7 +594,7 @@ public class JeddictCompletionProvider implements CompletionProvider {
                     } else if (kind == Tree.Kind.BLOCK) {
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_CODE}");
                         List<Snippet> sugs = getJeddictChatModel(fileObject)
-                                .suggestNextLineCode(FileOwnerQuery.getOwner(fileObject), classDataContent, updateddoc, line, path, hintContext, queryType == -1);
+                                .suggestNextLineCode(FileOwnerQuery.getOwner(fileObject), classDataContent, updateddoc, line, path, hintContext, queryType == -1, description);
                         for (Snippet snippet : sugs) {
                             if (resultSet == null) {
                                 highlightMultiline(component, caretOffset, snippet);
@@ -604,7 +607,7 @@ public class JeddictCompletionProvider implements CompletionProvider {
                     } else if (kind == Tree.Kind.EXPRESSION_STATEMENT) {
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_CODE}");
                         List<Snippet> sugs = getJeddictChatModel(fileObject)
-                                .suggestNextLineCode(FileOwnerQuery.getOwner(fileObject), classDataContent, updateddoc, line, path, hintContext, queryType == -1);
+                                .suggestNextLineCode(FileOwnerQuery.getOwner(fileObject), classDataContent, updateddoc, line, path, hintContext, queryType == -1, description);
                         for (Snippet snippet : sugs) {
                             if (resultSet == null) {
                                 highlightMultiline(component, caretOffset, snippet);
@@ -653,7 +656,7 @@ public class JeddictCompletionProvider implements CompletionProvider {
                             && parentKind == Tree.Kind.IF) {
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_IF_CONDITIONS}");
                         List<Snippet> sugs = getJeddictChatModel(fileObject)
-                                .suggestNextLineCode(FileOwnerQuery.getOwner(fileObject), classDataContent, updateddoc, line, path, hintContext, queryType == -1);
+                                .suggestNextLineCode(FileOwnerQuery.getOwner(fileObject), classDataContent, updateddoc, line, path, hintContext, queryType == -1, description);
                         for (Snippet snippet : sugs) {
                             if (resultSet == null) {
                                 highlightMultiline(component, caretOffset, snippet);
@@ -668,7 +671,7 @@ public class JeddictCompletionProvider implements CompletionProvider {
                             && parentKind == Tree.Kind.METHOD_INVOCATION) {
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_CODE}");
                         List<Snippet> sugs = getJeddictChatModel(fileObject)
-                                .suggestNextLineCode(FileOwnerQuery.getOwner(fileObject), classDataContent, updateddoc, line, path, hintContext, queryType == -1);
+                                .suggestNextLineCode(FileOwnerQuery.getOwner(fileObject), classDataContent, updateddoc, line, path, hintContext, queryType == -1, description);
                         for (Snippet snippet : sugs) {
                             if (resultSet == null) {
                                 highlightMultiline(component, caretOffset, snippet);
@@ -682,7 +685,7 @@ public class JeddictCompletionProvider implements CompletionProvider {
                         System.out.println("Skipped : " + kind + " " + path.getLeaf().toString());
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_CODE}");
                         List<Snippet> sugs = getJeddictChatModel(fileObject)
-                                .suggestNextLineCode(FileOwnerQuery.getOwner(fileObject), classDataContent, updateddoc, line, path, hintContext, queryType == -1);
+                                .suggestNextLineCode(FileOwnerQuery.getOwner(fileObject), classDataContent, updateddoc, line, path, hintContext, queryType == -1, description);
                         for (Snippet snippet : sugs) {
                             if (resultSet == null) {
                                 highlightMultiline(component, caretOffset, snippet);
@@ -745,7 +748,7 @@ public class JeddictCompletionProvider implements CompletionProvider {
                         SQLCompletion sqlCompletion = new SQLCompletion(sQLEditorSupport);
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_SQL_QUERY_LIST}");
                         List<Snippet> sugs = getJeddictChatModel(fileObject)
-                                .suggestSQLQuery(sqlCompletion.getMetaData(), updateddoc);
+                                .suggestSQLQuery(sqlCompletion.getMetaData(), updateddoc, description);
                         for (Snippet snippet : sugs) {
                             if (resultSet == null) {
                                 highlightMultiline(component, caretOffset, snippet);

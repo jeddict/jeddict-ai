@@ -143,7 +143,7 @@ public final class ReviewAction extends BaseGitAction {
                 sb.append(nameOnlyOutput);
             }
 
-            AssistantChatManager learnFix = new AssistantChatManager(io.github.jeddict.ai.completion.Action.QUERY);
+            AssistantChatManager learnFix = new AssistantChatManager(io.github.jeddict.ai.completion.Action.QUERY, project);
 
             String granularityInstruction = switch (input.selectedGranularity.toLowerCase()) {
                 case "high" ->

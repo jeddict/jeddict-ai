@@ -27,6 +27,13 @@ import com.sun.source.util.TreePath;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import io.github.jeddict.ai.JeddictUpdateManager;
+import io.github.jeddict.ai.agent.AbstractTool;
+import io.github.jeddict.ai.agent.ExecutionTools;
+import io.github.jeddict.ai.agent.ExplorationTools;
+import io.github.jeddict.ai.agent.FileSystemTools;
+import io.github.jeddict.ai.agent.GradleTools;
+import io.github.jeddict.ai.agent.MavenTools;
+import io.github.jeddict.ai.agent.RefactoringTools;
 import static io.github.jeddict.ai.classpath.JeddictQueryCompletionQuery.JEDDICT_EDITOR_CALLBACK;
 import io.github.jeddict.ai.completion.Action;
 import io.github.jeddict.ai.completion.SQLCompletion;
@@ -183,6 +190,8 @@ public class AssistantChatManager extends JavaFix {
                 project = FileOwnerQuery.getOwner(messageContext.toArray(FileObject[]::new)[0]);
             }
         }
+
+        LOG.finest(() -> "returning project " + project);
         return project;
     }
 
@@ -271,18 +280,25 @@ public class AssistantChatManager extends JavaFix {
                             currentResponseIndex = responseHistory.size() - 1;
                         }
                     };
+                    final PreferencesManager pm = PreferencesManager.getInstance();
+                    final Map<String, String> prompts = pm.getPrompts();
                     String response;
                     if (action == Action.TEST) {
                         if (leaf instanceof MethodTree) {
-                            response = newJeddictBrain(handler, getModelName()).generateTestCase(getProject(), null, null, leaf.toString(), null, null);
+                            response = newJeddictBrain(handler, getModelName())
+                                .generateTestCase(getProject(), null, null, leaf.toString(), null, null, prompts.get("test"), pm.getSessionRules());
                         } else {
-                            response = newJeddictBrain(handler, getModelName()).generateTestCase(getProject(), null, treePath.getCompilationUnit().toString(), null, null, null);
+                            response = newJeddictBrain(handler, getModelName())
+                                .generateTestCase(getProject(), null, treePath.getCompilationUnit().toString(), null, null, null, prompts.get("test"), pm.getSessionRules());
                         }
                     } else {
+                        final String rules = pm.getSessionRules();
                         if (leaf instanceof MethodTree) {
-                            response = newJeddictBrain(handler, getModelName()).assistJavaMethod(getProject(), leaf.toString());
+                            response = newJeddictBrain(handler, getModelName())
+                                .assistJavaMethod(getProject(), leaf.toString(), rules);
                         } else {
-                            response = newJeddictBrain(handler, getModelName()).assistJavaClass(getProject(), treePath.getCompilationUnit().toString());
+                            response = newJeddictBrain(handler, getModelName())
+                                .assistJavaClass(getProject(), treePath.getCompilationUnit().toString(), rules);
                         }
                     }
                     if (response != null && !response.isEmpty()) {
@@ -375,6 +391,12 @@ public class AssistantChatManager extends JavaFix {
             initialMessage();
         });
     }
+
+    public void addToSessionContext(List<FileObject> files) {
+        sessionContext.addAll(files);
+    }
+
+    // --------------------------------------------------------- private methods
 
     private static final String HOME_PAGE = "<div style='margin:20px; padding:20px; border-radius:10px;'>"
             + "<div style='text-align:center;'>"
@@ -983,18 +1005,19 @@ public class AssistantChatManager extends JavaFix {
                     }
                 };
                 String response;
-                    boolean agentEnabled = actionComboBox.getSelectedItem() == AssistantAction.BUILD;
+                boolean agentEnabled = actionComboBox.getSelectedItem() == AssistantAction.BUILD;
                 if (sqlCompletion != null) {
                     String context = sqlCompletion.getMetaData();
-                    String messageScopeContent = getTextFilesContext(messageContext, project, agentEnabled);
+                    String messageScopeContent = getTextFilesContext(messageContext, getProject(), agentEnabled);
                     if (messageScopeContent != null && !messageScopeContent.isEmpty()) {
                         context = context + "\n\n Files:\n" + messageScopeContent;
                     }
                     List<String> messageScopeImages = getImageFilesContext(messageContext);
-                    response = newJeddictBrain(handler, getModelName()).assistDbMetadata(context, question, messageScopeImages, prevChatResponses);
+                    response = newJeddictBrain(handler, getModelName())
+                        .assistDbMetadata(context, question, messageScopeImages, prevChatResponses, pm.getSessionRules());
                 } else if (commitMessage && commitChanges != null) {
                     String context = commitChanges;
-                    String messageScopeContent = getTextFilesContext(messageContext, project, agentEnabled);
+                    String messageScopeContent = getTextFilesContext(messageContext, getProject(), agentEnabled);
                     if (messageScopeContent != null && !messageScopeContent.isEmpty()) {
                         context = context + "\n\n Files:\n" + messageScopeContent;
                     }
@@ -1002,42 +1025,48 @@ public class AssistantChatManager extends JavaFix {
                     response = newJeddictBrain(handler, getModelName()).generateCommitMessageSuggestions(context, question, messageScopeImages, prevChatResponses);
                 } else if (codeReview && commitChanges != null) {
                     String context = commitChanges;
-                    String messageScopeContent = getTextFilesContext(messageContext, project, agentEnabled);
+                    String messageScopeContent = getTextFilesContext(messageContext, getProject(), agentEnabled);
                     if (messageScopeContent != null && !messageScopeContent.isEmpty()) {
                         context = context + "\n\n Files:\n" + messageScopeContent;
                     }
                     List<String> messageScopeImages = getImageFilesContext(messageContext);
-                    response = newJeddictBrain(handler, getModelName()).generateCodeReviewSuggestions(context, question, messageScopeImages, prevChatResponses);
+                    response = newJeddictBrain(handler, getModelName())
+                        .generateCodeReviewSuggestions(context, question, messageScopeImages, prevChatResponses, pm.getPrompts().get("codereview"));
                 } else if (projectContext != null || sessionContext != null) {
                     Set<FileObject> mainSessionContext;
                     String sessionScopeContent;
                     if (projectContext != null) {
                         mainSessionContext = getProjectContextList();
-                        sessionScopeContent = getProjectContext(mainSessionContext, project, agentEnabled);
+                        sessionScopeContent = getProjectContext(mainSessionContext, getProject(), agentEnabled);
                     } else {
                         mainSessionContext = this.sessionContext;
-                        sessionScopeContent = getTextFilesContext(mainSessionContext, project, agentEnabled);
+                        sessionScopeContent = getTextFilesContext(mainSessionContext, getProject(), agentEnabled);
                     }
                     List<String> sessionScopeImages = getImageFilesContext(mainSessionContext);
 
                     Set<FileObject> fitleredMessageContext = new HashSet<>(messageContext);
                     fitleredMessageContext.removeAll(mainSessionContext);
-                    String messageScopeContent = getTextFilesContext(fitleredMessageContext, project, agentEnabled);
+                    String messageScopeContent = getTextFilesContext(fitleredMessageContext, getProject(), agentEnabled);
                     List<String> messageScopeImages = getImageFilesContext(fitleredMessageContext);
                     List<String> images = new ArrayList<>();
                     images.addAll(sessionScopeImages);
                     images.addAll(messageScopeImages);
-                    response = newJeddictBrain(handler, getModelName()).generateDescription(getProject(), agentEnabled, sessionScopeContent + '\n' + messageScopeContent, null, images, prevChatResponses, question);
+                    response = newJeddictBrain(handler, getModelName())
+                        .generateDescription(getProject(), agentEnabled, sessionScopeContent + '\n' + messageScopeContent, null, images, prevChatResponses, question, pm.getSessionRules());
                 } else if (treePath == null) {
-                    response = newJeddictBrain(handler, getModelName()).generateDescription(getProject(), null, null, null, prevChatResponses, question);
+                    response = newJeddictBrain(handler, getModelName())
+                        .generateDescription(getProject(), null, null, null, prevChatResponses, question, pm.getSessionRules());
                 } else if (action == Action.TEST) {
                     if (leaf instanceof MethodTree) {
-                        response = newJeddictBrain(handler, getModelName()).generateTestCase(getProject(), null, null, leaf.toString(), prevChatResponses, question);
+                        response = newJeddictBrain(handler, getModelName())
+                            .generateTestCase(getProject(), null, null, leaf.toString(), prevChatResponses, question, pm.getPrompts().get("test"), pm.getSessionRules());
                     } else {
-                        response = newJeddictBrain(handler, getModelName()).generateTestCase(getProject(), null, treePath.getCompilationUnit().toString(), null, prevChatResponses, question);
+                        response = newJeddictBrain(handler, getModelName())
+                            .generateTestCase(getProject(), null, treePath.getCompilationUnit().toString(), null, prevChatResponses, question, pm.getPrompts().get("test"), pm.getSessionRules());
                     }
                 } else {
-                    response = newJeddictBrain(handler, getModelName()).generateDescription(getProject(), treePath.getCompilationUnit().toString(), treePath.getLeaf() instanceof MethodTree ? treePath.getLeaf().toString() : null, null, prevChatResponses, question);
+                    response = newJeddictBrain(handler, getModelName())
+                        .generateDescription(getProject(), treePath.getCompilationUnit().toString(), treePath.getLeaf() instanceof MethodTree ? treePath.getLeaf().toString() : null, null, prevChatResponses, question, pm.getSessionRules());
                 }
 
                 if (response != null && !response.isEmpty()) {
@@ -1048,9 +1077,8 @@ public class AssistantChatManager extends JavaFix {
                 updateHeight();
                 clearFileTab();
             } catch (Exception e) {
-                e.printStackTrace();
+                Exceptions.printStackTrace(e);
                 buttonPanelAdapter.componentResized(null);
-//                submitButton.setEnabled(true);
             }
         });
     }
@@ -1075,13 +1103,42 @@ public class AssistantChatManager extends JavaFix {
     }
 
     private JeddictBrain newJeddictBrain(final JeddictStreamHandler handler, final String name) {
-        final JeddictBrain brain = new JeddictBrain(handler, name);
+        final JeddictBrain brain = new JeddictBrain(
+            name, handler, PreferencesManager.getInstance().isStreamEnabled(), buildToolsList(project, handler));
         brain.addProgressListener(handler);
         return brain;
     }
 
-    public void addToSessionContext(List<FileObject> files) {
-        sessionContext.addAll(files);
+    private List<AbstractTool> buildToolsList(
+        final Project project, final JeddictStreamHandler handler
+    ) {
+        //
+        // TODO: make this automatic with some discoverability approach (maybe
+        // NB lookup registration?)
+        //
+        final String basedir =
+            FileUtil.toPath(project.getProjectDirectory())
+            .toAbsolutePath().normalize()
+            .toString();
+
+        final List<AbstractTool> toolsList = List.of(
+            new ExecutionTools(
+                basedir, project.getProjectDirectory().getName(),
+                pm.getBuildCommand(project), pm.getTestCommand(project)
+            ),
+            new ExplorationTools(basedir, project.getLookup()),
+            new FileSystemTools(basedir),
+            new GradleTools(basedir),
+            new MavenTools(basedir),
+            new RefactoringTools(basedir)
+        );
+
+        //
+        // The handler wants to know about tool execution
+        //
+        toolsList.forEach((tool) -> tool.addPropertyChangeListener(handler));
+
+        return toolsList;
     }
 
 }

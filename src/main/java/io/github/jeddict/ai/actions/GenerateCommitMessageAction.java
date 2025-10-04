@@ -104,7 +104,7 @@ public final class GenerateCommitMessageAction extends BaseGitAction {
             String statusOutput = runGitCommand("status");
             sb.append(statusOutput);
             String intitalCommitMessage = UIUtil.askForInitialCommitMessage();
-            AssistantChatManager learnFix = new AssistantChatManager(io.github.jeddict.ai.completion.Action.QUERY);
+            AssistantChatManager learnFix = new AssistantChatManager(io.github.jeddict.ai.completion.Action.QUERY, project);
             learnFix.askQueryForProjectCommit(project, sb.toString(), intitalCommitMessage);
         }
 

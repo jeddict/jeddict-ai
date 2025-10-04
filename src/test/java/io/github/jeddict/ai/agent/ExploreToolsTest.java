@@ -16,6 +16,7 @@
 package io.github.jeddict.ai.agent;
 
 import com.github.caciocavallosilano.cacio.ctc.junit.CacioTest;
+import io.github.jeddict.ai.test.BaseTest;
 import java.io.File;
 import org.apache.commons.io.FileUtils;
 import static org.assertj.core.api.BDDAssertions.then;

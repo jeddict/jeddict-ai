@@ -15,6 +15,7 @@
  */
 package io.github.jeddict.ai.agent;
 
+import io.github.jeddict.ai.test.BaseTest;
 import static io.github.jeddict.ai.agent.AbstractTool.PROPERTY_MESSAGE;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;

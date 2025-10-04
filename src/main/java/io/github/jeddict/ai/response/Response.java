@@ -34,15 +34,25 @@ public class Response {
     private final Set<FileObject> messageContext;
 
     public Response(String query, String response,  Set<FileObject> messageContext) {
+        if (query == null || query.trim().isEmpty()) {
+            throw new IllegalArgumentException("query can not be null or empty");
+        }
         this.query = query;
-        this.blocks = parseMarkdown(response);
+        if (response == null || response.isBlank()) {
+            response = "";
+        }
+        if (messageContext == null) {
+            throw new IllegalArgumentException("messageContext can not be null");
+        }
         this.messageContext = messageContext;
+
+        this.blocks = parseMarkdown(response);
     }
 
     public String getQuery() {
         return query;
     }
-    
+
     public List<Block> getBlocks() {
         return blocks;
     }
@@ -60,7 +70,8 @@ public class Response {
         StringBuilder buffer = new StringBuilder();
         boolean insideCodeBlock = false;
         String currentFence = null;
-        String codeType = null;
+        String blockType = "text"; // block type is text by default to match
+                                   // heading text
 
         Scanner scanner = new Scanner(text);
         while (scanner.hasNextLine()) {
@@ -74,18 +85,24 @@ public class Response {
                 if (!insideCodeBlock) {
                     // Starting code block
                     if (buffer.length() > 0) {
-                        result.add(new Block("text", buffer.toString().trim()));
+                        //
+                        // NOTE: text outside block shall be trimmed
+                        //
+                        result.add(new Block(blockType, buffer.toString().trim()));
                         buffer.setLength(0);
                     }
                     insideCodeBlock = true;
                     currentFence = fence;
-                    codeType = lang.isEmpty() ? "code" : lang;
+                    blockType = lang.isEmpty() ? "code" : lang;
                 } else if (line.startsWith(currentFence)) {
                     // Ending code block
                     insideCodeBlock = false;
-                    result.add(new Block(codeType, buffer.toString().trim()));
+                    //
+                    // NOTE: content outside blocks should not be trimmed
+                    //
+                    result.add(new Block(blockType, buffer.toString()));
                     buffer.setLength(0);
-                    codeType = null;
+                    blockType = "text";
                 }
                 // Skip the fence line itself
             } else {
@@ -94,7 +111,7 @@ public class Response {
         }
 
         if (buffer.length() > 0) {
-            result.add(new Block(insideCodeBlock ? codeType : "text", buffer.toString().trim()));
+            result.add(new Block(blockType, buffer.toString().trim()));
         }
 
         return result;
@@ -107,7 +124,7 @@ public class Response {
             switch (block.getType()) {
                 case "text" -> responseBuilder.append(block.getContent()).append("\n");
                 default -> responseBuilder.append("```").append(block.getType()).append("\n")
-                            .append(block.getContent()).append("\n")
+                            .append(block.getContent())
                             .append("```\n");
             }
         }

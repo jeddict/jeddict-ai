@@ -13,14 +13,20 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package io.github.jeddict.ai.agent;
+package io.github.jeddict.ai.test;
 
 import io.github.jeddict.ai.agent.AbstractTool;
+import java.io.File;
 
 /**
  *
  */
 public class DummyTool extends AbstractTool {
+
+    public DummyTool() {
+        this(new File(".").getAbsolutePath());
+    }
+
     public DummyTool(String basedir) {
         super(basedir);
     }

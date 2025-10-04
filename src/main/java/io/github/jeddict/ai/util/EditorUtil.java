@@ -67,7 +67,8 @@ public class EditorUtil {
 
     private static final Parser parser = Parser.builder().build();
     private static final HtmlRenderer renderer = HtmlRenderer.builder().build();
-    private static final Logger LOGGER = Logger.getLogger(EditorUtil.class.getName());
+    private static final Set<String> TEXT_BLOCK_TYPES = Set.of("text", "web", "html");
+    private static final Logger LOG = Logger.getLogger(EditorUtil.class.getName());
 
     public static String updateEditors(BiConsumer<String, Set<FileObject>> queryUpdate, Project project, AssistantChat topComponent, Response response, Set<FileObject> threadContext) {
         StringBuilder code = new StringBuilder();
@@ -106,14 +107,16 @@ public class EditorUtil {
     }
 
     public static JComponent printBlock(StringBuilder code, Block prevBlock, Block block, Project project, AssistantChat topComponent) {
+        LOG.finest(() -> "printing blocks \n" + prevBlock + "\n" + block);
+
         JComponent pane;
-        if (block != null && (block.getType().equals("text") || block.getType().equals("web"))) {
+        if (block != null && (TEXT_BLOCK_TYPES.contains(block.getType()))) {
             String html;
             if (block.getType().equals("text")) {
                 html = renderer.render(parser.parse(block.getContent()));
                 html = wrapClassNamesWithAnchor(html);
             } else {
-                html = block.getContent();
+                html = String.format("<html><body>%s</body></html>", block.getContent());
             }
             JEditorPane htmlPane = topComponent.createHtmlPane(html);
             pane = htmlPane;
@@ -555,7 +558,7 @@ public class EditorUtil {
         try {
             return document.getText(startOffset, endOffset - startOffset);
         } catch (BadLocationException ex) {
-            LOGGER.log(Level.WARNING, ex.getMessage());
+            LOG.log(Level.WARNING, ex.getMessage());
         }
         return ""; // NOI18N
     }
