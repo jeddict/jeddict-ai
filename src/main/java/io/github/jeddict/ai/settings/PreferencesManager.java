@@ -55,6 +55,7 @@ public class PreferencesManager {
     private static final String PROVIDER_PREFERENCE = "provider";
     private static final String MODEL_PREFERENCE = "model";
     private static final String MODEL_LIST = "modelList";
+    private static final String MODEL_PREFERENCE_LIST = "modelPreferenceList";
     private static final String CHAT_MODEL_PREFERENCE = "chatModel";
     private static final String CHAT_MODEL_LIST = "chatModelList";
     private static final String GLOBAL_RULES_PREFERENCE = "globalRules";
@@ -346,6 +347,74 @@ public class PreferencesManager {
         }
         preferences.put(MODEL_LIST, jsonArray.toString());
     }
+    
+    public void setGenAIModelList(List<GenAIModel> models, String providerName) {
+        JSONArray jsonArray = new JSONArray();
+        for (GenAIModel model : models) {
+            JSONObject modelJson = new JSONObject();
+            modelJson.put("provider", model.getProvider().name());
+            modelJson.put("name", model.getName());
+            modelJson.put("description", model.getDescription());
+            modelJson.put("inputPrice", model.getInputPrice());
+            modelJson.put("outputPrice", model.getOutputPrice());
+            jsonArray.put(modelJson);
+        }
+        preferences.put(MODEL_PREFERENCE_LIST+"_"+providerName, jsonArray.toString());
+    }
+
+    public List<GenAIModel> getGenAIModelList(String providerName) {
+        String jsonString = preferences.get(MODEL_PREFERENCE_LIST+"_"+providerName, "[]");
+        JSONArray jsonArray = new JSONArray(jsonString);
+        List<GenAIModel> models = new ArrayList<>();
+
+        for (int i = 0; i < jsonArray.length(); i++) {
+            JSONObject modelJson = jsonArray.getJSONObject(i);
+            try {
+                GenAIProvider provider = GenAIProvider.valueOf(modelJson.getString("provider"));
+                String name = modelJson.getString("name");
+                String description = modelJson.getString("description");
+                double inputPrice = modelJson.getDouble("inputPrice");
+                double outputPrice = modelJson.getDouble("outputPrice");
+
+                GenAIModel model = new GenAIModel(provider, name, description, inputPrice, outputPrice);
+                models.add(model);
+            } catch (Exception e) {
+                System.err.println("Errore nel caricamento del modello: " + e.getMessage());
+            }
+        }
+        return models;
+    }
+    
+    public GenAIModel getGenAIModelByName(String providerName, String modelName) {
+        List<GenAIModel> models = getGenAIModelList(providerName);
+        return models.stream()
+                .filter(model -> model.getName().equals(modelName))
+                .findFirst()
+                .orElse(null);
+    }
+    
+    public Map<String, GenAIModel> getGenAIModelMap(String providerName) {
+        String jsonString = preferences.get(MODEL_PREFERENCE_LIST+"_"+providerName, "[]");
+        JSONArray jsonArray = new JSONArray(jsonString);
+        Map<String, GenAIModel> models = new HashMap<>();
+
+        for (int i = 0; i < jsonArray.length(); i++) {
+            JSONObject modelJson = jsonArray.getJSONObject(i);
+            try {
+                GenAIProvider provider = GenAIProvider.valueOf(modelJson.getString("provider"));
+                String name = modelJson.getString("name");
+                String description = modelJson.getString("description");
+                double inputPrice = modelJson.getDouble("inputPrice");
+                double outputPrice = modelJson.getDouble("outputPrice");
+
+                GenAIModel model = new GenAIModel(provider, name, description, inputPrice, outputPrice);
+                models.put(model.getName(),model);
+            } catch (Exception e) {
+                System.err.println("Errore nel caricamento del modello: " + e.getMessage());
+            }
+        }
+        return models;
+    }
 
     public List<String> getModelList() {
         String jsonString = preferences.get(MODEL_LIST, "[\"" + getModel() + "\"]");
@@ -363,24 +432,6 @@ public class PreferencesManager {
 
     public void setChatModel(String model) {
         preferences.put(CHAT_MODEL_PREFERENCE, model);
-    }
-    
-    public void setChatModelList(List<String> models) {
-        JSONArray jsonArray = new JSONArray();
-        for (String model : models) {
-            jsonArray.put(model);
-        }
-        preferences.put(CHAT_MODEL_LIST, jsonArray.toString());
-    }
-
-    public List<String> getChatModelList() {
-        String jsonString = preferences.get(CHAT_MODEL_LIST, "[\"" + getChatModel() + "\"]");
-        JSONArray jsonArray = new JSONArray(jsonString);
-        List<String> models = new ArrayList();
-        for (int i = 0; i < jsonArray.length(); i++) {
-            models.add(jsonArray.getString(i));
-        }
-        return models;
     }
 
     public void setProvider(GenAIProvider provider) {
@@ -537,7 +588,7 @@ public class PreferencesManager {
     }
 
 
-        public synchronized Map<String, String> getCustomHeaders() {
+    public synchronized Map<String, String> getCustomHeaders() {
         String nodeKey = "customHeaders";
         if (headerKeyValueMap.isEmpty()) {
             JSONObject prefPrompts = preferences.getChild(nodeKey);

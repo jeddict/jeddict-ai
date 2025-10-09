@@ -15,7 +15,6 @@
  */
 package io.github.jeddict.ai.settings;
 
-import io.github.jeddict.ai.models.GPT4AllModelFetcher;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -88,23 +87,15 @@ public enum GenAIProvider {
     }
 
     public static Set<String> getModelsByProvider(GenAIProvider provider) {
-        if (provider == COPILOT_PROXY) {
-            String providerLocation = PreferencesManager.getInstance().getProviderLocation();
-            GPT4AllModelFetcher allModelFetcher = new GPT4AllModelFetcher();
-            Map<String, GenAIModel> fetchGenAIModels = allModelFetcher.fetchGenAIModels(providerLocation);
+        
+        List<GenAIModel> iModels = PreferencesManager.getInstance().getGenAIModelList(provider.name());
+        
+        if(iModels != null && !iModels.isEmpty()) {
             Set<String> models = new TreeSet<>();
-            for (Map.Entry<String, GenAIModel> entry : fetchGenAIModels.entrySet()) {
-                models.add(entry.getKey());
-            }
-            return models;
-
-        } else if(provider == CUSTOM_OPEN_AI) {
-
-            List<String> loadedModels = PreferencesManager.getInstance().getModelList();
-            Set<String> models = new TreeSet<>();
-            for(String model : loadedModels) {
-                models.add(model);
-            }
+            iModels.forEach((m) -> {
+                models.add(m.getName());
+            });
+            
             return models;
         }
         
