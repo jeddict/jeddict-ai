@@ -18,20 +18,23 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: maven
-    - name: Build with Maven
-      env:
-        JAVA_TOOL_OPTIONS: -Djava.awt.headless=true
-      run: mvn -B package --file pom.xml
+      - uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+      - name: Build with Maven
+        env:
+          JAVA_TOOL_OPTIONS: -Djava.awt.headless=true
+        run: mvn -B package --file pom.xml
 
   deploy:
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.release == 'true'
@@ -39,33 +42,33 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
 
-    - name: Set up GPG for signing
-      run: |
-        echo "$GPG_PRIVATE_KEY" | gpg --batch --import
-        echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
-        gpgconf --reload gpg-agent
+      - name: Set up GPG for signing
+        run: |
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+          echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+          gpgconf --reload gpg-agent
 
-    - name: Build and deploy to Maven Central
-      env:
-        JAVA_TOOL_OPTIONS: "-Djava.awt.headless=true"
-        OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-        OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
-        GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-      run: |
-        mvn clean package deploy -Dgpg.passphrase=${{ secrets.GPG_PASSPHRASE }} \
-                                 -Dkeystorealias=${{ secrets.KEYSTORE_ALIAS }} \
-                                 -Dkeystore=${{ secrets.KEYSTORE_PATH }} \
-                                 -Dkeystore.password=${{ secrets.KEYSTORE_PASSWORD }} \
-                                 -Prelease
+      - name: Build and deploy to Maven Central
+        env:
+          JAVA_TOOL_OPTIONS: "-Djava.awt.headless=true"
+          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: |
+          mvn clean package deploy -Dgpg.passphrase=${{ secrets.GPG_PASSPHRASE }} \
+                                   -Dkeystorealias=${{ secrets.KEYSTORE_ALIAS }} \
+                                   -Dkeystore=${{ secrets.KEYSTORE_PATH }} \
+                                   -Dkeystore.password=${{ secrets.KEYSTORE_PASSWORD }} \
+                                   -Prelease
 
-    - name: Confirm release to Maven Central
+      - name: Confirm release to Maven Central
       run: echo "Maven Central release completed!"
