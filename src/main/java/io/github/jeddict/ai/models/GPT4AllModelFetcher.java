@@ -23,6 +23,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.json.JSONArray;
@@ -85,8 +86,8 @@ public class GPT4AllModelFetcher {
      * @param apiUrl GPT4All API url
      * @return Map of model name to GenAIModel
      */
-    public Map<String, GenAIModel> fetchGenAIModels(String apiUrl) {
-        Map<String, GenAIModel> modelsMap = new HashMap<>();
+    public LinkedHashMap<String, GenAIModel> fetchGenAIModels(String apiUrl) {
+        LinkedHashMap<String, GenAIModel> modelsMap = new LinkedHashMap<>();
         try {
             URL url = new URL(apiUrl + "/models");
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();

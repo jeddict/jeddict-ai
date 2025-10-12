@@ -51,6 +51,7 @@ import java.awt.event.MouseEvent;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -77,6 +78,7 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumnModel;
+import javax.swing.table.TableRowSorter;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 
@@ -1136,7 +1138,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
         if (selectedContext != null && getModel(selectedContext) != null) {
             // TODO retrive object from persistence
             GenAIModel aIModel = getModel(selectedContext);
-            modelHelp.setText("<html><p>&nbsp;" + aIModel.getDescription() + " In.Price:" + aIModel.getInputPrice() + ", Out.Price:" + aIModel.getOutputPrice() + "</p></html>");
+            modelHelp.setText("<html><p>&nbsp;" + aIModel.getDescription().substring(0, 100) + "...<br>&nbsp;In.Price:" + aIModel.getInputPrice() + ", Out.Price:" + aIModel.getOutputPrice() + "</p></html>");
         } else {
             modelHelp.setText("");
         }
@@ -1454,8 +1456,8 @@ final class AIAssistancePanel extends javax.swing.JPanel {
         return models;
     }
     
-    public Map<String, GenAIModel> getModelsByProvider(Map<String, GenAIModel> models, String provider) {
-        Map<String, GenAIModel> filteredModels = new HashMap<>();
+    public LinkedHashMap<String, GenAIModel> getModelsByProvider(Map<String, GenAIModel> models, String provider) {
+        LinkedHashMap<String, GenAIModel> filteredModels = new LinkedHashMap<>(); // Modifica qui
         for (Map.Entry<String, GenAIModel> entry : models.entrySet()) {
             GenAIModel model = entry.getValue();
             if (model.getProvider().name().equals(provider)) {
@@ -1465,68 +1467,57 @@ final class AIAssistancePanel extends javax.swing.JPanel {
         return filteredModels;
     }
 
-    private Map<String, GenAIModel> getModelListTable(GenAIProvider selectedProvider) {
+    private LinkedHashMap<String, GenAIModel> getModelListTable(GenAIProvider selectedProvider) {
         // TODO Sostituire con la ripresa dal file json
-        Map<String, GenAIModel> models = null;
+        final LinkedHashMap<String, GenAIModel> models = new LinkedHashMap<>();
         if (selectedProvider == GenAIProvider.OLLAMA
                 && !providerLocationField.getText().isEmpty()) {
             OllamaModelFetcher fetcher = new OllamaModelFetcher();
             List<String> strModels = fetcher.fetchModelNames(providerLocationField.getText());
-            models = strModels.stream()
-                .filter(strModel -> !MODELS.containsKey(strModel))
-                .collect(Collectors.toMap(
-                    strModel -> strModel,
-                    strModel -> new GenAIModel(selectedProvider, strModel, strModel, 0, 0)
-                ));
+            strModels.forEach((model) -> {
+                models.put(model, new GenAIModel(selectedProvider, model, model, 0, 0));
+            });
             // Aggiunge tutti i MODELS esistenti alla lista
             models.putAll(getModelsByProvider(MODELS,selectedProvider.name()));
         } else if (selectedProvider == GenAIProvider.LM_STUDIO
                 && !providerLocationField.getText().isEmpty()) {
             LMStudioModelFetcher fetcher = new LMStudioModelFetcher();
             List<String> strModels = fetcher.fetchModelNames(providerLocationField.getText());
-            models = strModels.stream()
-                .filter(strModel -> !MODELS.containsKey(strModel))
-                .collect(Collectors.toMap(
-                    strModel -> strModel,
-                    strModel -> new GenAIModel(selectedProvider, strModel, strModel, 0, 0)
-                ));
+            strModels.forEach((model) -> {
+                models.put(model, new GenAIModel(selectedProvider, model, model, 0, 0));
+            });
             // Aggiunge tutti i MODELS esistenti alla lista
             models.putAll(getModelsByProvider(MODELS,selectedProvider.name()));
         } else if (selectedProvider == GenAIProvider.GPT4ALL
                 && !providerLocationField.getText().isEmpty()) {
             GPT4AllModelFetcher fetcher = new GPT4AllModelFetcher();
-            models = fetcher.fetchGenAIModels(providerLocationField.getText());
+            models.putAll(fetcher.fetchGenAIModels(providerLocationField.getText()));
             models.putAll(getModelsByProvider(MODELS,selectedProvider.name()));
         } else if (selectedProvider == GenAIProvider.COPILOT_PROXY) {
             GPT4AllModelFetcher fetcher = new GPT4AllModelFetcher();
-            models = fetcher.fetchGenAIModels(DEFAULT_COPILOT_PROVIDER_LOCATION);
+            models.putAll(fetcher.fetchGenAIModels(DEFAULT_COPILOT_PROVIDER_LOCATION));
             models.putAll(getModelsByProvider(MODELS,selectedProvider.name()));
         } else if (selectedProvider == GenAIProvider.GROQ
                 && !providerLocationField.getText().isEmpty()) {
             GroqModelFetcher fetcher = new GroqModelFetcher();
             List<String> strModels = fetcher.fetchModels(providerLocationField.getText(), new String(apiKeyField.getPassword()));
-            models = strModels.stream()
-                .filter(strModel -> !MODELS.containsKey(strModel))
-                .collect(Collectors.toMap(
-                    strModel -> strModel,
-                    strModel -> new GenAIModel(selectedProvider, strModel, strModel, 0, 0)
-                ));
+            strModels.forEach((model) -> {
+                models.put(model, new GenAIModel(selectedProvider, model, model, 0, 0));
+            });
             // Aggiunge tutti i MODELS esistenti alla lista
             models.putAll(getModelsByProvider(MODELS,selectedProvider.name()));
-        } else if (selectedProvider == GenAIProvider.CUSTOM_OPEN_AI ) {
+        } else if (selectedProvider == GenAIProvider.CUSTOM_OPEN_AI) {
             OpenAIModelFetcher fetcher = new OpenAIModelFetcher();
-            models = fetcher.fetchGenAIModels(providerLocationField.getText());
-            models.putAll(getModelsByProvider(MODELS,selectedProvider.name()));
-            /*
-            models = new ArrayList<>();
-            for (int i = 0; i < modelComboBox.getItemCount(); i++) {
-                models.add((String) modelComboBox.getItemAt(i));
-            }
-            */
+            LinkedHashMap<String, GenAIModel> apiModels = fetcher.fetchGenAIModels(providerLocationField.getText());
+            // Prima aggiungi i modelli predefiniti
+            models.putAll(getModelsByProvider(MODELS, selectedProvider.name()));
+
+            // Poi aggiungi i modelli dall'API (che sovrascrivono i duplicati)
+            models.putAll(apiModels);
         }
 
-        if (models == null) {
-            models = getModelsByProvider(MODELS,selectedProvider.name());
+        if (models.isEmpty()) {
+            models.putAll(getModelsByProvider(MODELS,selectedProvider.name()));
         }
         
         // Ordina la mappa alfabeticamente per chiave
@@ -2311,7 +2302,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
         JMenuItem downloadModelsItem = new JMenuItem("Add models from remote");
         downloadModelsItem.addActionListener(e -> {
             // Creare una mappa predefinita di modelli disponibili
-            Map<String, GenAIModel> availableModels = getModelListTable((GenAIProvider)providerComboBox.getSelectedItem());
+            LinkedHashMap<String, GenAIModel> availableModels = getModelListTable((GenAIProvider)providerComboBox.getSelectedItem());
 
             // Creare il dialog
             //JDialog modelSelectionDialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Select Models to Add", true);
@@ -2358,10 +2349,42 @@ final class AIAssistancePanel extends javax.swing.JPanel {
                 });
             }
 
-            // Creare la tabella
-            JTable modelsTable = new JTable(tableModel);
+            // Creazione della JTable con tooltip personalizzato
+            JTable modelsTable = new JTable(tableModel) {
+                @Override
+                public String getToolTipText(MouseEvent e) {
+                    Point p = e.getPoint();
+                    int row = rowAtPoint(p);
+                    int col = columnAtPoint(p);
+
+                    if (row >= 0 && col >= 0) {
+                        if (col == 2) { // Descrizione
+                            Object value = getValueAt(row, col);
+                            return (value != null) ? value.toString() : null;
+                        }
+                    }
+                    return super.getToolTipText(e);
+                }
+
+                @Override
+                public Point getToolTipLocation(MouseEvent e) {
+                    return new Point(20, -20); 
+                }
+            };
+
+            // AGGIUNTA DELL'ORDINAMENTO PER LE COLONNE
+            TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel);
+            modelsTable.setRowSorter(sorter);
+
+            // Comparatore per le colonne numeriche (prezzi)
+            sorter.setComparator(3, Comparator.comparingDouble(value -> (Double) value));
+            sorter.setComparator(4, Comparator.comparingDouble(value -> (Double) value));
+
+            
             modelsTable.setPreferredScrollableViewportSize(new Dimension(750, 400));
             modelsTable.setFillsViewportHeight(true);
+            modelsTable.setAutoCreateRowSorter(true);
+
 
             // Impostare la larghezza delle colonne
             modelsTable.getColumnModel().getColumn(0).setPreferredWidth(50);

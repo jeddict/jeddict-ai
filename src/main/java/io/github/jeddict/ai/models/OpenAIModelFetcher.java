@@ -23,6 +23,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.StreamSupport;
@@ -99,8 +100,8 @@ public class OpenAIModelFetcher {
      * @param apiUrl GPT4All API url
      * @return Map of model name to GenAIModel
      */
-    public Map<String, GenAIModel> fetchGenAIModels(String apiUrl) {
-        Map<String, GenAIModel> modelsMap = new HashMap<>();
+    public LinkedHashMap<String, GenAIModel> fetchGenAIModels(String apiUrl) {
+        LinkedHashMap<String, GenAIModel> modelsMap = new LinkedHashMap<>();
         try {
             URL url = new URL(apiUrl + "/models");
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
@@ -128,11 +129,13 @@ public class OpenAIModelFetcher {
                 }
 
                 // Ordina la lista per il campo "created" in ordine decrescente
+                /*
                 modelList.sort((obj1, obj2) -> {
                     long created1 = obj1.getLong("created");
                     long created2 = obj2.getLong("created");
                     return Long.compare(created2, created1); // Ordine decrescente
                 });
+                */
                 /*
                 JSONArray sortedModels = new JSONArray();
                 StreamSupport.stream(models.spliterator(), false)
