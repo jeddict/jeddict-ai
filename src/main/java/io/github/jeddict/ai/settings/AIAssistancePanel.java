@@ -79,6 +79,7 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumnModel;
 import javax.swing.table.TableRowSorter;
+import org.apache.commons.lang3.StringUtils;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 
@@ -1138,7 +1139,8 @@ final class AIAssistancePanel extends javax.swing.JPanel {
         if (selectedContext != null && getModel(selectedContext) != null) {
             // TODO retrive object from persistence
             GenAIModel aIModel = getModel(selectedContext);
-            modelHelp.setText("<html><p>&nbsp;" + aIModel.getDescription().substring(0, 100) + "...<br>&nbsp;In.Price:" + aIModel.getInputPrice() + ", Out.Price:" + aIModel.getOutputPrice() + "</p></html>");
+            String descr = StringUtils.defaultIfBlank(aIModel.getDescription(), aIModel.getName());
+            modelHelp.setText("<html><p>&nbsp;" + StringUtils.abbreviate(descr, 100) + "...<br>&nbsp;In.Price:" + aIModel.getInputPrice() + ", Out.Price:" + aIModel.getOutputPrice() + "</p></html>");
         } else {
             modelHelp.setText("");
         }
@@ -1184,7 +1186,12 @@ final class AIAssistancePanel extends javax.swing.JPanel {
             frequencyPenaltyPane.setVisible(true);
             seedPane.setVisible(true);
         }
-        if(selectedProvider == GenAIProvider.CUSTOM_OPEN_AI) {
+        if(selectedProvider == GenAIProvider.CUSTOM_OPEN_AI
+                || selectedProvider == GenAIProvider.GROQ
+                || selectedProvider == GenAIProvider.COPILOT_PROXY
+                || selectedProvider == GenAIProvider.GPT4ALL
+                || selectedProvider == GenAIProvider.LM_STUDIO
+                || selectedProvider == GenAIProvider.OLLAMA) {
             manageModelsButton.setVisible(true);
         }
         if (selectedProvider == GenAIProvider.OLLAMA) {
