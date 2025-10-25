@@ -18,7 +18,6 @@ package io.github.jeddict.ai.hints;
 import com.sun.source.tree.Tree;
 import com.sun.source.util.TreePath;
 import io.github.jeddict.ai.JeddictUpdateManager;
-import io.github.jeddict.ai.agent.pair.CodeSpecialist;
 import io.github.jeddict.ai.agent.pair.PairProgrammer;
 import io.github.jeddict.ai.completion.Action;
 import static io.github.jeddict.ai.scanner.ProjectClassScanner.getClassDataContent;
@@ -36,6 +35,7 @@ import org.netbeans.api.project.FileOwnerQuery;
 import org.netbeans.api.project.Project;
 import org.netbeans.spi.java.hints.JavaFix;
 import org.openide.util.NbBundle;
+import io.github.jeddict.ai.agent.pair.RefactorSpecialist;
 
 /**
  *
@@ -88,7 +88,7 @@ public class VariableFix extends BaseAIFix {
                         prefsManager.getClassContext()
                 );
 
-            final CodeSpecialist pair = newJeddictBrain().pairProgrammer(PairProgrammer.Specialist.CODE);
+            final RefactorSpecialist pair = newJeddictBrain().pairProgrammer(PairProgrammer.Specialist.REFACTOR);
             final Project project = FileOwnerQuery.getOwner(copy.getFileObject());
             final String classSource = treePath.getParentPath().getLeaf().toString();
 

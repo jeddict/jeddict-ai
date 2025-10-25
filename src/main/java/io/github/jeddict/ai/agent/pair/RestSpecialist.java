@@ -22,35 +22,15 @@ import dev.langchain4j.service.V;
 
 
 /**
- * <p><b>PairProgrammer</b> is an intelligent agent designed to facilitate automated generation of REST API scaffolding in Java projects.</p>
+ * Interface defining a provider for generating JAX-RS REST endpoints from Java class source code.
+ * This interface is intended to be implemented by specialized components that analyze a class and
+ * produce syntactically correct, import-inclusive JAX-RS endpoint method declarations with
+ * basic method implementations.
  *
- * <p>This agent interface operates through a structured message-passing system, featuring:</p>
- * <ul>
- *   <li>{@link #SYSTEM_MESSAGE}: Specifies behavioral constraints, context, and operational guidelines for the Javadoc generation agent, including best practices for analyzing code, avoiding duplication, and adhering to project/global rules.</li>
- *   <li>{@link #USER_MESSAGE}: Provides the template for user requests, incorporating the target Java class code to be analyzed.</li>
- * </ul>
-
- * <p><b>Core functionality includes:</b></p>
- * <ul>
- *   <li>Analyzing provided Java class definitions for the purpose of designing JAX-RS REST endpoints.</li>
- *   <li>Automating creation of basic HTTP operation scaffolding (GET, POST, PUT, DELETE) with proper implementation stubs, annotations, and imports conforming to JAX-RS standards.</li>
- *   <li>Ensuring generated endpoints follow project conventions, avoid duplications, include only annotated methods (not class declarations or constructors), and are returned in a well-structured JSON object containing all relevant imports and method source code.</li>
- *   <li>Supporting customization via insertion of <code>globalRules</code> and <code>projectRules</code> that influence endpoint generation behavior.</li>
- * </ul>
- *
- * <p><b>Typical usage pattern:</b></p>
- * <pre>
- * RestSpecialist programmer = AgenticServices.agentBuilder(RestSpecialist.class)
- *                                 // configuration ...
- *                                .build();
- * String text = programmer.generateEndpointForClass(classCode, globalRules, projectRules);
- * </pre>
- *
- * <p>
- * The <code>RestSpecialist</code> interface provides integration points for these capabilities. The main method, {@link #generateEndpointForClass(String, String, String)}, accepts a class source string and project/global rule sets, returning a JSON object containing all necessary JAX-RS endpoint stubs and import statements.
- * </p>
-**/
-public interface RestSpecialist {
+ * <p>The generated output is a well-formatted JSON object containing an array of required imports
+ * and the annotated JAX-RS method declarations as a text string.</p>
+ */
+public interface RestSpecialist extends PairProgrammer {
         public static final String SYSTEM_MESSAGE = """
 You are a programmer specialized in writing JAX-RS REST endpoints based on the provided Java class acordingly to the rules:
   - Analyze the code of the class to create meaningful REST endpoints

@@ -26,7 +26,6 @@ import com.sun.source.tree.VariableTree;
 import com.sun.source.util.TreePath;
 import com.sun.source.util.TreeScanner;
 import io.github.jeddict.ai.JeddictUpdateManager;
-import io.github.jeddict.ai.agent.pair.CodeSpecialist;
 import io.github.jeddict.ai.agent.pair.PairProgrammer;
 import io.github.jeddict.ai.completion.Action;
 import java.util.List;
@@ -43,6 +42,7 @@ import org.netbeans.api.project.FileOwnerQuery;
 import org.netbeans.api.project.Project;
 import org.netbeans.spi.java.hints.JavaFix;
 import org.openide.util.NbBundle;
+import io.github.jeddict.ai.agent.pair.RefactorSpecialist;
 
 /**
  *
@@ -69,7 +69,7 @@ public class VariableNameFix extends TreePathAIFix {
         Tree leaf = path.getLeaf();
         Element elm = copy.getTrees().getElement(path);
         if (elm instanceof VariableElement) {
-            final CodeSpecialist pair = newJeddictBrain().pairProgrammer(PairProgrammer.Specialist.CODE);
+            final RefactorSpecialist pair = newJeddictBrain().pairProgrammer(PairProgrammer.Specialist.REFACTOR);
             final Project project = FileOwnerQuery.getOwner(copy.getFileObject());
             final String classSource = copy.getCompilationUnit().toString();
             final String methodSource = treePath.getParentPath().getLeaf().toString();

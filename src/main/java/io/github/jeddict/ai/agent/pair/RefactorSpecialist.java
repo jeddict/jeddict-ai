@@ -21,37 +21,33 @@ import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 
 
+
 /**
- * <p><b>PairProgrammer</b> is an agent designed to facilitate automated generation
- * of rest APIs scaffolding.
+ * Provides an interface for AI-powered Java code refactoring utilities. This
+ * specialist adapts or enhances methods, variable names, and fixes compilation
+ * errors based on specific user requests and project rules.<p>
  *
- * <p>The interface operates through a structured message-passing system where:
+ * The interface defines prompts, message constants, and processing methods to
+ * allow Java code modification and generation workflows. Returned results are
+ * formatted as JSON objects containing necessary imports and code content.<p>
+ *
+ * Responsibilities include:
  * <ul>
- *   <li>{@link #SYSTEM_MESSAGE} defines the behavioral constraints and operational guidelines
- *       for the Javadoc generation agent</li>
- *   <li>{@link #USER_MESSAGE} provides the template for user requests containing the target code</li>
+ *   <li>Generating new method code or enhancing existing methods</li>
+ *   <li>Fixing compilation errors in method implementations</li>
+ *   <li>Refining variable names for improved clarity</li>
+ *   <li>Integrating user, global, and project-specific requirements</li>
  * </ul>
- * </p>
  *
- * <p>Core functionality includes:
- * <ul>
- *   <li>
- * </ul>
- * </p>
+ * All enhancement and refactoring logic is ultimately handled by
+ * {@link #updateMethodFromDevQuery(String, String, String, String, String, String)},
+ * which takes custom prompt, source, and context arguments.<p>
  *
- * <p>Typical usage pattern:
- * <pre>
- * PairProgrammer programmer = AgenticServices.agentBuilder(PairProgrammer.class)
- *                             ...
- *                             .build()
- * String text = programmer.generate[Class/Method/Member]Javadoc(classCode, globalRules, projectRules);
- * String text = programmer.enhance[Class/Method/Memebeer]Javadoc(methodCode, existingJavadoc, globalRules, projectRules);
- * </pre>
- * </p>
+ * The interface also provides default convenience methods to streamline common
+ * refactoring and code enhancement tasks.<p>
  *
- * @see https://docs.langchain4j.dev/tutorials/agents
  */
-public interface CodeSpecialist {
+public interface RefactorSpecialist extends PairProgrammer {
     public static final String SYSTEM_MESSAGE = """
 You are a programmer specialized in writing Java code. Base on user request, you will:
 - Write new or enhancing existing code

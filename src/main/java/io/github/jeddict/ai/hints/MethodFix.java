@@ -20,7 +20,6 @@ import com.sun.source.tree.Tree;
 import static com.sun.source.tree.Tree.Kind.METHOD;
 import com.sun.source.util.TreePath;
 import io.github.jeddict.ai.JeddictUpdateManager;
-import io.github.jeddict.ai.agent.pair.CodeSpecialist;
 import io.github.jeddict.ai.agent.pair.PairProgrammer;
 import io.github.jeddict.ai.completion.Action;
 import static io.github.jeddict.ai.scanner.ProjectClassScanner.getClassDataContent;
@@ -43,6 +42,7 @@ import org.netbeans.modules.editor.indent.api.Reformat;
 import org.netbeans.spi.java.hints.JavaFix;
 import org.openide.util.Exceptions;
 import org.openide.util.NbBundle;
+import io.github.jeddict.ai.agent.pair.RefactorSpecialist;
 
 /**
  *
@@ -89,7 +89,7 @@ public class MethodFix extends BaseAIFix {
         String content = null;
         if (leaf.getKind() == METHOD) {
             final Project project = FileOwnerQuery.getOwner(copy.getFileObject());
-            final CodeSpecialist pair = newJeddictBrain().pairProgrammer(PairProgrammer.Specialist.CODE);
+            final RefactorSpecialist pair = newJeddictBrain().pairProgrammer(PairProgrammer.Specialist.REFACTOR);
             final String classSource = treePath.getParentPath().getLeaf().toString();
             final String methodSource = leaf.toString();
 

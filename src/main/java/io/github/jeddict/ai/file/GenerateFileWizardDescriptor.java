@@ -19,7 +19,7 @@ package io.github.jeddict.ai.file;
 //import static io.github.jeddict.ai.file.DocSetupPanelVisual.JPA_SUPPORT;
 //import static io.github.jeddict.ai.file.DocSetupPanelVisual.JSONB_SUPPORT;
 //import static io.github.jeddict.ai.file.DocSetupPanelVisual.JSON_FILE;
-import static io.github.jeddict.ai.scanner.ProjectClassScanner.getJeddictChatModel;
+import io.github.jeddict.ai.lang.JeddictBrain;
 import io.github.jeddict.ai.settings.PreferencesManager;
 import static io.github.jeddict.ai.util.StringUtil.removeCodeBlockMarkers;
 import java.io.BufferedReader;
@@ -31,6 +31,7 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import static java.util.Objects.nonNull;
 import java.util.Set;
 import java.util.logging.Level;
@@ -151,7 +152,7 @@ public final class GenerateFileWizardDescriptor extends BaseWizardDescriptor {
                     }
                 }
 
-                String responseText = getJeddictChatModel(fileObject).generate(project, inputBuilder.toString());
+                String responseText = new JeddictBrain(prefsManager.getModelName(), false, List.of()).generate(project, inputBuilder.toString());
                 try (OutputStream os = fileObject.getOutputStream()) {
                     os.write(removeCodeBlockMarkers(responseText).getBytes(StandardCharsets.UTF_8));
                     os.flush();

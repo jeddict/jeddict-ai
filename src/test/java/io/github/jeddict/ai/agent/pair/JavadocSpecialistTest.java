@@ -15,7 +15,6 @@
  */
 package io.github.jeddict.ai.agent.pair;
 
-import io.github.jeddict.ai.agent.pair.JavadocSpecialist;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import static io.github.jeddict.ai.agent.pair.JavadocSpecialist.ELEMENT_CLASS;

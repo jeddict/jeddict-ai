@@ -47,7 +47,6 @@ import io.github.jeddict.ai.util.Utilities;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -177,6 +176,7 @@ public class JeddictBrain {
 
     //
     // TODO: P3 - better use of langchain4j functionalities (see https://docs.langchain4j.dev/tutorials/agents)
+    // TODO: P3 - after refactory project should not be needed any more
     //
     private String generateInternal(Project project, boolean agentEnabled, String prompt, List<String> images, List<Response> responseHistory) {
         if (chatModel.isEmpty() && streamingChatModel.isEmpty()) {
@@ -296,31 +296,6 @@ public class JeddictBrain {
                 .build();
     }
 
-    public List<String> suggestVariableNames(String classDatas, String variablePrefix, String classContent, String variableExpression) {
-        String prompt = """
-        You are an API server that suggests a list of meaningful and descriptive names for a specific variable in a given Java class.
-        Based on the provided Java class content, variable prefix, and variable expression, generate a list of improved names for the variable.
-        Return only the list of suggested names, one per line, without any additional text or explanation.
-
-        Variable Prefix: %s
-
-        Variable Expression Line:
-        %s
-
-        Java Class Content:
-        %s
-
-        Here is the context of all classes in the project, including variable names and method signatures (method bodies are excluded to avoid sending unnecessary code):
-        %s
-        """.formatted(variablePrefix, variableExpression, classContent, classDatas);
-
-        String response = generate(null, prompt);
-        LOG.finest(response);
-
-        // Split the response into a list and return
-        return Arrays.asList(response.split("\n"));
-    }
-
     private String loadClassData(String prompt, String classDatas) {
         if (classDatas == null || classDatas.isEmpty()) {
             return prompt;
@@ -328,72 +303,6 @@ public class JeddictBrain {
         prompt += "\n\nHere is the context of all classes in the project, including variable names and method signatures (method bodies are excluded to avoid sending unnecessary code):\n"
                 + classDatas;
         return prompt;
-    }
-
-    public List<String> suggestVariableNames(String classDatas, String classContent, String lineText) {
-        String prompt = "You are an API server that suggests multiple meaningful and descriptive names for a specific variable in a given Java class. "
-                + "Based on the provided Java class content and the line of code: \"" + lineText + "\", suggest a list of improved names for the variable represented by the placeholder ${SUGGEST_VAR_NAMES_LIST} in Java Class. "
-                + "Do not include additional text; return only the suggestions as a JSON array.\n\n"
-                + "Java Class Content:\n" + classContent;
-
-        prompt = loadClassData(prompt, classDatas);
-
-        // Generate the list of new variable names
-        String jsonResponse = generate(null, prompt);
-
-        // Parse the JSON response into a List
-        List<String> variableNames = parseJsonToList(jsonResponse);
-
-        return variableNames;
-    }
-
-    public List<String> suggestMethodNames(String classDatas, String classContent, String lineText) {
-        String prompt = "You are an API server that suggests multiple meaningful and descriptive names for a specific method in a given Java class. "
-                + "Based on the provided Java class content and the line of code: \"" + lineText + "\", suggest a list of improved names for the method represented by the placeholder ${SUGGEST_METHOD_NAMES_LIST} in Java Class. "
-                + "Do not include additional text; return only the suggestions as a JSON array.\n\n"
-                + "Java Class Content:\n" + classContent;
-
-        prompt = loadClassData(prompt, classDatas);
-        // Generate the list of new method names
-        String jsonResponse = generate(null, prompt);
-
-        // Parse the JSON response into a List
-        List<String> methodNames = parseJsonToList(jsonResponse);
-
-        return methodNames;
-    }
-
-    public List<String> suggestStringLiterals(String classDatas, String classContent, String lineText) {
-        String prompt = "You are an API server that suggests multiple meaningful and descriptive string literals for a specific context in a given Java class. "
-                + "Based on the provided Java class content and the line of code: \"" + lineText + "\", suggest a list of improved string literals represented by the placeholder ${SUGGEST_STRING_LITERAL_LIST} in Java Class. "
-                + "Do not include additional text; return only the suggestions as a JSON array.\n\n"
-                + "Java Class Content:\n" + classContent;
-
-        prompt = loadClassData(prompt, classDatas);
-        // Generate the list of new string literals
-        String jsonResponse = generate(null, prompt);
-
-        // Parse the JSON response into a List
-        List<String> stringLiterals = parseJsonToListWithSplit(jsonResponse);
-
-        return stringLiterals;
-    }
-
-    public List<String> suggestMethodInvocations(Project project, String classDatas, String classContent, String lineText) {
-        String prompt = "You are an API server that suggests multiple meaningful and appropriate method invocations for a specific context in a given Java class. "
-                + "Based on the provided Java class content and the line of code: \"" + lineText + "\", suggest a list of improved method invocations represented by the placeholder ${SUGGEST_METHOD_INVOCATION} in Java Class. "
-                + "Do not include additional text; return only the suggestions as a JSON array.\n\n"
-                + "Java Class Content:\n" + classContent;
-
-        prompt = loadClassData(prompt, classDatas);
-
-        // Generate the list of new method invocations
-        String jsonResponse = generate(project, prompt);
-
-        // Parse the JSON response into a List
-        List<String> methodInvocations = parseJsonToList(jsonResponse);
-
-        return methodInvocations;
     }
 
     public List<Snippet> suggestNextLineCode(
