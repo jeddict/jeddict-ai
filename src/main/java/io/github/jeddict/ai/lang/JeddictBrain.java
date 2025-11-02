@@ -265,49 +265,6 @@ public class JeddictBrain {
                 .build();
     }
 
-    public String assistJavaClass(
-        final Project project, final String classContent, final String sessionRules
-    ) {
-        StringBuilder promptBuilder = new StringBuilder();
-        promptBuilder.append("You are an API server that provides a description of the following class. ");
-        if (sessionRules != null && !sessionRules.isEmpty()) {
-            promptBuilder.append("\n\n")
-                    .append(sessionRules)
-                    .append("\n\n");
-        }
-        promptBuilder.append("Java Class:\n")
-                .append(classContent);
-
-        String prompt = promptBuilder.toString();
-        String response = generate(project, prompt);
-
-        LOG.finest(() -> response);
-
-        return response;
-    }
-
-    public String assistJavaMethod(
-        final Project project, final String methodContent, final String sessionRules
-    ) {
-        StringBuilder promptBuilder = new StringBuilder();
-        promptBuilder.append("You are an API server that provides a description of the following Method. ");
-
-        if (sessionRules != null && !sessionRules.isEmpty()) {
-            promptBuilder.append("\n\n")
-                    .append(sessionRules)
-                    .append("\n\n");
-        }
-        promptBuilder.append("Java Method:\n")
-                .append(methodContent);
-
-        String prompt = promptBuilder.toString();
-        String response = generate(project, prompt);
-
-        LOG.finest(response);
-
-        return response;
-    }
-
     public String generateDescription(
         final Project project,
         final String source, final String methodContent, final List<String> images,

@@ -20,6 +20,7 @@ import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import static io.github.jeddict.ai.agent.pair.TechWriter.ELEMENT_CLASS;
 import static io.github.jeddict.ai.agent.pair.TechWriter.ELEMENT_MEMBER;
 import static io.github.jeddict.ai.agent.pair.TechWriter.ELEMENT_METHOD;
+import static io.github.jeddict.ai.agent.pair.TechWriter.USER_MESSAGE_DESCRIBE;
 import static io.github.jeddict.ai.agent.pair.TechWriter.USER_MESSAGE_JAVADOC;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.BeforeEach;
@@ -90,6 +91,12 @@ public class TechWriterTest extends PairProgrammerTestBase {
         enhanceJavadoc_returns_AI_provided_response(ELEMENT_MEMBER, TEXT, JAVADOC, "\n- global rule 1", "\n- project rule 1", pair::enhanceMemberJavadoc);
     }
 
+    @Test
+    public void describeJavaClass_AI_provided_response() {
+        describeCode_returns_AI_provided_response(TEXT, "no rules", pair::describeCode);
+        describeCode_returns_AI_provided_response(TEXT, "\n- global rule 1", pair::describeCode);
+    }
+
     // --------------------------------------------------------- private methods
 
     @FunctionalInterface
@@ -100,6 +107,11 @@ public class TechWriterTest extends PairProgrammerTestBase {
     @FunctionalInterface
     private interface JavadocEnhancer {
         String apply(String code, String javadoc, String globalRules, String projectRules);
+    }
+
+    @FunctionalInterface
+    private interface CodeDescriber {
+        String apply(String code, String sessionRules);
     }
 
     private void generateJavadoc_returns_AI_provided_response(
@@ -119,14 +131,15 @@ public class TechWriterTest extends PairProgrammerTestBase {
         //
         final ChatModelRequestContext request = listener.lastRequestContext.get();
         thenMessagesMatch(
-                request.chatRequest().messages(),
-                TechWriter.SYSTEM_MESSAGE
-                        .replace("{{globalRules}}", (globalRules.trim().isEmpty()) ? "no rules" : globalRules)
-                        .replace("{{projectRules}}", (projectRules.trim().isEmpty()) ? "no rules" : projectRules),
-                TechWriter.USER_MESSAGE
-                        .replace("{{prompt}}", USER_MESSAGE_JAVADOC.formatted(element))
-                        .replace("{{code}}", code)
-                        .replace("{{javadoc}}", "")
+            request.chatRequest().messages(),
+            TechWriter.SYSTEM_MESSAGE
+                .replace("{{globalRules}}", (globalRules.trim().isEmpty()) ? "no rules" : globalRules)
+                .replace("{{projectRules}}", (projectRules.trim().isEmpty()) ? "no rules" : projectRules)
+                .replace("{{sessionRules}}", "no rules"),
+            TechWriter.USER_MESSAGE
+                .replace("{{prompt}}", USER_MESSAGE_JAVADOC.formatted(element))
+                .replace("{{code}}", code)
+                .replace("{{javadoc}}", "")
         );
     }
 
@@ -154,11 +167,42 @@ public class TechWriterTest extends PairProgrammerTestBase {
             request.chatRequest().messages(),
             TechWriter.SYSTEM_MESSAGE
                 .replace("{{globalRules}}", (globalRules.trim().isEmpty()) ? "no rules" : globalRules)
-                .replace("{{projectRules}}", (projectRules.trim().isEmpty()) ? "no rules" : projectRules),
+                .replace("{{projectRules}}", (projectRules.trim().isEmpty()) ? "no rules" : projectRules)
+                .replace("{{sessionRules}}", "no rules"),
             TechWriter.USER_MESSAGE
                 .replace("{{prompt}}", USER_MESSAGE_JAVADOC.formatted(element))
                 .replace("{{code}}", code)
                 .replace("{{javadoc}}", javadoc)
+        );
+    }
+
+    private void describeCode_returns_AI_provided_response(
+        final String code,
+        final String sessionRules,
+        final CodeDescriber describer
+    ) {
+        //
+        // the model has been invoked and its answer returned
+        //
+        //
+        // invoke the agent
+        //
+        describer.apply(code, sessionRules);
+
+        //
+        // proper prompt messages has been generated and provided;
+        //
+        final ChatModelRequestContext request = listener.lastRequestContext.get();
+        thenMessagesMatch(
+            request.chatRequest().messages(),
+            TechWriter.SYSTEM_MESSAGE
+                .replace("{{globalRules}}", "no rules")
+                .replace("{{projectRules}}", "no rules")
+                .replace("{{sessionRules}}", sessionRules),
+            TechWriter.USER_MESSAGE
+                .replace("{{prompt}}", USER_MESSAGE_DESCRIBE)
+                .replace("{{code}}", code)
+                .replace("{{javadoc}}", "")
         );
     }
 

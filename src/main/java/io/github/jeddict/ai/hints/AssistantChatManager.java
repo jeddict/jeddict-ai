@@ -37,6 +37,7 @@ import io.github.jeddict.ai.agent.RefactoringTools;
 import io.github.jeddict.ai.agent.pair.DBSpecialist;
 import io.github.jeddict.ai.agent.pair.DiffSpecialist;
 import io.github.jeddict.ai.agent.pair.PairProgrammer;
+import io.github.jeddict.ai.agent.pair.TechWriter;
 import static io.github.jeddict.ai.classpath.JeddictQueryCompletionQuery.JEDDICT_EDITOR_CALLBACK;
 import io.github.jeddict.ai.completion.Action;
 import io.github.jeddict.ai.completion.SQLCompletion;
@@ -309,13 +310,11 @@ public class AssistantChatManager extends JavaFix {
                         }
                     } else {
                         final String rules = pm.getSessionRules();
-                        if (leaf instanceof MethodTree) {
-                            response = newJeddictBrain(handler, getModelName())
-                                .assistJavaMethod(getProject(), leaf.toString(), rules);
-                        } else {
-                            response = newJeddictBrain(handler, getModelName())
-                                .assistJavaClass(getProject(), treePath.getCompilationUnit().toString(), rules);
-                        }
+                        final TechWriter pair = newJeddictBrain(handler, getModelName()).pairProgrammer(PairProgrammer.Specialist.TECHWRITER);
+                        response = (leaf instanceof MethodTree)
+                                 ? pair.describeCode(leaf.toString(), rules)
+                                 : pair.describeCode(treePath.getCompilationUnit().toString(), rules);
+
                     }
                     if (response != null && !response.isEmpty()) {
                         handler.onCompleteResponse(ChatResponse.builder().aiMessage(new AiMessage(response)).build());

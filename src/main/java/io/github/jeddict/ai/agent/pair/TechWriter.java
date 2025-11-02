@@ -55,14 +55,17 @@ public interface TechWriter extends PairProgrammer {
     public static final String SYSTEM_MESSAGE = """
 You are an expert technical writer that, based on user request can:
 - write Javadoc comments for the provided code
-- describe existing code
-When writing javadocs, the folloing rules apply:
-- Generate completely new Javadoc or enahance the existing Javadoc based on user request
-- Generate the Javadoc wrapped with in /** ${javadoc} **/
-- Generate javadoc only for the element (class, methods or members) requested by the user
-- Do not provide any additional text or explanation"
-Take into account the following general rules: {{globalRules}}
-Take into account the following project rules: {{projectRules}}
+- describe existing code, either classes, methods or snippets
+When requested to write javadoc, the folloing rules apply:
+- generate completely new Javadoc or enahance the existing Javadoc based on user request
+- generate the Javadoc wrapped with in /** ${javadoc} **/
+- generate javadoc only for the element (class, methods or members) requested by the user
+- do not provide any additional text or explanation
+When Requested to describe code, the following rules apply:
+- write an explenation of the code without adding javadoc
+Take into account the general rules: {{globalRules}}
+Take into account the project rules: {{projectRules}}
+Take into account the session rules: {{sessionRules}}
 """;
     public static final String USER_MESSAGE = """
 {{prompt}}
@@ -71,6 +74,7 @@ The Javadoc is: {{javadoc}}
 """;
 
     public static final String USER_MESSAGE_JAVADOC = "Provide javadoc for the %s";
+    public static final String USER_MESSAGE_DESCRIBE = "Describe the following code";
 
     public static final String ELEMENT_CLASS = "class";
     public static final String ELEMENT_METHOD = "method";
@@ -80,58 +84,72 @@ The Javadoc is: {{javadoc}}
     @SystemMessage(SYSTEM_MESSAGE)
     @UserMessage(USER_MESSAGE)
     @Agent("Generate or enhance javadoc comments or describe existing code")
-    String javadoc(
+    String writing(
         @V("prompt") final String prompt,
         @V("code") final String code,
         @V("javadoc") final String javadoc,
         @V("globalRules") final String globalRules,
-        @V("projectRules") final String projectRules
+        @V("projectRules") final String projectRules,
+        @V("sessionRules") final String sessionRules
     );
 
     default String generateClassJavadoc(final String code, final String globalRules, final String projectRules) {
-        return javadoc(
+        return writing(
             USER_MESSAGE_JAVADOC.formatted(ELEMENT_CLASS), code, "",
             AgentUtil.normalizeRules(globalRules),
-            AgentUtil.normalizeRules(projectRules)
+            AgentUtil.normalizeRules(projectRules),
+            "no rules"
         );
     }
 
     default String generateMethodJavadoc(final String code, final String globalRules, final String projectRules) {
-        return javadoc(
+        return writing(
             USER_MESSAGE_JAVADOC.formatted(ELEMENT_METHOD), code, "",
             AgentUtil.normalizeRules(globalRules),
-            AgentUtil.normalizeRules(projectRules)
+            AgentUtil.normalizeRules(projectRules),
+            "no rules"
         );
     }
 
     default String generateMemberJavadoc(final String code, final String globalRules, final String projectRules) {
-        return javadoc(
+        return writing(
             USER_MESSAGE_JAVADOC.formatted(ELEMENT_MEMBER), code, "",
             AgentUtil.normalizeRules(globalRules),
-            AgentUtil.normalizeRules(projectRules)
+            AgentUtil.normalizeRules(projectRules),
+            "no rules"
         );
     }
 
     default String enhanceClassJavadoc(final String code, final String javadocContent, final String globalRules, final String projectRules) {
-        return javadoc(
+        return writing(
             USER_MESSAGE_JAVADOC.formatted(ELEMENT_CLASS), code, javadocContent,
             AgentUtil.normalizeRules(globalRules),
-            AgentUtil.normalizeRules(projectRules)
+            AgentUtil.normalizeRules(projectRules),
+            "no rules"
         );
     }
 
     default String enhanceMethodJavadoc(final String code, final String javadocContent, final String globalRules, final String projectRules) {
-        return javadoc(
+        return writing(
             USER_MESSAGE_JAVADOC.formatted(ELEMENT_METHOD), code, javadocContent,
             AgentUtil.normalizeRules(globalRules),
-            AgentUtil.normalizeRules(projectRules)
+            AgentUtil.normalizeRules(projectRules),
+            "no rules"
         );
     }
+
     default String enhanceMemberJavadoc(final String code, final String javadocContent, final String globalRules, final String projectRules) {
-        return javadoc(
+        return writing(
             USER_MESSAGE_JAVADOC.formatted(ELEMENT_MEMBER), code, javadocContent,
             AgentUtil.normalizeRules(globalRules),
-            AgentUtil.normalizeRules(projectRules)
+            AgentUtil.normalizeRules(projectRules),
+            "no rules"
+        );
+    }
+
+    default String describeCode(final String code, final String sessionRules) {
+        return writing(
+            USER_MESSAGE_DESCRIBE, code, "", "no rules", "no rules", AgentUtil.normalizeRules(sessionRules)
         );
     }
 
