@@ -78,11 +78,14 @@ public class ContextHelper {
 
         return inputForAI.toString();
     }
-    
+
     public static String getTextFilesContext(Set<FileObject> scope, Project project, boolean agentEnabled) {
+        if (project == null) {
+            return "";
+        }
         String projectDir = project.getProjectDirectory().getPath();
         StringBuilder inputForAI = new StringBuilder();
-        
+
         if (agentEnabled) {
             inputForAI.append("\nProject Dir: \n").append(projectDir).append("\n");
             inputForAI.append("\nProject Files: \n");
