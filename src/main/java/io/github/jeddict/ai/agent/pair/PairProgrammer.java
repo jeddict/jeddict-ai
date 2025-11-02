@@ -33,7 +33,7 @@ public interface PairProgrammer {
         DB(DBSpecialist.class),
         DIFF(DiffSpecialist.class),
         GHOSTWRITER(Ghostwriter.class),
-        JAVADOC(JavadocSpecialist.class),
+        TECHWRITER(TechWriter.class),
         REFACTOR(RefactorSpecialist.class),
         REST(RestSpecialist.class),
         SHAKESPEARE(Shakespeare.class);

@@ -27,7 +27,6 @@ import com.sun.source.tree.VariableTree;
 import com.sun.source.util.DocTrees;
 import com.sun.source.util.TreePath;
 import io.github.jeddict.ai.JeddictUpdateManager;
-import io.github.jeddict.ai.agent.pair.JavadocSpecialist;
 import io.github.jeddict.ai.agent.pair.PairProgrammer;
 import io.github.jeddict.ai.completion.Action;
 import static io.github.jeddict.ai.completion.Action.ENHANCE;
@@ -48,6 +47,7 @@ import org.netbeans.api.project.FileOwnerQuery;
 import org.netbeans.api.project.Project;
 import org.netbeans.spi.java.hints.JavaFix;
 import org.openide.util.NbBundle;
+import io.github.jeddict.ai.agent.pair.TechWriter;
 
 /**
  * AI-powered Javadoc generation and enhancement implementation that integrates with NetBeans' refactoring infrastructure.
@@ -146,7 +146,7 @@ public class JavaDocFix extends BaseAIFix {
             String javadocContent;
             DocCommentTree oldDocCommentTree = copy.getDocTrees().getDocCommentTree(treePath);
 
-            final JavadocSpecialist pair = newJeddictBrain().pairProgrammer(PairProgrammer.Specialist.JAVADOC);
+            final TechWriter pair = newJeddictBrain().pairProgrammer(PairProgrammer.Specialist.TECHWRITER);
             final Project project = FileOwnerQuery.getOwner(copy.getFileObject());
 
             SwingUtilities.invokeLater(() -> progress.start());
