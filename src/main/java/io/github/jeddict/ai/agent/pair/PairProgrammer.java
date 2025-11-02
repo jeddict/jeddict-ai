@@ -30,6 +30,7 @@ public interface PairProgrammer {
 
     public static enum Specialist {
         ADVISOR(CodeAdvisor.class),
+        DB(DBSpecialist.class),
         DIFF(DiffSpecialist.class),
         GHOSTWRITER(Ghostwriter.class),
         JAVADOC(JavadocSpecialist.class),

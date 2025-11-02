@@ -34,6 +34,7 @@ import io.github.jeddict.ai.agent.FileSystemTools;
 import io.github.jeddict.ai.agent.GradleTools;
 import io.github.jeddict.ai.agent.MavenTools;
 import io.github.jeddict.ai.agent.RefactoringTools;
+import io.github.jeddict.ai.agent.pair.DBSpecialist;
 import io.github.jeddict.ai.agent.pair.DiffSpecialist;
 import io.github.jeddict.ai.agent.pair.PairProgrammer;
 import static io.github.jeddict.ai.classpath.JeddictQueryCompletionQuery.JEDDICT_EDITOR_CALLBACK;
@@ -1026,9 +1027,8 @@ public class AssistantChatManager extends JavaFix {
                     if (messageScopeContent != null && !messageScopeContent.isEmpty()) {
                         context = context + "\n\n Files:\n" + messageScopeContent;
                     }
-                    List<String> messageScopeImages = getImageFilesContext(messageContext);
-                    response = newJeddictBrain(handler, getModelName())
-                        .assistDbMetadata(context, question, messageScopeImages, prevChatResponses, pm.getSessionRules());
+                    DBSpecialist pair = newJeddictBrain(handler, getModelName()).pairProgrammer(PairProgrammer.Specialist.DB);
+                    response = pair.assistDbMetadata(question, context, pm.getSessionRules());
                 } else if (commitMessage && commitChanges != null) {
                     String context = commitChanges;
                     String messageScopeContent = getTextFilesContext(messageContext, getProject(), agentEnabled);
@@ -1129,6 +1129,9 @@ public class AssistantChatManager extends JavaFix {
     private List<AbstractTool> buildToolsList(
         final Project project, final JeddictBrainListener handler
     ) {
+        if (project == null) {
+            return List.of();
+        }
         //
         // TODO: make this automatic with some discoverability approach (maybe
         // NB lookup registration?)

@@ -40,7 +40,6 @@ import io.github.jeddict.ai.response.TokenHandler;
 import io.github.jeddict.ai.scanner.ProjectMetadataInfo;
 import io.github.jeddict.ai.settings.PreferencesManager;
 import io.github.jeddict.ai.util.JSONUtil;
-import static io.github.jeddict.ai.util.MimeUtil.MIME_TYPE_DESCRIPTIONS;
 import io.github.jeddict.ai.util.Utilities;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
@@ -264,45 +263,6 @@ public class JeddictBrain {
         return (T)AgenticServices.agentBuilder(specialist.specialistClass)
                 .chatModel(chatModel.get())
                 .build();
-    }
-
-    public String assistDbMetadata(
-        final String dbMetadata, final String query, final List<String> images,
-        final List<Response> previousChatResponse, final String sessionRules
-    ) {
-        StringBuilder dbPrompt = new StringBuilder("You are an API server that provides assistance. ");
-
-        dbPrompt.append("Given the following database schema metadata:\n")
-                .append(dbMetadata);
-
-        if (sessionRules != null && !sessionRules.isEmpty()) {
-            dbPrompt.append("\n\n")
-                    .append(sessionRules)
-                    .append("\n\n");
-        }
-
-        dbPrompt.append("\nRespond to the developer's question: \n")
-                .append(query)
-                .append("\n")
-                .append("""
-                    There are two possible scenarios for your response:
-
-                    1. **SQL Queries and Database-Related Questions**:
-                       - Analyze the provided metadata and generate a relevant SQL query that addresses the developer's inquiry.
-                       - Include a detailed explanation of the query, clarifying its purpose and how it relates to the developer's question.
-                       - Ensure that the SQL syntax adheres to the database structure, constraints, and relationships.
-                       - The full SQL query should be wrapped in ```sql for proper formatting.
-                       - Avoid wrapping individual SQL keywords or table/column names in <code> tags, and do not wrap any partial SQL query segments in <code> tags.
-
-                    2. **Generating Specific Code from Database Metadata**:
-                       - If the developer requests specific code snippets related to the database metadata, generate the appropriate code and include a clear description of its functionality and relevance.
-                    """);
-
-        String response = generate(null, dbPrompt.toString(), images, previousChatResponse);
-
-        LOG.finest(() -> response);
-
-        return response;
     }
 
     public String assistJavaClass(
