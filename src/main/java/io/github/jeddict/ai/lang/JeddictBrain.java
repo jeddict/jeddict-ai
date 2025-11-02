@@ -266,15 +266,6 @@ public class JeddictBrain {
                 .build();
     }
 
-    private String loadClassData(String prompt, String classDatas) {
-        if (classDatas == null || classDatas.isEmpty()) {
-            return prompt;
-        }
-        prompt += "\n\nHere is the context of all classes in the project, including variable names and method signatures (method bodies are excluded to avoid sending unnecessary code):\n"
-                + classDatas;
-        return prompt;
-    }
-
     public String assistDbMetadata(
         final String dbMetadata, final String query, final List<String> images,
         final List<Response> previousChatResponse, final String sessionRules
