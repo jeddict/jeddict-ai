@@ -164,7 +164,7 @@ Do not split multi line javadoc comments to array, the full comment must be at s
     ) {
         log(classes, code, line, project, "", false);
 
-        return JSONUtil.jsonToList(suggest(USER_MESSAGE_COMMENT, classes, code, line, "", project, OUTPUT_STRING_JSON_ARRAY));
+        return JSONUtil.jsonToList(suggest(USER_MESSAGE_COMMENT, LANGUAGE_JAVA, classes, code, line, "", project, OUTPUT_STRING_JSON_ARRAY));
     }
 
     default List<String> suggestJavadocOrComment(
@@ -175,7 +175,7 @@ Do not split multi line javadoc comments to array, the full comment must be at s
     ) {
         log(classes, code, line, project, "", false);
 
-        return JSONUtil.jsonToList(suggest(USER_MESSAGE_COMMENT, LANGUAGE_JAVA, classes, code, line, "", project, OUTPUT_STRING_JSON_ARRAY));
+        return JSONUtil.jsonToList(suggest(USER_MESSAGE_COMMENT_OR_JAVADOC, LANGUAGE_JAVA, classes, code, line, "", project, OUTPUT_JSON_COMMENT_OR_JAVADOC));
     }
 
     default List<Snippet> suggestAnnotations(
@@ -194,7 +194,7 @@ Do not split multi line javadoc comments to array, the full comment must be at s
                                             : OUTPUT_SNIPPET_JSON_ARRAY;
 
         return JSONUtil.jsonToSnippets(
-            suggest(prompt, classes, code, line, (hasHint) ? hint : "", project, format)
+            suggest(prompt, LANGUAGE_JAVA, classes, code, line, (hasHint) ? hint : "", project, format)
         );
     }
 

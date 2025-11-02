@@ -272,11 +272,12 @@ public class GhostwriterTest extends PairProgrammerTestBase {
     }
 
     @Test
-    public void suggestJavadocOrComment_with_tree_returns_AI_provided_response() throws Exception {
+    public void suggestJavadocOrComment_returns_AI_provided_response() throws Exception {
         final String expectedSystem = Ghostwriter.SYSTEM_MESSAGE
                 .replace("{{format}}", Ghostwriter.OUTPUT_JSON_COMMENT_OR_JAVADOC);
         final String expectedUser = Ghostwriter.USER_MESSAGE
                 .replace("{{message}}", Ghostwriter.USER_MESSAGE_COMMENT_OR_JAVADOC)
+                .replace("{{language}}", "Java")
                 .replace("{{classes}}", CLASSES)
                 .replace("{{code}}", CODE2)
                 .replace("{{line}}", LINE)
@@ -310,6 +311,7 @@ public class GhostwriterTest extends PairProgrammerTestBase {
                                                                  : Ghostwriter.OUTPUT_SNIPPET_JSON_ARRAY);
                 final String expectedUser = Ghostwriter.USER_MESSAGE
                         .replace("{{message}}", MSGS[i])
+                        .replace("{{language}}", "Java")
                         .replace("{{classes}}", CLASSES)
                         .replace("{{code}}", CODE1)
                         .replace("{{line}}", LINE)
