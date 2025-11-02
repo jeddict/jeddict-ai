@@ -91,6 +91,8 @@ import org.netbeans.api.project.Project;
 import java.util.logging.Logger;
 import io.github.jeddict.ai.agent.pair.CodeAdvisor;
 import io.github.jeddict.ai.agent.pair.Ghostwriter;
+import static io.github.jeddict.ai.agent.pair.Ghostwriter.LANGUAGE_JAVA;
+import static io.github.jeddict.ai.util.MimeUtil.MIME_TYPE_DESCRIPTIONS;
 
 @MimeRegistration(mimeType = "", service = CompletionProvider.class, position = 100)
 public class JeddictCompletionProvider implements CompletionProvider {
@@ -515,7 +517,6 @@ public class JeddictCompletionProvider implements CompletionProvider {
                 this.caretOffset = caretOffset;
                 String mimeType = (String) doc.getProperty("mimeType");
                 JavaToken javaToken = isJavaContext(component.getDocument(), caretOffset, true);
-                System.out.println("queryType: " + queryType + " javaToken: " + javaToken.isJavaContext());
                 if ((COMPLETION_QUERY_TYPE == queryType || -1 == queryType || COMPLETION_ALL_QUERY_TYPE == queryType)
                         && JAVA_MIME.equals(mimeType)
                         && javaToken.isJavaContext()) {
@@ -550,7 +551,7 @@ public class JeddictCompletionProvider implements CompletionProvider {
                     if (tree == null || kind == Tree.Kind.ERRONEOUS || kind == Tree.Kind.COMPILATION_UNIT) {
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, PLACEHOLDER);
                         List<Snippet> sugs = getGhostwriter()
-                                .suggestNextLineCode(classDataContent, updateddoc, line, projectInfo, hintContext, tree, description);
+                                .suggestNextLineCode(classDataContent, LANGUAGE_JAVA, updateddoc, line, projectInfo, hintContext, tree, description);
                         for (Snippet snippet : sugs) {
                             if (resultSet == null) {
                                 highlightMultiline(component, caretOffset, snippet);
@@ -572,7 +573,7 @@ public class JeddictCompletionProvider implements CompletionProvider {
                             || kind == Tree.Kind.IDENTIFIER) {
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, PLACEHOLDER);
                         List<Snippet> sugs = getGhostwriter()
-                                .suggestNextLineCode(classDataContent, updateddoc, line, projectInfo, hintContext, tree, description);;
+                                .suggestNextLineCode(classDataContent, LANGUAGE_JAVA, updateddoc, line, projectInfo, hintContext, tree, description);;
                         for (Snippet snippet : sugs) {
                             if (resultSet == null) {
                                 highlightMultiline(component, caretOffset, snippet);
@@ -584,7 +585,7 @@ public class JeddictCompletionProvider implements CompletionProvider {
                     } else if (kind == Tree.Kind.CLASS || kind == Tree.Kind.BLOCK || kind == Tree.Kind.EXPRESSION_STATEMENT) {
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, PLACEHOLDER);
                         List<Snippet> sugs = getGhostwriter()
-                                .suggestNextLineCode(classDataContent, updateddoc, line, projectInfo, hintContext, tree, description);
+                                .suggestNextLineCode(classDataContent, LANGUAGE_JAVA, updateddoc, line, projectInfo, hintContext, tree, description);
                         for (Snippet snippet : sugs) {
                             if (resultSet == null) {
                                 highlightMultiline(component, caretOffset, snippet);
@@ -630,7 +631,7 @@ public class JeddictCompletionProvider implements CompletionProvider {
                             && parentKind == Tree.Kind.IF) {
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, PLACEHOLDER);
                         List<Snippet> sugs = getGhostwriter()
-                                .suggestNextLineCode(classDataContent, updateddoc, line, projectInfo, hintContext, tree, description);
+                                .suggestNextLineCode(classDataContent, LANGUAGE_JAVA, updateddoc, line, projectInfo, hintContext, tree, description);
                         for (Snippet snippet : sugs) {
                             if (resultSet == null) {
                                 highlightMultiline(component, caretOffset, snippet);
@@ -644,7 +645,7 @@ public class JeddictCompletionProvider implements CompletionProvider {
                         LOG.finest(() -> "Skipped : " + kind + " " + tree.getLeaf().toString());
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, PLACEHOLDER);
                         List<Snippet> sugs = getGhostwriter()
-                                .suggestNextLineCode(classDataContent, updateddoc, line, projectInfo, hintContext, tree, description);
+                                .suggestNextLineCode(classDataContent, LANGUAGE_JAVA, updateddoc, line, projectInfo, hintContext, tree, description);
                         for (Snippet snippet : sugs) {
                             if (resultSet == null) {
                                 highlightMultiline(component, caretOffset, snippet);
@@ -664,8 +665,7 @@ public class JeddictCompletionProvider implements CompletionProvider {
                     List<String> sugs;
                     if (line.trim().startsWith("//")) {
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_JAVA_COMMENT}");
-                        sugs = getGhostwriter()
-                                .suggestJavaComment("", updateddoc, line, projectInfo);
+                        sugs = getGhostwriter().suggestJavaComment("", updateddoc, line, projectInfo);
                         for (String varName : sugs) {
                             int newcaretOffset = caretOffset;
                             if (varName.startsWith(line.trim())) {
@@ -678,7 +678,6 @@ public class JeddictCompletionProvider implements CompletionProvider {
 
                         }
                     } else {
-                        System.out.println("CHECK, caretOffset: " + caretOffset);
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, PLACEHOLDER);
                         sugs = getGhostwriter()
                                 .suggestJavadocOrComment("", updateddoc, line, projectInfo);
@@ -718,8 +717,8 @@ public class JeddictCompletionProvider implements CompletionProvider {
                         }
                     } else {
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, PLACEHOLDER);
-                        List<Snippet> sugs = newJeddictBrain()
-                                .suggestNextLineCode(project, updateddoc, line, mimeType, hintContext, queryType == -1);
+                        List<Snippet> sugs = getGhostwriter()
+                                .suggestNextLineCode(MIME_TYPE_DESCRIPTIONS.get(mimeType), "", updateddoc, line, projectInfo, hintContext, null, description);
                         for (Snippet snippet : sugs) {
                             if (resultSet == null) {
                                 highlightMultiline(component, caretOffset, snippet);

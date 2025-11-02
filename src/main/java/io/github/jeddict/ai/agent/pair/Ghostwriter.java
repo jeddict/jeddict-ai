@@ -13,6 +13,8 @@ import org.apache.commons.lang3.StringUtils;
 
 public interface Ghostwriter extends PairProgrammer {
 
+    static final String LANGUAGE_JAVA = "Java";
+
     static final String SYSTEM_MESSAGE = """
 You are an expert programmer that can suggest code based on the context of the
 program and best practices to write good quality code. Generate context-aware,
@@ -25,6 +27,7 @@ location ${SUGGESTION}
 
     static final String USER_MESSAGE = """
 {{message}}
+Code language: {{language}}
 Current code: {{code}}
 Current line: {{line}}
 The project classes: {{classes}}
@@ -108,6 +111,7 @@ Do not split multi line javadoc comments to array, the full comment must be at s
     @Agent("Suggest code for the given content and cotext")
     String suggest(
         @V("message") final String message, // additional user request
+        @V("language") final String codeLanguage, // the source code language (based on mime type)
         @V("classes") final String classes, // the relevant classes and methods signature
         @V("code") final String code, // the current code (e.g. class)
         @V("line") final String line, // the current line
@@ -118,6 +122,7 @@ Do not split multi line javadoc comments to array, the full comment must be at s
 
     default List<Snippet> suggestNextLineCode(
         final String classes,
+        final String language,
         final String code,
         final String line,
         final String project,
@@ -128,17 +133,18 @@ Do not split multi line javadoc comments to array, the full comment must be at s
         log(classes, code, line, project, hint, description);
 
         if (hint != null) {
-            return suggestNextLineCodeWithHint(classes, code, line, project, hint);
+            return suggestNextLineCodeWithHint(language, classes, code, line, project, hint);
         }
 
         final String output = (description)
                 ? OUTPUT_SNIPPET_JSON_ARRAY_WITH_DESCRIPTION
                 : OUTPUT_SNIPPET_JSON_ARRAY;
 
-        return JSONUtil.jsonToSnippets(suggest(userMessage(tree), classes, code, line, "", project, output));
+        return JSONUtil.jsonToSnippets(suggest(userMessage(tree), language, classes, code, line, "", project, output));
     }
 
     default List<Snippet> suggestNextLineCodeWithHint(
+        final String language,
         final String classes,
         final String code,
         final String line,
@@ -147,7 +153,7 @@ Do not split multi line javadoc comments to array, the full comment must be at s
     ) {
         log(classes, code, line, project, hint, false);
 
-        return JSONUtil.jsonToSnippets(suggest("", classes, code, line, hint, project, OUTPUT_JSON_OBJECT));
+        return JSONUtil.jsonToSnippets(suggest("", language, classes, code, line, hint, project, OUTPUT_JSON_OBJECT));
     }
 
     default List<String> suggestJavaComment(
@@ -169,7 +175,7 @@ Do not split multi line javadoc comments to array, the full comment must be at s
     ) {
         log(classes, code, line, project, "", false);
 
-        return JSONUtil.jsonToList(suggest(USER_MESSAGE_COMMENT_OR_JAVADOC, classes, code, line, "", project, OUTPUT_JSON_COMMENT_OR_JAVADOC));
+        return JSONUtil.jsonToList(suggest(USER_MESSAGE_COMMENT, LANGUAGE_JAVA, classes, code, line, "", project, OUTPUT_STRING_JSON_ARRAY));
     }
 
     default List<Snippet> suggestAnnotations(

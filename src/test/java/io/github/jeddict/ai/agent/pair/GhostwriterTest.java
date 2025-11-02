@@ -22,8 +22,11 @@ import com.sun.source.util.TreePath;
 import com.sun.source.util.Trees;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import static io.github.jeddict.ai.agent.pair.Ghostwriter.LANGUAGE_JAVA;
 import io.github.jeddict.ai.lang.Snippet;
 import io.github.jeddict.ai.scanner.MyTreePathScanner;
+import static io.github.jeddict.ai.util.MimeUtil.MIME_JS;
+import static io.github.jeddict.ai.util.MimeUtil.MIME_TYPE_DESCRIPTIONS;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -97,6 +100,7 @@ public class GhostwriterTest extends PairProgrammerTestBase {
             .replace("{{format}}", Ghostwriter.OUTPUT_JSON_OBJECT);
         final String expectedUser = Ghostwriter.USER_MESSAGE
                 .replace("{{message}}", "")
+                .replace("{{language}}", "Java")
                 .replace("{{classes}}", CLASSES)
                 .replace("{{code}}", CODE1)
                 .replace("{{line}}", LINE)
@@ -105,7 +109,7 @@ public class GhostwriterTest extends PairProgrammerTestBase {
 
         for (boolean description: new boolean[] { true, false} ) {
             final List<Snippet> snippets =
-                pair.suggestNextLineCode(CLASSES, CODE1, LINE, PROJECT, HINT, null, description);
+                pair.suggestNextLineCode(CLASSES, LANGUAGE_JAVA, CODE1, LINE, PROJECT, HINT, null, description);
 
             final ChatModelRequestContext request = listener.lastRequestContext.get();
             thenMessagesMatch(
@@ -132,6 +136,7 @@ public class GhostwriterTest extends PairProgrammerTestBase {
                 .replace("{{format}}", output);
             final String expectedUser = Ghostwriter.USER_MESSAGE
                     .replace("{{message}}", pair.userMessage(null))
+                    .replace("{{language}}", "Java")
                     .replace("{{classes}}", CLASSES)
                     .replace("{{code}}", CODE1)
                     .replace("{{line}}", LINE)
@@ -139,7 +144,7 @@ public class GhostwriterTest extends PairProgrammerTestBase {
                     .replace("{{hint}}", "");
 
             final List<Snippet> snippets =
-                pair.suggestNextLineCode(CLASSES, CODE1, LINE, PROJECT, null, null, withDescription);
+                pair.suggestNextLineCode(CLASSES, LANGUAGE_JAVA, CODE1, LINE, PROJECT, null, null, withDescription);
 
             final ChatModelRequestContext request = listener.lastRequestContext.get();
             thenMessagesMatch(
@@ -161,7 +166,40 @@ public class GhostwriterTest extends PairProgrammerTestBase {
     }
 
     @Test
-    public void suggestNextLineCode_with_tree_returns_AI_provided_response() throws Exception {
+    public void suggestNextLineCode_with_language_returns_AI_provided_response() throws Exception {
+        final String expectedSystem = Ghostwriter.SYSTEM_MESSAGE
+            .replace("{{format}}", Ghostwriter.OUTPUT_JSON_OBJECT);
+        final String expectedUser = Ghostwriter.USER_MESSAGE
+            .replace("{{message}}", "")
+            .replace("{{language}}", MIME_TYPE_DESCRIPTIONS.get(MIME_JS))
+            .replace("{{classes}}", CLASSES)
+            .replace("{{code}}", CODE1)
+            .replace("{{line}}", LINE)
+            .replace("{{project}}", PROJECT)
+            .replace("{{hint}}", HINT);
+
+        final List<Snippet> snippets =
+                pair.suggestNextLineCode(CLASSES, MIME_TYPE_DESCRIPTIONS.get(MIME_JS), CODE1, LINE, PROJECT, HINT, null, false);
+
+        final ChatModelRequestContext request = listener.lastRequestContext.get();
+        thenMessagesMatch(
+            request.chatRequest().messages(), expectedSystem, expectedUser
+        );
+
+        then(snippets).hasSize(1);
+        then(snippets.get(0).getImports()).containsExactlyInAnyOrder(
+            "java.io.File",
+            "java.util.List",
+            "io.github.jeddict.ai.test.SayHello"
+        );
+        then(snippets.get(0).getSnippet()).isEqualTo(
+            "System.out.println(\"Hello World!\");"
+        );
+
+    }
+
+    @Test
+    public void suggestNextLineCode_returns_AI_provided_response() throws Exception {
         final JavacTask task = parseSayHello();
         final Iterable<? extends CompilationUnitTree> ast = task.parse();
         task.analyze();
@@ -177,6 +215,7 @@ public class GhostwriterTest extends PairProgrammerTestBase {
                     .replace("{{format}}", output);
                 final String expectedUser = Ghostwriter.USER_MESSAGE
                         .replace("{{message}}", prompt.prompt)
+                        .replace("{{language}}", "Java")
                         .replace("{{classes}}", CLASSES)
                         .replace("{{code}}", CODE1)
                         .replace("{{line}}", LINE)
@@ -184,7 +223,7 @@ public class GhostwriterTest extends PairProgrammerTestBase {
                         .replace("{{hint}}", "");
 
                 final List<Snippet> snippets =
-                    pair.suggestNextLineCode(CLASSES, CODE1, LINE, PROJECT, null, tree, withDescription);
+                    pair.suggestNextLineCode(CLASSES, LANGUAGE_JAVA, CODE1, LINE, PROJECT, null, tree, withDescription);
 
                 final ChatModelRequestContext request = listener.lastRequestContext.get();
                 thenMessagesMatch(
@@ -212,6 +251,7 @@ public class GhostwriterTest extends PairProgrammerTestBase {
                 .replace("{{format}}", Ghostwriter.OUTPUT_STRING_JSON_ARRAY);
         final String expectedUser = Ghostwriter.USER_MESSAGE
                 .replace("{{message}}", Ghostwriter.USER_MESSAGE_COMMENT)
+                .replace("{{language}}", "Java")
                 .replace("{{classes}}", CLASSES)
                 .replace("{{code}}", CODE2)
                 .replace("{{line}}", LINE)
