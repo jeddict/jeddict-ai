@@ -39,7 +39,6 @@ import io.github.jeddict.ai.response.Response;
 import io.github.jeddict.ai.response.TokenHandler;
 import io.github.jeddict.ai.scanner.ProjectMetadataInfo;
 import io.github.jeddict.ai.settings.PreferencesManager;
-import io.github.jeddict.ai.util.JSONUtil;
 import io.github.jeddict.ai.util.Utilities;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
@@ -404,39 +403,6 @@ public class JeddictBrain {
         LOG.finest(response);
 
         return response;
-    }
-
-    public List<Snippet> suggestSQLQuery(
-        final String dbMetadata, final String editorContent,
-        final boolean description
-    ) {
-        StringBuilder prompt = new StringBuilder("You are an API server that provides SQL query suggestions based on the provided database schema metadata. ");
-
-        if (editorContent == null || editorContent.isEmpty()) {
-            prompt.append("Analyze the metadata and recommend appropriate SQL queries at the placeholder ${SUGGEST_SQL_QUERY_LIST}. ");
-        } else {
-            prompt.append("Based on the following content in the editor: \n")
-                    .append(editorContent)
-                    .append("\nAnalyze the metadata and recommend SQL queries at the placeholder ${SUGGEST_SQL_QUERY_LIST}. ");
-        }
-
-        prompt.append("""
-          Ensure the SQL queries match the database structure, constraints, and relationships.
-          Respond with a JSON array containing the best SQL query options.
-          Each entry should have one field, 'snippet', holding the recommended SQL query block, which may include multiple lines formatted as a single string using \\n for line breaks.
-          """);
-
-        // Include description if enabled
-        if (description) {
-            prompt.append("""
-          Additionally, each entry should contain a 'description' field providing a very short explanation of what the query does and why it might be appropriate in this context,
-          formatted with <b>, <br> tags, and optionally, if required, include any important link with <a href=''> tags.
-          """);
-        }
-
-        prompt.append("Database Metadata:\n").append(dbMetadata);
-
-        return JSONUtil.jsonToSnippets(generate(null, prompt.toString()));
     }
 
     public void addProgressListener(final PropertyChangeListener listener) {

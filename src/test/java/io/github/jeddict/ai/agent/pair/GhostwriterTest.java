@@ -23,9 +23,13 @@ import com.sun.source.util.Trees;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import static io.github.jeddict.ai.agent.pair.Ghostwriter.LANGUAGE_JAVA;
+import static io.github.jeddict.ai.agent.pair.Ghostwriter.OUTPUT_SQL_SNIPPET_JSON_ARRAY;
+import static io.github.jeddict.ai.agent.pair.Ghostwriter.OUTPUT_SQL_SNIPPET_JSON_ARRAY_WITH_DESCRIPTION;
+import static io.github.jeddict.ai.agent.pair.Ghostwriter.USER_MESSAGE_SQL;
 import io.github.jeddict.ai.lang.Snippet;
 import io.github.jeddict.ai.scanner.MyTreePathScanner;
 import static io.github.jeddict.ai.util.MimeUtil.MIME_JS;
+import static io.github.jeddict.ai.util.MimeUtil.MIME_SQL;
 import static io.github.jeddict.ai.util.MimeUtil.MIME_TYPE_DESCRIPTIONS;
 import java.io.File;
 import java.io.IOException;
@@ -47,12 +51,13 @@ import org.junit.jupiter.api.Test;
  */
 public class GhostwriterTest extends PairProgrammerTestBase {
 
-    private static final String LINE = "String name=\"this is the line of code\";";
-    private static final String CODE1 = "use mock 'suggest code.txt'";
-    private static final String CODE2 = "use mock 'suggest comments.txt'";
+    private static final String LINE    = "String name=\"this is the line of code\";";
+    private static final String CODE1   = "use mock 'suggest code.txt'";
+    private static final String CODE2   = "use mock 'suggest comments.txt'";
+    private static final String SQL     = "use mock 'suggest sql.txt'";
     private static final String CLASSES = "classes data";
     private static final String PROJECT = "JDK 17";
-    private static final String HINT = "this is an hint";
+    private static final String HINT    = "this is an hint";
 
     private Ghostwriter pair;
 
@@ -195,7 +200,6 @@ public class GhostwriterTest extends PairProgrammerTestBase {
         then(snippets.get(0).getSnippet()).isEqualTo(
             "System.out.println(\"Hello World!\");"
         );
-
     }
 
     @Test
@@ -242,6 +246,42 @@ public class GhostwriterTest extends PairProgrammerTestBase {
 
                 withDescription = false;
             }
+        }
+    }
+
+    @Test
+    public void suggestSQLQueries_returns_AI_provided_response() throws Exception {
+        final String METADATA = "some db metadata";
+
+        for (boolean withDescription: new boolean[] { true, false}) {
+            final String format = OUTPUT_SQL_SNIPPET_JSON_ARRAY
+                            + ((withDescription) ? OUTPUT_SQL_SNIPPET_JSON_ARRAY_WITH_DESCRIPTION : "");
+            final String expectedSystem = Ghostwriter.SYSTEM_MESSAGE
+                .replace("{{format}}", format);
+            final String expectedUser = Ghostwriter.USER_MESSAGE
+                    .replace("{{message}}", USER_MESSAGE_SQL)
+                    .replace("{{language}}", MIME_TYPE_DESCRIPTIONS.get(MIME_SQL))
+                    .replace("{{classes}}", "")
+                    .replace("{{code}}", SQL)
+                    .replace("{{line}}", "")
+                    .replace("{{project}}", METADATA)
+                    .replace("{{hint}}", "");
+
+            final List<Snippet> snippets =
+                pair.suggestSQLQueries(SQL, METADATA, withDescription);
+
+            final ChatModelRequestContext request = listener.lastRequestContext.get();
+            thenMessagesMatch(
+                request.chatRequest().messages(), expectedSystem, expectedUser
+            );
+
+            then(snippets).hasSize(1);
+            then(snippets.get(0).getSnippet()).isEqualTo(
+                "select * from dual"
+            );
+            then(snippets.get(0).getDescription()).isEqualTo(
+                "a simple query"
+            );
         }
     }
 

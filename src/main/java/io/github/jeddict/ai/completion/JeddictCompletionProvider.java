@@ -512,7 +512,9 @@ public class JeddictCompletionProvider implements CompletionProvider {
                 done = true;
 
                 final Project project = FileOwnerQuery.getOwner(fileObject);
-                final String projectInfo = ProjectMetadataInfo.get(project);
+                final String projectInfo = (project != null)
+                                         ? ProjectMetadataInfo.get(project)
+                                         : "";
 
                 this.caretOffset = caretOffset;
                 String mimeType = (String) doc.getProperty("mimeType");
@@ -530,16 +532,8 @@ public class JeddictCompletionProvider implements CompletionProvider {
                     String lineTextBeforeCaret = getLineTextBeforeCaret(doc, caretOffset);
 
                     final TreePath tree = SourceUtil.findTreePathAtCaret(compilationUnit, task, caretOffset);
-
-                    System.out.println("path: " + tree);
-
                     final Tree.Kind kind = tree == null ? null : tree.getLeaf().getKind();
-
-                    System.out.println("kind: " + kind);
-
                     final Tree.Kind parentKind = tree != null && tree.getParentPath() != null ? tree.getParentPath().getLeaf().getKind() : null;
-
-                    System.out.println("parentKind: " + parentKind);
 
                     AIClassContext activeClassContext = -1 == queryType ? pm.getClassContextInlineHint() : pm.getClassContext();
                     if (kind == Tree.Kind.VARIABLE || kind == Tree.Kind.METHOD || kind == Tree.Kind.STRING_LITERAL) {
@@ -698,14 +692,14 @@ public class JeddictCompletionProvider implements CompletionProvider {
                         }
                     }
                 } else {
-                    String line = getLineText(doc, caretOffset);
-                    String lineTextBeforeCaret = getLineTextBeforeCaret(doc, caretOffset);
-                     SQLEditorSupport sQLEditorSupport = fileObject.getLookup().lookup(SQLEditorSupport.class);
+                    final String line = getLineText(doc, caretOffset);
+                    final String lineTextBeforeCaret = getLineTextBeforeCaret(doc, caretOffset);
+
+                    final SQLEditorSupport sQLEditorSupport = fileObject.getLookup().lookup(SQLEditorSupport.class);
                     if (sQLEditorSupport != null) {
                         SQLCompletion sqlCompletion = new SQLCompletion(sQLEditorSupport);
-                        String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGEST_SQL_QUERY_LIST}");
-                        List<Snippet> sugs = newJeddictBrain()
-                                .suggestSQLQuery(sqlCompletion.getMetaData(), updateddoc, description);
+                        String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGESTION}");
+                        final List<Snippet> sugs = getGhostwriter().suggestSQLQueries(updateddoc, sqlCompletion.getMetaData(), description);
                         for (Snippet snippet : sugs) {
                             if (resultSet == null) {
                                 highlightMultiline(component, caretOffset, snippet);
