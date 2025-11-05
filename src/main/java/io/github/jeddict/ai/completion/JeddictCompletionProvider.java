@@ -620,7 +620,7 @@ public class JeddictCompletionProvider implements CompletionProvider {
                         for (String snippet : sugs) {
                             resultSet.addItem(createItem(new Snippet(snippet), line, lineTextBeforeCaret, javaToken, kind, doc));
                         }
-                    } else if ((kind == Tree.Kind.PARENTHESIZED || kind == Tree.Kind.MEMBER_SELECT)
+                    } else if (kind == Tree.Kind.PARENTHESIZED
                             && parentKind != null
                             && parentKind == Tree.Kind.IF) {
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, PLACEHOLDER);
