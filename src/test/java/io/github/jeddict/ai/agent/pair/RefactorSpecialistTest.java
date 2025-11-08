@@ -23,15 +23,15 @@ import org.junit.jupiter.api.Test;
 /**
  *
  */
-public class CodeSpecialistTest extends PairProgrammerTestBase {
+public class RefactorSpecialistTest extends PairProgrammerTestBase {
 
-    private CodeSpecialist pair;
+    private RefactorSpecialist pair;
 
     @BeforeEach
     public void beforeEach() throws Exception {
         super.beforeEach();
 
-        pair = AgenticServices.agentBuilder(CodeSpecialist.class)
+        pair = AgenticServices.agentBuilder(RefactorSpecialist.class)
             .chatModel(model)
             .build();
 
@@ -128,7 +128,7 @@ public class CodeSpecialistTest extends PairProgrammerTestBase {
         // proper prompt messages has been generated and provided
         //
         updateMethod_returns_AI_provided_response(
-            String.format(CodeSpecialist.FIX_COMPILATION_ERROR, ERROR),
+            String.format(RefactorSpecialist.FIX_COMPILATION_ERROR, ERROR),
             code, method, globalRules, projectRules
         );
     }
@@ -149,7 +149,7 @@ public class CodeSpecialistTest extends PairProgrammerTestBase {
         // proper prompt messages has been generated and provided
         //
         updateMethod_returns_AI_provided_response(
-            String.format(CodeSpecialist.FIX_COMPILATION_ERROR, error),
+            String.format(RefactorSpecialist.FIX_COMPILATION_ERROR, error),
             source, "", globalRules, projectRules
         );
     }
@@ -169,7 +169,7 @@ public class CodeSpecialistTest extends PairProgrammerTestBase {
         //
         // proper prompt messages has been generated and provided
         //
-        updateMethod_returns_AI_provided_response(CodeSpecialist.PROMPT_ENHANCE_METHOD_FROM_METHOD_CODE, code, method, globalRules, projectRules);
+        updateMethod_returns_AI_provided_response(RefactorSpecialist.PROMPT_ENHANCE_METHOD_FROM_METHOD_CODE, code, method, globalRules, projectRules);
     }
 
     protected void enhanceVariableName_returns_AI_provided_response(
@@ -189,7 +189,7 @@ public class CodeSpecialistTest extends PairProgrammerTestBase {
         // proper prompt messages has been generated and provided
         //
         updateMethod_returns_AI_provided_response(
-            String.format(CodeSpecialist.PROMPT_ENHANCE_VARIABLE_NAME, variableContext),
+            String.format(RefactorSpecialist.PROMPT_ENHANCE_VARIABLE_NAME, variableContext),
             classContent, methodContent, globalRules, projectRules
         );
     }
@@ -203,12 +203,12 @@ public class CodeSpecialistTest extends PairProgrammerTestBase {
     ) {
         final ChatModelRequestContext request = listener.lastRequestContext.get();
         final String expectedSystem =
-            CodeSpecialist.SYSTEM_MESSAGE
+            RefactorSpecialist.SYSTEM_MESSAGE
                 .replace("{{globalRules}}", (globalRules.trim().isEmpty()) ? "no rules" : globalRules)
                 .replace("{{projectRules}}", (projectRules.trim().isEmpty()) ? "no rules" : projectRules);
         String expectedUser = (msg != null)
-                            ?  CodeSpecialist.USER_MESSAGE.replace("{{userRequest}}", msg)
-                            : CodeSpecialist.USER_MESSAGE;
+                            ?  RefactorSpecialist.USER_MESSAGE.replace("{{userRequest}}", msg)
+                            : RefactorSpecialist.USER_MESSAGE;
         expectedUser = expectedUser.replace("{{code}}", code).replace("{{methodCode}}", method);
         thenMessagesMatch(
             request.chatRequest().messages(), expectedSystem, expectedUser

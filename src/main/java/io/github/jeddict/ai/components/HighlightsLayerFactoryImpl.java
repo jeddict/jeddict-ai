@@ -27,7 +27,7 @@ public class HighlightsLayerFactoryImpl implements HighlightsLayerFactory {
     @Override
     public HighlightsLayer[] createLayers(Context context) {
         return new HighlightsLayer[] {
-            HighlightsLayer.create(JeddictCompletionProvider.class.getName() + "-3", ZOrder.SYNTAX_RACK.forPosition(1600), false, JeddictCompletionProvider.getPreTextBag(context.getDocument(), context.getComponent())),
+            HighlightsLayer.create(JeddictCompletionProvider.class.getName() + "-3", ZOrder.SYNTAX_RACK.forPosition(1600), false, new JeddictCompletionProvider().getPreTextBag(context.getDocument(), context.getComponent())),
         };
     }
 }

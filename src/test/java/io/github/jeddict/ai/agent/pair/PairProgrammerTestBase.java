@@ -56,7 +56,7 @@ public abstract class PairProgrammerTestBase extends TestBase {
             final ChatMessage msg = messages.get(i++);
             LOG.info(() -> String.valueOf(msg));
             if (msg.type() == ChatMessageType.SYSTEM) {
-                LOG.info(() -> '\n' + String.valueOf(msg) + '\n' + String.valueOf(new SystemMessage(user)));
+                LOG.info(() -> '\n' + String.valueOf(msg) + '\n' + String.valueOf(new SystemMessage(system)));
                 systemOK = systemOK || ((SystemMessage)msg).equals(new SystemMessage(system));
             } else if (msg.type() == ChatMessageType.USER) {
                 LOG.info(() -> '\n' + String.valueOf(msg) + '\n' + String.valueOf(new UserMessage(user)));

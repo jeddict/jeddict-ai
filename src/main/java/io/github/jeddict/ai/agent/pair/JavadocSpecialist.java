@@ -23,49 +23,37 @@ import io.github.jeddict.ai.util.AgentUtil;
 
 
 /**
- * <p><b>PairProgrammer</b> is an agent designed to facilitate automated generation
- * and enhancement of Javadoc comments for Java code elements (classes, methods, and members).
+ * The JavadocSpecialist interface provides a structured approach to generating
+ * and enhancing Javadoc comments for Java elements such as classes, methods, and members.
  *
- * <p>The interface operates through a structured message-passing system where:
- * <ul>
- *   <li>{@link #SYSTEM_MESSAGE} defines the behavioral constraints and operational guidelines
- *       for the Javadoc generation agent</li>
- *   <li>{@link #USER_MESSAGE} provides the template for user requests containing the target code</li>
- * </ul>
- * </p>
  *
- * <p>Core functionality includes:
+ * Core functionality includes:
  * <ul>
- *   <li>Generation of new Javadoc comments for classes, methods, and members</li>
- *   <li>Enhancement of existing Javadoc comments while preserving original content</li>
- *   <li>Context-aware processing that incorporates both global coding standards and
- *       project-specific documentation rules</li>
+ *   <li>Generating new Javadoc comments for classes, methods, and members</li>
+ *   <li>Enhancing existing Javadoc comments while preserving original content</li>
+ *   <li>Context-aware processing that incorporates both global coding standards and project-specific documentation rules</li>
  *   <li>Rule normalization through {@link AgentUtil} to ensure consistent processing</li>
  * </ul>
- * </p>
  *
- * <p>Implementation notes:
+ * Implementation notes:
  * <ul>
  *   <li>All methods return Javadoc content wrapped in Javadoc comment boundaries</li>
  *   <li>Empty strings are used when generating new Javadoc (enhancement methods expect existing content)</li>
  * </ul>
- * </p>
  *
- * <p>Typical usage pattern:
+ * Typical usage pattern:
  * <pre>
- * JavadocSpecialist programmer = AgenticServices.agentBuilder(PairProgrammer.Specialist.JAVADOC)
- *                             ...
- *                             .build()
- * String text = programmer.generate[Class/Method/Member]Javadoc(classCode, globalRules, projectRules);
- * String text = programmer.enhance[Class/Method/Memebeer]Javadoc(methodCode, existingJavadoc, globalRules, projectRules);
+ *   JavadocSpecialist programmer = AgenticServices.agentBuilder(PairProgrammer.Specialist.JAVADOC)
+ *                              ...
+ *                              .build();
+ *   String text = programmer.generate[Class/Method/Member]Javadoc(classCode, globalRules, projectRules);
+ *   String text = programmer.enhance[Class/Method/Member]Javadoc(methodCode, existingJavadoc, globalRules, projectRules);
  * </pre>
- * </p>
  *
- * @see https://docs.langchain4j.dev/tutorials/agents
  */
-public interface JavadocSpecialist {
+public interface JavadocSpecialist extends PairProgrammer {
     public static final String SYSTEM_MESSAGE = """
-You are a programmer that writes only with Javadoc comments for the provided code accordingly to the rules:
+You are a programmer that writes only Javadoc comments for the provided code accordingly to the rules:
 - Generate completely new Javadoc or enahance the existing Javadoc based on user request
 - Generate the Javadoc wrapped with in /** ${javadoc} **/
 - Generate javadoc only for the element (class, methods or members) requested by the user

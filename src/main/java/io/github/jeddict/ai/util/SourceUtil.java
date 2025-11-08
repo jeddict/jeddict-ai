@@ -27,9 +27,13 @@ import com.sun.source.tree.LiteralTree;
 import com.sun.source.tree.MethodTree;
 import com.sun.source.tree.ModifiersTree;
 import com.sun.source.tree.Tree;
+import com.sun.source.util.DocTrees;
+import com.sun.source.util.JavacTask;
 import com.sun.source.util.SourcePositions;
+import com.sun.source.util.TreePath;
 import com.sun.source.util.TreePathScanner;
 import com.sun.source.util.Trees;
+import io.github.jeddict.ai.scanner.MyTreePathScanner;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -297,7 +301,7 @@ public class SourceUtil {
             e.printStackTrace();
         }
     }
-    
+
 public static void openFileInEditorAtLine(FileObject fileObject, int lineNumber) {
     try {
         // Find DataObject for the file
@@ -597,7 +601,7 @@ public static void openFileInEditorAtLine(FileObject fileObject, int lineNumber)
         }
         return null;
     }
-    
+
     private String getFilePathFromEditor(JTextComponent editor) {
         try {
             org.openide.loaders.DataObject dobj = NbEditorUtilities.getDataObject(editor.getDocument());
@@ -608,6 +612,17 @@ public static void openFileInEditorAtLine(FileObject fileObject, int lineNumber)
             // Handle exception
         }
         return null;
+    }
+
+    public static TreePath findTreePathAtCaret(
+        final CompilationUnitTree compilationUnit, final JavacTask task, final int offset
+    ) throws IOException {
+        Trees trees = Trees.instance(task);
+        DocTrees docTrees = DocTrees.instance(task);  // Get the instance of DocTrees
+        MyTreePathScanner treePathScanner = new MyTreePathScanner(trees, docTrees, offset, compilationUnit);
+        treePathScanner.scan(compilationUnit, null);
+        TreePath resultPath = treePathScanner.getTargetPath();
+        return resultPath;
     }
 
 }

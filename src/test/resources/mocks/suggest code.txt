@@ -1,0 +1,8 @@
+{
+    "imports": [
+        "java.io.File",
+        "java.util.List",
+        "io.github.jeddict.ai.test.SayHello"
+    ],
+    "snippet": "System.out.println(\"Hello World!\");"
+}

@@ -15,18 +15,24 @@
  */
 package io.github.jeddict.ai.agent.pair;
 
+import java.util.logging.Logger;
+
 
 /**
- * THis is just a marker for PairProgrammer agents like JavadocSpecialist,
+ * This is just a marker for PairProgrammer agents like JavadocSpecialist,
  * RestSpecialist, etc.
  *
  *
  */
 public interface PairProgrammer {
 
+    final Logger LOG = Logger.getLogger(PairProgrammer.class.getCanonicalName());
+
     public static enum Specialist {
-        CODE(CodeSpecialist.class),
+        ADVISOR(CodeAdvisor.class),
+        GHOSTWRITER(Ghostwriter.class),
         JAVADOC(JavadocSpecialist.class),
+        REFACTOR(RefactorSpecialist.class),
         REST(RestSpecialist.class);
 
         public final Class specialistClass;
@@ -35,6 +41,5 @@ public interface PairProgrammer {
             this.specialistClass = specialist;
         }
     }
-
 
 }

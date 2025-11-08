@@ -23,7 +23,6 @@ import com.sun.source.tree.Tree;
 import com.sun.source.tree.VariableTree;
 import io.github.jeddict.ai.lang.JeddictBrain;
 import io.github.jeddict.ai.settings.AIClassContext;
-import io.github.jeddict.ai.settings.PreferencesManager;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -231,13 +230,6 @@ public class ProjectClassScanner {
         classData.clear();
         projectClassListeners.clear();
         models.clear();
-    }
-
-    public static JeddictBrain getJeddictChatModel(FileObject fileObject) {
-        return new JeddictBrain(
-            PreferencesManager.getInstance().getModelName(),
-            false, List.of()
-        );
     }
 
     public static FileObject getFileObjectFromEditor(Document document) {
