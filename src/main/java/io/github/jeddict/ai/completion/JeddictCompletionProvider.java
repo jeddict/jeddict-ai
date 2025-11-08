@@ -640,6 +640,21 @@ public class JeddictCompletionProvider implements CompletionProvider {
                                 resultSet.addItem(var);
                             }
                         }
+                    } else if (kind == Tree.Kind.MEMBER_SELECT
+                            && parentKind != null
+                            && parentKind == Tree.Kind.METHOD_INVOCATION) {
+                        String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGESTION}");
+                        List<Snippet> sugs = getGhostwriter()
+                                .suggestNextLineCode(classDataContent, LANGUAGE_JAVA, updateddoc, line, projectInfo, hintContext, tree, description);
+                        for (Snippet snippet : sugs) {
+                            if (resultSet == null) {
+                                highlightMultiline(component, caretOffset, snippet);
+                                break;
+                            } else {
+                                JeddictItem var = new JeddictItem(null, null, snippet.getSnippet(), snippet.getDescription(), snippet.getImports(), caretOffset, true, false, -1);
+                                resultSet.addItem(var);
+                            }
+                        }
                     } else {
                         LOG.finest(() -> "Skipped : " + kind + " " + tree.getLeaf().toString());
                         String updateddoc = insertPlaceholderAtCaret(doc, caretOffset, "${SUGGESTION}");
