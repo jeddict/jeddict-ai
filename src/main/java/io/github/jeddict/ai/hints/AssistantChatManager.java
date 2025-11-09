@@ -299,7 +299,6 @@ public class AssistantChatManager extends JavaFix {
                         }
                     };
                     final PreferencesManager pm = PreferencesManager.getInstance();
-                    final Map<String, String> prompts = pm.getPrompts();
                     String response;
                     if (action == Action.TEST) {
                         final TestSpecialist pair = newJeddictBrain(handler, getModelName()).pairProgrammer(PairProgrammer.Specialist.TEST);

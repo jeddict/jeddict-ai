@@ -21,6 +21,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import io.github.jeddict.ai.lang.JeddictBrain;
+import static io.github.jeddict.ai.lang.JeddictBrain.UNSAVED_PROMPT;
 import io.github.jeddict.ai.response.Response;
 import io.github.jeddict.ai.util.PropertyChangeEmitter;
 import java.util.ArrayList;
@@ -41,7 +42,7 @@ import static org.apache.commons.lang3.StringUtils.defaultString;
 public class TestSpecialist implements PairProgrammer, PropertyChangeEmitter {
         public static final String SYSTEM_MESSAGE = """
 You are an experienced programmer specialized writing unit tests based on the
-provided project clode, for the provided class and/or method code and accordingly
+provided project code, for the provided class and/or method code and accordingly
 to the rules below.
 Rules:
 {{rules}}
@@ -99,7 +100,9 @@ The method to test is:
         // add conversation history (multiple responses)
         if (!history.isEmpty()) {
             for (Response res : history) {
-                messages.add(dev.langchain4j.data.message.UserMessage.from(res.getQuery()));
+                final String q = (res.getQuery() != null)
+                               ? res.getQuery() : UNSAVED_PROMPT;
+                messages.add(dev.langchain4j.data.message.UserMessage.from(q));
                 messages.add(AiMessage.from(res.toString()));
             }
         }

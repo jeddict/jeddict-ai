@@ -71,6 +71,8 @@ public class JeddictBrain implements PropertyChangeEmitter {
         }
     }
 
+    public static String UNSAVED_PROMPT = "Unsaved user message";
+
     public final Optional<ChatModel> chatModel;
     public final Optional<StreamingChatModel> streamingChatModel;
     protected final List<AbstractTool> tools;
@@ -167,10 +169,17 @@ public class JeddictBrain implements PropertyChangeEmitter {
             messages.add(SystemMessage.from(systemMessage));
         }
 
+        //
         // add conversation history (multiple responses)
+        //
+        // Note that the query can be null when the conversation started from
+        // AssistantChatManager.performRewrite() (i.e. from an AI hint)
+        //
         if (responseHistory != null && !responseHistory.isEmpty()) {
             for (Response res : responseHistory) {
-                messages.add(UserMessage.from(res.getQuery()));
+                final String q = (res.getQuery() != null)
+                               ? res.getQuery() : UNSAVED_PROMPT;
+                messages.add(UserMessage.from(q));
                 messages.add(AiMessage.from(res.toString()));
             }
         }
@@ -317,109 +326,7 @@ public class JeddictBrain implements PropertyChangeEmitter {
 
         return response;
     }
-/*
-    public String generateTestCase(
-        final Project project,
-        final String projectContent, final String classContent, final String methodContent,
-        final List<Response> previousChatResponse, final String userQuery,
-        final String testPrompts, final String sessionRules
-    ) {
-        StringBuilder promptBuilder = new StringBuilder();
-        StringBuilder promptExtend = new StringBuilder();
-        Set<String> testCaseTypes = new HashSet<>(); // Using a Set to avoid duplicates
 
-        StringBuilder userQueryBuilder = new StringBuilder("User Query: ");
-        if (userQuery != null) {
-            userQueryBuilder.append(userQuery).append(" ,\n ");
-
-            //
-            // If we have a valid query, let's check if any testing framework
-            // has been mentioned to reinforce the prompt
-            //
-            // TODO: do we really need it, or the model takes care of it already?
-            //
-            if (userQuery.toLowerCase().contains("junit5")) {
-                testCaseTypes.add("JUnit5");
-            } else if (userQuery.toLowerCase().contains("junit")) {
-                testCaseTypes.add("JUnit");
-            }
-
-            if (userQuery.toLowerCase().contains("testng")) {
-                testCaseTypes.add("TestNG");
-            }
-
-            if (userQuery.toLowerCase().contains("mockito")) {
-                testCaseTypes.add("Mockito");
-            }
-
-            if (userQuery.toLowerCase().contains("spock")) {
-                testCaseTypes.add("Spock");
-            }
-
-            if (userQuery.toLowerCase().contains("assertj")) {
-                testCaseTypes.add("AssertJ");
-            }
-
-            if (userQuery.toLowerCase().contains("hamcrest")) {
-                testCaseTypes.add("Hamcrest");
-            }
-
-            if (userQuery.toLowerCase().contains("powermock")) {
-                testCaseTypes.add("PowerMock");
-            }
-
-            if (userQuery.toLowerCase().contains("cucumber")) {
-                testCaseTypes.add("Cucumber");
-            }
-
-            if (userQuery.toLowerCase().contains("spring test")) {
-                testCaseTypes.add("Spring Test");
-            }
-
-            if (userQuery.toLowerCase().contains("arquillian")) {
-                testCaseTypes.add("Arquillian Test");
-            }
-
-        }
-        if (testPrompts != null) {
-            userQueryBuilder.append(testPrompts);
-        }
-
-        String testCaseType = String.join(", ", testCaseTypes);
-
-        // Build the promptExtend based on available content
-        if (methodContent != null) {
-            promptExtend.append("Method Content:\n").append(methodContent).append("\n\n")
-                    .append("Generate ").append(testCaseType).append(" test cases for this method. Include assertions and necessary mock setups. ");
-        } else if (projectContent != null) {
-            promptExtend.append("Project Full Content:\n").append(projectContent).append("\n\n")
-                    .append("Generate ").append(testCaseType).append(" test cases for all classes. Include assertions and necessary mock setups. ");
-        } else {
-            promptExtend.append("Java Class Content:\n").append(classContent).append("\n\n")
-                    .append("Generate ").append(testCaseType).append(" test cases for this class. Include assertions and necessary mock setups. ");
-        }
-
-        promptBuilder.append("You are an API server that provides ");
-        if (sessionRules != null && !sessionRules.isEmpty()) {
-            promptBuilder.append("\n\n")
-                    .append(sessionRules)
-                    .append("\n\n");
-        }
-
-        promptBuilder.append(testCaseType).append(" test cases in Java for a given class or method based on the original Java class content. ")
-                .append("Given the following Java class or method content and the user's query, generate ")
-                .append(testCaseType).append(" test cases that are well-structured and functional. ")
-                .append(promptExtend)
-                .append(userQueryBuilder);
-
-        // Generate the test cases
-        String response = generate(project, promptBuilder.toString(), null, previousChatResponse);
-
-        LOG.finest(response);
-
-        return response;
-    }
-*/
     public void addProgressListener(final PropertyChangeListener listener) {
         addPropertyChangeListener(listener);
     }

@@ -15,9 +15,16 @@
  */
 package io.github.jeddict.ai.agent.pair;
 
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import static io.github.jeddict.ai.lang.JeddictBrain.UNSAVED_PROMPT;
 import io.github.jeddict.ai.lang.JeddictBrainListener;
+import io.github.jeddict.ai.response.Response;
 import java.util.List;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.Test;
@@ -175,4 +182,61 @@ public class TestSpecialistTest extends PairProgrammerTestBase {
         );
     }
 
+    @Test
+    public void generateTestCase_keeps_the_history() {
+        final TestSpecialist pair = new TestSpecialist(model);
+
+        final Response R1 = new Response(null, "answer1", null);
+        final Response R2 = new Response("query2", "answer2", null);
+
+        //
+        // Without query
+        //
+        pair.generateTestCase(
+            null, ALL_CLASSES, CLASS, METHOD, PROMPT, SESSION_RULES,
+            List.of(R1, R2)
+        );
+
+        List<ChatMessage> messages
+            = listener.lastRequestContext.get().chatRequest().messages();
+
+        //
+        // Note that there is no need of further specifications on first and last
+        // messages as they are provided in the other tests
+        //
+        then(messages).isNotNull().hasSize(6);
+        then(messages.get(0)).isInstanceOf(SystemMessage.class);
+        thenIsUserMessage(messages.get(1), UNSAVED_PROMPT);
+        thenIsAiMessage(messages.get(2), "answer1");
+        thenIsUserMessage(messages.get(3), "query2");
+        thenIsAiMessage(messages.get(4), "answer2");
+        then(messages.get(5)).isInstanceOf(UserMessage.class);
+
+        pair.generateTestCase(
+            QUERY, ALL_CLASSES, CLASS, METHOD, PROMPT, SESSION_RULES,
+            List.of(R1, R2)
+        );
+
+        messages = listener.lastRequestContext.get().chatRequest().messages();
+
+        then(messages).isNotNull().hasSize(6);
+        then(messages.get(0)).isInstanceOf(SystemMessage.class);
+        thenIsUserMessage(messages.get(1), UNSAVED_PROMPT);
+        thenIsAiMessage(messages.get(2), "answer1");
+        thenIsUserMessage(messages.get(3), "query2");
+        thenIsAiMessage(messages.get(4), "answer2");
+        then(messages.get(5)).isInstanceOf(UserMessage.class);
+    }
+
+    // --------------------------------------------------------- private methods
+
+    private void thenIsUserMessage(ChatMessage msg, String value) {
+        then(msg).isNotNull().isInstanceOf(UserMessage.class);
+        then(((TextContent)((UserMessage)msg).contents().get(0)).text()).isEqualTo(value);
+    }
+
+    private void thenIsAiMessage(ChatMessage msg, String value) {
+        then(msg).isNotNull().isInstanceOf(AiMessage.class);
+        then(((AiMessage)msg).text()).isEqualTo(value);
+    }
 }
