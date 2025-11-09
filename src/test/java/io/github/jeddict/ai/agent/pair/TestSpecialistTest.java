@@ -15,8 +15,9 @@
  */
 package io.github.jeddict.ai.agent.pair;
 
-import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import io.github.jeddict.ai.lang.JeddictBrainListener;
 import java.util.List;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.Test;
@@ -26,24 +27,41 @@ import org.junit.jupiter.api.Test;
  */
 public class TestSpecialistTest extends PairProgrammerTestBase {
 
+    final String QUERY = "use mock 'hello world.txt' and create JUnit5 tests using AssertJ";
+    final String ALL_CLASSES = "here we have all project classes";
+    final String CLASS = "the class";
+    final String METHOD = "the method";
+    final String PROMPT = "the test prompt";
+    final String SESSION_RULES = "these are the session rules";
+    final List<String> FRAMEWORKS = List.of("JUnit5", "AssertJ");
+
     @Test
     public void pair_is_a_PairProgrammer() {
-        final TestSpecialist pair = AgenticServices.agentBuilder(TestSpecialist.class)
-            .chatModel(model)
-            .build();
+        final TestSpecialist pair = new TestSpecialist(model);
         then(pair).isInstanceOf(PairProgrammer.class);
     }
 
     @Test
-    public void generateTestCase_returns_AI_provided_response_with_and_without_rules() {
-        final String QUERY = "use mock 'hello world.txt' and create JUnit5 tests using AssertJ";
-        final String ALL_CLASSES = "here we have all project classes";
-        final String CLASS = "the class";
-        final String METHOD = "the method";
-        final String PROMPT = "the test prompt";
-        final String SESSION_RULES = "these are the session rules";
-        final List<String> FRAMEWORKS = List.of("JUnit5", "AssertJ");
+    public void chat_triggers_the_handler() {
+        final StringBuilder responseBuilder = new StringBuilder();
+        final JeddictBrainListener changeListener = new JeddictBrainListener(null) {
+            @Override
+            public void onCompleteResponse(ChatResponse response) {
+                responseBuilder.append(response.aiMessage().text().trim());
+            }
+        };
+        final TestSpecialist pair = new TestSpecialist(model);
+        pair.addPropertyChangeListener(changeListener);
 
+        final String answer = pair.generateTestCase(QUERY, ALL_CLASSES, CLASS, METHOD, PROMPT, SESSION_RULES, List.of());
+
+        then(answer.trim()).isEqualTo("hello world");
+        then(responseBuilder.toString()).isEqualTo("hello world");
+
+    }
+
+    @Test
+    public void generateTestCase_returns_AI_provided_response_with_and_without_rules() {
         //
         // With all parameters
         //
@@ -57,9 +75,7 @@ public class TestSpecialistTest extends PairProgrammerTestBase {
             .replace("{{project}}", ALL_CLASSES)
             .replace("{{prompt}}", PROMPT);
 
-        final TestSpecialist pair = AgenticServices.agentBuilder(TestSpecialist.class)
-            .chatModel(model)
-            .build();
+        final TestSpecialist pair = new TestSpecialist(model);
 
         String answer = pair.generateTestCase(QUERY, ALL_CLASSES, CLASS, METHOD, PROMPT, SESSION_RULES, List.of());
 

@@ -38,6 +38,7 @@ import io.github.jeddict.ai.agent.pair.DBSpecialist;
 import io.github.jeddict.ai.agent.pair.DiffSpecialist;
 import io.github.jeddict.ai.agent.pair.PairProgrammer;
 import io.github.jeddict.ai.agent.pair.TechWriter;
+import io.github.jeddict.ai.agent.pair.TestSpecialist;
 import static io.github.jeddict.ai.classpath.JeddictQueryCompletionQuery.JEDDICT_EDITOR_CALLBACK;
 import io.github.jeddict.ai.completion.Action;
 import io.github.jeddict.ai.completion.SQLCompletion;
@@ -301,12 +302,13 @@ public class AssistantChatManager extends JavaFix {
                     final Map<String, String> prompts = pm.getPrompts();
                     String response;
                     if (action == Action.TEST) {
+                        final TestSpecialist pair = newJeddictBrain(handler, getModelName()).pairProgrammer(PairProgrammer.Specialist.TEST);
+                        final String prompt = pm.getPrompts().get("test");
+                        final String rules = pm.getSessionRules();
                         if (leaf instanceof MethodTree) {
-                            response = newJeddictBrain(handler, getModelName())
-                                .generateTestCase(getProject(), null, null, leaf.toString(), null, null, prompts.get("test"), pm.getSessionRules());
+                            response = pair.generateTestCase(null, null, null, leaf.toString(), prompt, rules);
                         } else {
-                            response = newJeddictBrain(handler, getModelName())
-                                .generateTestCase(getProject(), null, treePath.getCompilationUnit().toString(), null, null, null, prompts.get("test"), pm.getSessionRules());
+                            response = pair.generateTestCase(null, null, treePath.getCompilationUnit().toString(), null, prompt, rules);
                         }
                     } else {
                         final String rules = pm.getSessionRules();
@@ -316,6 +318,10 @@ public class AssistantChatManager extends JavaFix {
                                  : pair.describeCode(treePath.getCompilationUnit().toString(), rules);
 
                     }
+
+                    //
+                    // TODO: BUG #214 - onCompleteResponse() called twice in AssistantChatManager
+                    //
                     if (response != null && !response.isEmpty()) {
                         handler.onCompleteResponse(ChatResponse.builder().aiMessage(new AiMessage(response)).build());
                     }
@@ -1073,18 +1079,22 @@ public class AssistantChatManager extends JavaFix {
                     response = newJeddictBrain(handler, getModelName())
                         .generateDescription(getProject(), null, null, null, prevChatResponses, question, pm.getSessionRules());
                 } else if (action == Action.TEST) {
+                    final TestSpecialist pair = newJeddictBrain(handler, getModelName()).pairProgrammer(PairProgrammer.Specialist.TEST);
+                    final String prompt = pm.getPrompts().get("test");
+                    final String rules = pm.getSessionRules();
                     if (leaf instanceof MethodTree) {
-                        response = newJeddictBrain(handler, getModelName())
-                            .generateTestCase(getProject(), null, null, leaf.toString(), prevChatResponses, question, pm.getPrompts().get("test"), pm.getSessionRules());
+                        response = pair.generateTestCase(question, null, null, leaf.toString(), prompt, rules, prevChatResponses);
                     } else {
-                        response = newJeddictBrain(handler, getModelName())
-                            .generateTestCase(getProject(), null, treePath.getCompilationUnit().toString(), null, prevChatResponses, question, pm.getPrompts().get("test"), pm.getSessionRules());
+                        response = pair.generateTestCase(question, null, treePath.getCompilationUnit().toString(), null, prompt, rules, prevChatResponses);
                     }
                 } else {
                     response = newJeddictBrain(handler, getModelName())
                         .generateDescription(getProject(), treePath.getCompilationUnit().toString(), treePath.getLeaf() instanceof MethodTree ? treePath.getLeaf().toString() : null, null, prevChatResponses, question, pm.getSessionRules());
                 }
 
+                //
+                // TODO: BUG #214 - onCompleteResponse() called twice in AssistantChatManager
+                //
                 if (response != null && !response.isEmpty()) {
                     handler.onCompleteResponse(ChatResponse.builder().aiMessage(new AiMessage(response)).build());
                 }

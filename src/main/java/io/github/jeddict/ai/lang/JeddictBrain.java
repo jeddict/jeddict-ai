@@ -35,23 +35,22 @@ import dev.langchain4j.service.AiServices;
 import io.github.jeddict.ai.agent.AbstractTool;
 import io.github.jeddict.ai.agent.Assistant;
 import io.github.jeddict.ai.agent.pair.PairProgrammer;
+import io.github.jeddict.ai.agent.pair.TestSpecialist;
 import io.github.jeddict.ai.response.Response;
 import io.github.jeddict.ai.response.TokenHandler;
 import io.github.jeddict.ai.scanner.ProjectMetadataInfo;
 import io.github.jeddict.ai.settings.PreferencesManager;
+import io.github.jeddict.ai.util.PropertyChangeEmitter;
 import io.github.jeddict.ai.util.Utilities;
 import java.beans.PropertyChangeListener;
-import java.beans.PropertyChangeSupport;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Logger;
 import org.netbeans.api.project.Project;
 
-public class JeddictBrain {
+public class JeddictBrain implements PropertyChangeEmitter {
 
     private final Logger LOG = Logger.getLogger(JeddictBrain.class.getCanonicalName());
 
@@ -77,8 +76,6 @@ public class JeddictBrain {
     protected final List<AbstractTool> tools;
 
     public final String modelName;
-
-    protected final PropertyChangeSupport progressListeners = new PropertyChangeSupport(this);
 
     public JeddictBrain(
         final boolean streaming
@@ -234,16 +231,21 @@ public class JeddictBrain {
                     });
                 }
             } else {
-                ChatModel model = chatModel.get();
+                final ChatModel model = chatModel.get();
+
+                ChatResponse chatResponse = null;
                 if (agentEnabled) {
                     Assistant assistant = AiServices.builder(Assistant.class)
                             .chatModel(model)
                             .tools(tools.toArray())
                             .build();
-                    response.append(assistant.chat(messages).aiMessage().text());
+                    chatResponse = assistant.chat(messages);
+
                 } else {
-                    response.append(model.chat(messages).aiMessage().text());
+                    chatResponse = model.chat(messages);
                 }
+                fireEvent(EventProperty.CHAT_COMPLETED, chatResponse);
+                response.append(chatResponse.aiMessage().text());
 
                 CompletableFuture.runAsync(() -> TokenHandler.saveOutputToken(response.toString()));
             }
@@ -259,9 +261,22 @@ public class JeddictBrain {
     }
 
     public <T> T pairProgrammer(final PairProgrammer.Specialist specialist) {
-        return (T)AgenticServices.agentBuilder(specialist.specialistClass)
-                .chatModel(chatModel.get())
-                .build();
+        return switch (specialist) {
+            //
+            // TestSpecialist is not agentic yet because of the history;
+            // TODO: replace history management with agent's functionality
+            //
+            case TEST -> {
+                TestSpecialist pair = new TestSpecialist(chatModel.get());
+                for (PropertyChangeListener l: getSupport().getPropertyChangeListeners()) {
+                    pair.addPropertyChangeListener(l);
+                }
+                yield (T)pair;
+            }
+            default -> (T) AgenticServices.agentBuilder(specialist.specialistClass)
+                    .chatModel(chatModel.get())
+                    .build();
+        };
     }
 
     public String generateDescription(
@@ -303,114 +318,12 @@ public class JeddictBrain {
         return response;
     }
 
-    public String generateTestCase(
-        final Project project,
-        final String projectContent, final String classContent, final String methodContent,
-        final List<Response> previousChatResponse, final String userQuery,
-        final String testPrompts, final String sessionRules
-    ) {
-        StringBuilder promptBuilder = new StringBuilder();
-        StringBuilder promptExtend = new StringBuilder();
-        Set<String> testCaseTypes = new HashSet<>(); // Using a Set to avoid duplicates
-
-        StringBuilder userQueryBuilder = new StringBuilder("User Query: ");
-        if (userQuery != null) {
-            userQueryBuilder.append(userQuery).append(" ,\n ");
-
-            //
-            // If we have a valid query, let's check if any testing framework
-            // has been mentioned to reinforce the prompt
-            //
-            // TODO: do we really need it, or the model takes care of it already?
-            //
-            if (userQuery.toLowerCase().contains("junit5")) {
-                testCaseTypes.add("JUnit5");
-            } else if (userQuery.toLowerCase().contains("junit")) {
-                testCaseTypes.add("JUnit");
-            }
-
-            if (userQuery.toLowerCase().contains("testng")) {
-                testCaseTypes.add("TestNG");
-            }
-
-            if (userQuery.toLowerCase().contains("mockito")) {
-                testCaseTypes.add("Mockito");
-            }
-
-            if (userQuery.toLowerCase().contains("spock")) {
-                testCaseTypes.add("Spock");
-            }
-
-            if (userQuery.toLowerCase().contains("assertj")) {
-                testCaseTypes.add("AssertJ");
-            }
-
-            if (userQuery.toLowerCase().contains("hamcrest")) {
-                testCaseTypes.add("Hamcrest");
-            }
-
-            if (userQuery.toLowerCase().contains("powermock")) {
-                testCaseTypes.add("PowerMock");
-            }
-
-            if (userQuery.toLowerCase().contains("cucumber")) {
-                testCaseTypes.add("Cucumber");
-            }
-
-            if (userQuery.toLowerCase().contains("spring test")) {
-                testCaseTypes.add("Spring Test");
-            }
-
-            if (userQuery.toLowerCase().contains("arquillian")) {
-                testCaseTypes.add("Arquillian Test");
-            }
-
-        }
-        if (testPrompts != null) {
-            userQueryBuilder.append(testPrompts);
-        }
-
-        String testCaseType = String.join(", ", testCaseTypes);
-
-        // Build the promptExtend based on available content
-        if (methodContent != null) {
-            promptExtend.append("Method Content:\n").append(methodContent).append("\n\n")
-                    .append("Generate ").append(testCaseType).append(" test cases for this method. Include assertions and necessary mock setups. ");
-        } else if (projectContent != null) {
-            promptExtend.append("Project Full Content:\n").append(projectContent).append("\n\n")
-                    .append("Generate ").append(testCaseType).append(" test cases for all classes. Include assertions and necessary mock setups. ");
-        } else {
-            promptExtend.append("Java Class Content:\n").append(classContent).append("\n\n")
-                    .append("Generate ").append(testCaseType).append(" test cases for this class. Include assertions and necessary mock setups. ");
-        }
-
-        promptBuilder.append("You are an API server that provides ");
-        if (sessionRules != null && !sessionRules.isEmpty()) {
-            promptBuilder.append("\n\n")
-                    .append(sessionRules)
-                    .append("\n\n");
-        }
-
-        promptBuilder.append(testCaseType).append(" test cases in Java for a given class or method based on the original Java class content. ")
-                .append("Given the following Java class or method content and the user's query, generate ")
-                .append(testCaseType).append(" test cases that are well-structured and functional. ")
-                .append(promptExtend)
-                .append(userQueryBuilder);
-
-        // Generate the test cases
-        String response = generate(project, promptBuilder.toString(), null, previousChatResponse);
-
-        LOG.finest(response);
-
-        return response;
-    }
-
     public void addProgressListener(final PropertyChangeListener listener) {
-        progressListeners.addPropertyChangeListener(listener);
+        addPropertyChangeListener(listener);
     }
 
     public void removeProgressListener(final PropertyChangeListener listener) {
-        progressListeners.removePropertyChangeListener(listener);
+        removePropertyChangeListener(listener);
     }
 
     private void logPromptResponse(final String prompt, final String response) {
@@ -419,6 +332,6 @@ public class JeddictBrain {
 
     private void fireEvent(EventProperty property, Object value) {
         LOG.finest(() -> "Firing event " + property + " with value " + value);
-        progressListeners.firePropertyChange(property.name, null, value);
+        firePropertyChange(property.name, null, value);
     }
 }

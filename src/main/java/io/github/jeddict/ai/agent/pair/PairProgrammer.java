@@ -36,7 +36,8 @@ public interface PairProgrammer {
         TECHWRITER(TechWriter.class),
         REFACTOR(RefactorSpecialist.class),
         REST(RestSpecialist.class),
-        SHAKESPEARE(Shakespeare.class);
+        SHAKESPEARE(Shakespeare.class),
+        TEST(TestSpecialist.class);
 
         public final Class specialistClass;
 

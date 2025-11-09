@@ -15,15 +15,18 @@
  */
 package io.github.jeddict.ai.agent.pair;
 
-import dev.langchain4j.agentic.Agent;
-import dev.langchain4j.service.SystemMessage;
-import dev.langchain4j.service.UserMessage;
-import dev.langchain4j.service.V;
-import static io.github.jeddict.ai.agent.pair.PairProgrammer.LOG;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import io.github.jeddict.ai.lang.JeddictBrain;
 import io.github.jeddict.ai.response.Response;
+import io.github.jeddict.ai.util.PropertyChangeEmitter;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
+import static org.apache.commons.lang3.StringUtils.defaultString;
 
 
 /**
@@ -35,7 +38,7 @@ import org.apache.commons.lang3.StringUtils;
  * <p>The generated output is a well-formatted JSON object containing an array of required imports
  * and the annotated JAX-RS method declarations as a text string.</p>
  */
-public interface TestSpecialist extends PairProgrammer {
+public class TestSpecialist implements PairProgrammer, PropertyChangeEmitter {
         public static final String SYSTEM_MESSAGE = """
 You are an experienced programmer specialized writing unit tests based on the
 provided project clode, for the provided class and/or method code and accordingly
@@ -58,20 +61,66 @@ The class to test is:
 The method to test is:
 {{method}}
 """;
-    @SystemMessage(SYSTEM_MESSAGE)
-    @UserMessage(USER_MESSAGE)
-    @Agent("Generate JAX-RS REST endpoints based on the provided Java class")
-    String generateUnitTest(
-        @V("query") final String query,
-        @V("project") final String allClasses,
-        @V("class") final String classCode,
-        @V("method") final String methodCode,
-        @V("prompt") final String prompt,
-        @V("frameworks") final List<String> framework,
-        @V("rules") final String sessionRules
-    );
 
-    default String generateTestCase(
+    private final ChatModel chat;
+
+    public TestSpecialist(final ChatModel chat) {
+        this.chat = chat;
+    }
+
+    private String generateUnitTest(
+        String query,
+        String allClasses,
+        String classCode,
+        String methodCode,
+        String prompt,
+        List<String> frameworks,
+        String sessionRules,
+        List<Response> history
+    ) {
+        query = defaultString(query);
+        allClasses = defaultString(allClasses);
+        classCode = defaultString(classCode);
+        methodCode = defaultString(methodCode);
+        prompt = defaultString(prompt);
+        sessionRules = defaultString(sessionRules);
+        frameworks = (frameworks == null) ? List.of() : frameworks;
+        history = (history == null) ? List.of() : history;
+
+        final List<ChatMessage> messages = new ArrayList<>();
+
+        messages.add(
+            dev.langchain4j.data.message.SystemMessage.from(
+                SYSTEM_MESSAGE.replace("{{rules}}", sessionRules)
+                    .replace("{{frameworks}}", frameworks.toString())
+            )
+        );
+
+        // add conversation history (multiple responses)
+        if (!history.isEmpty()) {
+            for (Response res : history) {
+                messages.add(dev.langchain4j.data.message.UserMessage.from(res.getQuery()));
+                messages.add(AiMessage.from(res.toString()));
+            }
+        }
+
+        messages.add(UserMessage.from(
+            USER_MESSAGE
+                .replace("{{prompt}}", prompt)
+                .replace("{{query}}", query)
+                .replace("{{project}}", allClasses)
+                .replace("{{class}}", classCode)
+                .replace("{{method}}", methodCode)
+        ));
+
+        final ChatResponse response = chat.chat(messages);
+
+        firePropertyChange(JeddictBrain.EventProperty.CHAT_COMPLETED.name, null, response);
+
+        return response.aiMessage().text();
+    }
+
+    public String generateTestCase(
         final String query,
         final String allClasses,
         final String classCode,
@@ -149,11 +198,23 @@ The method to test is:
         }
 
         return generateUnitTest(
-            StringUtils.defaultString(query),
-            StringUtils.defaultString(allClasses),
-            StringUtils.defaultString(classCode),
-            StringUtils.defaultString(methodCode),
-            prompt, testCaseTypes, sessionRules
+            query, allClasses, classCode, methodCode,
+            prompt, testCaseTypes, sessionRules,
+            history
+        );
+    }
+
+    public String generateTestCase(
+        final String query,
+        final String allClasses,
+        final String classCode,
+        final String methodCode,
+        final String prompt,
+        final String sessionRules
+    ) {
+        return this.generateTestCase(
+            query, allClasses, classCode, methodCode,
+            prompt, sessionRules, null
         );
     }
 }

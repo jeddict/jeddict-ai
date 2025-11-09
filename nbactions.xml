@@ -13,6 +13,7 @@
         </action>
         <action>
             <actionName>debug</actionName>
+            <preAction>build-with-dependencies</preAction>
             <packagings>
                 <packaging>nbm</packaging>
             </packagings>
@@ -24,6 +25,9 @@
             <properties>
                 <jpda.listen>true</jpda.listen>
                 <netbeans.run.params.debug>-J-agentlib:jdwp=transport=dt_socket,suspend=n,server=n,address=${jpda.address}</netbeans.run.params.debug>
+                <skipTests>true -J-DnetbeansInstallation=/opt/netbeans</skipTests>
+                
+                
             </properties>
         </action>
     </actions>

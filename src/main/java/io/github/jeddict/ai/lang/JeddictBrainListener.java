@@ -59,7 +59,7 @@ public abstract class JeddictBrainListener
     private final AssistantChat topComponent;
     private boolean init = true;
     private JTextArea textArea;
-    private ProgressHandle handle;
+    private final ProgressHandle handle;
     private boolean complete;
     protected final StringBuilder toolingResponse = new StringBuilder();
 
@@ -81,23 +81,24 @@ public abstract class JeddictBrainListener
         LOG.finest(() -> String.valueOf(e));
         final String name = e.getPropertyName();
 
-        SwingUtilities.invokeLater(() -> {
-            if (name.equals(JeddictBrain.EventProperty.CHAT_TOKENS.name)) {
+
+        if (name.equals(JeddictBrain.EventProperty.CHAT_TOKENS.name)) {
+            SwingUtilities.invokeLater(() -> {
                 final String progress = NbBundle.getMessage(JeddictUpdateManager.class, "ProgressHandle", (int)e.getNewValue());
                 handle.progress(progress);
                 handle.setDisplayName(progress);
-            } else if (name.equals(JeddictBrain.EventProperty.CHAT_PARTIAL.name)) {
-                onPartialResponse((String)e.getNewValue());
-            } else if (name.equals(JeddictBrain.EventProperty.CHAT_COMPLETED.name)) {
-                onCompleteResponse((ChatResponse)e.getNewValue());
-            } else if (name.equals(JeddictBrain.EventProperty.CHAT_ERROR)) {
-                onError((Exception)e.getNewValue());
-            } else if (name.equals(AbstractTool.PROPERTY_MESSAGE)) {
-                final String msg = (String)e.getNewValue() + '\n';
-                toolingResponse.append(msg);
-                onPartialResponse(msg);
-            }
-        });
+            });
+        } else if (name.equals(JeddictBrain.EventProperty.CHAT_PARTIAL.name)) {
+            onPartialResponse((String)e.getNewValue());
+        } else if (name.equals(JeddictBrain.EventProperty.CHAT_COMPLETED.name)) {
+            onCompleteResponse((ChatResponse)e.getNewValue());
+        } else if (name.equals(JeddictBrain.EventProperty.CHAT_ERROR)) {
+            onError((Exception)e.getNewValue());
+        } else if (name.equals(AbstractTool.PROPERTY_MESSAGE)) {
+            final String msg = (String)e.getNewValue() + '\n';
+            toolingResponse.append(msg);
+            onPartialResponse(msg);
+        }
     }
 
     public void onPartialResponse(String partialResponse) {
