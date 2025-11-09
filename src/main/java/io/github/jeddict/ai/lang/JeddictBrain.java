@@ -40,10 +40,13 @@ import io.github.jeddict.ai.response.Response;
 import io.github.jeddict.ai.response.TokenHandler;
 import io.github.jeddict.ai.scanner.ProjectMetadataInfo;
 import io.github.jeddict.ai.settings.PreferencesManager;
+import io.github.jeddict.ai.util.JSONUtil;
+import static io.github.jeddict.ai.util.StringUtil.removeCodeBlockMarkers;
 import io.github.jeddict.ai.util.PropertyChangeEmitter;
 import io.github.jeddict.ai.util.Utilities;
 import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -277,6 +280,261 @@ public class JeddictBrain implements PropertyChangeEmitter {
                     .chatModel(chatModel.get())
                     .build();
         };
+    }
+
+    private String loadClassData(String prompt, String classDatas) {
+        if (classDatas == null || classDatas.isEmpty()) {
+            return prompt;
+        }
+        prompt += "\n\nHere is the context of all classes in the project, including variable names and method signatures (method bodies are excluded to avoid sending unnecessary code):\n"
+                + classDatas;
+        return prompt;
+    }
+
+    public List<String> suggestJavadocOrComment(Project project, String classDatas, String classContent, String lineText) {
+        String prompt = "You are an API server that suggests appropriate Javadoc or comments for a specific context in a given Java class at the placeholder location ${SUGGEST_JAVADOC}. "
+                + "Based on the provided Java class content and the line of code: \"" + lineText + "\", suggest relevant Javadoc or a comment block as appropriate for the context represented by the placeholder ${SUGGEST_JAVADOC} in the Java Class. "
+                + "Return a JSON array where each element can either be a single-line comment, a multi-line comment block, or a Javadoc comment formatted as a single string using \\n for line breaks. "
+                + " Do not split multi line javadoc comments to array, must be at same index in json array. \n\n"
+                + "Java Class Content:\n" + classContent;
+        // Generate the list of suggested Javadoc or comments
+        String jsonResponse = generate(project, prompt);
+        LOG.finest(() -> "jsonResponse " + jsonResponse);
+        // Parse the JSON response into a List
+        List<String> comments = JSONUtil.jsonToList(jsonResponse);
+        return comments;
+    }
+
+    public List<Snippet> suggestAnnotations(
+        final Project project, final String classDatas, final String classContent,
+        final String lineText, final String hintContext,
+        final boolean singleCodeSnippet, final boolean description) {
+        String prompt;
+
+        boolean hasHint = hintContext != null && !hintContext.isEmpty();
+        if (hasHint) {
+            prompt = "You are an API server that suggest relevant code for ${SUGGEST_ANNOTATION_LIST} in the given Java class based on the line: "
+                    + lineText + "\n\n Class: \n" + classContent + "\n" + singleJsonRequest + "\n"
+                    + ((hintContext != null) ? hintContext + "\n" : "");
+        } else {
+            prompt = "You are an API server that suggests Java annotations for a specific context in a given Java class at the placeholder location ${SUGGEST_ANNOTATION_LIST}. "
+                    + "Based on the provided Java class content and the line of code: \"" + lineText + "\", suggest relevant annotations that can be applied at the placeholder location represented by ${SUGGEST_ANNOTATION_LIST} in the Java Class. "
+                    + (description ? jsonRequestWithDescription : jsonRequest)
+                    + "Ensure that the suggestions are appropriate for the given Java Class Content:\n\n" + classContent;
+        }
+
+        // Generate the list of suggested annotations
+        String jsonResponse = generate(project, prompt);
+
+        LOG.finest(() -> "jsonResponse " + jsonResponse);
+
+        // Parse the JSON response into a List
+        List<Snippet> annotations = JSONUtil.jsonToSnippets(jsonResponse);
+        return annotations;
+    }
+
+    public String fixGrammar(String text, String classContent) {
+        String prompt
+                = "You are an AI model designed to correct grammar mistakes. "
+                + "Given the following text and the context of the Java class, correct any grammar issues in the text. "
+                + "Return only the fixed text. Do not include any additional details or explanations.\n\n"
+                + "Java Class Content:\n" + classContent + "\n\n"
+                + "Text to Fix:\n" + text;
+
+        // Generate the grammar-fixed text
+        String response = generate(null, prompt);
+        LOG.finest(response);
+        return response;
+    }
+
+    public String enhanceText(String text, String classContent) {
+        String prompt = "You are an AI model designed to improve text. "
+                + "Given the following text and the context of the Java class, enhance the text to be more engaging, clear, and polished. "
+                + "Ensure the text is well-structured and free of any grammatical errors or awkward phrasing. "
+                + "Return only the enhanced text. Do not include any additional details or explanations.\n\n"
+                + "Java Class Content:\n" + classContent + "\n\n"
+                + "Text to Enhance:\n" + text;
+
+        // Generate the enhanced text
+        String enhancedText = generate(null, prompt);
+        LOG.finest(enhancedText);
+        return enhancedText;
+    }
+
+    public String enhanceExpressionStatement(
+            Project project, String classContent, String parentContent, String expressionStatementContent) {
+        // Construct the prompt for enhancing the expression statement
+        String prompt = "You are an API server that enhances Java code snippets. "
+                + "Given the following Java class content, the parent content of the EXPRESSION_STATEMENT, "
+                + "and the content of the EXPRESSION_STATEMENT itself, enhance the EXPRESSION_STATEMENT to be more efficient, "
+                + "clear, or follow best practices. Do not include any additional text or explanation, just return the enhanced code snippet.\n\n"
+                + "Java Class Content:\n" + classContent + "\n\n"
+                + "Parent Content of EXPRESSION_STATEMENT:\n" + parentContent + "\n\n"
+                + "EXPRESSION_STATEMENT Content:\n" + expressionStatementContent;
+
+        String enhanced = generate(project, prompt);
+        LOG.finest(enhanced);
+        return enhanced;
+    }
+
+    public String generateCommitMessageSuggestions(String gitDiffOutput, String referenceCommitMessage, List<String> images, List<Response> previousChatResponse) {
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("You are an API server that generates commit message suggestions based on the provided 'git diff' and 'git status' output. ")
+                .append("""
+                    Please provide various types of commit messages based on the changes:
+                    Your goal is to create commit messages that reflect business or domain features rather than technical details like dependency updates or refactoring.
+                    """)
+                .append("- Very Short\n")
+                .append("- Short\n")
+                .append("- Medium\n")
+                .append("- Long\n")
+                .append("- Descriptive\n\n")
+                .append("Here is the 'git diff' and 'git status' output:\n")
+                .append(gitDiffOutput)
+                .append("\n");
+
+        // Add reference commit message to the prompt if it is not empty or null
+        if (referenceCommitMessage != null && !referenceCommitMessage.isEmpty()) {
+            prompt.append("Reference Commit Message:\n").append(referenceCommitMessage).append("<br><br>")
+                    .append("Ensure that all the following commit message suggestions are aligned with this reference message. "
+                            + "The suggestions should reflect the intent and context of the reference commit message, focusing on the business or domain features, adapting it as necessary to fit the changes in the 'git diff' output. "
+                            + "The goal is to keep all suggestions consistent with the meaning of the reference commit message.<br>");
+        } else {
+            prompt.append("No reference commit message provided.<br><br>")
+                    .append("Please generate commit message suggestions based on the 'git diff' output and the context of the changes, emphasizing business or domain features.");
+        }
+
+        // Generate the commit message suggestions
+        String response = generate(null, prompt.toString(), images, previousChatResponse);
+        LOG.finest(response);
+        response = removeCodeBlockMarkers(response);
+        return response;
+    }
+
+    public String generateCodeReviewSuggestions(
+            final String gitDiffOutput, final String query,
+            final List<String> images, final List<Response> previousChatResponse,
+            final String reviewPrompt
+    ) {
+
+        String prompt = """
+            Instructions:
+            - Base your review strictly on the provided Git diff.
+            - Anchor each suggestion to a specific hunk header from the diff.
+            - DO NOT infer or hallucinate line numbers not present in the diff.
+            - DO NOT reference line numbers or attempt to estimate exact start/end lines.
+
+            %s
+
+            Respond only with a YAML array of review suggestions. Each suggestion must include:
+            - file: the file name
+            - hunk: the Git diff hunk header (e.g., "@@ -10,7 +10,9 @@")
+            - type: one of "security", "warning", "info", or "suggestion"
+                - "security" for vulnerabilities or high-risk flaws
+                - "warning" for potential bugs or unsafe behavior
+                - "info" for minor issues or readability
+                - "suggestion" for non-critical improvements or refactoring
+            - title: a short title summarizing the issue
+            - description: a longer explanation or recommendation
+
+            Output raw YAML with no markdown, code block, or extra formatting.
+
+            Expected YAML format:
+
+            - file: src/com/example/MyService.java
+              hunk: "@@ -42,6 +42,10 @@"
+              type: warning
+              title: "Possible null pointer exception"
+              description: "The 'items' list might be null before iteration. Add a null check to avoid NPE."
+
+            %s
+            """.formatted(query, gitDiffOutput);
+
+        // pm.getPrompts().get("codereview")
+
+        return generate(null, reviewPrompt  + '\n' + prompt, images, previousChatResponse);
+    }
+
+    public String assistDbMetadata(
+        final String dbMetadata, final String query, final List<String> images,
+        final List<Response> previousChatResponse, final String sessionRules
+    ) {
+        StringBuilder dbPrompt = new StringBuilder("You are an API server that provides assistance. ");
+
+        dbPrompt.append("Given the following database schema metadata:\n")
+                .append(dbMetadata);
+
+        if (sessionRules != null && !sessionRules.isEmpty()) {
+            dbPrompt.append("\n\n")
+                    .append(sessionRules)
+                    .append("\n\n");
+        }
+
+        dbPrompt.append("\nRespond to the developer's question: \n")
+                .append(query)
+                .append("\n")
+                .append("""
+                    There are two possible scenarios for your response:
+
+                    1. **SQL Queries and Database-Related Questions**:
+                       - Analyze the provided metadata and generate a relevant SQL query that addresses the developer's inquiry.
+                       - Include a detailed explanation of the query, clarifying its purpose and how it relates to the developer's question.
+                       - Ensure that the SQL syntax adheres to the database structure, constraints, and relationships.
+                       - The full SQL query should be wrapped in ```sql for proper formatting.
+                       - Avoid wrapping individual SQL keywords or table/column names in <code> tags, and do not wrap any partial SQL query segments in <code> tags.
+
+                    2. **Generating Specific Code from Database Metadata**:
+                       - If the developer requests specific code snippets related to the database metadata, generate the appropriate code and include a clear description of its functionality and relevance.
+                    """);
+
+        String response = generate(null, dbPrompt.toString(), images, previousChatResponse);
+
+        LOG.finest(() -> response);
+
+        return response;
+    }
+
+    public String assistJavaClass(
+        final Project project, final String classContent, final String sessionRules
+    ) {
+        StringBuilder promptBuilder = new StringBuilder();
+        promptBuilder.append("You are an API server that provides a description of the following class. ");
+        if (sessionRules != null && !sessionRules.isEmpty()) {
+            promptBuilder.append("\n\n")
+                    .append(sessionRules)
+                    .append("\n\n");
+        }
+        promptBuilder.append("Java Class:\n")
+                .append(classContent);
+
+        String prompt = promptBuilder.toString();
+        String response = generate(project, prompt);
+
+        LOG.finest(() -> response);
+
+        return response;
+    }
+
+    public String assistJavaMethod(
+        final Project project, final String methodContent, final String sessionRules
+    ) {
+        StringBuilder promptBuilder = new StringBuilder();
+        promptBuilder.append("You are an API server that provides a description of the following Method. ");
+
+        if (sessionRules != null && !sessionRules.isEmpty()) {
+            promptBuilder.append("\n\n")
+                    .append(sessionRules)
+                    .append("\n\n");
+        }
+        promptBuilder.append("Java Method:\n")
+                .append(methodContent);
+
+        String prompt = promptBuilder.toString();
+        String response = generate(project, prompt);
+
+        LOG.finest(response);
+
+        return response;
     }
 
     public String generateDescription(

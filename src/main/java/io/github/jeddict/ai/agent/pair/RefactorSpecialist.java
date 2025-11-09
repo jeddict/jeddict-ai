@@ -21,33 +21,6 @@ import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import io.github.jeddict.ai.util.JSONUtil;
 
-
-
-/**
- * Provides an interface for AI-powered Java code refactoring utilities. This
- * specialist adapts or enhances methods, variable names, and fixes compilation
- * errors based on specific user requests and project rules.<p>
- *
- * The interface defines prompts, message constants, and processing methods to
- * allow Java code modification and generation workflows. Returned results are
- * formatted as JSON objects containing necessary imports and code content.<p>
- *
- * Responsibilities include:
- * <ul>
- *   <li>Generating new method code or enhancing existing methods</li>
- *   <li>Fixing compilation errors in method implementations</li>
- *   <li>Refining variable names for improved clarity</li>
- *   <li>Integrating user, global, and project-specific requirements</li>
- * </ul>
- *
- * All enhancement and refactoring logic is ultimately handled by
- * {@link #updateMethodFromDevQuery(String, String, String, String, String, String)},
- * which takes custom prompt, source, and context arguments.<p>
- *
- * The interface also provides default convenience methods to streamline common
- * refactoring and code enhancement tasks.<p>
- *
- */
 /**
  * The {@code RefactorSpecialist} interface extends the functionality of a {@code PairProgrammer} to specialize in refactoring Java code based on detailed user requests. This interface provides methods to execute various refactoring tasks such as modifying code, fixing compilation errors, and enhancing expressions or variable names. It includes a series of prompts and system configuration constants that guide the refactoring processes.
  * <p>
