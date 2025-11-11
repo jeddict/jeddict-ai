@@ -158,7 +158,11 @@ Expected YAML format:
         // Therefore I have removed them from here.
         //
         LOG.finest(() -> "\nreferenceMessage: %s\ndiff:%s".formatted(StringUtils.abbreviate(referenceMessage, 80), StringUtils.abbreviate(diff, 80)));
-        return review(USER_MESSAGE_COMMENT, diff, referenceMessage, "");
+        return review(
+            USER_MESSAGE_COMMENT,
+            StringUtils.defaultString(diff),
+            StringUtils.defaultString(referenceMessage),
+        "");
     }
 
     /**
