@@ -49,7 +49,7 @@ program and best practices to write good quality code. Based on user request you
 - Provide a list with up to 3 suggestions and nothing else as plain lines of text.
 """;
     public static final String USER_MESSAGE = """
-Based on the below line of code, the class it belowngs to and project classes data,
+Based on the below line of code, the class it belongs to and project classes data,
 suggest a list of improved elelement to replace the placeholder ${SUGGESTION} in Java Class.
 The element is a: {{element}}
 The line of code is: {{line}}
