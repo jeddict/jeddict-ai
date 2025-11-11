@@ -121,4 +121,21 @@ public class JeddictBrainTest extends TestBase {
             then(pair2).isNotSameAs(pair1);  // create a new pair every call
         }
     }
+
+    @Test
+    public void with_and_without_memory() {
+        final JeddictBrain brain = new JeddictBrain(false);
+
+        //
+        // The default is no memory
+        //
+        then(brain.memorySize()).isEqualTo(0);
+
+        then(brain.withMemory(10)).isEqualTo(brain);
+        then(brain.memorySize()).isEqualTo(10);
+
+        thenThrownBy(() -> brain.withMemory(-1))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("size must be greather than 0 (where 0 means no memory)");
+    }
 }

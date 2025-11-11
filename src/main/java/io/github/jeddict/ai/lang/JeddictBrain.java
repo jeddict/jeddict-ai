@@ -20,6 +20,7 @@ package io.github.jeddict.ai.lang;
  * @author Shiwani Gupta
  */
 import dev.langchain4j.agentic.AgenticServices;
+import dev.langchain4j.agentic.agent.AgentBuilder;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
@@ -27,6 +28,7 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -35,7 +37,6 @@ import dev.langchain4j.service.AiServices;
 import io.github.jeddict.ai.agent.AbstractTool;
 import io.github.jeddict.ai.agent.Assistant;
 import io.github.jeddict.ai.agent.pair.PairProgrammer;
-import io.github.jeddict.ai.agent.pair.TestSpecialist;
 import io.github.jeddict.ai.response.Response;
 import io.github.jeddict.ai.response.TokenHandler;
 import io.github.jeddict.ai.scanner.ProjectMetadataInfo;
@@ -53,6 +54,8 @@ import org.netbeans.api.project.Project;
 public class JeddictBrain implements PropertyChangeEmitter {
 
     private final Logger LOG = Logger.getLogger(JeddictBrain.class.getCanonicalName());
+
+    private int memorySize = 0;
 
     public enum EventProperty {
         CHAT_TOKENS("chatTokens"),
@@ -108,6 +111,29 @@ public class JeddictBrain implements PropertyChangeEmitter {
         this.tools = (tools != null)
                    ? List.of(tools.toArray(new AbstractTool[0])) // immutable
                    : List.of();
+    }
+
+    /**
+     *
+     * @return the agent memory size in messages (including the system prompt)
+     */
+    public int memorySize() {
+        return memorySize;
+    }
+
+    /**
+     * Instructs JeddictBrain to use a message memory of the provided size when
+     * creating the agents.
+     *
+     * @param size the size of the memory (0 = no memory) - must be positive
+     *
+     * @return self
+     */
+    public JeddictBrain withMemory(int size) {
+        if (size < 0) {
+            throw new IllegalArgumentException("size must be greather than 0 (where 0 means no memory)");
+        }
+        this.memorySize = size; return this;
     }
 
     public String generate(final Project project, final String prompt) {
@@ -269,23 +295,24 @@ public class JeddictBrain implements PropertyChangeEmitter {
         return response.toString();
     }
 
+    /**
+     * Creates and configures a pair programmer agent based on the specified specialist.
+     *
+     * @param <T> the type of the agent to be created
+     * @param specialist the specialist that defines the type of the agent and its behavior
+     *
+     * @return an instance of the configured agent
+     */
     public <T> T pairProgrammer(final PairProgrammer.Specialist specialist) {
-        return switch (specialist) {
-            //
-            // TestSpecialist is not agentic yet because of the history;
-            // TODO: replace history management with agent's functionality
-            //
-            case TEST -> {
-                TestSpecialist pair = new TestSpecialist(chatModel.get());
-                for (PropertyChangeListener l: getSupport().getPropertyChangeListeners()) {
-                    pair.addPropertyChangeListener(l);
-                }
-                yield (T)pair;
-            }
-            default -> (T) AgenticServices.agentBuilder(specialist.specialistClass)
-                    .chatModel(chatModel.get())
-                    .build();
-        };
+        AgentBuilder<T> builder =
+            AgenticServices.agentBuilder(specialist.specialistClass)
+            .chatModel(chatModel.get());
+
+        if (memorySize > 0) {
+            builder.chatMemory(MessageWindowChatMemory.withMaxMessages(memorySize));
+        }
+
+        return (T)builder.build();
     }
 
     public String generateDescription(
@@ -335,12 +362,9 @@ public class JeddictBrain implements PropertyChangeEmitter {
         removePropertyChangeListener(listener);
     }
 
-    private void logPromptResponse(final String prompt, final String response) {
-        LOG.finest(() -> "===\nprompt:\n-------\n" + prompt + "\nresponse:\n---------\n" + response + "\n===");
-    }
-
     private void fireEvent(EventProperty property, Object value) {
         LOG.finest(() -> "Firing event " + property + " with value " + value);
         firePropertyChange(property.name, null, value);
     }
+
 }

@@ -172,7 +172,7 @@ public class AssistantChatManager extends JavaFix {
     private AssistantChat topComponent;
     private JEditorPane questionPane;
     private JScrollPane questionScrollPane;
-    private final List<Response> responseHistory = new ArrayList<>();
+    private final List<Response> responseHistory = new ArrayList<>(); // TODO: to be reviewed/removed once all agents will use buit-in memory
     private int currentResponseIndex = -1;
     private String sourceCode;
     private Project projectContext;
@@ -184,6 +184,17 @@ public class AssistantChatManager extends JavaFix {
     private final PreferencesManager pm = PreferencesManager.getInstance();
     private Tree leaf;
     private final Map<String, String> params = new HashMap();
+
+    /**
+     * After a first kickoff in performRewrite the conversation can continue in
+     * the chat window, handled in the handleQuestion() method. This requires
+     * the history to be retained, which is done by langchain4j's agents, as long
+     * as the same instance is used. Therefore testSpecialist, dbSpecialist,
+     * diffSpecialist keep the instance of the agent once created.
+     */
+    private TestSpecialist testSpecialist = null;
+    private DBSpecialist dbSpecialist = null;
+    private DiffSpecialist diffSpecialist = null;
 
     private Project getProject() {
         if (project == null) {
@@ -294,6 +305,8 @@ public class AssistantChatManager extends JavaFix {
 
                             final Response r = new Response(null, response.aiMessage().text(), messageContextCopy);
                             sourceCode = EditorUtil.updateEditors(null, getProject(), topComponent, r, getContextFiles());
+
+                            // TODO: to be removed once all agents will use buit-in memory
                             responseHistory.add(r);
                             currentResponseIndex = responseHistory.size() - 1;
                         }
@@ -301,7 +314,7 @@ public class AssistantChatManager extends JavaFix {
                     final PreferencesManager pm = PreferencesManager.getInstance();
                     String response;
                     if (action == Action.TEST) {
-                        final TestSpecialist pair = newJeddictBrain(handler, getModelName()).pairProgrammer(PairProgrammer.Specialist.TEST);
+                        final TestSpecialist pair = testSpecialist(handler);
                         final String prompt = pm.getPrompts().get("test");
                         final String rules = pm.getSessionRules();
                         if (leaf instanceof MethodTree) {
@@ -747,7 +760,7 @@ public class AssistantChatManager extends JavaFix {
             topComponent.clear();
             topComponent.repaint();
             initialMessage();
-            responseHistory.clear();
+            responseHistory.clear(); // TODO: to be removed once all agents will use buit-in memory
             questionPane.setText("");
             clearFileTab();
             currentResponseIndex = -1;
@@ -822,6 +835,7 @@ public class AssistantChatManager extends JavaFix {
             handleQuestion(newQuery, messageContext, false);
         };
         prevButton.addActionListener(e -> {
+            // TODO: to be reviewed once all agents will use buit-in memory
             if (currentResponseIndex > 0) {
                 currentResponseIndex--;
                 Response historyResponse = responseHistory.get(currentResponseIndex);
@@ -831,6 +845,7 @@ public class AssistantChatManager extends JavaFix {
         });
 
         nextButton.addActionListener(e -> {
+            // TODO: to be reviewed once all agents will use buit-in memory
             if (currentResponseIndex < responseHistory.size() - 1) {
                 currentResponseIndex++;
                 Response historyResponse = responseHistory.get(currentResponseIndex);
@@ -968,6 +983,7 @@ public class AssistantChatManager extends JavaFix {
         result = executorService.submit(() -> {
             try {
                 startLoading();
+                // TODO: to be removed once all agents will use buit-in memory
                 if (currentResponseIndex >= 0
                         && currentResponseIndex + 1 < responseHistory.size()) {
                     responseHistory.subList(currentResponseIndex + 1, responseHistory.size()).clear();
@@ -977,13 +993,13 @@ public class AssistantChatManager extends JavaFix {
                     currentResponseIndex = currentResponseIndex - 1;
                 }
 
-                int historyCount = pm.getConversationContext();
+                final int historySize = pm.getConversationContext();
                 List<Response> prevChatResponses;
-                if (historyCount == -1) {
+                if (historySize == -1) {
                     // Entire conversation
                     prevChatResponses = new ArrayList<>(responseHistory);
                 } else {
-                    int startIndex = Math.max(0, responseHistory.size() - historyCount);
+                    int startIndex = Math.max(0, responseHistory.size() - historySize);
                     prevChatResponses = responseHistory.subList(startIndex, responseHistory.size());
                 }
                 Set<FileObject> messageContextCopy = new HashSet<>(messageContext);
@@ -1000,6 +1016,7 @@ public class AssistantChatManager extends JavaFix {
                             textResponse.insert(0, "```tooling\n" + toolingResponse.toString() + "\n```\n");
                         }
                         final Response r = new Response(question, textResponse.toString(), messageContextCopy);
+                        // TODO: to be removed once all agents will use buit-in memory
                         if (responseHistory.isEmpty() || !textResponse.equals(responseHistory.get(responseHistory.size() - 1))) {
                             responseHistory.add(r);
                             currentResponseIndex = responseHistory.size() - 1;
@@ -1031,16 +1048,14 @@ public class AssistantChatManager extends JavaFix {
                     if (messageScopeContent != null && !messageScopeContent.isEmpty()) {
                         context = context + "\n\n Files:\n" + messageScopeContent;
                     }
-                    DBSpecialist pair = newJeddictBrain(handler, getModelName()).pairProgrammer(PairProgrammer.Specialist.DB);
-                    response = pair.assistDbMetadata(question, context, pm.getSessionRules());
+                    response = dbSpecialist(handler).assistDbMetadata(question, context, pm.getSessionRules());
                 } else if (commitMessage && commitChanges != null) {
                     String context = commitChanges;
                     String messageScopeContent = getTextFilesContext(messageContext, getProject(), agentEnabled);
                     if (messageScopeContent != null && !messageScopeContent.isEmpty()) {
                         context = context + "\n\n Files:\n" + messageScopeContent;
                     }
-                    final DiffSpecialist pair = newJeddictBrain(handler, getModelName()).pairProgrammer(PairProgrammer.Specialist.DIFF);
-                    response = pair.suggestCommitMessages(context, question);
+                    response = diffSpecialist(handler).suggestCommitMessages(context, question);
                 } else if (codeReview) {
                     String context = params.get("diff");
                     if (context == null) {
@@ -1050,9 +1065,16 @@ public class AssistantChatManager extends JavaFix {
                     if (messageScopeContent != null && !messageScopeContent.isEmpty()) {
                         context = context + "\n\n Files:\n" + messageScopeContent;
                     }
-                    final DiffSpecialist pair =
-                        newJeddictBrain(handler, getModelName()).pairProgrammer(PairProgrammer.Specialist.DIFF);
-                    response = pair.reviewChanges(context, params.get("granularity"), params.get("feature"));
+                    response = diffSpecialist(handler).reviewChanges(context, params.get("granularity"), params.get("feature"));
+                } else if (action == Action.TEST) {
+                    final TestSpecialist pair = testSpecialist(handler);
+                    final String prompt = pm.getPrompts().get("test");
+                    final String rules = pm.getSessionRules();
+                    if (leaf instanceof MethodTree) {
+                        response = pair.generateTestCase(question, null, null, leaf.toString(), prompt, rules, prevChatResponses);
+                    } else {
+                        response = pair.generateTestCase(question, null, treePath.getCompilationUnit().toString(), null, prompt, rules, prevChatResponses);
+                    }
                 } else if (projectContext != null || sessionContext != null) {
                     Set<FileObject> mainSessionContext;
                     String sessionScopeContent;
@@ -1077,15 +1099,6 @@ public class AssistantChatManager extends JavaFix {
                 } else if (treePath == null) {
                     response = newJeddictBrain(handler, getModelName())
                         .generateDescription(getProject(), null, null, null, prevChatResponses, question, pm.getSessionRules());
-                } else if (action == Action.TEST) {
-                    final TestSpecialist pair = newJeddictBrain(handler, getModelName()).pairProgrammer(PairProgrammer.Specialist.TEST);
-                    final String prompt = pm.getPrompts().get("test");
-                    final String rules = pm.getSessionRules();
-                    if (leaf instanceof MethodTree) {
-                        response = pair.generateTestCase(question, null, null, leaf.toString(), prompt, rules, prevChatResponses);
-                    } else {
-                        response = pair.generateTestCase(question, null, treePath.getCompilationUnit().toString(), null, prompt, rules, prevChatResponses);
-                    }
                 } else {
                     response = newJeddictBrain(handler, getModelName())
                         .generateDescription(getProject(), treePath.getCompilationUnit().toString(), treePath.getLeaf() instanceof MethodTree ? treePath.getLeaf().toString() : null, null, prevChatResponses, question, pm.getSessionRules());
@@ -1117,6 +1130,7 @@ public class AssistantChatManager extends JavaFix {
     }
 
     private void updateButtons(JButton prevButton, JButton nextButton) {
+        // TODO: to be reviewed once all agents will use buit-in memory
         prevButton.setVisible(currentResponseIndex > 0);
         nextButton.setVisible(currentResponseIndex < responseHistory.size() - 1);
 
@@ -1132,6 +1146,63 @@ public class AssistantChatManager extends JavaFix {
             name, PreferencesManager.getInstance().isStreamEnabled(), buildToolsList(project, listener));
         brain.addProgressListener(listener);
         return brain;
+    }
+
+    /**
+     * Returns a TestSpecialist with memory reusing a previously created agent
+     * if <code>testSpecialist</code> is not null. If null, a new  instance is
+     * created.
+     *
+     * @return
+     */
+    private TestSpecialist testSpecialist(final JeddictBrainListener listener) {
+
+        if (testSpecialist != null) return testSpecialist;
+
+        int memorySize = pm.getConversationContext();
+
+        JeddictBrain brain = newJeddictBrain(listener, getModelName());
+        brain.withMemory((memorySize < 0) ? Integer.MAX_VALUE : memorySize);
+
+        return (testSpecialist = brain.pairProgrammer(PairProgrammer.Specialist.TEST));
+    }
+
+    /**
+     * Returns a DBSpecialist with memory reusing a previously created agent
+     * if <code>dbSpecialist</code> is not null. If null, a new  instance is
+     * created.
+     *
+     * @return
+     */
+    private DBSpecialist dbSpecialist(final JeddictBrainListener listener) {
+
+        if (dbSpecialist != null) return dbSpecialist;
+
+        int memorySize = pm.getConversationContext();
+
+        JeddictBrain brain = newJeddictBrain(listener, getModelName());
+        brain.withMemory((memorySize < 0) ? Integer.MAX_VALUE : memorySize);
+
+        return (dbSpecialist = brain.pairProgrammer(PairProgrammer.Specialist.DB));
+    }
+
+    /**
+     * Returns a DiffSpecialist with memory reusing a previously created agent
+     * if <code>diffSpecialist</code> is not null. If null, a new  instance is
+     * created.
+     *
+     * @return
+     */
+    private DiffSpecialist diffSpecialist(final JeddictBrainListener listener) {
+
+        if (diffSpecialist != null) return diffSpecialist;
+
+        int memorySize = pm.getConversationContext();
+
+        JeddictBrain brain = newJeddictBrain(listener, getModelName());
+        brain.withMemory((memorySize < 0) ? Integer.MAX_VALUE : memorySize);
+
+        return (diffSpecialist = brain.pairProgrammer(PairProgrammer.Specialist.DIFF));
     }
 
     private List<AbstractTool> buildToolsList(
