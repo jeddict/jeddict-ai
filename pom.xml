@@ -45,7 +45,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>17</maven.compiler.release>
-        <javalang4j.version>1.7.1</javalang4j.version>
+        <javalang4j.version>1.8.0</javalang4j.version>
     </properties>
 
     <build>
@@ -287,7 +287,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-agentic</artifactId>
-            <version>${javalang4j.version}-beta14</version>
+            <version>${javalang4j.version}-beta15</version>
             <type>jar</type>
         </dependency>
         <dependency>
