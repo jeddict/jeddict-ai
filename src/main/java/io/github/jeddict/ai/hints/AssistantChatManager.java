@@ -105,11 +105,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 import javax.swing.AbstractAction;
@@ -128,6 +130,7 @@ import javax.swing.JScrollPane;
 import javax.swing.KeyStroke;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
 import javax.swing.Timer;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -312,30 +315,23 @@ public class AssistantChatManager extends JavaFix {
                         }
                     };
                     final PreferencesManager pm = PreferencesManager.getInstance();
-                    String response;
                     if (action == Action.TEST) {
                         final TestSpecialist pair = testSpecialist(handler);
                         final String prompt = pm.getPrompts().get("test");
                         final String rules = pm.getSessionRules();
                         if (leaf instanceof MethodTree) {
-                            response = pair.generateTestCase(null, null, null, leaf.toString(), prompt, rules);
+                            async(() -> pair.generateTestCase(null, null, null, leaf.toString(), prompt, rules), handler);
                         } else {
-                            response = pair.generateTestCase(null, null, treePath.getCompilationUnit().toString(), null, prompt, rules);
+                            async(() -> pair.generateTestCase(null, null, treePath.getCompilationUnit().toString(), null, prompt, rules), handler);
                         }
                     } else {
                         final String rules = pm.getSessionRules();
                         final TechWriter pair = newJeddictBrain(handler, getModelName()).pairProgrammer(PairProgrammer.Specialist.TECHWRITER);
-                        response = (leaf instanceof MethodTree)
-                                 ? pair.describeCode(leaf.toString(), rules)
-                                 : pair.describeCode(treePath.getCompilationUnit().toString(), rules);
-
-                    }
-
-                    //
-                    // TODO: BUG #214 - onCompleteResponse() called twice in AssistantChatManager
-                    //
-                    if (response != null && !response.isEmpty()) {
-                        handler.onCompleteResponse(ChatResponse.builder().aiMessage(new AiMessage(response)).build());
+                        if (leaf instanceof MethodTree) {
+                            async(() -> pair.describeCode(leaf.toString(), rules), handler);
+                        } else {
+                            async(() -> pair.describeCode(treePath.getCompilationUnit().toString(), rules), handler);
+                        }
                     }
                 });
 
@@ -1238,6 +1234,29 @@ public class AssistantChatManager extends JavaFix {
         toolsList.forEach((tool) -> tool.addPropertyChangeListener(handler));
 
         return toolsList;
+    }
+
+    private void async(Supplier<String> answer, final JeddictBrainListener handler) {
+        new SwingWorker<String, Object>() {
+            @Override
+            public String doInBackground() {
+                return answer.get();
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    handler.onCompleteResponse(
+                        ChatResponse.builder().aiMessage(new AiMessage(get())).build()
+                    );
+                } catch (InterruptedException | ExecutionException x) {
+                    //
+                    // TODO: better error handler
+                    //
+                    Exceptions.printStackTrace(x);
+                }
+            }
+        }.execute();
     }
 
 }
