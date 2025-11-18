@@ -16,5 +16,5 @@ public class SayHello {
         }
     }
 
-    class InnerClass { } // to test inner class suggestions
+    class InnerClass { } /* to test inner class suggestions */
 }

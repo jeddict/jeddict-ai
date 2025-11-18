@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
@@ -143,5 +144,13 @@ public class JSONUtil {
         }
 
         return variableNames;
+    }
+
+    public static String extractContent(String json) {
+        try {
+            return new JSONObject(json).getString("content");
+        } catch (JSONException x) {
+            return x.getMessage();
+        }
     }
 }

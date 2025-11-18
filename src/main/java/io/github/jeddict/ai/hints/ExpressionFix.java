@@ -20,12 +20,13 @@ import com.sun.source.tree.ExpressionTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.util.TreePath;
 import io.github.jeddict.ai.JeddictUpdateManager;
+import io.github.jeddict.ai.agent.pair.PairProgrammer;
+import io.github.jeddict.ai.agent.pair.RefactorSpecialist;
 import io.github.jeddict.ai.completion.Action;
 import io.github.jeddict.ai.util.StringUtil;
 import org.netbeans.api.java.source.JavaSource;
 import org.netbeans.api.java.source.TreePathHandle;
 import org.netbeans.api.java.source.WorkingCopy;
-import org.netbeans.api.project.FileOwnerQuery;
 import org.netbeans.spi.java.hints.JavaFix;
 import org.openide.util.NbBundle;
 
@@ -51,14 +52,15 @@ public class ExpressionFix extends TreePathAIFix {
             return;
         }
 
-        Tree leaf = treePath.getLeaf();
-        String content;
-        com.sun.source.tree.ExpressionStatementTree expressionStatement = (com.sun.source.tree.ExpressionStatementTree) leaf;
-        content = newJeddictBrain().enhanceExpressionStatement(
-                FileOwnerQuery.getOwner(copy.getFileObject()),
-                treePath.getCompilationUnit().toString(),
-                treePath.getParentPath().getLeaf().toString(),
-                treePath.getLeaf().toString()
+        final Tree leaf = treePath.getLeaf();
+        final com.sun.source.tree.ExpressionStatementTree expressionStatement = (com.sun.source.tree.ExpressionStatementTree) leaf;
+
+        final RefactorSpecialist pair = newJeddictBrain().pairProgrammer(PairProgrammer.Specialist.REFACTOR);
+
+        String content = pair.enhanceExpressionStatement(
+            treePath.getCompilationUnit().toString(),
+            treePath.getParentPath().getLeaf().toString(),
+            treePath.getLeaf().toString()
         );
         content = StringUtil.removeCodeBlockMarkers(content);
         if (content.endsWith(";")) {

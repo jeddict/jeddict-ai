@@ -46,6 +46,11 @@ public class CodeAdvisorTest extends PairProgrammerTestBase {
     }
 
     @Test
+    public void pair_is_a_PairProgrammer() {
+        then(pair).isInstanceOf(PairProgrammer.class);
+    }
+
+    @Test
     public void suggestVariableNames_returns_AI_provided_response() {
         final String expectedSystem = CodeAdvisor.SYSTEM_MESSAGE;
         final String expectedUser =

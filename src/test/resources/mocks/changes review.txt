@@ -1,0 +1,5 @@
+- file: src/com/example/MyService.java
+  hunk: "@@ -42,6 +42,10 @@"
+  type: warning
+  title: "Possible null pointer exception"
+  description: "The 'items' list might be null before iteration. Add a null check to avoid NPE.

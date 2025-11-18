@@ -1,0 +1,4 @@
+[{
+    "snippet": "select * from dual",
+    "description": "a simple query"
+}]

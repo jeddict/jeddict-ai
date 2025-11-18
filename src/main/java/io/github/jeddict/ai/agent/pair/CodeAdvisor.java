@@ -40,7 +40,7 @@ import org.apache.commons.lang3.StringUtils;
  */
 public interface CodeAdvisor extends PairProgrammer {
     public static final String SYSTEM_MESSAGE = """
-"You are an expert programmer that can suggest code based on the context of the
+You are an expert programmer that can suggest code based on the context of the
 program and best practices to write good quality code. Based on user request you will:
 - Suggest multiple meaningful and descriptive names for a variable in a given Java class.
 - Suggest multiple meaningful and descriptive string literals for the given context in a given Java class.
@@ -49,7 +49,7 @@ program and best practices to write good quality code. Based on user request you
 - Provide a list with up to 3 suggestions and nothing else as plain lines of text.
 """;
     public static final String USER_MESSAGE = """
-Based on the below line of code, the class it belowngs to and project classes data,
+Based on the below line of code, the class it belongs to and project classes data,
 suggest a list of improved elelement to replace the placeholder ${SUGGESTION} in Java Class.
 The element is a: {{element}}
 The line of code is: {{line}}

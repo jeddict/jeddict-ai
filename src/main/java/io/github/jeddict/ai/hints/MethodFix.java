@@ -130,7 +130,7 @@ public class MethodFix extends BaseAIFix {
                         + "\nglobalRules: " + globalRules()
                         + "\nprohectRules: " + projectRules(project)
                     );
-                    yield pair.updateMethodFromDevQuery(
+                    yield pair.refactor(
                         query, classSource, methodSource, globalRules(), projectRules(project)
                     );
                 }

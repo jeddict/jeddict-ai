@@ -17,6 +17,7 @@ package io.github.jeddict.ai.agent.pair;
 
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -34,17 +35,21 @@ public class RefactorSpecialistTest extends PairProgrammerTestBase {
         pair = AgenticServices.agentBuilder(RefactorSpecialist.class)
             .chatModel(model)
             .build();
+    }
 
+    @Test
+    public void pair_is_a_PairProgrammer() {
+        then(pair).isInstanceOf(PairProgrammer.class);
     }
 
     @Test
     public void updateMethodFromDevQuery_returns_AI_provided_response_with_and_without_rules() {
         final String USER_PROMPT = "This is the user request...";
 
-        updateMethodFromDevQuery_returns_AI_provided_response(USER_PROMPT, "the class", "the method", "no rules", "no rules", pair::updateMethodFromDevQuery);
-        updateMethodFromDevQuery_returns_AI_provided_response(USER_PROMPT, "the class", "the method", "\n- global rule 1", "no rules", pair::updateMethodFromDevQuery);
-        updateMethodFromDevQuery_returns_AI_provided_response(USER_PROMPT, "the class", "the method", "no rules", "\n- project rule 1", pair::updateMethodFromDevQuery);
-        updateMethodFromDevQuery_returns_AI_provided_response(USER_PROMPT, "the class", "the method", "\n- global rule 1", "\n- project rule 1", pair::updateMethodFromDevQuery);
+        updateMethodFromDevQuery_returns_AI_provided_response(USER_PROMPT, "the class", "the method", "no rules", "no rules", pair::refactor);
+        updateMethodFromDevQuery_returns_AI_provided_response(USER_PROMPT, "the class", "the method", "\n- global rule 1", "no rules", pair::refactor);
+        updateMethodFromDevQuery_returns_AI_provided_response(USER_PROMPT, "the class", "the method", "no rules", "\n- project rule 1", pair::refactor);
+        updateMethodFromDevQuery_returns_AI_provided_response(USER_PROMPT, "the class", "the method", "\n- global rule 1", "\n- project rule 1", pair::refactor);
     }
 
     @Test
@@ -77,6 +82,30 @@ public class RefactorSpecialistTest extends PairProgrammerTestBase {
         enhanceVariableName_returns_AI_provided_response("currentVariableName", "the method content", "the class content", "\n- global rule 1", "no rules", pair::enhanceVariableName);
         enhanceVariableName_returns_AI_provided_response("currentVariableName", "the method content", "the class content", "no rules", "\n- project rule 1", pair::enhanceVariableName);
         enhanceVariableName_returns_AI_provided_response("currentVariableName", "the method content", "the class content", "\n- global rule 1", "\n- project rule 1", pair::enhanceVariableName);
+    }
+
+    @Test
+    public void enhanceExpressionStatement_returns_AI_provided_response() {
+        final String CLASS_CONTENT = "this is the class";
+        final String PARENT_CONTENT = "this is the parent content";
+        final String EXPRESSION_CONTENT = "this is the expression";
+
+        final String expectedSystem = RefactorSpecialist.SYSTEM_MESSAGE
+            .replace("{{globalRules}}", "")
+            .replace("{{projectRules}}", "");
+        final String expectedUser = RefactorSpecialist.USER_MESSAGE
+            .replace("{{message}}", RefactorSpecialist.PROMPT_ENHANCE_EXPRESSION.formatted(PARENT_CONTENT))
+            .replace("{{code}}", CLASS_CONTENT)
+            .replace("{{snippet}}", EXPRESSION_CONTENT);
+
+        pair.enhanceExpressionStatement(
+            CLASS_CONTENT, PARENT_CONTENT, EXPRESSION_CONTENT
+        );
+
+        final ChatModelRequestContext request = listener.lastRequestContext.get();
+        thenMessagesMatch(
+            request.chatRequest().messages(), expectedSystem, expectedUser
+        );
     }
 
     // --------------------------------------------------------- private methods
@@ -128,7 +157,7 @@ public class RefactorSpecialistTest extends PairProgrammerTestBase {
         // proper prompt messages has been generated and provided
         //
         updateMethod_returns_AI_provided_response(
-            String.format(RefactorSpecialist.FIX_COMPILATION_ERROR, ERROR),
+            String.format(RefactorSpecialist.PROMPT_FIX_COMPILATION_ERROR, ERROR),
             code, method, globalRules, projectRules
         );
     }
@@ -149,7 +178,7 @@ public class RefactorSpecialistTest extends PairProgrammerTestBase {
         // proper prompt messages has been generated and provided
         //
         updateMethod_returns_AI_provided_response(
-            String.format(RefactorSpecialist.FIX_COMPILATION_ERROR, error),
+            String.format(RefactorSpecialist.PROMPT_FIX_COMPILATION_ERROR, error),
             source, "", globalRules, projectRules
         );
     }
@@ -206,11 +235,11 @@ public class RefactorSpecialistTest extends PairProgrammerTestBase {
             RefactorSpecialist.SYSTEM_MESSAGE
                 .replace("{{globalRules}}", (globalRules.trim().isEmpty()) ? "no rules" : globalRules)
                 .replace("{{projectRules}}", (projectRules.trim().isEmpty()) ? "no rules" : projectRules);
-        String expectedUser = (msg != null)
-                            ?  RefactorSpecialist.USER_MESSAGE.replace("{{userRequest}}", msg)
-                            : RefactorSpecialist.USER_MESSAGE;
-        expectedUser = expectedUser.replace("{{code}}", code).replace("{{methodCode}}", method);
-        thenMessagesMatch(
+            String expectedUser = (msg != null)
+                                ?  RefactorSpecialist.USER_MESSAGE.replace("{{message}}", msg)
+                                : RefactorSpecialist.USER_MESSAGE;
+            expectedUser = expectedUser.replace("{{code}}", code).replace("{{snippet}}", method);
+            thenMessagesMatch(
             request.chatRequest().messages(), expectedSystem, expectedUser
         );
     }

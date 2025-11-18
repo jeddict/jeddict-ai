@@ -60,7 +60,7 @@ The class is: {{code}}
     @UserMessage(USER_MESSAGE)
     @Agent("Generate JAX-RS REST endpoints based on the provided Java class")
     String generateEndpointForClass(
-        @V("code") final String sourece,
+        @V("code") final String source,
         @V("globalRules") final String globalRules,
         @V("projectRules") final String projectRules
     );

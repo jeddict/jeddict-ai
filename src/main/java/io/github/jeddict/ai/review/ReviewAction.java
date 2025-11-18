@@ -31,6 +31,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.Map;
 import javax.swing.Action;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -104,7 +105,7 @@ public final class ReviewAction extends BaseGitAction {
                 return;
             }
 
-            StringBuilder sb = new StringBuilder();
+            StringBuilder gitdiff = new StringBuilder();
             String gitCommand = input.gitCommand;
             java.util.List<String> selectedFiles = input.selectedFiles;
 
@@ -115,36 +116,35 @@ public final class ReviewAction extends BaseGitAction {
                     // Build git diff command for this single file
                     String gitDiffCommandForFile = gitCommand + " --unified=0 -- " + file;
 
-                    sb.append("\n\ngit ").append(gitDiffCommandForFile).append("\n\n");
+                    gitdiff.append("\n\ngit ").append(gitDiffCommandForFile).append("\n\n");
                     String diffOutput = runGitCommand(gitDiffCommandForFile, project);
-                    sb.append(diffOutput).append("\n");
+                    gitdiff.append(diffOutput).append("\n");
 
-                    sb.append("---- File: ").append(file).append(" ----\n");
+                    gitdiff.append("---- File: ").append(file).append(" ----\n");
                     File actualFile = new File(projectDir, file);
                     if (actualFile.exists() && actualFile.isFile()) {
                         try {
                             String content = java.nio.file.Files.readString(actualFile.toPath());
-                            sb.append(content).append("\n");
+                            gitdiff.append(content).append("\n");
                         } catch (IOException ex) {
                             ex.printStackTrace();
                         }
                     }
 
-                    sb.append("\n"); // separate files by new lines
+                    gitdiff.append("\n"); // separate files by new lines
                 }
             } else {
                 // If no specific files selected, fallback to original behavior (diff for all)
-                sb.append("git ").append(gitCommand).append(" --unified=0 \n\n");
+                gitdiff.append("git ").append(gitCommand).append(" --unified=0 \n\n");
                 String diffOutput = runGitCommand(gitCommand + " --unified=0", project);
-                sb.append(diffOutput);
+                gitdiff.append(diffOutput);
 
-                sb.append("git ").append(gitCommand).append(" --name-only \n\n");
+                gitdiff.append("git ").append(gitCommand).append(" --name-only \n\n");
                 String nameOnlyOutput = runGitCommand(gitCommand + " --name-only", project);
-                sb.append(nameOnlyOutput);
+                gitdiff.append(nameOnlyOutput);
             }
 
-            AssistantChatManager learnFix = new AssistantChatManager(io.github.jeddict.ai.completion.Action.QUERY, project);
-
+            /*
             String granularityInstruction = switch (input.selectedGranularity.toLowerCase()) {
                 case "high" ->
                     """
@@ -163,8 +163,20 @@ public final class ReviewAction extends BaseGitAction {
             String featureContext = (input.contextMessage != null && !input.contextMessage.isBlank())
                     ? "### Feature Context:\n" + input.contextMessage.trim() + "\n"
                     : "";
-            String query = granularityInstruction + '\n' + featureContext;
-            learnFix.askQueryForCodeReview(project, sb.toString(), query);
+            */
+
+            String featureContext = (input.contextMessage != null)
+                    ? input.contextMessage.trim()
+                    : "";
+            Map<String, String> params = Map.of(
+                "diff", gitdiff.toString(),
+                "granularity", input.selectedGranularity.toLowerCase(),
+                "feature", featureContext
+            );
+
+            final AssistantChatManager learnFix =
+                new AssistantChatManager(io.github.jeddict.ai.completion.Action.QUERY, project, params);
+            learnFix.askQueryForCodeReview();
         }
     }
 

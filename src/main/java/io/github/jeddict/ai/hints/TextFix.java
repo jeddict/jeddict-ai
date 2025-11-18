@@ -20,6 +20,8 @@ import com.sun.source.tree.Tree;
 import static com.sun.source.tree.Tree.Kind.STRING_LITERAL;
 import com.sun.source.util.TreePath;
 import io.github.jeddict.ai.JeddictUpdateManager;
+import io.github.jeddict.ai.agent.pair.PairProgrammer;
+import io.github.jeddict.ai.agent.pair.Shakespeare;
 import io.github.jeddict.ai.completion.Action;
 import org.netbeans.api.java.source.JavaSource;
 import org.netbeans.api.java.source.TreePathHandle;
@@ -57,11 +59,16 @@ public class TextFix extends TreePathAIFix {
         if (leaf.getKind() != STRING_LITERAL) {
             return;
         }
+
+        final Shakespeare pair = newJeddictBrain().pairProgrammer(PairProgrammer.Specialist.SHAKESPEARE);
+
         String content;
         if (action == Action.ENHANCE) {
-            content = newJeddictBrain().enhanceText(treePath.getLeaf().toString(), treePath.getCompilationUnit().toString());
+            content =
+                pair.enhanceText(treePath.getLeaf().toString(), treePath.getCompilationUnit().toString());
         } else {
-            content = newJeddictBrain().fixGrammar(treePath.getLeaf().toString(), treePath.getCompilationUnit().toString());
+            content =
+                pair.fixGrammar(treePath.getLeaf().toString(), treePath.getCompilationUnit().toString());
         }
         if (content != null && content.length() > 1 && content.startsWith("\"") && content.endsWith("\"")) {
             content = content.substring(1, content.length() - 1);

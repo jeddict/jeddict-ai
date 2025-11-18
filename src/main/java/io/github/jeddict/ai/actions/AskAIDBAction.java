@@ -57,7 +57,7 @@ import org.openide.util.NbBundle.Messages;
 //    @ActionReference(path = "Databases/Explorer/ViewList/Actions", position = 350),
 })
 
-@Messages({"CTL_AskAIDBAction=AI Assistant"})
+@Messages({"CTL_AskAIDBAction=AI DB Assistant"})
 public final class AskAIDBAction extends AbstractAction implements ContextAwareAction {
 
     /**
