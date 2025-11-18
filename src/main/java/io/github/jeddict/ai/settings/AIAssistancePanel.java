@@ -31,6 +31,7 @@ import static io.github.jeddict.ai.util.ColorUtil.darken;
 import static io.github.jeddict.ai.util.ColorUtil.lighten;
 import static io.github.jeddict.ai.util.EditorUtil.getBackgroundColorFromMimeType;
 import static io.github.jeddict.ai.util.EditorUtil.getTextColorFromMimeType;
+import io.github.jeddict.ai.util.FileUtil;
 import static io.github.jeddict.ai.util.MimeUtil.MIME_PLAIN_TEXT;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -40,7 +41,6 @@ import java.awt.Desktop;
 import java.awt.Dialog;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
-import java.awt.Frame;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -48,7 +48,10 @@ import java.awt.Point;
 import java.awt.Window;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.File;
+import java.io.IOException;
 import java.net.URI;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -80,6 +83,7 @@ import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumnModel;
 import javax.swing.table.TableRowSorter;
 import org.apache.commons.lang3.StringUtils;
+import org.openide.util.Exceptions;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 
@@ -145,13 +149,16 @@ final class AIAssistancePanel extends javax.swing.JPanel {
         manageModelsButton = new javax.swing.JButton();
         modelHelp = new javax.swing.JLabel();
         activationParentPane = new javax.swing.JPanel();
-        activationPanel = new javax.swing.JPanel();
+        activationPane = new javax.swing.JPanel();
         optionsLabel = new javax.swing.JLabel();
         aiAssistantActivationCheckBox = new javax.swing.JCheckBox();
         enableSmartCodeCheckBox = new javax.swing.JCheckBox();
         enableInlinePromptHintCheckBox = new javax.swing.JCheckBox();
         enableInlineHintCheckBox = new javax.swing.JCheckBox();
         enableHintsCheckBox = new javax.swing.JCheckBox();
+        configPathPane = new javax.swing.JPanel();
+        configPathLabel = new javax.swing.JLabel();
+        configPathBtn = new javax.swing.JLabel();
         providerSettingsPane = new javax.swing.JLayeredPane();
         providerSettingsChildPane = new javax.swing.JPanel();
         providerSettingsParentPane1 = new javax.swing.JPanel();
@@ -477,8 +484,10 @@ final class AIAssistancePanel extends javax.swing.JPanel {
         activationParentPane.setMaximumSize(new java.awt.Dimension(32767, 32797));
         activationParentPane.setLayout(new javax.swing.BoxLayout(activationParentPane, javax.swing.BoxLayout.Y_AXIS));
 
-        activationPanel.setAlignmentY(0.0F);
-        activationPanel.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
+        activationPane.setAlignmentY(0.0F);
+        activationPane.setPreferredSize(new java.awt.Dimension(32767, 32767));
+        activationPane.setRequestFocusEnabled(false);
+        activationPane.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
 
         optionsLabel.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
         org.openide.awt.Mnemonics.setLocalizedText(optionsLabel, "Options");
@@ -486,7 +495,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
         optionsLabel.setAlignmentY(0.0F);
         optionsLabel.setMaximumSize(new java.awt.Dimension(32767, 30));
         optionsLabel.setPreferredSize(new java.awt.Dimension(32767, 30));
-        activationPanel.add(optionsLabel);
+        activationPane.add(optionsLabel);
 
         org.openide.awt.Mnemonics.setLocalizedText(aiAssistantActivationCheckBox, org.openide.util.NbBundle.getMessage(AIAssistancePanel.class, "AIAssistancePanel.aiAssistantActivationCheckBox.text")); // NOI18N
         aiAssistantActivationCheckBox.setToolTipText(org.openide.util.NbBundle.getMessage(AIAssistancePanel.class, "AIAssistancePanel.aiAssistantActivationCheckBox.toolTipText")); // NOI18N
@@ -495,15 +504,15 @@ final class AIAssistancePanel extends javax.swing.JPanel {
                 aiAssistantActivationCheckBoxActionPerformed(evt);
             }
         });
-        activationPanel.add(aiAssistantActivationCheckBox);
+        activationPane.add(aiAssistantActivationCheckBox);
 
         org.openide.awt.Mnemonics.setLocalizedText(enableSmartCodeCheckBox, org.openide.util.NbBundle.getMessage(AIAssistancePanel.class, "AIAssistancePanel.enableSmartCodeCheckBox.text")); // NOI18N
         enableSmartCodeCheckBox.setToolTipText(org.openide.util.NbBundle.getMessage(AIAssistancePanel.class, "AIAssistancePanel.enableSmartCodeCheckBox.toolTipText")); // NOI18N
-        activationPanel.add(enableSmartCodeCheckBox);
+        activationPane.add(enableSmartCodeCheckBox);
 
         org.openide.awt.Mnemonics.setLocalizedText(enableInlinePromptHintCheckBox, org.openide.util.NbBundle.getMessage(AIAssistancePanel.class, "AIAssistancePanel.enableInlinePromptHintCheckBox.text")); // NOI18N
         enableInlinePromptHintCheckBox.setToolTipText(org.openide.util.NbBundle.getMessage(AIAssistancePanel.class, "AIAssistancePanel.enableInlinePromptHintCheckBox.toolTipText")); // NOI18N
-        activationPanel.add(enableInlinePromptHintCheckBox);
+        activationPane.add(enableInlinePromptHintCheckBox);
 
         org.openide.awt.Mnemonics.setLocalizedText(enableInlineHintCheckBox, org.openide.util.NbBundle.getMessage(AIAssistancePanel.class, "AIAssistancePanel.enableInlineHintCheckBox.text")); // NOI18N
         enableInlineHintCheckBox.setToolTipText(org.openide.util.NbBundle.getMessage(AIAssistancePanel.class, "AIAssistancePanel.enableInlineHintCheckBox.toolTipText")); // NOI18N
@@ -512,7 +521,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
                 enableInlineHintCheckBoxActionPerformed(evt);
             }
         });
-        activationPanel.add(enableInlineHintCheckBox);
+        activationPane.add(enableInlineHintCheckBox);
 
         org.openide.awt.Mnemonics.setLocalizedText(enableHintsCheckBox, org.openide.util.NbBundle.getMessage(AIAssistancePanel.class, "AIAssistancePanel.enableHintsCheckBox.text")); // NOI18N
         enableHintsCheckBox.setToolTipText(org.openide.util.NbBundle.getMessage(AIAssistancePanel.class, "AIAssistancePanel.enableHintsCheckBox.toolTipText")); // NOI18N
@@ -521,9 +530,40 @@ final class AIAssistancePanel extends javax.swing.JPanel {
                 enableHintsCheckBoxActionPerformed(evt);
             }
         });
-        activationPanel.add(enableHintsCheckBox);
+        activationPane.add(enableHintsCheckBox);
 
-        activationParentPane.add(activationPanel);
+        activationParentPane.add(activationPane);
+
+        configPathPane.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(204, 204, 204)));
+        configPathPane.setForeground(new java.awt.Color(204, 204, 204));
+
+        org.openide.awt.Mnemonics.setLocalizedText(configPathLabel, org.openide.util.NbBundle.getMessage(AIAssistancePanel.class, "AIAssistancePanel.configPathLabel.text")); // NOI18N
+        configPathLabel.setHorizontalTextPosition(javax.swing.SwingConstants.RIGHT);
+
+        org.openide.awt.Mnemonics.setLocalizedText(configPathBtn, org.openide.util.NbBundle.getMessage(AIAssistancePanel.class, "AIAssistancePanel.configPathBtn.text")); // NOI18N
+
+        javax.swing.GroupLayout configPathPaneLayout = new javax.swing.GroupLayout(configPathPane);
+        configPathPane.setLayout(configPathPaneLayout);
+        configPathPaneLayout.setHorizontalGroup(
+            configPathPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, configPathPaneLayout.createSequentialGroup()
+                .addContainerGap(549, Short.MAX_VALUE)
+                .addComponent(configPathLabel)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(configPathBtn, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap())
+        );
+        configPathPaneLayout.setVerticalGroup(
+            configPathPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(configPathPaneLayout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(configPathPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(configPathLabel)
+                    .addComponent(configPathBtn, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+
+        activationParentPane.add(configPathPane);
 
         providersPane.add(activationParentPane);
 
@@ -1199,6 +1239,17 @@ final class AIAssistancePanel extends javax.swing.JPanel {
             topKPane.setVisible(true);
             seedPane.setVisible(true);
         }
+
+        final Path configPath = FileUtil.getConfigPath();
+        final String configPathText = configPath.toAbsolutePath().toString();
+        configPathBtn.setText("<html><a href=\"\">%s</a></html>".formatted(configPathText));
+        configPathBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        configPathBtn.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                launchExplorer(configPath.toFile());
+            }
+        });
     }
     private void classContextInlineHintComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_classContextInlineHintComboBoxActionPerformed
         // TODO add your handling code here:
@@ -1442,16 +1493,16 @@ final class AIAssistancePanel extends javax.swing.JPanel {
             modelComboBox.setSelectedIndex(0);
         }
     }
-    
+
     private List<String> getModelList(GenAIProvider selectedProvider) {
         // TODO Sostituire con la ripresa dal file json
         List<String> models = null;
-        
+
         Set<String> genAIModels = preferencesManager.getGenAIModelMap(selectedProvider.name()).keySet();
-        
+
         if(genAIModels != null && genAIModels.size() > 0)
             models = new ArrayList<>(genAIModels);
-        
+
         if (models == null) {
             models = MODELS.values().stream()
                 .filter(model -> model.getProvider().equals(selectedProvider))
@@ -1462,7 +1513,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
 
         return models;
     }
-    
+
     public LinkedHashMap<String, GenAIModel> getModelsByProvider(Map<String, GenAIModel> models, String provider) {
         LinkedHashMap<String, GenAIModel> filteredModels = new LinkedHashMap<>(); // Modifica qui
         for (Map.Entry<String, GenAIModel> entry : models.entrySet()) {
@@ -1526,14 +1577,14 @@ final class AIAssistancePanel extends javax.swing.JPanel {
         if (models.isEmpty()) {
             models.putAll(getModelsByProvider(MODELS,selectedProvider.name()));
         }
-        
+
         // Ordina la mappa alfabeticamente per chiave
         /*
         Map<String, GenAIModel> sortedModels = new LinkedHashMap<>();
         models.entrySet().stream()
             .sorted(Map.Entry.comparingByKey())
             .forEachOrdered(entry -> sortedModels.put(entry.getKey(), entry.getValue()));*/
-        
+
         return models;
     }
 
@@ -1616,7 +1667,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
         providerComboBox.setSelectedItem(preferencesManager.getProvider());
         GenAIProvider selectedProvider = (GenAIProvider) providerComboBox.getSelectedItem();
         if (selectedProvider == GenAIProvider.CUSTOM_OPEN_AI) {
-            
+
             Set<String> loadedModels = preferencesManager.getGenAIModelMap(preferencesManager.getProvider().name()).keySet();
             /*
             OpenAIModelFetcher fetcher = new OpenAIModelFetcher();
@@ -1628,7 +1679,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
                 modelComboBox.addItem(model);
         }
         modelComboBox.setSelectedItem(preferencesManager.getModel());
-        
+
         ctrlSpaceRadioButton.setSelected(!preferencesManager.isCompletionAllQueryType());
         ctrlAltSpaceRadioButton.setSelected(preferencesManager.isCompletionAllQueryType());
         showDescriptionCheckBox.setSelected(preferencesManager.isDescriptionEnabled());
@@ -2132,7 +2183,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
         modelsInfo.setForeground(isDark ? lighten(fgColor, 0.3f) : darken(fgColor, 0.3f));
         apiKeyInfo.setForeground(isDark ? lighten(fgColor, 0.3f) : darken(fgColor, 0.3f));
     }
-    
+
     /**
     * Adds a new model to the combobox
     * @param modelName The name of the model to add
@@ -2187,7 +2238,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
     private void clearModelComboBox() {
        modelComboBox.removeAllItems();
     }
-    
+
     /**
      * Adds a context menu to manage models
      */
@@ -2271,8 +2322,8 @@ final class AIAssistancePanel extends javax.swing.JPanel {
                     GenAIProvider provider = (GenAIProvider) providerCombo.getSelectedItem();
 
                     if (modelName.isEmpty() || description.isEmpty()) {
-                        JOptionPane.showMessageDialog(modelDialog, 
-                            "Model name and description cannot be empty", 
+                        JOptionPane.showMessageDialog(modelDialog,
+                            "Model name and description cannot be empty",
                             "Error", JOptionPane.ERROR_MESSAGE);
                         return;
                     }
@@ -2280,11 +2331,11 @@ final class AIAssistancePanel extends javax.swing.JPanel {
                     // Crea il nuovo modello e aggiungilo alla mappa MODELS
                     GenAIModel newModel = new GenAIModel(provider, modelName, description, inputPrice, outputPrice);
                     //MODELS.put(modelName, newModel);
-                    
+
                     List<GenAIModel> genAiModels = preferencesManager.getGenAIModelList(provider.name());
                     boolean alreadyExists = genAiModels.stream()
                         .anyMatch(model -> model.getName().equalsIgnoreCase(modelName));
-                    
+
                     if(!alreadyExists) {
                         genAiModels.add(newModel);
                         preferencesManager.setGenAIModelList(genAiModels, provider.name());
@@ -2294,8 +2345,8 @@ final class AIAssistancePanel extends javax.swing.JPanel {
                     modelDialog.dispose();
 
                 } catch (NumberFormatException ex) {
-                    JOptionPane.showMessageDialog(modelDialog, 
-                        "Please enter valid numeric values for prices", 
+                    JOptionPane.showMessageDialog(modelDialog,
+                        "Please enter valid numeric values for prices",
                         "Error", JOptionPane.ERROR_MESSAGE);
                 }
             });
@@ -2304,7 +2355,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
 
             modelDialog.setVisible(true);
         });
-        
+
         // Aggiungi nuovo menu per scaricare modelli da remoto
         JMenuItem downloadModelsItem = new JMenuItem("Add models from remote");
         downloadModelsItem.addActionListener(e -> {
@@ -2375,7 +2426,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
 
                 @Override
                 public Point getToolTipLocation(MouseEvent e) {
-                    return new Point(20, -20); 
+                    return new Point(20, -20);
                 }
             };
 
@@ -2387,7 +2438,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
             sorter.setComparator(3, Comparator.comparingDouble(value -> (Double) value));
             sorter.setComparator(4, Comparator.comparingDouble(value -> (Double) value));
 
-            
+
             modelsTable.setPreferredScrollableViewportSize(new Dimension(750, 400));
             modelsTable.setFillsViewportHeight(true);
             modelsTable.setAutoCreateRowSorter(true);
@@ -2451,8 +2502,8 @@ final class AIAssistancePanel extends javax.swing.JPanel {
                 }
 
                 if (selectedModels.isEmpty()) {
-                    JOptionPane.showMessageDialog(modelSelectionDialog, 
-                        "Please select at least one model to add.", 
+                    JOptionPane.showMessageDialog(modelSelectionDialog,
+                        "Please select at least one model to add.",
                         "No Selection", JOptionPane.WARNING_MESSAGE);
                     return;
                 }
@@ -2478,8 +2529,8 @@ final class AIAssistancePanel extends javax.swing.JPanel {
                     preferencesManager.setGenAIModelList(existingModels, entry.getKey());
                 }
 
-                JOptionPane.showMessageDialog(modelSelectionDialog, 
-                    "Added " + selectedModels.size() + " models successfully!", 
+                JOptionPane.showMessageDialog(modelSelectionDialog,
+                    "Added " + selectedModels.size() + " models successfully!",
                     "Success", JOptionPane.INFORMATION_MESSAGE);
 
                 modelSelectionDialog.dispose();
@@ -2497,7 +2548,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
             String selectedModel = (String) modelComboBox.getSelectedItem();
             if (selectedModel != null) {
                 int confirm = JOptionPane.showConfirmDialog(
-                    this, 
+                    this,
                     "Are you sure you want to remove the model: " + selectedModel + "?",
                     "Confirm Removal",
                     JOptionPane.YES_NO_OPTION
@@ -2513,7 +2564,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
         JMenuItem clearModelsItem = new JMenuItem("Clear all models");
         clearModelsItem.addActionListener(e -> {
             int confirm = JOptionPane.showConfirmDialog(
-                this, 
+                this,
                 "Are you sure you want to remove all models?",
                 "Confirm Clear",
                 JOptionPane.YES_NO_OPTION
@@ -2531,6 +2582,37 @@ final class AIAssistancePanel extends javax.swing.JPanel {
         modelsPopupMenu.add(clearModelsItem);
     }
 
+    private void launchExplorer(File directory) {
+        // Check if the Desktop API is supported by the current platform
+        if (Desktop.isDesktopSupported()) {
+            Desktop desktop = Desktop.getDesktop();
+            try {
+                // Check if the open action is supported
+                if (desktop.isSupported(Desktop.Action.OPEN)) {
+                    // Open the specified directory in the system's file explorer
+                    desktop.open(directory);
+                } else {
+                    JOptionPane.showMessageDialog(this,
+                        "Open action not supported on this platform.",
+                        "Error",
+                        JOptionPane.ERROR_MESSAGE);
+                }
+            } catch (IOException x) {
+                // Handle IO exceptions (e.g., if the directory doesn't exist)
+                Exceptions.printStackTrace(x);
+                JOptionPane.showMessageDialog(this,
+                    "Could not open directory: " + x.getMessage(),
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+            }
+        } else {
+            JOptionPane.showMessageDialog(this,
+                "Desktop API not supported on this platform.",
+                "Error",
+                JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel JPanel2;
     private javax.swing.JPanel JPanel3;
@@ -2538,7 +2620,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
     private javax.swing.JPanel JPanel5;
     private javax.swing.JPanel JPanel6;
     private javax.swing.JPanel JPanel7;
-    private javax.swing.JPanel activationPanel;
+    private javax.swing.JPanel activationPane;
     private javax.swing.JPanel activationParentPane;
     private javax.swing.JCheckBox aiAssistantActivationCheckBox;
     private javax.swing.ButtonGroup aiInlineCompletionShortcutGroup;
@@ -2565,6 +2647,9 @@ final class AIAssistancePanel extends javax.swing.JPanel {
     private javax.swing.JPanel classContextPane;
     private javax.swing.JButton cleanDataButton;
     private javax.swing.JPanel commonSettingsParentPane1;
+    private javax.swing.JLabel configPathBtn;
+    private javax.swing.JLabel configPathLabel;
+    private javax.swing.JPanel configPathPane;
     private javax.swing.JComboBox<String> conversationContext;
     private javax.swing.JLabel conversationContextLabel;
     private javax.swing.JRadioButton ctrlAltSpaceRadioButton;

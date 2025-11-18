@@ -37,6 +37,11 @@ public class TestBase {
 
     protected final Logger LOG = Logger.getAnonymousLogger();
 
+    public final static String WINDOWS = "Windows 10";
+    public final static String LINUX = "Linux";
+    public final static String MACOS = "Mac OS X";
+    public final static String USER = "user";
+
     protected String projectDir;
     protected DummyLogHandler logHandler;
     //
