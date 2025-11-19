@@ -1815,25 +1815,33 @@ final class AIAssistancePanel extends javax.swing.JPanel {
         preferencesManager.setStreamEnabled(stream.isSelected());
 
         GenAIProvider selectedProvider = (GenAIProvider) providerComboBox.getSelectedItem();
-        if (selectedProvider == GenAIProvider.CUSTOM_OPEN_AI
-                || selectedProvider == GenAIProvider.DEEPINFRA
-                || selectedProvider == GenAIProvider.DEEPSEEK
-                || selectedProvider == GenAIProvider.GROQ) {
-            preferencesManager.setApiKey(new String(apiKeyField.getPassword()));
-            preferencesManager.setProviderLocation(providerLocationField.getText());
-        } else if (selectedProvider == GenAIProvider.GOOGLE
-                || selectedProvider == GenAIProvider.OPEN_AI
-                || selectedProvider == GenAIProvider.MISTRAL
-                || selectedProvider == GenAIProvider.ANTHROPIC) {
-            preferencesManager.setApiKey(new String(apiKeyField.getPassword()));
-        } else if (selectedProvider == GenAIProvider.OLLAMA
-                || selectedProvider == GenAIProvider.LM_STUDIO
-                || selectedProvider == GenAIProvider.GPT4ALL) {
-            preferencesManager.setProviderLocation(providerLocationField.getText());
-        } else if (selectedProvider == GenAIProvider.COPILOT_PROXY) {
-            //langchain4j does not support null API key, but copilot-api ignores it
-            preferencesManager.setApiKey("Ignored");
-            preferencesManager.setProviderLocation(DEFAULT_COPILOT_PROVIDER_LOCATION);
+        switch (selectedProvider) {
+            case CUSTOM_OPEN_AI:
+            case DEEPINFRA:
+            case DEEPSEEK:
+            case GROQ:
+                preferencesManager.setApiKey(new String(apiKeyField.getPassword()));
+                preferencesManager.setProviderLocation(providerLocationField.getText());
+                break;
+            case GOOGLE:
+            case OPEN_AI:
+            case MISTRAL:
+            case ANTHROPIC:
+            case PERPLEXITY:
+                preferencesManager.setApiKey(new String(apiKeyField.getPassword()));
+                break;
+            case OLLAMA:
+            case LM_STUDIO:
+            case GPT4ALL:
+                preferencesManager.setProviderLocation(providerLocationField.getText());
+                break;
+            case COPILOT_PROXY:
+                //langchain4j does not support null API key, but copilot-api ignores it
+                preferencesManager.setApiKey("Ignored");
+                preferencesManager.setProviderLocation(DEFAULT_COPILOT_PROVIDER_LOCATION);
+                break;
+            default:
+                break;
         }
     }
 
