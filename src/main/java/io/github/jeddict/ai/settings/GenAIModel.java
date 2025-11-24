@@ -15,13 +15,7 @@
  */
 package io.github.jeddict.ai.settings;
 
-import static io.github.jeddict.ai.settings.GenAIProvider.ANTHROPIC;
-import static io.github.jeddict.ai.settings.GenAIProvider.DEEPINFRA;
-import static io.github.jeddict.ai.settings.GenAIProvider.DEEPSEEK;
-import static io.github.jeddict.ai.settings.GenAIProvider.GOOGLE;
-import static io.github.jeddict.ai.settings.GenAIProvider.MISTRAL;
-import static io.github.jeddict.ai.settings.GenAIProvider.OPEN_AI;
-import static io.github.jeddict.ai.settings.GenAIProvider.PERPLEXITY;
+import static io.github.jeddict.ai.settings.GenAIProvider.*;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -39,7 +33,7 @@ import java.util.Map;
  */
 public class GenAIModel {
 
-    public static String DEFAULT_MODEL = "gpt-4.1-mini";
+    public static String DEFAULT_MODEL = "gpt-5.1-codex-mini";
     public static Map<String, GenAIModel> MODELS = new HashMap<>();
 
     static {
@@ -47,31 +41,26 @@ public class GenAIModel {
         // Google Gemini (Vertex/AI Studio)
         // -----------------------------
         MODELS.put("gemini-2.5-flash-lite", new GenAIModel(GOOGLE, "gemini-2.5-flash-lite",
-                "Ultra-light Gemini 2.5 for very low latency and cost.",
-                0.0375, 0.15));
+                "Ultra-light Gemini 2.5 for very low latency and cost.", 0.0375, 0.15));
         MODELS.put("gemini-2.5-flash", new GenAIModel(GOOGLE, "gemini-2.5-flash",
-                "Fast, multimodal model optimized for low cost/latency.",
-                0.10, 0.40));
+                "Fast, multimodal model optimized for low cost/latency.", 0.10, 0.40));
         MODELS.put("gemini-2.5-pro", new GenAIModel(GOOGLE, "gemini-2.5-pro",
-                "Most capable Gemini for advanced reasoning and long context.",
-                3.50, 10.00));
-        // Keep popular 2.0/1.5 entries for backward compatibility
-        MODELS.put("gemini-2.0-flash", new GenAIModel(GOOGLE, "gemini-2.0-flash",
-                "Next‑gen features, speed, and multimodal generation for a diverse variety of tasks.",
-                0.10, 0.40));
-        MODELS.put("gemini-2.0-flash-lite", new GenAIModel(GOOGLE, "gemini-2.0-flash-lite",
-                "Gemini 2.0 Flash model optimized for cost efficiency and low latency.",
-                0.05, 0.20));
-        MODELS.put("gemini-1.5-flash", new GenAIModel(GOOGLE, "gemini-1.5-flash",
-                "Fast and cost‑effective model for rapid assessments.",
-                0.075, 0.30));
-        MODELS.put("gemini-1.5-pro", new GenAIModel(GOOGLE, "gemini-1.5-pro",
-                "Professional Gemini with enhanced capabilities.",
-                1.25, 5.00));
+                "Most capable Gemini for advanced reasoning and long context.", 3.50, 10.00));
+        // New 2025 model
+        MODELS.put("gemini-3-pro", new GenAIModel(GOOGLE, "gemini-3-pro",
+                "Gemini 3 Pro — next-gen Google multimodal model (2025).", 2.00, 12.00));
 
         // -----------------------------
-        // OpenAI
+        // OpenAI GPT Family
         // -----------------------------
+        
+        // GPT-5.1 Codex models
+        MODELS.put("gpt-5.1-codex", new GenAIModel(OPEN_AI, "gpt-5.1-codex",
+                "GPT-5.1 Codex — optimized for coding and software engineering tasks.", 1.25, 10.00));
+        MODELS.put("gpt-5.1-codex-mini", new GenAIModel(OPEN_AI, "gpt-5.1-codex-mini",
+                "Smaller Codex variant for cost-efficient code tasks.", 0.25, 2.00));
+        MODELS.put("gpt-5.1-codex-max", new GenAIModel(OPEN_AI, "gpt-5.1-codex-max",
+                "Frontier Codex model — long-horizon coding projects.", 1.25, 10.00));
 
         // GPT‑5 family (added; pricing frequently updated—left 0.0 intentionally)
         MODELS.put("gpt-5-mini", new GenAIModel(OPEN_AI, "gpt-5-mini",
@@ -91,49 +80,25 @@ public class GenAIModel {
                 "Balanced for intelligence, speed, and cost.",
                 0.40, 1.60));
         MODELS.put("gpt-4.1", new GenAIModel(OPEN_AI, "gpt-4.1",
-                "Fast, intelligent, flexible GPT model.",
-                2.00, 8.00));
-        MODELS.put("gpt-4-turbo", new GenAIModel(OPEN_AI, "gpt-4-turbo",
-                "High‑performance GPT‑4 turbo model for broad tasks.",
-                2.70, 8.10));
-        MODELS.put("gpt-4o", new GenAIModel(OPEN_AI, "gpt-4o",
-                "Flagship multimodal GPT‑4o (text+image).",
-                5.00, 15.00));
-        MODELS.put("gpt-4o-mini", new GenAIModel(OPEN_AI, "gpt-4o-mini",
-                "Fast, affordable small model for focused tasks.",
-                0.150, 0.600));
-        MODELS.put("o4-mini", new GenAIModel(OPEN_AI, "o4-mini",
-                "Faster, more affordable reasoning model.",
-                1.10, 4.40));
-        MODELS.put("o3-mini", new GenAIModel(OPEN_AI, "o3-mini",
-                "Small reasoning model alternative to o3.",
-                1.10, 4.40));
-
+                "Fast, intelligent, flexible GPT model.", 2.00, 8.00));
+        
         // -----------------------------
         // Anthropic Claude
         // -----------------------------
         MODELS.put("claude-opus-4-1-20250805", new GenAIModel(ANTHROPIC, "claude-opus-4-1-20250805",
                 "Claude Opus 4.1 — frontier reasoning & coding.", 15.00, 75.00));
-        MODELS.put("claude-opus-4-20250514", new GenAIModel(ANTHROPIC, "claude-opus-4-20250514",
-                "Claude Opus 4 — flagship model (2025-05-14).", 15.00, 75.00));
-        MODELS.put("claude-sonnet-4-20250514", new GenAIModel(ANTHROPIC, "claude-sonnet-4-20250514",
-                "Claude Sonnet 4 — high‑performance reasoning.", 3.00, 15.00));
-        MODELS.put("claude-3-7-sonnet-20250219", new GenAIModel(ANTHROPIC, "claude-3-7-sonnet-20250219",
-                "Claude Sonnet 3.7 — hybrid reasoning, strong in math & code.", 3.00, 15.00));
-        MODELS.put("claude-3-5-haiku-20241022", new GenAIModel(ANTHROPIC, "claude-3-5-haiku-20241022",
-                "Claude Haiku 3.5 — fast & compact.", 0.80, 4.00));
-        MODELS.put("claude-3-haiku-20240307", new GenAIModel(ANTHROPIC, "claude-3-haiku-20240307",
-                "Claude Haiku 3 — lightweight option.", 0.25, 1.25));
-        MODELS.put("claude-3-5-sonnet-20240620", new GenAIModel(ANTHROPIC, "claude-3-5-sonnet-20240620", "A sonnet model offering refined conversational capabilities.", 3.00, 15.00));
-        MODELS.put("claude-3-5-sonnet-20241022", new GenAIModel(ANTHROPIC, "claude-3-5-sonnet-20241022", "An upgraded sonnet model with enhanced reasoning and computer use capabilities.", 3.00, 15.00));
-        MODELS.put("claude-3-7-sonnet-20250224", new GenAIModel(ANTHROPIC, "claude-3-7-sonnet-20250224", "A hybrid reasoning model excelling in complex problem-solving, especially in math and coding.", 3.00, 15.00));
-
+        MODELS.put("claude-sonnet-4.5", new GenAIModel(ANTHROPIC, "claude-sonnet-4.5",
+                "Claude Sonnet 4.5 — upgraded reasoning & coding (Sept 2025).", 3.00, 15.00));
+        MODELS.put("claude-haiku-4.5", new GenAIModel(ANTHROPIC, "claude-haiku-4.5",
+                "Claude Haiku 4.5 — fast, cost-effective model (Oct 2025).", 1.00, 5.00));
 
         // -----------------------------
         // Mistral AI
         // -----------------------------
         MODELS.put("mistral-large-latest", new GenAIModel(MISTRAL, "mistral-large-latest",
-                "Top‑tier reasoning for high‑complexity tasks.", 2.00, 6.00));
+                "Top-tier reasoning for high-complexity tasks.", 2.00, 6.00));
+        MODELS.put("mistral-medium-3", new GenAIModel(MISTRAL, "mistral-medium-3",
+                "Mistral Medium 3 — high performance per cost (May 2025).", 0.40, 2.00));
         MODELS.put("mistral-small-latest", new GenAIModel(MISTRAL, "mistral-small-latest",
                 "Cost‑efficient, fast, and reliable for translation/summarization.", 0.20, 0.60));
         MODELS.put("codestral-latest", new GenAIModel(MISTRAL, "codestral-latest",
@@ -163,7 +128,7 @@ public class GenAIModel {
                 "Efficient model optimized for languages from the Middle East and South Asia.", 1.00, 3.00));
 
         // -----------------------------
-        // DeepInfra (hosted OSS models — prices vary per account/region)
+        // DeepInfra
         // -----------------------------
         MODELS.put("meta-llama/Llama-3.2-3B-Instruct", new GenAIModel(DEEPINFRA, "meta-llama/Llama-3.2-3B-Instruct",
                 "3B instruct model by Meta for instructional tasks.", 0.15, 0.45));
@@ -234,7 +199,10 @@ public class GenAIModel {
                 2, 8
             )
         );
-
+        MODELS.put("sonar", new GenAIModel(PERPLEXITY, "sonar",
+                "Lightweight, cost-effective search model.", 1, 1));
+        MODELS.put("sonar-pro", new GenAIModel(PERPLEXITY, "sonar-pro",
+                "Advanced search with deeper content understanding.", 3, 15));
     }
 
     private final GenAIProvider provider;
