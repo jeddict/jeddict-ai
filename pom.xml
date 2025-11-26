@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.github.jeddict</groupId>
     <artifactId>jeddict-ai</artifactId>
-    <version>3.2.1</version>
+    <version>3.3.0</version>
     <packaging>nbm</packaging>
     <name>Jeddict AI Assistant</name>
     <description>Jeddict AI Assistant is a powerful and intuitive plugin designed for Apache NetBeans IDE.
@@ -46,7 +46,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>17</maven.compiler.release>
         <javalang4j.version>1.8.0</javalang4j.version>
-        <netbeans.version>RELEASE270</netbeans.version>
+        <netbeans.version>RELEASE280</netbeans.version>
     </properties>
 
     <build>
@@ -576,6 +576,10 @@
                 <exclusion>
                     <groupId>org.jspecify.jspecify</groupId>
                     <artifactId>jspecify</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>aopalliance</groupId>
+                    <artifactId>asm</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
