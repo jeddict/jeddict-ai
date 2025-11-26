@@ -15,15 +15,21 @@
  */
 package io.github.jeddict.ai.models;
 
+import dev.langchain4j.agent.tool.ToolSpecifications;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import io.github.jeddict.ai.agent.ToolsProbingTool;
 import io.github.jeddict.ai.test.DummyChatModelListener;
 import io.github.jeddict.ai.test.TestBase;
 import java.nio.file.Paths;
+import java.util.List;
 import static org.assertj.core.api.BDDAssertions.then;
+import static org.assertj.core.api.BDDAssertions.thenThrownBy;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -141,6 +147,109 @@ public class DummyChatModelTest extends TestBase {
 
         // Then
         thenReceivedMessageIs(testListener, (UserMessage) messagesArray[0]);
+    }
+
+    @Test
+    public void tools_support() {
+        DummyChatModel chat = new DummyChatModel();
+
+        //
+        // With known tool and ToolChoice.REQUIRED
+        //
+        // Given
+        chat.toolChoice = ToolChoice.REQUIRED;
+
+        ChatRequest request = ChatRequest.builder()
+            .messages(List.of(
+                UserMessage.from("execute probeToolsSupport")
+            ))
+            .toolSpecifications(
+                ToolSpecifications.toolSpecificationsFrom(new ToolsProbingTool())
+            )
+            .build();
+
+        // When
+        ChatResponse response = chat.chat(request);
+
+        // Then
+        then(response.aiMessage().hasToolExecutionRequests()).isTrue();
+
+        //
+        // With known tool and ToolChoice.AUTO
+        //
+        chat = new DummyChatModel();
+
+        // Given
+        chat.toolChoice = ToolChoice.AUTO;
+
+        request = ChatRequest.builder()
+            .messages(List.of(
+                UserMessage.from("execute probeToolsSupport")
+            ))
+            .toolSpecifications(
+                ToolSpecifications.toolSpecificationsFrom(new ToolsProbingTool())
+            )
+            .build();
+
+        // When
+        response = chat.chat(request);
+
+        // Then
+        then(response.aiMessage().hasToolExecutionRequests()).isTrue();
+
+        //
+        // With unknown tool
+        //
+        chat = new DummyChatModel();
+        // Given
+        request = ChatRequest.builder()
+            .messages(List.of(
+                UserMessage.from("execute fileRead")
+            ))
+            .toolSpecifications(
+                ToolSpecifications.toolSpecificationsFrom(new ToolsProbingTool())
+            )
+            .build();
+
+        // When
+        response = chat.chat(request);
+
+        // Then
+        then(response.aiMessage().hasToolExecutionRequests()).isFalse();
+    }
+
+    @Test
+    public void no_tools_support() {
+        final DummyChatModel chat = new DummyChatModel();
+
+        // Given
+        chat.toolChoice = ToolChoice.NONE;
+
+        ChatRequest request = ChatRequest.builder()
+            .messages(List.of(
+                UserMessage.from("execute probeToolsSupport")
+            ))
+            .toolSpecifications(
+                ToolSpecifications.toolSpecificationsFrom(new ToolsProbingTool())
+            )
+            .build();
+
+        // When
+        ChatResponse response = chat.chat(request);
+
+        // Then
+        then(response.aiMessage().hasToolExecutionRequests()).isFalse();
+    }
+
+    @Test
+    public void simulate_model_error() {
+        final DummyChatModel chat = new DummyChatModel();
+
+        chat.error = new RuntimeException("this is an error");
+
+        thenThrownBy(() -> chat.chat("any prompt"))
+            .isInstanceOf(RuntimeException.class)
+            .hasMessage("this is an error");
     }
 
     // --------------------------------------------------------- private methods

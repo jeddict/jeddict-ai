@@ -678,6 +678,12 @@
             <artifactId>jakarta.ws.rs-api</artifactId>
             <version>4.0.0</version>
         </dependency>
+        <dependency>
+            <groupId>com.github.stefanofornari</groupId>
+            <artifactId>lambda-loop</artifactId>
+            <version>0.2.2</version>
+            <type>jar</type>
+        </dependency>
 
         <!--
             Headless testing

@@ -16,9 +16,23 @@
 
 package io.github.jeddict.ai.models;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Set;
+import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.ArrayList;
+import java.util.Collections;
+
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
@@ -29,23 +43,12 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.List;
-import java.util.Set;
-import java.util.logging.Logger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-/**
- *
- */
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
-import java.util.ArrayList;
-import java.util.Collections;
+import dev.langchain4j.model.chat.request.ToolChoice;
+import static ste.lloop.Loop._break_;
+import static ste.lloop.Loop.on;
+
 
 public class DummyChatModel implements ChatModel, StreamingChatModel {
 
@@ -57,6 +60,14 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
         Pattern.compile("use mock\\s+(?:'([^']+)'|(\\S+))", Pattern.CASE_INSENSITIVE);
 
     private final List<ChatModelListener> listeners;
+
+    public ToolChoice toolChoice = ToolChoice.AUTO;
+
+    public RuntimeException error = null;
+
+    public String lastToolExecutionResult = null;
+
+    public boolean toolExecuted = false;
 
     public DummyChatModel() {
         this.listeners = new ArrayList<>();
@@ -84,58 +95,139 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
     public ChatResponse doChat(final ChatRequest chatRequest) {
         LOG.info(() -> "> " + String.valueOf(chatRequest));
 
+        if (error != null) {
+            LOG.info(() -> "> DummyChatModel instructed to raise " + error);
+
+            throw error;
+        }
+
         ChatModelRequestContext requestContext = new ChatModelRequestContext(chatRequest, provider(), Collections.emptyMap());
         for (ChatModelListener listener : listeners) {
             listener.onRequest(requestContext);
         }
 
-        final StringBuilder body = new StringBuilder();
+        final StringBuilder bodyBuilder = new StringBuilder();
 
+        //
+        // build a string with all system and user messages
+        //
         chatRequest.messages().forEach((msg) -> {
-            body.append("\n");
+            bodyBuilder.append("\n");
             if (msg instanceof UserMessage) {
-                body.append(((UserMessage)msg).singleText());
+                bodyBuilder.append(((UserMessage)msg).singleText());
             } else if (msg instanceof SystemMessage) {
-                body.append(((SystemMessage)msg).text());
+                bodyBuilder.append(((SystemMessage)msg).text());
             } else {
-                body.append(String.valueOf(msg));
+                bodyBuilder.append(String.valueOf(msg));
             }
         });
 
-        Matcher matcher = MOCK_INSTRUCTION_PATTERN.matcher(body.toString());
+        final String body = bodyBuilder.toString();
 
-        Path mockPath = Path.of(DEFAULT_MOCK_FILE);
-        if (matcher.find()) {
-            String mockFile = matcher.group(1); // Quoted file name
-            if (mockFile == null) {
-                mockFile = matcher.group(2); // Unquoted file name
+        AiMessage responseMessage = null;
+
+        //
+        // Simulate the request to execute a tool if toolChoice is REQUIRED.
+        // This is not meant to be generic for now, it supports now a simple use
+        // case where the execution of one tool only is requested, plus with no
+        // arguments. It is primarily tailored to support
+        // <code>ToolsProbingTool.probeToolsSupport()</code>
+        //
+        // When tools are ivolved, langchain4j triggers the execution of the tools:
+        //
+        // client       langchain4j         Model       Tool
+        //   |               |                |           |
+        //   |----prompt---->|                |           |
+        //   |               |<--exec tool X--|           |
+        //   |               |<--exec and get result----> |
+        //   |               |-----result---->|           |
+        //   |               |<---response----|           |
+        //   |<--answer------|                |           |
+        //   |               |                |           |
+        //
+        // Note that the model needs to provide an answer with ... to tell
+        // langchain4j the execution of the task is complete.
+        //
+
+        if ((toolChoice == ToolChoice.REQUIRED) || (toolChoice == ToolChoice.AUTO)) {
+            if (!toolExecuted) {
+                final String tool = on(chatRequest.toolSpecifications()).loop((specification) -> {
+                    final String name = specification.name();
+                    if (body.contains(name)) {
+                        _break_(name);
+                    }
+                });
+
+                if (tool != null) {
+                    toolExecuted = true; // set before execution to make sure
+                                         // execution is done even in case of
+                                         // exceptions
+                    ToolExecutionRequest toolRequest = ToolExecutionRequest.builder()
+                        .id("XKSdkL2PU")
+                        .name(tool)
+                        .arguments("{}")
+                        .build();
+
+                    responseMessage = AiMessage.from(toolRequest);
+                }
+            } else {
+                toolExecuted = false;  // geeting ready for the next prompt
+                responseMessage = on(chatRequest.messages()).loop((msg) -> {
+                    if (msg instanceof ToolExecutionResultMessage toolResult) {
+                        _break_(AiMessage.from(toolResult.text()));
+                    }
+                });
+
             }
-            mockPath = Path.of("src/test/resources/mocks").resolve(mockFile).normalize();
         }
 
-        String error = null;
-        if (!Files.exists(mockPath)) {
-            error = "Mock file '" + mockPath.toUri().getPath() + "' not found.";
-            mockPath = Path.of(ERROR_MOCK_FILE);
+        //
+        // If responseMessage is still null, either tool execution was not
+        // required or no tool has been found in the prompt
+        //
+        if (responseMessage == null) {
+            //
+            // If any message contained the mock instruction pattern, extract the
+            // mock, read its content.
+            // In case of errors replace the placeholder {{error}} with the error
+            // descritpion/message
+            //
+            Matcher matcher = MOCK_INSTRUCTION_PATTERN.matcher(bodyBuilder.toString());
+
+            Path mockPath = Path.of(DEFAULT_MOCK_FILE);
+            if (matcher.find()) {
+                String mockFile = matcher.group(1); // Quoted file name
+                if (mockFile == null) {
+                    mockFile = matcher.group(2); // Unquoted file name
+                }
+                mockPath = Path.of("src/test/resources/mocks").resolve(mockFile).normalize();
+            }
+
+            String errorMessage = null;
+            if (!Files.exists(mockPath)) {
+                errorMessage = "Mock file '" + mockPath.toUri().getPath() + "' not found.";
+                mockPath = Path.of(ERROR_MOCK_FILE);
+            }
+
+            String mockContent;
+            try {
+                mockContent = Files.readString(mockPath, StandardCharsets.UTF_8);
+                mockContent = mockContent.replaceAll("\\{error}", errorMessage);
+            } catch (IOException x) {
+                mockContent = "Error reading mock file: " + x.getMessage();
+            }
+
+            responseMessage = AiMessage.from(mockContent);
         }
 
-        String mockContent;
-        try {
-            mockContent = Files.readString(mockPath, StandardCharsets.UTF_8);
-            mockContent = mockContent.replaceAll("\\{error}", error);
-        } catch (IOException x) {
-            mockContent = "Error reading mock file: " + x.getMessage();
-        }
-
-        ChatResponse chatResponse = ChatResponse.builder().aiMessage(
-            AiMessage.from(mockContent)
-        ).build();
+        ChatResponse chatResponse =
+            ChatResponse.builder().aiMessage(responseMessage).build();
 
         ChatModelResponseContext responseContext = new ChatModelResponseContext(chatResponse, chatRequest, provider(), Collections.emptyMap());
         for (ChatModelListener listener : listeners) {
             listener.onResponse(responseContext);
         }
-
+        
         LOG.info(() -> "< " + String.valueOf(chatResponse));
 
         return chatResponse;
@@ -202,7 +294,7 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
     @Override
     public ModelProvider provider() {
         final ModelProvider provider = ChatModel.super.provider();
-        LOG.info(() -> "< " + String.valueOf(provider));
+        LOG.info(() -> "provider: " + String.valueOf(provider));
 
         return provider;
     }
