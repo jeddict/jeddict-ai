@@ -33,7 +33,7 @@ import java.util.Map;
  */
 public class GenAIModel {
 
-    public static String DEFAULT_MODEL = "gpt-5.1-codex-mini";
+    public static String DEFAULT_MODEL = "gpt-5-mini";
     public static Map<String, GenAIModel> MODELS = new HashMap<>();
 
     static {
@@ -54,13 +54,16 @@ public class GenAIModel {
         // OpenAI GPT Family
         // -----------------------------
         
-        // GPT-5.1 Codex models
+        // GPT-5.1 models
         MODELS.put("gpt-5.1-codex", new GenAIModel(OPEN_AI, "gpt-5.1-codex",
                 "GPT-5.1 Codex — optimized for coding and software engineering tasks.", 1.25, 10.00));
         MODELS.put("gpt-5.1-codex-mini", new GenAIModel(OPEN_AI, "gpt-5.1-codex-mini",
                 "Smaller Codex variant for cost-efficient code tasks.", 0.25, 2.00));
         MODELS.put("gpt-5.1-codex-max", new GenAIModel(OPEN_AI, "gpt-5.1-codex-max",
                 "Frontier Codex model — long-horizon coding projects.", 1.25, 10.00));
+        MODELS.put("gpt-5.1", new GenAIModel(OPEN_AI, "gpt-5.1",
+                "GPT-5.1 — improved reasoning, coding, and multimodal model (2025).",
+                1.50, 10.00));
 
         // GPT‑5 family (added; pricing frequently updated—left 0.0 intentionally)
         MODELS.put("gpt-5-mini", new GenAIModel(OPEN_AI, "gpt-5-mini",
