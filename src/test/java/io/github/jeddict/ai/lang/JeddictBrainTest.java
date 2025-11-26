@@ -15,8 +15,12 @@
  */
 package io.github.jeddict.ai.lang;
 
+import dev.langchain4j.model.chat.request.ToolChoice;
 import io.github.jeddict.ai.agent.AbstractTool;
+import io.github.jeddict.ai.agent.FileSystemTools;
+import io.github.jeddict.ai.agent.pair.Hacker;
 import io.github.jeddict.ai.agent.pair.PairProgrammer;
+import static io.github.jeddict.ai.agent.pair.PairProgrammer.Specialist.HACKER;
 import static io.github.jeddict.ai.agent.pair.PairProgrammer.Specialist.TEST;
 import io.github.jeddict.ai.settings.PreferencesManager;
 import io.github.jeddict.ai.test.DummyTool;
@@ -24,9 +28,12 @@ import io.github.jeddict.ai.test.TestBase;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.List;
+import java.util.logging.Level;
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.BDDAssertions.thenThrownBy;
 import org.junit.jupiter.api.Test;
+import io.github.jeddict.ai.agent.pair.HackerWithoutTools;
+import io.github.jeddict.ai.models.DummyChatModel;
 
 
 /**
@@ -104,7 +111,7 @@ public class JeddictBrainTest extends TestBase {
 
     @Test
     public void get_new_pair_programmer() {
-        final JeddictBrain brain = new JeddictBrain(false);
+        final JeddictBrain brain = new JeddictBrain("dummy-with-tools", false, List.of());
 
         for (PairProgrammer.Specialist s: PairProgrammer.Specialist.values()) {
             final Object pair1 = brain.pairProgrammer(s);
@@ -138,4 +145,56 @@ public class JeddictBrainTest extends TestBase {
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("size must be greather than 0 (where 0 means no memory)");
     }
+
+    @Test
+    public void pick_Hacker_if_the_model_supports_tools() {
+        final FileSystemTools tool = new FileSystemTools(projectDir);
+        final JeddictBrain brain = new JeddictBrain("dummy-with-tools", false, List.of(tool));
+
+        then(brain.pairProgrammer(PairProgrammer.Specialist.HACKER).getClass().getInterfaces())
+            .contains(Hacker.class);
+    }
+
+    @Test
+    public void pick_HackerWithoutTols_if_the_model_does_not_support_tools() {
+        final FileSystemTools tool = new FileSystemTools(projectDir);
+        final JeddictBrain brain = new JeddictBrain("dummy", false, List.of(tool));
+
+        then(brain.pairProgrammer(PairProgrammer.Specialist.HACKER_WITHOUT_TOOLS).getClass().getInterfaces())
+            .contains(HackerWithoutTools.class);
+    }
+
+    @Test
+    public void log_tools_support_probing() {
+        JeddictBrain brain = new JeddictBrain("dummy-with-tools", false, List.of());
+
+        // trigger probing
+        brain.pairProgrammer(HACKER);
+
+        then(logHandler.getMessages(Level.INFO)).contains("model dummy-with-tools supports tools execution");
+
+        brain = new JeddictBrain("dummy", false, List.of());
+
+        // trigger probing
+        brain.pairProgrammer(HACKER);
+
+        then(logHandler.getMessages(Level.INFO)).contains("model dummy does not support tools execution");
+    }
+
+    @Test
+    public void tools_support_probing_is_cached() {
+        final JeddictBrain brain = new JeddictBrain("dummy-with-tools", false, List.of());
+
+        final DummyChatModel model = (DummyChatModel)brain.chatModel.get();
+
+        // trigger probing -> caching of the result
+        Hacker pair = brain.pairProgrammer(HACKER); // not a problem as expected
+
+        model.toolChoice = ToolChoice.NONE; // this would make probing fail and
+                                            // fall back to HackerWithoutTools
+
+        pair = brain.pairProgrammer(HACKER); // ok if cached
+        then(logHandler.getMessages(Level.INFO)).contains("model dummy-with-tools supports tools execution (cached)");
+    }
+
 }

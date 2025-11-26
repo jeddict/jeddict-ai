@@ -36,7 +36,9 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.service.AiServices;
 import io.github.jeddict.ai.agent.AbstractTool;
 import io.github.jeddict.ai.agent.Assistant;
+import io.github.jeddict.ai.agent.ToolsProbingTool;
 import io.github.jeddict.ai.agent.pair.PairProgrammer;
+import static io.github.jeddict.ai.agent.pair.PairProgrammer.Specialist.HACKER;
 import io.github.jeddict.ai.response.Response;
 import io.github.jeddict.ai.response.TokenHandler;
 import io.github.jeddict.ai.scanner.ProjectMetadataInfo;
@@ -50,6 +52,9 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Logger;
 import org.netbeans.api.project.Project;
+import io.github.jeddict.ai.agent.ToolsProber;
+import java.util.HashMap;
+import java.util.Map;
 
 public class JeddictBrain implements PropertyChangeEmitter {
 
@@ -81,6 +86,8 @@ public class JeddictBrain implements PropertyChangeEmitter {
     protected final List<AbstractTool> tools;
 
     public final String modelName;
+
+    protected Map<String, Boolean> probedModels = new HashMap(); // per instance on purpose to avoid race conditions
 
     public JeddictBrain(
         final boolean streaming
@@ -303,13 +310,25 @@ public class JeddictBrain implements PropertyChangeEmitter {
      *
      * @return an instance of the configured agent
      */
-    public <T> T pairProgrammer(final PairProgrammer.Specialist specialist) {
+    public <T extends PairProgrammer> T pairProgrammer(final PairProgrammer.Specialist specialist) {
+        Class specialistClass = specialist.specialistClass;
+
+        if (specialist == HACKER) {
+            if (!probeToolSupport()) {
+                specialistClass = PairProgrammer.Specialist.HACKER_WITHOUT_TOOLS.specialistClass;
+            }
+        }
+
         AgentBuilder<T> builder =
-            AgenticServices.agentBuilder(specialist.specialistClass)
+            AgenticServices.agentBuilder(specialistClass)
             .chatModel(chatModel.get());
 
         if (memorySize > 0) {
             builder.chatMemory(MessageWindowChatMemory.withMaxMessages(memorySize));
+        }
+
+        if (specialist == HACKER) {
+            builder.tools(tools.toArray());
         }
 
         return (T)builder.build();
@@ -362,9 +381,44 @@ public class JeddictBrain implements PropertyChangeEmitter {
         removePropertyChangeListener(listener);
     }
 
+    // --------------------------------------------------------- private methods
+
+    protected boolean probeToolSupport() {
+        final String LOG_MSG = "model %s %s tools execution";
+
+        //
+        // If the model was already probed, return immediately the value
+        //
+        if (probedModels.containsKey(modelName)) {
+            final boolean toolsSupport = probedModels.get(modelName);
+            LOG.info(
+                (LOG_MSG + " (cached)").formatted(modelName, (toolsSupport) ? "supports" : "does not support")
+            );
+            return toolsSupport;
+        }
+
+        //
+        // Otherwise probe the model by trying to trigger the execution of the
+        // ToolsProbingTool tool
+        //
+        final ToolsProbingTool probeTool = new ToolsProbingTool();
+        final ToolsProber prober = AgenticServices.agentBuilder(ToolsProber.class)
+            .chatModel(chatModel.get())
+            .tools(probeTool)
+            .build();
+        final boolean toolsSupport = prober.probe(probeTool.probeText);
+
+        probedModels.put(modelName, toolsSupport);
+
+        LOG.info(
+            LOG_MSG.formatted(modelName, (toolsSupport) ? "supports" : "does not support")
+        );
+
+        return toolsSupport;
+    }
+
     private void fireEvent(EventProperty property, Object value) {
         LOG.finest(() -> "Firing event " + property + " with value " + value);
         firePropertyChange(property.name, null, value);
     }
-
 }
