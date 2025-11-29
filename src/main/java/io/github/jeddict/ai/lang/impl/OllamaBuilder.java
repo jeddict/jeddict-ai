@@ -34,7 +34,7 @@ public class OllamaBuilder implements ChatModelBuilder {
 
     public OllamaBuilder() {
         /**
-         * Note: there is a known issue of LMStudio supporting HTTP 1.1 only,
+         * Note: there is a known issue of Ollama supporting HTTP 1.1 only,
          * while langchain4j uses HTTP 2.0 by default. The workaround is to make
          * sure to customize the HTTP client used by langchain4j to use HTTP 1.1
          */
