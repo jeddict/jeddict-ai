@@ -29,8 +29,7 @@ public class LMStudioStreamingBuilder implements ChatModelStreamingBuilder {
     protected final OpenAiStreamingChatModel.OpenAiStreamingChatModelBuilder builder;
 
     public LMStudioStreamingBuilder() {
-        builder = OpenAiStreamingChatModel.builder()
-                .baseUrl("http://localhost:1234/v1/");
+        builder = OpenAiStreamingChatModel.builder().baseUrl("http://localhost:1234/v1/");
     }
 
     @Override
