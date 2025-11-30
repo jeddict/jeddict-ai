@@ -30,10 +30,6 @@ import org.openide.util.Lookup;
         keywords = "#OptionsCategory_Keywords_JeddictAIAssistant",
         keywordsCategory = "JeddictAIAssistant"
 )
-@org.openide.util.NbBundle.Messages({
-    "OptionsCategory_Name_JeddictAIAssistant=Jeddict AI Assistant",
-    "OptionsCategory_Keywords_JeddictAIAssistant=AI"
-})
 public final class AIAssistanceOptionsPanelController extends OptionsPanelController {
 
     private AIAssistancePanel panel;

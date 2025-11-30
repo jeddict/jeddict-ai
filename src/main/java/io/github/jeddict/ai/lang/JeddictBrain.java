@@ -233,18 +233,15 @@ public class JeddictBrain implements PropertyChangeEmitter {
                     assistant.stream(messages)
                         .onCompleteResponse(complete -> {
                             fireEvent(EventProperty.CHAT_COMPLETED, complete);
-                            //handler.onCompleteResponse(partial);
                         })
                         .onPartialResponse(partial -> {
                             fireEvent(EventProperty.CHAT_PARTIAL, partial);
-                            //handler.onPartialResponse(partial);
                         })
                         .onIntermediateResponse(intermediate -> fireEvent(EventProperty.CHAT_INTERMEDIATE, intermediate))
                         .beforeToolExecution(execution -> fireEvent(EventProperty.TOOL_BEFORE_EXECUTION, execution))
                         .onToolExecuted(execution -> fireEvent(EventProperty.TOOL_EXECUTED, execution))
                         .onError(error -> {
                             fireEvent(EventProperty.CHAT_ERROR, error);
-                            //handler.onError(error);
                         })
                         .start();
                 } else {
@@ -268,20 +265,23 @@ public class JeddictBrain implements PropertyChangeEmitter {
             } else {
                 final ChatModel model = chatModel.get();
 
+                dev.langchain4j.model.output.Response<AiMessage> aiResponse = null;
                 ChatResponse chatResponse = null;
                 if (agentEnabled) {
                     Assistant assistant = AiServices.builder(Assistant.class)
                             .chatModel(model)
                             .tools(tools.toArray())
                             .build();
-                    chatResponse = assistant.chat(messages);
-
+                    aiResponse = assistant.chat(messages);
+                    chatResponse = ChatResponse.builder().aiMessage(aiResponse.content()).build();
                 } else {
                     chatResponse = model.chat(messages);
                 }
                 fireEvent(EventProperty.CHAT_COMPLETED, chatResponse);
                 response.append(chatResponse.aiMessage().text());
 
+                //
+                // TODO: the token count is in the response
                 CompletableFuture.runAsync(() -> TokenHandler.saveOutputToken(response.toString()));
             }
         } catch (Exception x) {

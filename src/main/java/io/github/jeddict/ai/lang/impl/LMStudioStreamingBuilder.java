@@ -18,7 +18,7 @@ package io.github.jeddict.ai.lang.impl;
 import dev.langchain4j.http.client.jdk.JdkHttpClient;
 import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
+import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import io.github.jeddict.ai.lang.ChatModelStreamingBuilder;
 import java.net.http.HttpClient;
 import java.time.Duration;
@@ -26,13 +26,12 @@ import java.util.Map;
 
 /**
  *
- * @author Francois Steyn
  */
-public class OllamaStreamingBuilder implements ChatModelStreamingBuilder {
+public class LMStudioStreamingBuilder implements ChatModelStreamingBuilder {
 
-    private final OllamaStreamingChatModel.OllamaStreamingChatModelBuilder builder;
+    protected final OpenAiStreamingChatModel.OpenAiStreamingChatModelBuilder builder;
 
-    public OllamaStreamingBuilder() {
+    public LMStudioStreamingBuilder() {
         /**
          * Note: there is a known issue of Ollama supporting HTTP 1.1 only,
          * while langchain4j uses HTTP 2.0 by default. The workaround is to make
@@ -42,7 +41,7 @@ public class OllamaStreamingBuilder implements ChatModelStreamingBuilder {
             .httpClientBuilder(
                 HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1)
             );
-        builder = OllamaStreamingChatModel.builder();
+        builder = OpenAiStreamingChatModel.builder().baseUrl("http://localhost:1234/v1/");
         builder.httpClientBuilder(jdkHttpClientBuilder);
     }
 
@@ -60,7 +59,7 @@ public class OllamaStreamingBuilder implements ChatModelStreamingBuilder {
 
     @Override
     public ChatModelStreamingBuilder apiKey(final String apiKey) {
-        //NOOP
+        builder.apiKey(apiKey);
         return this;
     }
 
@@ -90,13 +89,13 @@ public class OllamaStreamingBuilder implements ChatModelStreamingBuilder {
 
     @Override
     public ChatModelStreamingBuilder maxOutputTokens(final Integer maxOutputTokens) {
-        //NOOP
+        // NOOP
         return this;
     }
 
     @Override
     public ChatModelStreamingBuilder repeatPenalty(final Double repeatPenalty) {
-        builder.repeatPenalty(repeatPenalty);
+        // NOOP
         return this;
     }
 
@@ -108,37 +107,37 @@ public class OllamaStreamingBuilder implements ChatModelStreamingBuilder {
 
     @Override
     public ChatModelStreamingBuilder maxTokens(final Integer maxTokens) {
-        //NOOP
+        builder.maxTokens(maxTokens);
         return this;
     }
 
     @Override
     public ChatModelStreamingBuilder maxCompletionTokens(final Integer maxCompletionTokens) {
-        //NOOP
+        builder.maxCompletionTokens(maxCompletionTokens);
         return this;
     }
 
     @Override
     public ChatModelStreamingBuilder topK(final Integer topK) {
-        builder.topK(topK);
+        // NOOP
         return this;
     }
 
     @Override
     public ChatModelStreamingBuilder presencePenalty(final Double presencePenalty) {
-        //NOOP
+        builder.presencePenalty(presencePenalty);
         return this;
     }
 
     @Override
     public ChatModelStreamingBuilder frequencyPenalty(final Double frequencyPenalty) {
-        //NOOP
+        builder.frequencyPenalty(frequencyPenalty);
         return this;
     }
 
     @Override
     public ChatModelStreamingBuilder organizationId(final String organizationId) {
-        //NOOP
+        builder.organizationId(organizationId);
         return this;
     }
 
@@ -151,13 +150,13 @@ public class OllamaStreamingBuilder implements ChatModelStreamingBuilder {
 
     @Override
     public ChatModelStreamingBuilder includeCodeExecutionOutput(final boolean includeCodeExecutionOutput) {
-        //NOOP
+        // NOOP
         return this;
     }
 
     @Override
     public ChatModelStreamingBuilder allowCodeExecution(final boolean allowCodeExecution) {
-        //NOOP
+        // NOOP
         return this;
     }
 

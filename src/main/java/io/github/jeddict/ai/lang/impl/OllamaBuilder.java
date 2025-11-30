@@ -15,9 +15,12 @@
  */
 package io.github.jeddict.ai.lang.impl;
 
+import dev.langchain4j.http.client.jdk.JdkHttpClient;
+import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import io.github.jeddict.ai.lang.ChatModelBuilder;
+import java.net.http.HttpClient;
 import java.time.Duration;
 import java.util.Map;
 
@@ -30,7 +33,17 @@ public class OllamaBuilder implements ChatModelBuilder {
     private final OllamaChatModel.OllamaChatModelBuilder builder;
 
     public OllamaBuilder() {
+        /**
+         * Note: there is a known issue of Ollama supporting HTTP 1.1 only,
+         * while langchain4j uses HTTP 2.0 by default. The workaround is to make
+         * sure to customize the HTTP client used by langchain4j to use HTTP 1.1
+         */
+        final JdkHttpClientBuilder jdkHttpClientBuilder = JdkHttpClient.builder()
+            .httpClientBuilder(
+                HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1)
+            );
         builder = OllamaChatModel.builder();
+        builder.httpClientBuilder(jdkHttpClientBuilder);
     }
 
     @Override
