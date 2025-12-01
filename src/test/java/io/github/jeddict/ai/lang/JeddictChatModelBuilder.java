@@ -17,18 +17,19 @@ package io.github.jeddict.ai.lang;
 
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import io.github.jeddict.ai.models.DummyChatModel;
 import io.github.jeddict.ai.settings.PreferencesManager;
 import java.util.logging.Logger;
 
 /**
  *
- * This is a replacement of the class JeddictChatModelBuilder that is used when 
+ * This is a replacement of the class JeddictChatModelBuilder that is used when
  * running the tests (maven loads first classes in testing classpath, thus this
- * code is loaded instead of the production code). 
- * It creates a Dummy model that inspects the request body for an instruction 
- * to "use mock {file}", where {file} is the path to a mock file in 
- * src/test/resources/mocks. The model will respond with the content of the 
+ * code is loaded instead of the production code).
+ * It creates a Dummy model that inspects the request body for an instruction
+ * to "use mock {file}", where {file} is the path to a mock file in
+ * src/test/resources/mocks. The model will respond with the content of the
  * specified mock file.
  * <p>
  * The file name can be unquoted or enclosed in double quotes.
@@ -38,14 +39,15 @@ import java.util.logging.Logger;
  *     <li>use mock "my file with spaces.txt"</li>
  * </ul>
  * <p>
- * 
+ *
  */
 public class JeddictChatModelBuilder {
 
     public final Logger LOG = Logger.getLogger(JeddictChatModelBuilder.class.getCanonicalName());
 
     protected static PreferencesManager pm = PreferencesManager.getInstance();
-    private String modelName;
+    final private String modelName;
+    final private boolean withTools;
 
     public JeddictChatModelBuilder() {
         this(null);
@@ -53,6 +55,7 @@ public class JeddictChatModelBuilder {
 
     public JeddictChatModelBuilder(String modelName) {
         this.modelName = modelName; // P2 - TODO: can this be null?
+        withTools = (modelName != null) && modelName.endsWith("-with-tools");
     }
 
     public ChatModel build() {
@@ -62,12 +65,20 @@ public class JeddictChatModelBuilder {
             throw new IllegalArgumentException("modelName can not be null");
         }
 
-        return new DummyChatModel();
+        final DummyChatModel model = new DummyChatModel();
+
+        model.toolChoice = (withTools) ? ToolChoice.AUTO : ToolChoice.NONE;
+
+        return model;
     }
 
     public StreamingChatModel buildStreaming() {
         LOG.finest(() -> "Building testing dummy streaming model instead of " + modelName);
 
-        return new DummyChatModel();
+        final DummyChatModel model = new DummyChatModel();
+
+        model.toolChoice = (withTools) ? ToolChoice.AUTO : ToolChoice.NONE;
+
+        return model;
     }
 }
