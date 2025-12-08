@@ -27,8 +27,6 @@ import io.github.jeddict.ai.response.TokenHandler;
 import io.github.jeddict.ai.util.Utilities;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
