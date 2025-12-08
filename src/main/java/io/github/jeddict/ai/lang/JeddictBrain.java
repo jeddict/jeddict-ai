@@ -57,6 +57,12 @@ public class JeddictBrain implements PropertyChangeEmitter {
 
     private int memorySize = 0;
 
+    public enum InteractionMode {
+        QUERY,       // no tools, mainly queries
+        AGENT,       // tools execution no human interaction
+        INTERACTIVE  // tools execution previa human confirmation
+    }
+
     public enum EventProperty {
         CHAT_TOKENS("chatTokens"),
         CHAT_ERROR("chatError"),
@@ -78,6 +84,8 @@ public class JeddictBrain implements PropertyChangeEmitter {
 
     public final Optional<ChatModel> chatModel;
     public final Optional<StreamingChatModel> streamingChatModel;
+    public final InteractionMode mode;
+
     protected final List<AbstractTool> tools;
 
     public final String modelName;
@@ -85,12 +93,19 @@ public class JeddictBrain implements PropertyChangeEmitter {
     public JeddictBrain(
         final boolean streaming
     ) {
-        this("", streaming, List.of());
+        this("", streaming, InteractionMode.QUERY, List.of());
+    }
+
+    public JeddictBrain(
+        final String modelName, final boolean streaming
+    ) {
+        this(modelName, streaming, InteractionMode.QUERY, List.of());
     }
 
     public JeddictBrain(
         final String modelName,
         final boolean streaming,
+        final InteractionMode mode,
         final List<AbstractTool> tools
     ) {
         if (modelName == null) {
@@ -108,8 +123,9 @@ public class JeddictBrain implements PropertyChangeEmitter {
             this.chatModel = Optional.of(builder.build());
             this.streamingChatModel = Optional.empty();
         }
+        this.mode = mode;
         this.tools = (tools != null)
-                   ? List.of(tools.toArray(new AbstractTool[0])) // immutable
+                   ? List.copyOf(tools) // immutable
                    : List.of();
     }
 
@@ -136,22 +152,6 @@ public class JeddictBrain implements PropertyChangeEmitter {
         this.memorySize = size; return this;
     }
 
-    public String generate(final Project project, final String prompt) {
-        return generateInternal(project, false, prompt, null, null);
-    }
-
-    public String generate(final Project project, final String prompt, List<String> images, List<Response> responseHistory) {
-        return generateInternal(project, false, prompt, images, responseHistory);
-    }
-
-    public String generate(final Project project, boolean agentEnabled, final String prompt) {
-        return generateInternal(project, agentEnabled, prompt, null, null);
-    }
-
-    public String generate(final Project project, boolean agentEnabled, final String prompt, List<String> images, List<Response> responseHistory) {
-        return generateInternal(project, agentEnabled, prompt, images, responseHistory);
-    }
-
     public UserMessage buildUserMessage(String prompt, List<String> imageBase64Urls) {
         List<Content> parts = new ArrayList<>();
 
@@ -175,6 +175,10 @@ public class JeddictBrain implements PropertyChangeEmitter {
         if (chatModel.isEmpty() && streamingChatModel.isEmpty()) {
             throw new IllegalStateException("AI assistant model not intitalized, this looks like a bug!");
         }
+
+        //
+        // Split in two agents: one with agentic behaviour, one without agentic for enquiries
+        //
 
         if (project != null) {
             prompt = prompt + "\n" + ProjectMetadataInfo.get(project);
@@ -222,7 +226,6 @@ public class JeddictBrain implements PropertyChangeEmitter {
 
         final StringBuilder response = new StringBuilder();
         try {
-
             if (streamingChatModel.isPresent()) {
                 if(agentEnabled) {
                     final Assistant assistant = AiServices.builder(Assistant.class)
@@ -233,18 +236,15 @@ public class JeddictBrain implements PropertyChangeEmitter {
                     assistant.stream(messages)
                         .onCompleteResponse(complete -> {
                             fireEvent(EventProperty.CHAT_COMPLETED, complete);
-                            //handler.onCompleteResponse(partial);
                         })
                         .onPartialResponse(partial -> {
                             fireEvent(EventProperty.CHAT_PARTIAL, partial);
-                            //handler.onPartialResponse(partial);
                         })
                         .onIntermediateResponse(intermediate -> fireEvent(EventProperty.CHAT_INTERMEDIATE, intermediate))
                         .beforeToolExecution(execution -> fireEvent(EventProperty.TOOL_BEFORE_EXECUTION, execution))
                         .onToolExecuted(execution -> fireEvent(EventProperty.TOOL_EXECUTED, execution))
                         .onError(error -> {
                             fireEvent(EventProperty.CHAT_ERROR, error);
-                            //handler.onError(error);
                         })
                         .start();
                 } else {
@@ -268,7 +268,7 @@ public class JeddictBrain implements PropertyChangeEmitter {
             } else {
                 final ChatModel model = chatModel.get();
 
-                ChatResponse chatResponse = null;
+                ChatResponse chatResponse;
                 if (agentEnabled) {
                     Assistant assistant = AiServices.builder(Assistant.class)
                             .chatModel(model)
@@ -285,7 +285,7 @@ public class JeddictBrain implements PropertyChangeEmitter {
                 CompletableFuture.runAsync(() -> TokenHandler.saveOutputToken(response.toString()));
             }
         } catch (Exception x) {
-            LOG.finest(() -> "Communication error: " + x.getMessage());
+            LOG.finest(() -> "Error creating the AI agent: " + x.getMessage());
             response.append(Utilities.errorHTMLBlock(x));
             fireEvent(EventProperty.CHAT_ERROR, x);
         }
@@ -304,24 +304,50 @@ public class JeddictBrain implements PropertyChangeEmitter {
      * @return an instance of the configured agent
      */
     public <T> T pairProgrammer(final PairProgrammer.Specialist specialist) {
+        //
+        // The HACKER is a top level AI agent that interacts with the user. As
+        // such it must support many more functionalities then other Agents and
+        // overcome some design limitations currently in langchain4j agents (see
+        // https://github.com/langchain4j/langchain4j/issues/4098,
+        // https://github.com/langchain4j/langchain4j/issues/4177,
+        // https://github.com/langchain4j/langchain4j/issues/3519 )
+        //
+        // Assistant is a top level tool, but for generale enquiries and
+        // interactions with the AI. It is mainly for use in QUERY interaction
+        // mode. Since it supports streaming, we need to use AiServices.
+        //
+        if ((specialist == PairProgrammer.Specialist.HACKER) ||
+            (specialist == PairProgrammer.Specialist.ASSISTANT)) {
+            final AiServices builder = AiServices.builder(specialist.specialistClass);
+
+            if (specialist == PairProgrammer.Specialist.HACKER) {
+                builder.tools(tools.toArray());
+            }
+
+            chatModel.ifPresentOrElse(
+                (model) -> builder.chatModel(model),
+                () -> builder.streamingChatModel(streamingChatModel.get())
+            );
+
+            if (memorySize > 0) {
+                builder.chatMemory(MessageWindowChatMemory.withMaxMessages(memorySize));
+            }
+
+            return (T)builder.build();
+        }
+
+        //
+        // Build normal utility agents
+        //
         AgentBuilder<T> builder =
             AgenticServices.agentBuilder(specialist.specialistClass)
-            .chatModel(chatModel.get());
+                .chatModel(chatModel.get());
 
         if (memorySize > 0) {
             builder.chatMemory(MessageWindowChatMemory.withMaxMessages(memorySize));
         }
 
         return (T)builder.build();
-    }
-
-    public String generateDescription(
-        final Project project,
-        final String source, final String methodContent, final List<String> images,
-        final List<Response> previousChatResponse, final String userQuery,
-        final String sessionRules
-    ) {
-        return generateDescription(project, false, source, methodContent, images, previousChatResponse, userQuery, sessionRules);
     }
 
     public String generateDescription(
@@ -347,7 +373,7 @@ public class JeddictBrain implements PropertyChangeEmitter {
         prompt.append("User Query:\n")
                 .append(userQuery);
 
-        String response = generate(project, agentEnabled, prompt.toString(), images, previousChatResponse);
+        String response = generateInternal(project, agentEnabled, prompt.toString(), images, previousChatResponse);
 
         LOG.finest(response);
 

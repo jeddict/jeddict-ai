@@ -16,13 +16,19 @@
 package io.github.jeddict.ai.lang;
 
 import io.github.jeddict.ai.agent.AbstractTool;
+import io.github.jeddict.ai.agent.pair.Assistant;
+import io.github.jeddict.ai.agent.pair.Hacker;
 import io.github.jeddict.ai.agent.pair.PairProgrammer;
+import static io.github.jeddict.ai.agent.pair.PairProgrammer.Specialist.ASSISTANT;
+import static io.github.jeddict.ai.agent.pair.PairProgrammer.Specialist.HACKER;
 import static io.github.jeddict.ai.agent.pair.PairProgrammer.Specialist.TEST;
 import io.github.jeddict.ai.settings.PreferencesManager;
+import io.github.jeddict.ai.test.DummyPropertyChangeListener;
 import io.github.jeddict.ai.test.DummyTool;
 import io.github.jeddict.ai.test.TestBase;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.util.ArrayList;
 import java.util.List;
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.BDDAssertions.thenThrownBy;
@@ -34,6 +40,9 @@ import org.junit.jupiter.api.Test;
  * It contains unit tests for the JeddictBrain class, verifying its constructors,
  * listener management, and functionality such as code analysis.
  */
+//
+// TODO. argument sanity check in constructors
+//
 public class JeddictBrainTest extends TestBase {
 
     @Test
@@ -43,14 +52,14 @@ public class JeddictBrainTest extends TestBase {
 
         PreferencesManager.getInstance().setStreamEnabled(true);
 
-        JeddictBrain brain = new JeddictBrain(N1, true, T);
+        JeddictBrain brain = new JeddictBrain(N1, true);
 
         then(brain.modelName).isSameAs(N1);
         then(brain.streamingChatModel).isNotEmpty();
         then(brain.chatModel).isEmpty();
         then(brain.tools).isEmpty();
 
-        brain = new JeddictBrain(N2, false, T);
+        brain = new JeddictBrain(N2, false);
 
         then(brain.modelName).isSameAs(N2);
         then(brain.streamingChatModel).isEmpty();
@@ -58,7 +67,7 @@ public class JeddictBrainTest extends TestBase {
         then(brain.tools).isEmpty();
 
         final DummyTool D = new DummyTool();
-        brain = new JeddictBrain(N2, true, List.of(D));
+        brain = new JeddictBrain(N2, true, JeddictBrain.InteractionMode.AGENT, List.of(D));
 
         then(brain.modelName).isSameAs(N2);
         then(brain.streamingChatModel).isNotEmpty();
@@ -69,7 +78,7 @@ public class JeddictBrainTest extends TestBase {
     @Test
     public void constructors_sanity_check() {
         thenThrownBy(() -> {
-            new JeddictBrain(null, false, List.of());
+            new JeddictBrain(null, false);
         }).isInstanceOf(IllegalArgumentException.class)
         .hasMessage("modelName can not be null");
     }
@@ -87,7 +96,7 @@ public class JeddictBrainTest extends TestBase {
             public void propertyChange(PropertyChangeEvent pce) { }
         };
 
-        final JeddictBrain brain = new JeddictBrain(N, false, List.of());
+        final JeddictBrain brain = new JeddictBrain(N, false);
 
         then(brain.getSupport().getPropertyChangeListeners()).isEmpty();
 
@@ -123,6 +132,70 @@ public class JeddictBrainTest extends TestBase {
     }
 
     @Test
+    public void get_agentic_Hacker() {
+        final DummyTool tool = new DummyTool();
+        final JeddictBrain brain = new JeddictBrain(
+            "dummy-with-tools", false,
+            JeddictBrain.InteractionMode.AGENT, List.of(tool)
+        );
+
+        Hacker h = brain.pairProgrammer(HACKER);
+
+        h.hack("execute mock dummyTool");
+
+        then(tool.executed()).isTrue();
+    }
+
+    @Test
+    public void get_agentic_Hacker_streaming() {
+        final DummyTool tool = new DummyTool();
+        final String[] msg = new String[2];
+        final JeddictBrain brain = new JeddictBrain(
+            "dummy-with-tools", true,
+            JeddictBrain.InteractionMode.AGENT, List.of(tool)
+        );
+
+        Hacker h = brain.pairProgrammer(HACKER);
+
+        h.hackstream("execute mock dummyTool").onToolExecuted(
+            (execution) -> { msg[1] = execution.result(); }
+        ).onCompleteResponse(
+            (response) -> {
+                msg[0] = response.aiMessage().text();
+            }
+        ).onError((t) -> t.printStackTrace())
+        .start();
+
+        then(msg).containsExactly("true", "true");
+        then(tool.executed()).isTrue();
+    }
+
+    @Test
+    public void get_assistant_chat_and_streaming() {
+        final String[] msg = new String[1];
+        JeddictBrain brain = new JeddictBrain(
+            "dummy", false,
+            JeddictBrain.InteractionMode.QUERY, List.of()
+        );
+
+        Assistant a = brain.pairProgrammer(ASSISTANT);
+
+        then(a.chat("use mock 'hello world.txt'")).isEqualTo("hello world\n");
+
+        final DummyPropertyChangeListener streamListener
+            = new DummyPropertyChangeListener();
+        brain = new JeddictBrain(
+            "dummy", true,
+            JeddictBrain.InteractionMode.QUERY, List.of()
+        );
+        a = brain.pairProgrammer(ASSISTANT);
+
+        a.chat(streamListener, "use mock 'hello world.txt'");
+
+        then(streamListener.events).isNotEmpty();
+    }
+
+    @Test
     public void with_and_without_memory() {
         final JeddictBrain brain = new JeddictBrain(false);
 
@@ -137,5 +210,26 @@ public class JeddictBrainTest extends TestBase {
         thenThrownBy(() -> brain.withMemory(-1))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("size must be greather than 0 (where 0 means no memory)");
+    }
+
+    @Test
+    /**
+     * NOTE: maybe not the best design, it does not look natural. It is good
+     * enough for now, it may be reviewed in the future
+     *
+     */
+    public void handle_token_streaming_of_a_response() {
+        final JeddictBrain brain = new JeddictBrain(true);
+        final List<PropertyChangeEvent> events = new ArrayList();
+        final PropertyChangeListener listener = new PropertyChangeListener() {
+            @Override
+            public void propertyChange(PropertyChangeEvent event) {
+                events.add(event);
+            }
+        };
+
+        brain.addProgressListener(listener);
+
+        //brain.chat();
     }
 }
