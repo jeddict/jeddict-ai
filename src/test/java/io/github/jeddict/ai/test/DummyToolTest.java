@@ -13,33 +13,30 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+
 package io.github.jeddict.ai.test;
 
-import dev.langchain4j.agent.tool.Tool;
-import io.github.jeddict.ai.agent.AbstractTool;
 import java.io.File;
+import static org.assertj.core.api.BDDAssertions.then;
+import org.junit.jupiter.api.Test;
 
 /**
  *
  */
-public class DummyTool extends AbstractTool {
+public class DummyToolTest {
 
-    protected boolean executed = false;
-
-    public DummyTool() {
-        this(new File(".").getAbsolutePath());
+    @Test
+    public void initialization_with_basedir() {
+        then(new DummyTool().basedir()).isEqualTo(new File(".").getAbsolutePath());
     }
 
-    public DummyTool(String basedir) {
-        super(basedir);
+    @Test
+    public void track_executions() {
+        final DummyTool t = new DummyTool();
+
+        then(t.executed).isFalse(); then(t.executed()).isFalse();
+        then(t.dummyTool()).isEqualTo("true");
+        then(t.executed).isTrue(); then(t.executed()).isTrue();
     }
 
-    public boolean executed() {
-        return executed;
-    }
-
-    @Tool
-    public String dummyTool() {
-        return String.valueOf(executed = true);
-    }
 }
