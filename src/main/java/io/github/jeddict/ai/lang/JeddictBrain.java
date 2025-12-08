@@ -282,6 +282,8 @@ public class JeddictBrain implements PropertyChangeEmitter {
                 fireEvent(EventProperty.CHAT_COMPLETED, chatResponse);
                 response.append(chatResponse.aiMessage().text());
 
+                //
+                // TODO: the token count is in the response
                 CompletableFuture.runAsync(() -> TokenHandler.saveOutputToken(response.toString()));
             }
         } catch (Exception x) {

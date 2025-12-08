@@ -45,7 +45,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>17</maven.compiler.release>
-        <javalang4j.version>1.8.0</javalang4j.version>
+        <javalang4j.version>1.9.1</javalang4j.version>
         <netbeans.version>RELEASE280</netbeans.version>
     </properties>
 
@@ -271,7 +271,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-local-ai</artifactId>
-            <version>1.5.0-beta11</version>
+            <version>${javalang4j.version}-beta17</version>
         </dependency>
         <dependency>
             <groupId>dev.langchain4j</groupId>
@@ -291,7 +291,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-agentic</artifactId>
-            <version>${javalang4j.version}-beta15</version>
+            <version>${javalang4j.version}-beta17</version>
             <type>jar</type>
         </dependency>
         <dependency>

@@ -15,8 +15,9 @@
  */
 package io.github.jeddict.ai.agent;
 
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.TokenStream;
 import java.util.List;
 
@@ -30,7 +31,7 @@ public interface Assistant {
     String chat(String input);
 
     // full conversation style (structured)
-    ChatResponse chat(List<ChatMessage> messages);
+     Response<AiMessage> chat(List<ChatMessage> messages);
 
     // streaming (one-shot)
     TokenStream stream(String input);

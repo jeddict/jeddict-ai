@@ -138,6 +138,7 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.event.HyperlinkEvent;
 import javax.swing.text.Document;
+import org.apache.commons.lang3.StringUtils;
 import org.netbeans.api.java.source.JavaSource;
 import org.netbeans.api.java.source.TreePathHandle;
 import org.netbeans.api.java.source.WorkingCopy;
@@ -1011,7 +1012,7 @@ public class AssistantChatManager extends JavaFix {
                     public void onCompleteResponse(ChatResponse response) {
                         super.onCompleteResponse(response);
 
-                        final StringBuilder textResponse = new StringBuilder(response.aiMessage().text());
+                        final StringBuilder textResponse = new StringBuilder(StringUtils.defaultString(response.aiMessage().text()));
 
                         LOG.finest(() -> "response completed with\ntext\n" + textResponse + "\nand\ntooling\n" + toolingResponse);
 
