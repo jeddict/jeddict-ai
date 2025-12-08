@@ -69,4 +69,8 @@ public abstract class AbstractTool {
         log(() -> message);
         toolListener.firePropertyChange(PROPERTY_MESSAGE, null, message);
     }
+
+    public String basedir() {
+        return basedir;
+    }
 }
