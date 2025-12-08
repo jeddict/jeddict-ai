@@ -22,6 +22,7 @@ import io.github.jeddict.ai.lang.impl.AnthropicStreamingBuilder;
 import io.github.jeddict.ai.lang.impl.GoogleBuilder;
 import io.github.jeddict.ai.lang.impl.GoogleStreamingBuilder;
 import io.github.jeddict.ai.lang.impl.LMStudioBuilder;
+import io.github.jeddict.ai.lang.impl.LMStudioStreamingBuilder;
 import io.github.jeddict.ai.lang.impl.LocalAiBuilder;
 import io.github.jeddict.ai.lang.impl.LocalAiStreamingBuilder;
 import io.github.jeddict.ai.lang.impl.MistralBuilder;
@@ -78,16 +79,19 @@ public class JeddictChatModelBuilder {
 
         return switch (pm.getProvider()) {
             case GOOGLE -> buildModel(new GoogleBuilder(), modelName);
-            case OPEN_AI, DEEPINFRA, DEEPSEEK, GROQ, CUSTOM_OPEN_AI, COPILOT_PROXY, PERPLEXITY -> buildModel(new OpenAiBuilder(), modelName);
+            case OPEN_AI, DEEPINFRA, DEEPSEEK, GROQ, CUSTOM_OPEN_AI, COPILOT_PROXY, PERPLEXITY ->
+                buildModel(new OpenAiBuilder(), modelName);
             case MISTRAL -> buildModel(new MistralBuilder(), modelName);
             case ANTHROPIC -> buildModel(new AnthropicBuilder(), modelName);
             case OLLAMA -> buildModel(new OllamaBuilder(), modelName);
             case LM_STUDIO -> buildModel(new LMStudioBuilder(), modelName);
             case GPT4ALL -> buildModel(new LocalAiBuilder(), modelName);
             default -> {
-                final String msg = String.format("No model %s found for provider %s, this is most likely a bug", modelName, pm.getProvider());
+                final String msg = String.format("No model %s found for provider %s, this is most likely a bug",
+                        modelName, pm.getProvider());
 
-                LOG.severe(msg); throw new IllegalArgumentException(msg);
+                LOG.severe(msg);
+                throw new IllegalArgumentException(msg);
             }
         };
     }
@@ -97,15 +101,19 @@ public class JeddictChatModelBuilder {
 
         return switch (pm.getProvider()) {
             case GOOGLE -> buildModel(new GoogleStreamingBuilder(), modelName);
-            case OPEN_AI, DEEPINFRA, DEEPSEEK, GROQ, CUSTOM_OPEN_AI, COPILOT_PROXY, PERPLEXITY -> buildModel(new OpenAiStreamingBuilder(), modelName);
+            case OPEN_AI, DEEPINFRA, DEEPSEEK, GROQ, CUSTOM_OPEN_AI, COPILOT_PROXY, PERPLEXITY ->
+                buildModel(new OpenAiStreamingBuilder(), modelName);
             case MISTRAL -> buildModel(new MistralStreamingBuilder(), modelName);
             case ANTHROPIC -> buildModel(new AnthropicStreamingBuilder(), modelName);
             case OLLAMA -> buildModel(new OllamaStreamingBuilder(), modelName);
+            case LM_STUDIO -> buildModel(new LMStudioStreamingBuilder(), modelName);
             case GPT4ALL -> buildModel(new LocalAiStreamingBuilder(), modelName);
             default -> {
-                final String msg = String.format("No streaming model %s found for provider %s", modelName, pm.getProvider());
+                final String msg = String.format("No streaming model %s found for provider %s", modelName,
+                        pm.getProvider());
 
-                LOG.severe(msg); throw new IllegalArgumentException(msg);
+                LOG.severe(msg);
+                throw new IllegalArgumentException(msg);
             }
         };
     }
@@ -133,7 +141,7 @@ public class JeddictChatModelBuilder {
         setIfValid(builder::temperature, pm.getTemperature(), Double.MIN_VALUE);
         setIfValid(value -> builder.timeout(Duration.ofSeconds(value)), pm.getTimeout(), Integer.MIN_VALUE);
         if (builder instanceof ChatModelBuilder) {
-            setIfValid(((ChatModelBuilder)builder)::maxRetries, pm.getMaxRetries(), Integer.MIN_VALUE);
+            setIfValid(((ChatModelBuilder) builder)::maxRetries, pm.getMaxRetries(), Integer.MIN_VALUE);
         }
         setIfValid(builder::maxOutputTokens, pm.getMaxOutputTokens(), Integer.MIN_VALUE);
         setIfValid(builder::repeatPenalty, pm.getRepeatPenalty(), Double.MIN_VALUE);

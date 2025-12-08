@@ -15,9 +15,12 @@
  */
 package io.github.jeddict.ai.lang.impl;
 
+import dev.langchain4j.http.client.jdk.JdkHttpClient;
+import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.openai.OpenAiChatModel;
 import io.github.jeddict.ai.lang.ChatModelBuilder;
-import io.github.jeddict.ai.models.LMStudioChatModel;
+import java.net.http.HttpClient;
 import java.time.Duration;
 import java.util.Map;
 
@@ -27,10 +30,21 @@ import java.util.Map;
  */
 public class LMStudioBuilder implements ChatModelBuilder {
 
-    private final LMStudioChatModel.Builder builder;
+    protected final OpenAiChatModel.OpenAiChatModelBuilder builder;
 
     public LMStudioBuilder() {
-        builder = LMStudioChatModel.builder();
+        /**
+         * Note: there is a known issue of LMStudio supporting HTTP 1.1 only,
+         * while langchain4j uses HTTP 2.0 by default. The workaround is to make
+         * sure to customize the HTTP client used by langchain4j to use HTTP 1.1
+         */
+        final JdkHttpClientBuilder jdkHttpClientBuilder = JdkHttpClient.builder()
+            .httpClientBuilder(
+                HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1)
+            );
+
+        builder = OpenAiChatModel.builder().baseUrl("http://localhost:1234/v1/");
+        builder.httpClientBuilder(jdkHttpClientBuilder);
     }
 
     @Override
@@ -72,12 +86,6 @@ public class LMStudioBuilder implements ChatModelBuilder {
     @Override
     public ChatModelBuilder topP(final Double topP) {
         builder.topP(topP);
-        return this;
-    }
-
-    @Override
-    public ChatModelBuilder maxRetries(final Integer maxRetries) {
-        builder.maxRetries(maxRetries);
         return this;
     }
 
@@ -138,7 +146,7 @@ public class LMStudioBuilder implements ChatModelBuilder {
     @Override
     public ChatModelBuilder logRequestsResponses(final boolean logRequests, final boolean logResponses) {
         builder.logRequests(logRequests)
-                .logResponses(logResponses);
+               .logResponses(logResponses);
         return this;
     }
 
@@ -157,5 +165,15 @@ public class LMStudioBuilder implements ChatModelBuilder {
     @Override
     public ChatModel build() {
         return builder.build();
+    }
+
+    @Override
+    @Deprecated(since="3.3", forRemoval = true)
+    /**
+     * langchain4j does not support maxRetries at this level any more
+     */
+    public ChatModelBuilder maxRetries(Integer maxRetries) {
+        // NOOP
+        return this;
     }
 }
