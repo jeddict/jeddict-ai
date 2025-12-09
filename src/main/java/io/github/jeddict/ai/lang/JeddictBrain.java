@@ -268,14 +268,15 @@ public class JeddictBrain implements PropertyChangeEmitter {
             } else {
                 final ChatModel model = chatModel.get();
 
-                ChatResponse chatResponse;
+                dev.langchain4j.model.output.Response<AiMessage> aiResponse;
+                ChatResponse chatResponse = null;
                 if (agentEnabled) {
                     Assistant assistant = AiServices.builder(Assistant.class)
                             .chatModel(model)
                             .tools(tools.toArray())
                             .build();
-                    chatResponse = assistant.chat(messages);
-
+                    aiResponse = assistant.chat(messages);
+                    chatResponse = ChatResponse.builder().aiMessage(aiResponse.content()).build();
                 } else {
                     chatResponse = model.chat(messages);
                 }
