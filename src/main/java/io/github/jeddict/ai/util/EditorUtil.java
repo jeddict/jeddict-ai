@@ -503,7 +503,7 @@ public class EditorUtil {
         while (matcher.find()) {
             String token = matcher.group(1);
             if (!token.matches("[\\w\\.]+")) {
-                matcher.appendReplacement(sb, matcher.group());
+                matcher.appendReplacement(sb, Matcher.quoteReplacement(matcher.group()));
                 continue;
             }
             String lastSegment = token.contains(".") ? token.substring(token.lastIndexOf('.') + 1) : token;
@@ -512,7 +512,7 @@ public class EditorUtil {
                 replacement = Matcher.quoteReplacement(replacement);
                 matcher.appendReplacement(sb, replacement);
             } else {
-                matcher.appendReplacement(sb, matcher.group());
+                matcher.appendReplacement(sb, Matcher.quoteReplacement(matcher.group()));
             }
         }
         matcher.appendTail(sb);
