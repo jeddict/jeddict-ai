@@ -36,10 +36,11 @@ content:
 project info: {{project}}
 """;
 
-    @SystemMessage(SYSTEM_MESSAGE)
     @Agent("Generate content for a new file given the provided context")
+    @SystemMessage(SYSTEM_MESSAGE)
+    @UserMessage(USER_MESSAGE)
     String _newFile_(
-        @UserMessage       final String message,     // default or user provided prompt
+        @V("prompt")       final String prompt,      // default or user provided prompt
         @V("context")      final String context,     // additional context provided by the user
         @V("filename")     final String filename,    // filename of the new file
         @V("content")      final String content,     // content of a template/reference/sample file
@@ -68,7 +69,7 @@ project info: {{project}}
         );
 
         return _newFile_(
-            USER_MESSAGE.replace("{{prompt}}", StringUtils.defaultIfBlank(message, USER_MESSAGE_DEFAULT)),
+            StringUtils.defaultIfBlank(message, USER_MESSAGE_DEFAULT),
             StringUtils.defaultIfBlank(context, ""),
             StringUtils.defaultIfBlank(filename, ""),
             StringUtils.defaultIfBlank(content, ""),
