@@ -74,7 +74,7 @@ public abstract class BaseAIFix extends JavaFix {
      * @see #pm
      */
     protected JeddictBrain newJeddictBrain() {
-        return new JeddictBrain(pm.getModelName(), false, List.of());
+        return new JeddictBrain(pm.getModelName(), false);
     }
 
     protected String globalRules() {

@@ -15,10 +15,10 @@
  */
 package io.github.jeddict.ai.util;
 
-import io.github.jeddict.ai.settings.PreferencesManager;
 import static io.github.jeddict.ai.util.FileUtil.getLatestContent;
 import static io.github.jeddict.ai.util.SourceUtil.removeJavadoc;
 import java.io.InputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -37,9 +37,12 @@ import org.openide.util.Exceptions;
  */
 public class ContextHelper {
 
-    private final static PreferencesManager pm = PreferencesManager.getInstance();
-
-    public static String getProjectContext(Set<FileObject> projectContext, Project project, boolean agentEnabled) {
+    public static String getProjectContext(
+        final Set<FileObject> projectContext,
+        final Project project,
+        final boolean excludeJavadoc,
+        final boolean agentEnabled
+    ) {
         String projectDir = project.getProjectDirectory().getPath();
         Path projectPath = Paths.get(projectDir).toAbsolutePath().normalize();
 
@@ -63,7 +66,7 @@ public class ContextHelper {
                 try {
                     String text = getLatestContent(file);
                     if (text != null) {
-                        if ("java".equals(file.getExt()) && pm.isExcludeJavadocEnabled()) {
+                        if ("java".equals(file.getExt()) && excludeJavadoc) {
                             text = removeJavadoc(text);
                         }
                         inputForAI.append("File: ").append(file.getNameExt()).append("\n");
@@ -79,7 +82,13 @@ public class ContextHelper {
         return inputForAI.toString();
     }
 
-    public static String getTextFilesContext(Set<FileObject> scope, Project project, boolean agentEnabled) {
+    public static String getTextFilesContext(
+        final Set<FileObject> scope,
+        final Project project,
+        final boolean excludeJavadoc,
+        final List<String> includes,
+        final boolean agentEnabled
+    ) {
         if (project == null) {
             return "";
         }
@@ -92,7 +101,7 @@ public class ContextHelper {
         }
         Path projectPath = Paths.get(projectDir).toAbsolutePath().normalize();
 
-        for (FileObject file : getFilesContextList(scope)) {
+        for (FileObject file : getFilesContextList(scope, includes)) {
             if (agentEnabled) {
                 Path filePath = Paths.get(file.getPath()).toAbsolutePath().normalize();
                 Path relativePath;
@@ -104,11 +113,15 @@ public class ContextHelper {
                 inputForAI.append(relativePath)
                         .append("\n");
             } else {
-                if (!file.getMIMEType().startsWith("image")) {
-                    try {
+                try {
+                    final String mimeType = Files.probeContentType(Path.of(file.toURI()));
+
+                    if (!mimeType.startsWith("image")) {
+
+
                         String text = getLatestContent(file);
                         if (text != null) {
-                            if ("java".equals(file.getExt()) && pm.isExcludeJavadocEnabled()) {
+                            if ("java".equals(file.getExt()) && excludeJavadoc) {
                                 text = removeJavadoc(text);
                             }
                             inputForAI.append("File: ")
@@ -117,34 +130,48 @@ public class ContextHelper {
                                     .append(text)
                                     .append("\n\n");
                         }
-                    } catch (Exception ex) {
-                        Exceptions.printStackTrace(ex);
                     }
-                }
-            }
-        }
-    return inputForAI.toString();
-}
-
-    public static List<String> getImageFilesContext(Set<FileObject> scope) {
-        List<String> base64ImageUrls = new ArrayList<>();
-        for (FileObject file : getFilesContextList(scope)) {
-            if (file.getMIMEType().startsWith("image")) {
-                try (InputStream is = file.getInputStream()) {
-                    byte[] imageBytes = is.readAllBytes();
-                    String base64 = Base64.getEncoder().encodeToString(imageBytes);
-                    String mimeType = file.getMIMEType();
-                    String base64Url = "data:" + mimeType + ";base64," + base64;
-                    base64ImageUrls.add(base64Url);
                 } catch (Exception ex) {
                     Exceptions.printStackTrace(ex);
                 }
             }
         }
+        return inputForAI.toString();
+    }
+
+    public static List<String> getImageFilesContext(
+        final Set<FileObject> scope,
+        final List<String> includes
+    ) {
+        List<String> base64ImageUrls = new ArrayList<>();
+        for (FileObject file : getFilesContextList(scope, includes)) {
+            //
+            // for some reasons file.getMIMEType() returns content/unknown even
+            // for simple png files, therefore Java NIO is used instead
+            //
+            try {
+                final String mimeType = Files.probeContentType(Path.of(file.toURI()));
+                if (mimeType.startsWith("image/")) {
+                    try (InputStream is = file.getInputStream()) {
+                        byte[] imageBytes = is.readAllBytes();
+                        String base64 = Base64.getEncoder().encodeToString(imageBytes);
+                        String base64Url = "data:" + mimeType + ";base64," + base64;
+                        base64ImageUrls.add(base64Url);
+                    } catch (Exception ex) {
+                        Exceptions.printStackTrace(ex);
+                    }
+                }
+            } catch (Exception ex) {
+                Exceptions.printStackTrace(ex);
+            }
+        }
         return base64ImageUrls;
     }
 
-    public static List<FileObject> getFilesContextList(Set<FileObject> scope) {
+    public static List<FileObject> getFilesContextList(
+        final Set<FileObject> scope,
+        final List<String> includes
+    ) {
         List<FileObject> sourceFiles = new ArrayList<>();
         boolean includeNestedFiles = scope.stream()
                 .anyMatch(fo -> fo.getPath().contains("src/main/webapp")
@@ -154,8 +181,8 @@ public class ContextHelper {
         if (includeNestedFiles) {
             for (FileObject selectedFile : scope) {
                 if (selectedFile.isFolder()) {
-                    collectNestedFiles(selectedFile, sourceFiles);
-                } else if (selectedFile.isData() && pm.getFileExtensionListToInclude().contains(selectedFile.getExt())) {
+                    collectNestedFiles(selectedFile, sourceFiles, includes);
+                } else if (selectedFile.isData() && includes.contains(selectedFile.getExt())) {
                     sourceFiles.add(selectedFile);
                 }
             }
@@ -165,29 +192,33 @@ public class ContextHelper {
                     .filter(FileObject::isFolder)
                     .flatMap(packageFolder -> Arrays.stream(packageFolder.getChildren())
                     .filter(FileObject::isData)
-                    .filter(file -> pm.getFileExtensionListToInclude().contains(file.getExt())))
+                    .filter(file -> includes.contains(file.getExt())))
                     .collect(Collectors.toSet()));
 
             sourceFiles.addAll(scope.stream()
                     .filter(FileObject::isData)
-                    .filter(file -> pm.getFileExtensionListToInclude().contains(file.getExt()))
+                    .filter(file -> includes.contains(file.getExt()))
                     .collect(Collectors.toSet()));
         }
 
         return sourceFiles;
     }
 
-    private static void collectNestedFiles(FileObject folder, List<FileObject> sourceFiles) {
+    private static void collectNestedFiles(
+        final FileObject folder,
+        final List<FileObject> sourceFiles,
+        final List<String> includes
+    ) {
         // Collect immediate data files
         Arrays.stream(folder.getChildren())
                 .filter(FileObject::isData)
-                .filter(file -> pm.getFileExtensionListToInclude().contains(file.getExt()))
+                .filter(file -> includes.contains(file.getExt()))
                 .forEach(sourceFiles::add);
 
         // Recursively collect from subfolders
         Arrays.stream(folder.getChildren())
                 .filter(FileObject::isFolder)
-                .forEach(subFolder -> collectNestedFiles(subFolder, sourceFiles));
+                .forEach(subFolder -> collectNestedFiles(subFolder, sourceFiles, includes));
     }
 
 }
