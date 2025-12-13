@@ -60,7 +60,7 @@ import io.github.jeddict.ai.response.Response;
 import io.github.jeddict.ai.review.Review;
 import static io.github.jeddict.ai.review.ReviewUtil.convertReviewsToHtml;
 import static io.github.jeddict.ai.review.ReviewUtil.parseReviewsFromYaml;
-import static io.github.jeddict.ai.settings.GenAIProvider.getModelsByProvider;
+import static io.github.jeddict.ai.models.registry.GenAIProvider.getModelsByProvider;
 import io.github.jeddict.ai.settings.PreferencesManager;
 import io.github.jeddict.ai.util.ColorUtil;
 import static io.github.jeddict.ai.util.ContextHelper.getFilesContextList;
