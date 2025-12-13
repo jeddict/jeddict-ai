@@ -43,7 +43,6 @@ import static io.github.jeddict.ai.classpath.JeddictQueryCompletionQuery.JEDDICT
 import io.github.jeddict.ai.completion.Action;
 import io.github.jeddict.ai.completion.SQLCompletion;
 import io.github.jeddict.ai.components.AssistantChat;
-import static io.github.jeddict.ai.components.AssistantChat.createEditorKit;
 import io.github.jeddict.ai.components.ContextDialog;
 import io.github.jeddict.ai.components.CustomScrollBarUI;
 import io.github.jeddict.ai.components.FileTab;
@@ -68,6 +67,7 @@ import static io.github.jeddict.ai.util.ContextHelper.getImageFilesContext;
 import static io.github.jeddict.ai.util.ContextHelper.getProjectContext;
 import static io.github.jeddict.ai.util.ContextHelper.getTextFilesContext;
 import io.github.jeddict.ai.util.EditorUtil;
+import static io.github.jeddict.ai.util.EditorUtil.createEditorKit;
 import static io.github.jeddict.ai.util.EditorUtil.getBackgroundColorFromMimeType;
 import static io.github.jeddict.ai.util.EditorUtil.getHTMLContent;
 import static io.github.jeddict.ai.util.Icons.ICON_ATTACH;

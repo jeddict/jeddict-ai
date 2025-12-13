@@ -29,6 +29,9 @@ import io.github.jeddict.ai.settings.PreferencesManager;
 import io.github.jeddict.ai.util.ColorUtil;
 import static io.github.jeddict.ai.util.DiffUtil.diffAction;
 import static io.github.jeddict.ai.util.DiffUtil.diffActionWithSelected;
+import io.github.jeddict.ai.util.EditorUtil;
+import static io.github.jeddict.ai.util.EditorUtil.createEditorKit;
+import static io.github.jeddict.ai.util.EditorUtil.createInMemoryEditorCopy;
 import static io.github.jeddict.ai.util.EditorUtil.getBackgroundColorFromMimeType;
 import static io.github.jeddict.ai.util.EditorUtil.getExtension;
 import static io.github.jeddict.ai.util.EditorUtil.getFontFromMimeType;
@@ -90,8 +93,6 @@ import javax.swing.text.EditorKit;
 import javax.swing.text.JTextComponent;
 import javax.swing.text.StyledDocument;
 import org.netbeans.api.editor.EditorRegistry;
-import org.netbeans.api.editor.mimelookup.MimeLookup;
-import org.netbeans.api.editor.mimelookup.MimePath;
 import org.netbeans.api.project.Project;
 import org.netbeans.modules.editor.NbEditorUtilities;
 import org.openide.filesystems.FileObject;
@@ -330,11 +331,23 @@ public class AssistantChat extends TopComponent {
         return editorPane;
     }
 
+
     public JEditorPane createCodePane(String mimeType, Block content) {
-        JEditorPane editorPane = new JEditorPane();
-        EditorKit editorKit = createEditorKit(mimeType == null ? ("text/x-" + type) : mimeType);
-        editorPane.setEditorKit(editorKit);
-        editorPane.setText(content.getContent());
+        if (mimeType == null || mimeType.isBlank()) {
+            mimeType = MIME_PLAIN_TEXT;
+        }
+
+        EditorKit editorKit = EditorUtil.createEditorKit(mimeType == null ? ("text/x-" + type) : mimeType);
+
+        JEditorPane editorPane;
+        if (editorKit != null) {
+            editorPane = new JEditorPane();
+            editorPane.setEditorKit(editorKit);
+        } else {
+            editorPane = createInMemoryEditorCopy(mimeType);
+        }
+        
+            editorPane.setText(content.getContent());
         editorPane.getDocument().addDocumentListener(new DocumentListener() {
             @Override
             public void insertUpdate(DocumentEvent e) {
@@ -351,7 +364,7 @@ public class AssistantChat extends TopComponent {
                 content.setContent(editorPane.getText());
             }
         });
-        editorPane.setCaretPosition(0); // moving the highlighted line to the first line
+        editorPane.setCaretPosition(0);
         addContextMenu(editorPane);
         addEditorPaneRespectingTextArea(editorPane);
         return editorPane;
@@ -512,10 +525,6 @@ public class AssistantChat extends TopComponent {
         } else {
             return null; // No package name found
         }
-    }
-
-    public static EditorKit createEditorKit(String mimeType) {
-        return MimeLookup.getLookup(MimePath.parse(mimeType)).lookup(EditorKit.class);
     }
 
     @Override
@@ -788,7 +797,6 @@ public class AssistantChat extends TopComponent {
                 }
             }
         }
-
 
         for (Map.Entry<JEditorPane, List<JMenuItem>> entry : menuItems.entrySet()) {
             JPopupMenu mainMenu = menus.get(entry.getKey());

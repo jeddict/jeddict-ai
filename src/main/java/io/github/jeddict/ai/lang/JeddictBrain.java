@@ -53,7 +53,9 @@ import org.netbeans.api.project.Project;
 
 public class JeddictBrain implements PropertyChangeEmitter {
 
-    private final Logger LOG = Logger.getLogger(JeddictBrain.class.getCanonicalName());
+    private static final Logger LOG = Logger.getLogger(JeddictBrain.class.getCanonicalName());
+
+    private static final String SYSTEM_INSTRUCTIONS = "All code must be in fenced ```language blocks; never output unfenced code.";
 
     private int memorySize = 0;
 
@@ -179,20 +181,24 @@ public class JeddictBrain implements PropertyChangeEmitter {
         if (project != null) {
             prompt = prompt + "\n" + ProjectMetadataInfo.get(project);
         }
-        String systemMessage = null;
+        StringBuilder systemMessage = new StringBuilder();
         String globalRules = PreferencesManager.getInstance().getGlobalRules();
         if (globalRules != null) {
-            systemMessage = globalRules;
+            systemMessage.append(globalRules);
         }
         if (project != null) {
             String projectRules = PreferencesManager.getInstance().getProjectRules(project);
             if (projectRules != null) {
-                systemMessage = systemMessage + '\n' + projectRules;
+                systemMessage.append('\n').append(projectRules);
             }
         }
+        if (systemMessage.length() > 0) {
+            systemMessage.append('\n');
+        }
+        systemMessage.append(SYSTEM_INSTRUCTIONS);
         List<ChatMessage> messages = new ArrayList<>();
-        if (systemMessage != null && !systemMessage.trim().isEmpty()) {
-            messages.add(SystemMessage.from(systemMessage));
+        if (systemMessage.length() > 0) {
+            messages.add(SystemMessage.from(systemMessage.toString()));
         }
 
         //
@@ -265,8 +271,8 @@ public class JeddictBrain implements PropertyChangeEmitter {
             } else {
                 final ChatModel model = chatModel.get();
 
-                dev.langchain4j.model.output.Response<AiMessage> aiResponse = null;
-                ChatResponse chatResponse = null;
+                dev.langchain4j.model.output.Response<AiMessage> aiResponse;
+                ChatResponse chatResponse;
                 if (agentEnabled) {
                     Assistant assistant = AiServices.builder(Assistant.class)
                             .chatModel(model)
@@ -346,6 +352,8 @@ public class JeddictBrain implements PropertyChangeEmitter {
         }
         prompt.append("User Query:\n")
                 .append(userQuery);
+        prompt.append("\nUser Query:");
+        
 
         String response = generate(project, agentEnabled, prompt.toString(), images, previousChatResponse);
 

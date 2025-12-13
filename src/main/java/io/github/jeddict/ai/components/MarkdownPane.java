@@ -15,8 +15,8 @@
  */
 package io.github.jeddict.ai.components;
 
-import static io.github.jeddict.ai.components.AssistantChat.createEditorKit;
 import io.github.jeddict.ai.response.Block;
+import static io.github.jeddict.ai.util.EditorUtil.createEditorKit;
 import static io.github.jeddict.ai.util.EditorUtil.getBackgroundColorFromMimeType;
 import static io.github.jeddict.ai.util.EditorUtil.getHTMLContent;
 import static io.github.jeddict.ai.util.EditorUtil.getTextColorFromMimeType;
