@@ -15,11 +15,11 @@
  */
 package io.github.jeddict.ai.components.mermaid;
 
-import static io.github.jeddict.ai.components.AssistantChat.createEditorKit;
 import static io.github.jeddict.ai.components.mermaid.MermaidClassDiagramViewer.createMermaidClassDiagramView;
 import static io.github.jeddict.ai.components.mermaid.MermaidERDViewer.createMermaidERDView;
 import io.github.jeddict.ai.response.Block;
 import static io.github.jeddict.ai.util.ColorUtil.isDarkColor;
+import static io.github.jeddict.ai.util.EditorUtil.createEditorKit;
 import static io.github.jeddict.ai.util.EditorUtil.getBackgroundColorFromMimeType;
 import static io.github.jeddict.ai.util.EditorUtil.getTextColorFromMimeType;
 import static io.github.jeddict.ai.util.MimeUtil.JAVA_MIME;
