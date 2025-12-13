@@ -19,8 +19,10 @@ package io.github.jeddict.ai.settings;
  *
  * @author Gaurav Gupta, Shiwani Gupta
  */
+import io.github.jeddict.ai.models.registry.GenAIModel;
+import io.github.jeddict.ai.models.registry.GenAIProvider;
 import io.github.jeddict.ai.response.TokenGranularity;
-import static io.github.jeddict.ai.settings.GenAIModel.DEFAULT_MODEL;
+import static io.github.jeddict.ai.models.registry.GenAIModel.DEFAULT_MODEL;
 import io.github.jeddict.ai.util.FileUtil;
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -217,7 +219,7 @@ public class PreferencesManager {
         return getApiKey(false);
     }
 
-    String getApiKey(GenAIProvider provider) {
+    public String getApiKey(GenAIProvider provider) {
         return preferences.get(provider.name() + API_KEY_PREFERENCES, null);
     }
 

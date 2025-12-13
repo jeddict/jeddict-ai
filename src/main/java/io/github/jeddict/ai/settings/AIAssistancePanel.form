@@ -135,7 +135,7 @@
                       </Events>
                       <AuxValues>
                         <AuxValue name="JavaCodeGenerator_SerializeTo" type="java.lang.String" value="AIAssistancePanel_providerComboBox"/>
-                        <AuxValue name="JavaCodeGenerator_TypeParameters" type="java.lang.String" value="&lt;io.github.jeddict.ai.settings.GenAIProvider&gt;"/>
+                        <AuxValue name="JavaCodeGenerator_TypeParameters" type="java.lang.String" value="&lt;io.github.jeddict.ai.models.registry.GenAIProvider&gt;"/>
                       </AuxValues>
                     </Component>
                   </SubComponents>
