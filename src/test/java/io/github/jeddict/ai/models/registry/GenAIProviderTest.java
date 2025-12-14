@@ -15,7 +15,7 @@
  */
 package io.github.jeddict.ai.models.registry;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -25,23 +25,23 @@ import org.junit.jupiter.api.Test;
 class GenAIProviderTest {
 
     @Test
-    void fromModelId_resolvesProvidersCorrectly() {
-        assertEquals(GenAIProvider.OPEN_AI,
-                GenAIProvider.fromModelId("openai/gpt-5"));
+    void from_model_id_resolves_providers_correctly() {
+        then(GenAIProvider.fromModelId("openai/gpt-5"))
+                .isEqualTo(GenAIProvider.OPEN_AI);
 
-        assertEquals(GenAIProvider.GOOGLE,
-                GenAIProvider.fromModelId("google/gemini-2.5-pro"));
+        then(GenAIProvider.fromModelId("google/gemini-2.5-pro"))
+                .isEqualTo(GenAIProvider.GOOGLE);
 
-        assertEquals(GenAIProvider.ANTHROPIC,
-                GenAIProvider.fromModelId("claude-3-opus"));
+        then(GenAIProvider.fromModelId("claude-3-opus"))
+                .isEqualTo(GenAIProvider.ANTHROPIC);
 
-        assertEquals(GenAIProvider.MISTRAL,
-                GenAIProvider.fromModelId("mistralai/mistral-large"));
+        then(GenAIProvider.fromModelId("mistralai/mistral-large"))
+                .isEqualTo(GenAIProvider.MISTRAL);
 
-        assertEquals(GenAIProvider.DEEPINFRA,
-                GenAIProvider.fromModelId("meta-llama/Llama-3-70B"));
+        then(GenAIProvider.fromModelId("meta-llama/Llama-3-70B"))
+                .isEqualTo(GenAIProvider.DEEPINFRA);
 
-        assertEquals(GenAIProvider.OTHER,
-                GenAIProvider.fromModelId(null));
+        then(GenAIProvider.fromModelId(null))
+                .isEqualTo(GenAIProvider.OTHER);
     }
 }

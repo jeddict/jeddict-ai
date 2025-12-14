@@ -15,11 +15,11 @@
  */
 package io.github.jeddict.ai.models.registry;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.BDDAssertions.then;
+
 import java.lang.reflect.Field;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
-
 
 /**
  *
@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test;
 class GenAIModelTest {
 
     @Test
-    void getModels_returnsCachedModelsWhenCacheIsValid() throws Exception {
+    void get_models_returns_cached_models_when_cache_is_valid() throws Exception {
         Map<String, GenAIModel> fakeCache = Map.of(
                 "gpt-5-nano",
                 new GenAIModel(
@@ -50,12 +50,12 @@ class GenAIModelTest {
 
         Map<String, GenAIModel> result = GenAIModelRegistry.getModels();
 
-        assertEquals(1, result.size());
-        assertTrue(result.containsKey("gpt-5-nano"));
+        then(result).hasSize(1);
+        then(result).containsKey("gpt-5-nano");
     }
-    
-        @Test
-    void toString_returnsModelNameOnly() {
+
+    @Test
+    void to_string_returns_model_name_only() {
         GenAIModel model = new GenAIModel(
                 GenAIProvider.OPEN_AI,
                 "openai/gpt-5",
@@ -64,11 +64,11 @@ class GenAIModelTest {
                 0
         );
 
-        assertEquals("gpt-5", model.toString());
+        then(model.toString()).isEqualTo("gpt-5");
     }
-    
-        @Test
-    void constructor_normalizesModelName() {
+
+    @Test
+    void constructor_normalizes_model_name() {
         GenAIModel model = new GenAIModel(
                 GenAIProvider.OPEN_AI,
                 "openai/gpt-5-nano",
@@ -77,6 +77,6 @@ class GenAIModelTest {
                 2.0
         );
 
-        assertEquals("gpt-5-nano", model.getName());
+        then(model.getName()).isEqualTo("gpt-5-nano");
     }
 }

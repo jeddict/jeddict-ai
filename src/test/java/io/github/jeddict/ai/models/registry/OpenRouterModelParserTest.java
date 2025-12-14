@@ -15,8 +15,10 @@
  */
 package io.github.jeddict.ai.models.registry;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.BDDAssertions.then;
+
 import java.util.Map;
+import static org.assertj.core.api.BDDAssertions.within;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -26,16 +28,16 @@ import org.junit.jupiter.api.Test;
 class OpenRouterModelParserTest {
 
     @Test
-    void parse_validJson_createsModelsWithCorrectPricingAndProvider() {
+    void parse_valid_json_creates_models_with_correct_pricing_and_provider() {
         String json = """
         {
           "data": [
             {
               "id": "openai/gpt-5-nano",
               "description": "Fast model",
-              "pricing": {       
-                      "prompt": 0.00005,
-                      "completion": 0.0004
+              "pricing": {
+                "prompt": 0.00005,
+                "completion": 0.0004
               }
             }
           ]
@@ -44,20 +46,19 @@ class OpenRouterModelParserTest {
 
         Map<String, GenAIModel> models = OpenRouterModelParser.parse(json);
 
-        assertEquals(1, models.size());
+        then(models).hasSize(1);
 
         GenAIModel model = models.get("openai/gpt-5-nano");
-        assertNotNull(model);
+        then(model).isNotNull();
 
-        assertEquals("gpt-5-nano", model.getName());
-        assertEquals(GenAIProvider.OPEN_AI, model.getProvider());
-        assertEquals(50.0, model.getInputPrice(), 0.0001);
-        assertEquals(400.0, model.getOutputPrice(), 0.0001);
-
+        then(model.getName()).isEqualTo("gpt-5-nano");
+        then(model.getProvider()).isEqualTo(GenAIProvider.OPEN_AI);
+        then(model.getInputPrice()).isCloseTo(50.0, within(0.0001));
+        then(model.getOutputPrice()).isCloseTo(400.0, within(0.0001));
     }
 
     @Test
-    void parse_modelWithoutPricing_defaultsPricesToZero() {
+    void parse_model_without_pricing_defaults_prices_to_zero() {
         String json = """
         {
           "data": [
@@ -72,8 +73,8 @@ class OpenRouterModelParserTest {
         Map<String, GenAIModel> models = OpenRouterModelParser.parse(json);
         GenAIModel model = models.get("openai/gpt-5-mini");
 
-        assertNotNull(model);
-        assertEquals(0.0, model.getInputPrice());
-        assertEquals(0.0, model.getOutputPrice());
+        then(model).isNotNull();
+        then(model.getInputPrice()).isZero();
+        then(model.getOutputPrice()).isZero();
     }
 }
