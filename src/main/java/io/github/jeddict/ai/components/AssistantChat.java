@@ -216,6 +216,7 @@ public class AssistantChat extends TopComponent {
         queryPane.setEditorKit(createEditorKit("text/x-" + (type == null ? "java" : type)));
         queryPane.setText(content);
         queryPane.setEditable(false);
+        queryPane.putClientProperty("AI_QUERY_EDITOR", Boolean.TRUE);
         Document doc = queryPane.getDocument();
         doc.putProperty(JEDDICT_EDITOR_CALLBACK, (Consumer<FileObject>) callback);
 
