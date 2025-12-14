@@ -709,6 +709,8 @@ public class AssistantChatManager extends JavaFix {
 
         questionPane = new JEditorPane();
         questionPane.setEditorKit(createEditorKit("text/x-" + (type == null ? "java" : type)));
+        questionPane.putClientProperty("AI_QUERY_EDITOR", Boolean.TRUE);
+
         Document doc = questionPane.getDocument();
         doc.putProperty(JEDDICT_EDITOR_CALLBACK, (Consumer<FileObject>) this::addFileTab);
 
