@@ -15,16 +15,20 @@
  */
 package io.github.jeddict.ai.scanner;
 
+import com.sun.source.tree.ArrayTypeTree;
 import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.CompilationUnitTree;
+import com.sun.source.tree.ExpressionTree;
+import com.sun.source.tree.IdentifierTree;
+import com.sun.source.tree.MemberSelectTree;
 import com.sun.source.tree.MethodTree;
-import com.sun.source.tree.ModifiersTree;
+import com.sun.source.tree.ParameterizedTypeTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.tree.VariableTree;
+import com.sun.source.tree.WildcardTree;
 import io.github.jeddict.ai.lang.JeddictBrain;
 import io.github.jeddict.ai.settings.AIClassContext;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -112,19 +116,17 @@ public class ProjectClassScanner {
                 for (Tree typeDecl : typeDecls) {
                     if (typeDecl.getKind() == Tree.Kind.CLASS) {
                         ClassTree classTree = (ClassTree) typeDecl;
-//                            String classSource = cc.getText().substring(classTree.getStartPosition(), classTree.getEndPosition() + 1);
-// Store or use the classWithoutMethods as needed
+                        // Store or use the classWithoutMethods as needed
                         TypeElement classElement = (TypeElement) cc.getTrees()
                                 .getElement(cc.getTrees().getPath(cc.getCompilationUnit(), classTree));
 
-// Get the package name
+                        // Get the package name
                         Element packageElement = classElement.getEnclosingElement();
                         String packageName = ((PackageElement) packageElement).getQualifiedName().toString();
 
                         String classWithoutMethodsBody = removeMethodBodies(cc, classTree, packageName);
                         ClassData classData1 = new ClassData(packageName, classElement.getSimpleName().toString(), classWithoutMethodsBody);
                         classList.put(javaFile, classData1);
-                        List<Map<String, String>> attributes = new ArrayList<>();
                         for (Element element : classElement.getEnclosedElements()) {
                             if (element.getKind() == ElementKind.FIELD) {
                                 classData1.addSubTree(element.asType().toString());
@@ -143,77 +145,137 @@ public class ProjectClassScanner {
         }
     }
 
-    private static String removeMethodBodies(CompilationController cc, ClassTree classTree, String packageName) {
+    private static String removeMethodBodies(CompilationController cc,
+            ClassTree classTree,
+            String packageName) {
+
+        String source = cc.getText();
         StringBuilder sb = new StringBuilder();
 
-        // Add package declaration
-        if (!packageName.isEmpty()) {
+        // ---------- helpers ----------
+        final java.util.function.BiPredicate<Long, Long> validPos
+                = (start, end) -> start >= 0 && end >= 0 && end >= start;
+
+        // ---------- package ----------
+        if (packageName != null && !packageName.isEmpty()) {
             sb.append("package ").append(packageName).append(";\n\n");
         }
 
-        // Add annotations
+        // ---------- annotations ----------
         for (Tree annotation : classTree.getModifiers().getAnnotations()) {
-            int start = (int) cc.getTrees().getSourcePositions().getStartPosition(cc.getCompilationUnit(), annotation);
-            int end = (int) cc.getTrees().getSourcePositions().getEndPosition(cc.getCompilationUnit(), annotation);
-            sb.append(cc.getText().substring(start, end + 1)).append("\n");
+            long start = cc.getTrees().getSourcePositions()
+                    .getStartPosition(cc.getCompilationUnit(), annotation);
+            long end = cc.getTrees().getSourcePositions()
+                    .getEndPosition(cc.getCompilationUnit(), annotation);
+
+            if (validPos.test(start, end)) {
+                sb.append(source.substring((int) start, (int) end + 1)).append("\n");
+            }
         }
 
-        // Add class declaration
+        // ---------- class declaration ----------
         sb.append("public class ").append(classTree.getSimpleName());
-        // Add extends clause if there is a superclass
+
+        // extends
         Tree superclass = classTree.getExtendsClause();
         if (superclass != null) {
-            int start = (int) cc.getTrees().getSourcePositions().getStartPosition(cc.getCompilationUnit(), superclass);
-            int end = (int) cc.getTrees().getSourcePositions().getEndPosition(cc.getCompilationUnit(), superclass);
-            sb.append(" extends ").append(cc.getText().substring(start, end + 1));
+            long start = cc.getTrees().getSourcePositions()
+                    .getStartPosition(cc.getCompilationUnit(), superclass);
+            long end = cc.getTrees().getSourcePositions()
+                    .getEndPosition(cc.getCompilationUnit(), superclass);
+
+            if (validPos.test(start, end)) {
+                sb.append(" extends ")
+                        .append(source.substring((int) start, (int) end + 1));
+            }
         }
 
-        // Add implements clause if there are interfaces
+        // implements
         List<? extends Tree> interfaces = classTree.getImplementsClause();
         if (!interfaces.isEmpty()) {
             sb.append(" implements ");
-            for (int i = 0; i < interfaces.size(); i++) {
-                Tree iface = interfaces.get(i);
-                int start = (int) cc.getTrees().getSourcePositions().getStartPosition(cc.getCompilationUnit(), iface);
-                int end = (int) cc.getTrees().getSourcePositions().getEndPosition(cc.getCompilationUnit(), iface);
-                sb.append(cc.getText().substring(start, end + 1));
-                if (i < interfaces.size() - 1) {
-                    sb.append(", ");
+            boolean first = true;
+            for (Tree iface : interfaces) {
+                long start = cc.getTrees().getSourcePositions()
+                        .getStartPosition(cc.getCompilationUnit(), iface);
+                long end = cc.getTrees().getSourcePositions()
+                        .getEndPosition(cc.getCompilationUnit(), iface);
+
+                if (validPos.test(start, end)) {
+                    if (!first) {
+                        sb.append(", ");
+                    }
+                    sb.append(source.substring((int) start, (int) end + 1));
+                    first = false;
                 }
             }
         }
 
-        sb.append(" {\n"); // Opening brace for the class
+        sb.append(" {\n");
 
-        // Add member variables and methods
+        // ---------- members ----------
         for (Tree member : classTree.getMembers()) {
-            if (member instanceof MethodTree) {
-                MethodTree method = (MethodTree) member;
-                if (method.getName().toString().equals("<init>")) {
+
+            // ----- methods -----
+            if (member instanceof MethodTree method) {
+
+                // skip private methods/constructors
+                if (method.getModifiers().getFlags().contains(Modifier.PRIVATE)) {
                     continue;
                 }
-                ModifiersTree modifiersTree = ((ModifiersTree) method.getModifiers());
-                if (!modifiersTree.getFlags().contains(Modifier.PRIVATE)) {
-                    // Use the method itself to get the start position
-                    int start = (int) cc.getTrees().getSourcePositions().getStartPosition(cc.getCompilationUnit(), method);
-                    int end = method.getBody() != null
-                            ? (int) cc.getTrees().getSourcePositions().getStartPosition(cc.getCompilationUnit(), method.getBody())
-                            : (int) cc.getTrees().getSourcePositions().getEndPosition(cc.getCompilationUnit(), method);
 
-                    // Append method declaration without the body
-                    sb.append(cc.getText().substring(start, end)).append(";\n"); // Placeholder for method body
-                }
-            } else if (member instanceof VariableTree) {
-                VariableTree var = (VariableTree) member;
-                ModifiersTree modifiersTree = ((ModifiersTree) var.getModifiers());
-                if (!modifiersTree.getFlags().contains(Modifier.PRIVATE)) {
-                    sb.append(var.toString()).append("\n");
+                boolean isConstructor = method.getName().contentEquals("<init>");
+
+                long start = cc.getTrees().getSourcePositions()
+                        .getStartPosition(cc.getCompilationUnit(), method);
+
+                long end;
+                if (method.getBody() != null) {
+                    end = cc.getTrees().getSourcePositions()
+                            .getStartPosition(cc.getCompilationUnit(), method.getBody());
+                } else {
+                    end = cc.getTrees().getSourcePositions()
+                            .getEndPosition(cc.getCompilationUnit(), method);
                 }
 
+                if (validPos.test(start, end)) {
+                    sb.append(source.substring((int) start, (int) end))
+                            .append(";\n");
+                } else {
+                    // ---------- AST fallback ----------
+                    sb.append(method.getModifiers()).append(" ");
+
+                    if (!isConstructor && method.getReturnType() != null) {
+                        sb.append(method.getReturnType()).append(" ");
+                    }
+
+                    // constructor name = class name
+                    sb.append(isConstructor
+                            ? classTree.getSimpleName()
+                            : method.getName());
+
+                    sb.append(method.getParameters());
+
+                    if (!method.getThrows().isEmpty()) {
+                        sb.append(" throws ");
+                        for (int i = 0; i < method.getThrows().size(); i++) {
+                            if (i > 0) {
+                                sb.append(", ");
+                            }
+                            sb.append(method.getThrows().get(i));
+                        }
+                    }
+
+                    sb.append(";\n");
+                }
+            } // ----- fields -----
+            else if (member instanceof VariableTree var) {
+                if (!var.getModifiers().getFlags().contains(Modifier.PRIVATE)) {
+                    sb.append(var).append("\n");
+                }
             }
         }
 
-        // Closing brace for the class
         sb.append("}\n");
 
         return sb.toString()
@@ -249,7 +311,7 @@ public class ProjectClassScanner {
     }
 
     public static List<ClassData> getClassData(
-        final FileObject fileObject, final Set<String> findReferencedClasses, final AIClassContext classAnalysisContext
+            final FileObject fileObject, final Set<String> findReferencedClasses, final AIClassContext classAnalysisContext
     ) {
         final Logger LOG = Logger.getLogger(ProjectClassScanner.class.getCanonicalName());
 
@@ -320,27 +382,85 @@ public class ProjectClassScanner {
         Set<String> referencedClasses = new HashSet<>();
 
         for (Tree tree : compilationUnit.getTypeDecls()) {
-            if (tree instanceof ClassTree) {
-                ClassTree classTree = (ClassTree) tree;
-                Tree superclass = classTree.getExtendsClause();
-                if (superclass != null) {
-                    referencedClasses.add(superclass.toString());
-                }
-                for (Tree member : classTree.getMembers()) {
-                    if (member instanceof VariableTree) {
-                        VariableTree variable = (VariableTree) member;
-                        referencedClasses.add(variable.getType().toString());
-                    } else if (member instanceof MethodTree) {
-                        MethodTree method = (MethodTree) member;
-                        if (method.getReturnType() != null) {
-                            referencedClasses.add(method.getReturnType().toString());
-                        }
+            if (!(tree instanceof ClassTree classTree)) {
+                continue;
+            }
+
+            // extends clause
+            collectTypes(classTree.getExtendsClause(), referencedClasses);
+
+            // implements clause
+            for (Tree impl : classTree.getImplementsClause()) {
+                collectTypes(impl, referencedClasses);
+            }
+
+            for (Tree member : classTree.getMembers()) {
+
+                // fields
+                if (member instanceof VariableTree variable) {
+                    collectTypes(variable.getType(), referencedClasses);
+                } // methods
+                else if (member instanceof MethodTree method) {
+
+                    // return type
+                    collectTypes(method.getReturnType(), referencedClasses);
+
+                    // parameters
+                    for (VariableTree param : method.getParameters()) {
+                        collectTypes(param.getType(), referencedClasses);
+                    }
+
+                    // thrown exceptions
+                    for (ExpressionTree thr : method.getThrows()) {
+                        collectTypes(thr, referencedClasses);
                     }
                 }
             }
         }
 
         return referencedClasses;
+    }
+
+    private static void collectTypes(Tree type, Set<String> referencedClasses) {
+        if (type == null) {
+            return;
+        }
+
+        // Handle wildcards safely
+        if (type instanceof WildcardTree wt) {
+            collectTypes(wt.getBound(), referencedClasses);
+            return;
+        }
+
+        switch (type.getKind()) {
+
+            case PARAMETERIZED_TYPE -> {
+                ParameterizedTypeTree ptt = (ParameterizedTypeTree) type;
+                collectTypes(ptt.getType(), referencedClasses);
+                for (Tree arg : ptt.getTypeArguments()) {
+                    collectTypes(arg, referencedClasses);
+                }
+            }
+
+            case IDENTIFIER -> {
+                IdentifierTree it = (IdentifierTree) type;
+                referencedClasses.add(it.getName().toString());
+            }
+
+            case MEMBER_SELECT -> {
+                MemberSelectTree mst = (MemberSelectTree) type;
+                referencedClasses.add(mst.getIdentifier().toString());
+            }
+
+            case ARRAY_TYPE -> {
+                ArrayTypeTree att = (ArrayTypeTree) type;
+                collectTypes(att.getType(), referencedClasses);
+            }
+
+            default -> {
+                // primitives, void, literals → ignore
+            }
+        }
     }
 
     public static String getClassDataContent(FileObject fileObject, CompilationUnitTree compilationUnit, AIClassContext activeClassContext) {
