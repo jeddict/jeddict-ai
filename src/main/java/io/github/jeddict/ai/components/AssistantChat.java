@@ -26,9 +26,9 @@ import static io.github.jeddict.ai.classpath.JeddictQueryCompletionQuery.JEDDICT
 import static io.github.jeddict.ai.components.QueryPane.createIconButton;
 import static io.github.jeddict.ai.components.QueryPane.createStyledComboBox;
 import io.github.jeddict.ai.components.mermaid.MermaidPane;
+import static io.github.jeddict.ai.models.registry.GenAIProvider.getModelsByProvider;
 import io.github.jeddict.ai.response.Block;
 import io.github.jeddict.ai.review.Review;
-import static io.github.jeddict.ai.settings.GenAIProvider.getModelsByProvider;
 import io.github.jeddict.ai.settings.PreferencesManager;
 import io.github.jeddict.ai.util.ColorUtil;
 import static io.github.jeddict.ai.util.DiffUtil.diffAction;

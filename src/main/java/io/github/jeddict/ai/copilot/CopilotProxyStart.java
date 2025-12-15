@@ -15,7 +15,7 @@
  */
 package io.github.jeddict.ai.copilot;
 
-import io.github.jeddict.ai.settings.GenAIProvider;
+import io.github.jeddict.ai.models.registry.GenAIProvider;
 import io.github.jeddict.ai.settings.PreferencesManager;
 import org.openide.util.Lookup;
 import org.openide.windows.OnShowing;
