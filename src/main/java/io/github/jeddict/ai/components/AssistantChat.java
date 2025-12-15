@@ -21,10 +21,14 @@ import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.expr.ObjectCreationExpr;
+import io.github.jeddict.ai.agent.AssistantAction;
 import static io.github.jeddict.ai.classpath.JeddictQueryCompletionQuery.JEDDICT_EDITOR_CALLBACK;
+import static io.github.jeddict.ai.components.QueryPane.createIconButton;
+import static io.github.jeddict.ai.components.QueryPane.createStyledComboBox;
 import io.github.jeddict.ai.components.mermaid.MermaidPane;
 import io.github.jeddict.ai.response.Block;
 import io.github.jeddict.ai.review.Review;
+import static io.github.jeddict.ai.settings.GenAIProvider.getModelsByProvider;
 import io.github.jeddict.ai.settings.PreferencesManager;
 import io.github.jeddict.ai.util.ColorUtil;
 import static io.github.jeddict.ai.util.DiffUtil.diffAction;
@@ -37,10 +41,18 @@ import static io.github.jeddict.ai.util.EditorUtil.getExtension;
 import static io.github.jeddict.ai.util.EditorUtil.getFontFromMimeType;
 import static io.github.jeddict.ai.util.EditorUtil.getTextColorFromMimeType;
 import static io.github.jeddict.ai.util.EditorUtil.isSuitableForWebAppDirectory;
+import static io.github.jeddict.ai.util.Icons.ICON_ATTACH;
 import static io.github.jeddict.ai.util.Icons.ICON_CANCEL;
+import static io.github.jeddict.ai.util.Icons.ICON_CONTEXT;
 import static io.github.jeddict.ai.util.Icons.ICON_COPY;
 import static io.github.jeddict.ai.util.Icons.ICON_EDIT;
+import static io.github.jeddict.ai.util.Icons.ICON_NEW_CHAT;
+import static io.github.jeddict.ai.util.Icons.ICON_NEXT;
+import static io.github.jeddict.ai.util.Icons.ICON_PREV;
 import static io.github.jeddict.ai.util.Icons.ICON_SEND;
+import static io.github.jeddict.ai.util.Icons.ICON_SETTINGS;
+import static io.github.jeddict.ai.util.Icons.ICON_STATS;
+import static io.github.jeddict.ai.util.Icons.ICON_WEB;
 import io.github.jeddict.ai.util.Labels;
 import static io.github.jeddict.ai.util.MimeUtil.JAVA_MIME;
 import static io.github.jeddict.ai.util.MimeUtil.MIME_PLAIN_TEXT;
@@ -49,10 +61,16 @@ import static io.github.jeddict.ai.util.StringUtil.convertToCapitalized;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Desktop;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
@@ -72,10 +90,13 @@ import java.util.prefs.Preferences;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JEditorPane;
 import javax.swing.JFileChooser;
@@ -84,8 +105,12 @@ import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
+import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
+import javax.swing.KeyStroke;
+import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.text.Document;
@@ -93,9 +118,14 @@ import javax.swing.text.EditorKit;
 import javax.swing.text.JTextComponent;
 import javax.swing.text.StyledDocument;
 import org.netbeans.api.editor.EditorRegistry;
+import org.netbeans.api.options.OptionsDisplayer;
 import org.netbeans.api.project.Project;
+import org.netbeans.api.project.ProjectUtils;
 import org.netbeans.modules.editor.NbEditorUtilities;
+import org.openide.DialogDisplayer;
+import org.openide.NotifyDescriptor;
 import org.openide.filesystems.FileObject;
+import org.openide.filesystems.FileUtil;
 import org.openide.loaders.DataObject;
 import org.openide.windows.TopComponent;
 
@@ -103,21 +133,37 @@ import org.openide.windows.TopComponent;
  *
  * @author Shiwani Gupta
  */
-public class AssistantChat extends TopComponent {
+public abstract class AssistantChat extends TopComponent {
 
     private List<Review> reviews;
     public static final ImageIcon icon = new ImageIcon(AssistantChat.class.getResource("/icons/logo16.png"));
     public static final ImageIcon logoIcon = new ImageIcon(AssistantChat.class.getResource("/icons/logo28.png"));
 
-    public static final String PREFERENCE_KEY = "AssistantTopComponentOpen";
+    private static final String QUESTION_KEY = "QUESTION";
     private final JPanel parentPanel;
-    private final Project project;
+    private Project project;
 
     private final Map<JEditorPane, JPopupMenu> menus = new HashMap<>();
     private final Map<JEditorPane, List<JMenuItem>> menuItems = new HashMap<>();
     private final Map<JEditorPane, List<JMenuItem>> submenuItems = new HashMap<>();
     private String type = "java";
     private static final PreferencesManager pm = PreferencesManager.getInstance();
+
+    private Timer timer;
+
+    // top query pane
+    private JButton copyButton, editButton, saveButton, cancelButton;
+    private JEditorPane queryPane;
+
+    // bottom question pane
+    private JPanel filePanel;
+    private MessageContextComponentAdapter filePanelAdapter;
+    private ComponentAdapter buttonPanelAdapter;
+    private JComboBox<String> models;
+    private JComboBox<AssistantAction> actionComboBox;
+    private JButton prevButton, nextButton, openInBrowserButton, submitButton;
+    private JEditorPane questionPane;
+    private JScrollPane questionScrollPane;
 
     public AssistantChat(String name, String type, Project project) {
         setName(name);
@@ -132,6 +178,408 @@ public class AssistantChat extends TopComponent {
         parentPanel.setLayout(new BoxLayout(parentPanel, BoxLayout.Y_AXIS));
         add(parentPanel, BorderLayout.CENTER);
     }
+    
+    public abstract void onChatReset();
+
+    public abstract void onSubmit();
+
+    public abstract void onPrev();
+
+    public abstract void onNext();
+
+    public abstract void onSessionContext();
+
+    public abstract void addFileTab(FileObject file);
+
+    public abstract void clearFileTab();
+
+
+    public JEditorPane getQuestionPane() {
+        return questionPane;
+    }
+
+    public void updateButtons(Boolean prevButtonVisible, Boolean nextButtonVisible) {
+        // TODO: to be reviewed once all agents will use buit-in memory
+        prevButton.setVisible(prevButtonVisible);
+        nextButton.setVisible(nextButtonVisible);
+        openInBrowserButton.setVisible(getAllEditorCount() > 0);
+    }
+
+    public void startLoading() {
+        final String[] spinnerFrames = {"◐", "◓", "◑", "◒"};
+        final int[] frameIndex = {0};
+        timer = new Timer(200, e -> {
+            submitButton.setText(spinnerFrames[frameIndex[0]]);
+            frameIndex[0] = (frameIndex[0] + 1) % spinnerFrames.length;
+        });
+        timer.start();
+    }
+
+    public void stopLoading() {
+        timer.stop();
+    }
+
+   public String getModelName() {
+        String modelName = (String) models.getSelectedItem();
+        if (modelName == null || modelName.isEmpty()) {
+            return pm.getModel();
+        }
+        return modelName;
+    }
+
+    public void buttonPanelResized() {
+         buttonPanelAdapter.componentResized(null);
+    }
+
+    public boolean isAgentEnabled() {
+        return actionComboBox.getSelectedItem() == AssistantAction.BUILD;
+    }
+
+    public JPanel createBottomPanel(String type, String fileName, Consumer<String> action) {
+        JPanel bottomPanel = new JPanel(new BorderLayout());
+
+        Color backgroundColor = getBackgroundColorFromMimeType(MIME_PLAIN_TEXT);
+        filePanel = new JPanel();
+        filePanelAdapter = new MessageContextComponentAdapter(filePanel);
+        filePanel.setLayout(new FlowLayout(FlowLayout.LEFT));
+        filePanel.setBackground(backgroundColor);
+        filePanel.setBorder(BorderFactory.createEmptyBorder());
+        filePanel.addComponentListener(filePanelAdapter);
+
+        JPanel buttonPanel = new JPanel(new BorderLayout());
+        buttonPanel.setBackground(backgroundColor);
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder());
+
+        JPanel rightButtonPanel = new JPanel();
+        rightButtonPanel.setLayout(new FlowLayout(FlowLayout.RIGHT, 8, 1));
+        rightButtonPanel.setBackground(backgroundColor);
+        rightButtonPanel.setBorder(BorderFactory.createEmptyBorder());
+        buttonPanel.add(rightButtonPanel, BorderLayout.EAST);
+
+        JPanel leftButtonPanel = new JPanel();
+        leftButtonPanel.setLayout(new FlowLayout(FlowLayout.LEFT, 8, 1));
+        leftButtonPanel.setBackground(backgroundColor);
+        leftButtonPanel.setBorder(BorderFactory.createEmptyBorder());
+        buttonPanel.add(leftButtonPanel, BorderLayout.WEST);
+
+        prevButton = createIconButton(Labels.PREV, ICON_PREV);
+        prevButton.setToolTipText("Previous Chat");
+        leftButtonPanel.add(prevButton);
+
+        nextButton = createIconButton(Labels.NEXT, ICON_NEXT);
+        nextButton.setToolTipText("Next Chat");
+        leftButtonPanel.add(nextButton);
+
+        openInBrowserButton = createIconButton(Labels.VIEW, ICON_WEB);
+        openInBrowserButton.setToolTipText("Open in Browser");
+        openInBrowserButton.setVisible(getAllEditorCount() > 0);
+        leftButtonPanel.add(openInBrowserButton);
+
+        Set<String> modelsByProvider = getModelsByProvider(pm.getProvider());
+
+        modelsByProvider.add(pm.getModelName());
+        models = createStyledComboBox(modelsByProvider.toArray(new String[0]));
+        models.setSelectedItem(pm.getChatModel() != null ? pm.getChatModel() : pm.getModel());
+        models.setToolTipText("AI Models");
+        models.addActionListener(e -> {
+            String selectedModel = (String) models.getSelectedItem();
+            if (selectedModel != null) {
+                pm.setChatModel(selectedModel);
+            }
+        });
+        leftButtonPanel.add(models);
+
+        AssistantAction[] options = AssistantAction.values();
+        actionComboBox = createStyledComboBox(options);
+        String lastAction = pm.getAssistantAction();
+        if (lastAction != null) {
+            try {
+                actionComboBox.setSelectedItem(AssistantAction.valueOf(lastAction));
+            } catch (IllegalArgumentException ex) {
+                actionComboBox.setSelectedItem(AssistantAction.ASK);
+            }
+        } else {
+            actionComboBox.setSelectedItem(AssistantAction.ASK);
+        }
+        actionComboBox.setToolTipText("<html><b>Chat</b> – for general queries<br><b>Agent</b> – for file/project generation actions</html>");
+        actionComboBox.addActionListener(e -> {
+            AssistantAction selectedAction = (AssistantAction) actionComboBox.getSelectedItem();
+            if (selectedAction == AssistantAction.BUILD) {
+                if (this.project == null) {
+                    Project[] openProjects = org.netbeans.api.project.ui.OpenProjects.getDefault().getOpenProjects();
+                    if (openProjects.length == 1) {
+                        project = openProjects[0];
+                        DialogDisplayer.getDefault().notify(
+                                new NotifyDescriptor.Message(
+                                        "Connected chat to project: " + ProjectUtils.getInformation(project).getDisplayName(),
+                                        NotifyDescriptor.INFORMATION_MESSAGE
+                                )
+                        );
+                    } else if (openProjects.length > 1) {
+                        JComboBox<Project> projectComboBox = new JComboBox<>(openProjects);
+                        projectComboBox.setRenderer(new javax.swing.ListCellRenderer<>() {
+                            private final javax.swing.DefaultListCellRenderer defaultRenderer = new javax.swing.DefaultListCellRenderer();
+
+                            @Override
+                            public java.awt.Component getListCellRendererComponent(javax.swing.JList<? extends Project> list, Project value, int index, boolean isSelected, boolean cellHasFocus) {
+                                String displayName = (value == null) ? "" : ProjectUtils.getInformation(value).getDisplayName();
+                                return defaultRenderer.getListCellRendererComponent(list, displayName, index, isSelected, cellHasFocus);
+                            }
+                        });
+                        NotifyDescriptor descriptor = new NotifyDescriptor(
+                                projectComboBox,
+                                "Select Project for AI Agent Mode",
+                                NotifyDescriptor.OK_CANCEL_OPTION,
+                                NotifyDescriptor.QUESTION_MESSAGE,
+                                null,
+                                NotifyDescriptor.OK_OPTION
+                        );
+                        Object dialogResult = DialogDisplayer.getDefault().notify(descriptor);
+                        if (NotifyDescriptor.OK_OPTION.equals(dialogResult)) {
+                            Project selectedProject = (Project) projectComboBox.getSelectedItem();
+                            if (selectedProject != null) {
+                                project = selectedProject;
+                                DialogDisplayer.getDefault().notify(
+                                        new NotifyDescriptor.Message(
+                                                "Connected chat to project: " + ProjectUtils.getInformation(project).getDisplayName(),
+                                                NotifyDescriptor.INFORMATION_MESSAGE
+                                        )
+                                );
+                            } else {
+                                actionComboBox.setSelectedItem(AssistantAction.ASK);
+                            }
+                        } else {
+                            actionComboBox.setSelectedItem(AssistantAction.ASK);
+                        }
+                    } else {
+                        NotifyDescriptor.Message msg = new NotifyDescriptor.Message(
+                                "To use AI agent mode, connect chat to any project by dropping any source file on chat window or start new chat from project/package/source file context.",
+                                NotifyDescriptor.WARNING_MESSAGE
+                        );
+                        DialogDisplayer.getDefault().notify(msg);
+                        actionComboBox.setSelectedItem(AssistantAction.ASK);
+                    }
+                }
+            }
+            selectedAction = (AssistantAction) actionComboBox.getSelectedItem();
+            if (selectedAction != null) {
+                pm.setAssistantAction(selectedAction.name());
+            }
+        });
+        leftButtonPanel.add(actionComboBox);
+
+        JButton showChartsButton = createIconButton(Labels.STATS, ICON_STATS);
+        showChartsButton.setToolTipText("Show Token Usage Charts");
+        rightButtonPanel.add(showChartsButton);
+        showChartsButton.addActionListener(e -> {
+            TokenUsageChartDialog.showDialog(SwingUtilities.getWindowAncestor(showChartsButton));
+        });
+
+        JButton optionsButton = createIconButton(Labels.SETTINGS, ICON_SETTINGS);
+        optionsButton.setToolTipText("Open Jeddict AI Assistant Settings");
+        optionsButton.addActionListener(e -> OptionsDisplayer.getDefault().open("JeddictAIAssistant"));
+        rightButtonPanel.add(optionsButton);
+
+        JButton messageContextButton = createIconButton(Labels.MESSAGE_CONTEXT, ICON_ATTACH);
+        messageContextButton.setToolTipText("Attach a file to current message context");
+        rightButtonPanel.add(messageContextButton);
+
+        JButton sessionContextButton = createIconButton(Labels.SESSION_CONTEXT, ICON_CONTEXT);
+        sessionContextButton.setToolTipText("View detailed context of the current chat session context.");
+        sessionContextButton.addActionListener(e -> onSessionContext());
+        rightButtonPanel.add(sessionContextButton);
+
+        JButton newChatButton = createIconButton(Labels.NEW_CHAT, ICON_NEW_CHAT);
+        newChatButton.setToolTipText("Start a new chat");
+        leftButtonPanel.add(newChatButton);
+
+        submitButton = createIconButton(Labels.SEND, ICON_SEND);
+        submitButton.setToolTipText("Ask a question");
+        rightButtonPanel.add(submitButton);
+
+        buttonPanelAdapter = new ComponentAdapter() {
+            boolean showOnlyIcons = false;
+
+            @Override
+            public void componentResized(ComponentEvent e) {
+                double totalButtonWidth = leftButtonPanel.getPreferredSize().width
+                        + rightButtonPanel.getPreferredSize().width;
+                if (showOnlyIcons) {
+                    totalButtonWidth = totalButtonWidth * 2;
+                }
+
+                int availableWidth = buttonPanel.getWidth();
+                showOnlyIcons = availableWidth < totalButtonWidth;
+
+                updateButton(prevButton, showOnlyIcons, ICON_PREV, Labels.PREV + " " + ICON_PREV);
+                updateButton(nextButton, showOnlyIcons, ICON_NEXT, Labels.NEXT + " " + ICON_NEXT);
+                updateButton(openInBrowserButton, showOnlyIcons, ICON_WEB, Labels.VIEW + " " + ICON_WEB);
+//                updateButton(copyButton, showOnlyIcons, ICON_COPY, Labels.COPY + " " + ICON_COPY);
+//                updateButton(saveButton, showOnlyIcons, ICON_SAVE, Labels.SAVE + " " + ICON_SAVE);
+//                updateButton(saveToEditorButton, showOnlyIcons, ICON_UPDATE, Labels.UPDATE + " " + ICON_UPDATE);
+                updateButton(newChatButton, showOnlyIcons, ICON_NEW_CHAT, Labels.NEW_CHAT + " " + ICON_NEW_CHAT);
+                updateButton(showChartsButton, showOnlyIcons, ICON_STATS, Labels.STATS + " " + ICON_STATS);
+                updateButton(optionsButton, showOnlyIcons, ICON_SETTINGS, Labels.SETTINGS + " " + ICON_SETTINGS);
+                updateButton(messageContextButton, showOnlyIcons, ICON_ATTACH, Labels.MESSAGE_CONTEXT + " " + ICON_ATTACH);
+                updateButton(sessionContextButton, showOnlyIcons, ICON_CONTEXT, Labels.SESSION_CONTEXT + " " + ICON_CONTEXT);
+                updateButton(submitButton, showOnlyIcons, ICON_SEND, Labels.SEND + " " + ICON_SEND);
+                updateCombobox(models, showOnlyIcons);
+                updateCombobox(actionComboBox, showOnlyIcons);
+                updateUserPaneButtons(showOnlyIcons);
+
+            }
+
+            private void updateButton(JButton button, boolean iconOnly, String iconText, String fullText) {
+                button.setText(iconOnly ? iconText : fullText);
+            }
+
+            private <T> void updateCombobox(JComboBox<T> comboBox, boolean iconOnly) {
+                comboBox.putClientProperty("minimal", iconOnly);
+            }
+        };
+        buttonPanel.addComponentListener(buttonPanelAdapter);
+
+        questionPane = new JEditorPane();
+        questionPane.setEditorKit(createEditorKit("text/x-" + (type == null ? "java" : type)));
+        questionPane.putClientProperty("AI_QUERY_EDITOR", Boolean.TRUE);
+
+        Document doc = questionPane.getDocument();
+        doc.putProperty(JEDDICT_EDITOR_CALLBACK, (Consumer<FileObject>) this::addFileTab);
+
+        questionScrollPane = new JScrollPane(questionPane);
+        questionScrollPane.setBorder(BorderFactory.createEmptyBorder());
+        questionScrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
+        questionScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        Color bgColor = getBackgroundColorFromMimeType(MIME_PLAIN_TEXT);
+        boolean isDark = ColorUtil.isDarkColor(bgColor);
+        if (isDark) {
+            questionScrollPane.getViewport().setBackground(Color.DARK_GRAY);
+            questionScrollPane.getVerticalScrollBar().setUI(new CustomScrollBarUI());
+            questionScrollPane.getHorizontalScrollBar().setUI(new CustomScrollBarUI());
+        }
+        questionPane.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                updateHeight();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                updateHeight();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                updateHeight();
+            }
+        });
+
+        newChatButton.addActionListener(e -> {
+            this.clear();
+            this.repaint();
+            questionPane.setText("");
+            clearFileTab();
+            onChatReset();
+
+        });
+
+        openInBrowserButton.addActionListener(e -> {
+            try {
+                File latestTempFile = File.createTempFile("gen-ai", ".html");
+                latestTempFile.deleteOnExit();
+                try (FileWriter writer = new FileWriter(latestTempFile)) {
+                    writer.write(this.getAllEditorText());
+                }
+                if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+                    Desktop.getDesktop().browse(latestTempFile.toURI());
+                }
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
+        });
+
+        submitButton.setAction(new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent ae) {
+                onSubmit();
+
+            }
+        });
+
+        prevButton.addActionListener(e -> {
+            onPrev();
+        });
+
+        nextButton.addActionListener(e -> {
+            onNext();
+        });
+
+        messageContextButton.addActionListener(e -> {
+            JFileChooser fileChooser = new JFileChooser(pm.getLastBrowseDirectory());
+            int result = fileChooser.showOpenDialog(bottomPanel);
+            if (result == JFileChooser.APPROVE_OPTION) {
+                File selectedFile = fileChooser.getSelectedFile();
+                pm.setLastBrowseDirectory(selectedFile.getParent());
+                addFileTab(FileUtil.toFileObject(selectedFile));
+            }
+        });
+
+        FileTransferHandler.register(bottomPanel, this::addFileTab);
+        FileTransferHandler.register(questionPane, this::addFileTab);
+
+        //
+        // intercept shortkeys to submit the prompt
+        //
+        final String actionKey = "submit-prompt";
+
+        String shortcut = pm.getSubmitShortcut(); // e.g. "Ctrl + Enter", "Enter", "Shift + Enter", "Alt + Enter"
+
+        javax.swing.KeyStroke submitKey;
+        switch (shortcut) {
+            case "Enter":
+                submitKey = KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0);
+                break;
+            case "Shift + Enter":
+                submitKey = KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, KeyEvent.SHIFT_DOWN_MASK);
+                break;
+            default: // "Ctrl + Enter"
+                submitKey = KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, KeyEvent.CTRL_DOWN_MASK);
+        }
+
+        final javax.swing.InputMap inputMap = questionPane.getInputMap(JComponent.WHEN_FOCUSED);
+        final javax.swing.ActionMap actionMap = questionPane.getActionMap();
+
+        inputMap.put(submitKey, actionKey);
+        actionMap.put(actionKey, submitButton.getAction());
+
+        // ---
+        bottomPanel.setLayout(new BoxLayout(bottomPanel, BoxLayout.Y_AXIS));
+        bottomPanel.add(filePanel);
+        bottomPanel.add(Box.createVerticalStrut(0));
+        bottomPanel.add(questionScrollPane);
+        bottomPanel.add(Box.createVerticalStrut(0));
+        bottomPanel.add(buttonPanel);
+
+        return bottomPanel;
+    }
+
+    public void updateHeight() {
+        int lineHeight = questionPane.getFontMetrics(questionPane.getFont()).getHeight();
+        String text = questionPane.getText().trim();
+        int preferredHeight;
+        int linePadding = 5;
+        if (text.isEmpty()) {
+            preferredHeight = lineHeight * 3 + linePadding;
+        } else {
+            preferredHeight = questionPane.getPreferredSize().height;
+            preferredHeight = Math.max(lineHeight * 3 + linePadding,
+                    Math.min(preferredHeight, lineHeight * 12 + linePadding));
+        }
+
+        Dimension size = new Dimension(questionScrollPane.getWidth(), preferredHeight);
+        questionScrollPane.setPreferredSize(size);
+        questionScrollPane.revalidate();
+    }
 
     public void lastRemove() {
         parentPanel.remove(parentPanel.getComponentCount() - 1);
@@ -141,9 +589,6 @@ public class AssistantChat extends TopComponent {
         parentPanel.removeAll();
         menus.clear();
     }
-
-    private JButton copyButton, editButton, saveButton, cancelButton;
-    private JEditorPane queryPane;
 
     public void updateUserPaneButtons(boolean iconOnly) {
         if (copyButton != null) {
@@ -194,6 +639,25 @@ public class AssistantChat extends TopComponent {
             state.accept(false);
             queryPane.requestFocus();
         });
+    }
+  
+    public void clearFiles() {
+        filePanel.removeAll();
+        refreshFilePanel();
+        filePanel.revalidate();
+        filePanel.repaint();
+    }
+
+    public void addFile(FileObject file, Consumer<FileObject> onCloseCallback) {
+        FileTab fileTab = new FileTab(file, filePanel, onCloseCallback);
+        filePanel.add(fileTab);
+        refreshFilePanel();
+        filePanel.revalidate();
+        filePanel.repaint();
+    }
+
+    public void refreshFilePanel() {
+        filePanelAdapter.componentResized(null);
     }
 
     public JEditorPane createUserQueryPane(BiConsumer<String, Set<FileObject>> queryUpdate, String content, Set<FileObject> messageContext) {
@@ -279,8 +743,6 @@ public class AssistantChat extends TopComponent {
         return queryPane;
     }
 
-    private JPanel filePanel;
-    private MessageContextComponentAdapter filePanelAdapter;
 
     public JEditorPane createHtmlPane(String content) {
         JEditorPane editorPane = new JEditorPane();
@@ -332,7 +794,6 @@ public class AssistantChat extends TopComponent {
         return editorPane;
     }
 
-
     public JEditorPane createCodePane(String mimeType, Block content) {
         if (mimeType == null || mimeType.isBlank()) {
             mimeType = MIME_PLAIN_TEXT;
@@ -347,8 +808,8 @@ public class AssistantChat extends TopComponent {
         } else {
             editorPane = createInMemoryEditorCopy(mimeType);
         }
-        
-            editorPane.setText(content.getContent());
+
+        editorPane.setText(content.getContent());
         editorPane.getDocument().addDocumentListener(new DocumentListener() {
             @Override
             public void insertUpdate(DocumentEvent e) {
@@ -532,19 +993,16 @@ public class AssistantChat extends TopComponent {
     public void componentOpened() {
         super.componentOpened();
         Preferences prefs = Preferences.userNodeForPackage(this.getClass());
-        boolean shouldOpen = prefs.getBoolean(PREFERENCE_KEY, true);
-        if (!shouldOpen) {
-            this.close();
-        }
+        questionPane.setText(prefs.get(QUESTION_KEY, ""));
     }
 
     @Override
     public void componentClosed() {
         super.componentClosed();
         Preferences prefs = Preferences.userNodeForPackage(this.getClass());
-        prefs.putBoolean(PREFERENCE_KEY, false);
+        prefs.put(QUESTION_KEY, questionPane.getText());
     }
-
+    
     public JPanel getParentPanel() {
         return parentPanel;
     }
