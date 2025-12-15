@@ -22,12 +22,16 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.ElementFilter;
+import org.netbeans.api.java.project.JavaProjectConstants;
 import org.netbeans.api.java.source.ClassIndex;
+import org.netbeans.api.java.source.ClasspathInfo;
 import org.netbeans.api.java.source.ElementHandle;
 import org.netbeans.api.java.source.JavaSource;
+import org.netbeans.api.java.source.SourceUtils;
 import org.netbeans.api.project.SourceGroup;
 import org.netbeans.api.project.Sources;
 import org.netbeans.modules.refactoring.api.RefactoringSession;
+import org.openide.filesystems.FileObject;
 import org.openide.util.Lookup;
 import org.openide.util.lookup.Lookups;
 
@@ -35,22 +39,27 @@ import org.openide.util.lookup.Lookups;
  * Tools for code-level operations in NetBeans projects.
  *
  * <p>
- * This class offers various methods for AI assistants to explore and analyze Java source code
- * within a NetBeans project. It uses NetBeans JavaSource and Refactoring APIs to facilitate
- * operations such as listing classes and methods, searching for symbols, and finding usages.
- * These tools can be integrated into AI workflows to enhance automated code understanding,
+ * This class offers various methods for AI assistants to explore and analyze
+ * Java source code within a NetBeans project. It uses NetBeans JavaSource and
+ * Refactoring APIs to facilitate operations such as listing classes and
+ * methods, searching for symbols, and finding usages. These tools can be
+ * integrated into AI workflows to enhance automated code understanding,
  * navigation, and refactoring assistance.
  * </p>
  *
- * <p>Key functional capabilities include:</p>
+ * <p>
+ * Key functional capabilities include:</p>
  * <ul>
- *   <li>Listing all top-level classes declared in a Java file.</li>
- *   <li>Listing all method signatures declared in a Java file.</li>
- *   <li>Searching the entire project for a symbol by name (class, method, or field).</li>
- *   <li>Finding all usages of a specified class, method, or field within the codebase.</li>
+ * <li>Listing all top-level classes declared in a Java file.</li>
+ * <li>Listing all method signatures declared in a Java file.</li>
+ * <li>Searching the entire project for a symbol by name (class, method, or
+ * field).</li>
+ * <li>Finding all usages of a specified class, method, or field within the
+ * codebase.</li>
  * </ul>
  *
- * <p><b>Example usage by an AI assistant:</b></p>
+ * <p>
+ * <b>Example usage by an AI assistant:</b></p>
  * <pre>
  * ExplorationTools tools = new ExplorationTools(project, handler);
  * String classes = tools.listClassesInFile("src/main/java/com/example/MyClass.java");
@@ -129,41 +138,91 @@ public class ExplorationTools extends AbstractCodeTool {
     }
 
     /**
-     * Search for a symbol (class, method, or field) in the whole project.
+     * Searches the project for a Java symbol (class, method, or field).
      *
      * <p>
-     * <b>Example:</b></p>
+     * <b>Examples:</b></p>
      * <pre>
-     * searchSymbol("UserService");
-     * // -> "Found in: src/main/java/com/example/service/UserService.java"
+     * searchSymbol("UserService");   // Class: com.example.service.UserService
+     * searchSymbol("findUser");      // Method: com.example.service.UserService.findUser
+     * searchSymbol("userRepository");// Field: com.example.service.UserService.userRepository
      * </pre>
+     *
+     * @param symbolName simple name of the class, method, or field to find
      */
     @Tool("Search for a symbol (class, method, or field) in the whole project")
-    public String searchSymbol(String symbolName)
-    throws Exception {
+    public String searchSymbol(String symbolName) throws Exception {
+
         progress("Searching symbol " + symbolName);
 
         StringBuilder result = new StringBuilder();
         Sources sources = lookup.lookup(Sources.class);
+
         if (sources == null) {
             return "No sources found in project.";
         }
 
-        for (SourceGroup sg : sources.getSourceGroups(Sources.TYPE_GENERIC)) {
-            JavaSource javaSource = JavaSource.forFileObject(sg.getRootFolder());
-            if (javaSource == null) {
+        SourceGroup[] groups = sources.getSourceGroups(JavaProjectConstants.SOURCES_TYPE_JAVA);
+
+        if (groups.length == 0) {
+            return "No source groups found.";
+        }
+
+        ClasspathInfo cpInfo = ClasspathInfo.create(groups[0].getRootFolder());
+        ClassIndex index = cpInfo.getClassIndex();
+
+        Set<ElementHandle<TypeElement>> types
+                = index.getDeclaredTypes(
+                        "",
+                        ClassIndex.NameKind.PREFIX,
+                        Set.of(ClassIndex.SearchScope.SOURCE)
+                );
+
+        for (ElementHandle<TypeElement> h : types) {
+
+            FileObject fo = SourceUtils.getFile(h, cpInfo);
+            if (fo == null) {
                 continue;
             }
 
-            javaSource.runUserActionTask(cc -> {
-                cc.toPhase(JavaSource.Phase.ELEMENTS_RESOLVED);
-                ClassIndex idx = cc.getClasspathInfo().getClassIndex();
-                Set<ElementHandle<TypeElement>> handles
-                        = idx.getDeclaredTypes(symbolName, ClassIndex.NameKind.SIMPLE_NAME,
-                                Set.of(ClassIndex.SearchScope.SOURCE));
+            JavaSource js = JavaSource.forFileObject(fo);
+            if (js == null) {
+                continue;
+            }
 
-                for (ElementHandle<TypeElement> h : handles) {
-                    result.append("Found: ").append(h.getQualifiedName()).append("\n");
+            js.runUserActionTask(cc -> {
+                cc.toPhase(JavaSource.Phase.ELEMENTS_RESOLVED);
+
+                TypeElement type = h.resolve(cc);
+                if (type == null) {
+                    return;
+                }
+
+                if (type.getSimpleName().contentEquals(symbolName)) {
+                    result.append("Class: ")
+                            .append(type.getQualifiedName())
+                            .append("\n");
+                }
+
+                for (Element e : type.getEnclosedElements()) {
+                    if (!e.getSimpleName().contentEquals(symbolName)) {
+                        continue;
+                    }
+
+                    if (e.getKind() == ElementKind.METHOD
+                            || e.getKind() == ElementKind.CONSTRUCTOR) {
+                        result.append("Method: ")
+                                .append(type.getQualifiedName())
+                                .append(".")
+                                .append(e.getSimpleName())
+                                .append("\n");
+                    } else if (e.getKind() == ElementKind.FIELD) {
+                        result.append("Field: ")
+                                .append(type.getQualifiedName())
+                                .append(".")
+                                .append(e.getSimpleName())
+                                .append("\n");
+                    }
                 }
             }, true);
         }
@@ -173,7 +232,7 @@ public class ExplorationTools extends AbstractCodeTool {
 
     @Tool("Find all usages of a class, method, or field")
     public String findUsages(String path, String symbolName)
-    throws Exception {
+            throws Exception {
         String jr = withJavaSource(path, javaSource -> {
             final StringBuilder result = new StringBuilder();
             javaSource.runUserActionTask(cc -> {
