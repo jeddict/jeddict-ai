@@ -15,8 +15,6 @@
  */
 package io.github.jeddict.ai.settings;
 
-import io.github.jeddict.ai.models.registry.GenAIModel;
-import io.github.jeddict.ai.models.registry.GenAIProvider;
 import io.github.jeddict.ai.copilot.RunCopilotProxy;
 import static io.github.jeddict.ai.models.Constant.DEEPINFRA_URL;
 import static io.github.jeddict.ai.models.Constant.DEEPSEEK_URL;
@@ -24,10 +22,10 @@ import io.github.jeddict.ai.models.GPT4AllModelFetcher;
 import io.github.jeddict.ai.models.GroqModelFetcher;
 import io.github.jeddict.ai.models.LMStudioModelFetcher;
 import io.github.jeddict.ai.models.OllamaModelFetcher;
-import io.github.jeddict.ai.models.registry.GenAIModelRegistry;
+import io.github.jeddict.ai.models.OpenAIModelFetcher;
 import io.github.jeddict.ai.models.PerplexityModelFetcher;
-import io.github.jeddict.ai.models.registry.GenAIModelRegistry;
 import io.github.jeddict.ai.scanner.ProjectClassScanner;
+import static io.github.jeddict.ai.settings.GenAIModel.MODELS;
 import io.github.jeddict.ai.util.ColorUtil;
 import static io.github.jeddict.ai.util.ColorUtil.darken;
 import static io.github.jeddict.ai.util.ColorUtil.lighten;
@@ -1506,7 +1504,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
             models = new ArrayList<>(genAIModels);
 
         if (models == null) {
-            models = GenAIModelRegistry.getModels().values().stream()
+            models = MODELS.values().stream()
                 .filter(model -> model.getProvider().equals(selectedProvider))
                 .map(GenAIModel::getName)
                 .collect(Collectors.toList());
@@ -1538,7 +1536,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
                 models.put(model, new GenAIModel(selectedProvider, model, model, 0, 0));
             });
             // Aggiunge tutti i MODELS esistenti alla lista
-            models.putAll(getModelsByProvider(GenAIModelRegistry.getModels(),selectedProvider.name()));
+            models.putAll(getModelsByProvider(MODELS,selectedProvider.name()));
         } else if (selectedProvider == GenAIProvider.LM_STUDIO
                 && !providerLocationField.getText().isEmpty()) {
             LMStudioModelFetcher fetcher = new LMStudioModelFetcher();
@@ -1547,16 +1545,16 @@ final class AIAssistancePanel extends javax.swing.JPanel {
                 models.put(model, new GenAIModel(selectedProvider, model, model, 0, 0));
             });
             // Aggiunge tutti i MODELS esistenti alla lista
-            models.putAll(getModelsByProvider(GenAIModelRegistry.getModels(),selectedProvider.name()));
+            models.putAll(getModelsByProvider(MODELS,selectedProvider.name()));
         } else if (selectedProvider == GenAIProvider.GPT4ALL
                 && !providerLocationField.getText().isEmpty()) {
             GPT4AllModelFetcher fetcher = new GPT4AllModelFetcher();
             models.putAll(fetcher.fetchGenAIModels(providerLocationField.getText()));
-            models.putAll(getModelsByProvider(GenAIModelRegistry.getModels(),selectedProvider.name()));
+            models.putAll(getModelsByProvider(MODELS,selectedProvider.name()));
         } else if (selectedProvider == GenAIProvider.COPILOT_PROXY) {
             GPT4AllModelFetcher fetcher = new GPT4AllModelFetcher();
             models.putAll(fetcher.fetchGenAIModels(DEFAULT_COPILOT_PROVIDER_LOCATION));
-            models.putAll(getModelsByProvider(GenAIModelRegistry.getModels(),selectedProvider.name()));
+            models.putAll(getModelsByProvider(MODELS,selectedProvider.name()));
         } else if (selectedProvider == GenAIProvider.GROQ
                 && !providerLocationField.getText().isEmpty()) {
             GroqModelFetcher fetcher = new GroqModelFetcher();
@@ -1565,19 +1563,19 @@ final class AIAssistancePanel extends javax.swing.JPanel {
                 models.put(model, new GenAIModel(selectedProvider, model, model, 0, 0));
             });
             // Aggiunge tutti i MODELS esistenti alla lista
-            models.putAll(getModelsByProvider(GenAIModelRegistry.getModels(),selectedProvider.name()));
+            models.putAll(getModelsByProvider(MODELS,selectedProvider.name()));
         } else if (selectedProvider == GenAIProvider.CUSTOM_OPEN_AI) {
-            GenAIModelRegistry fetcher = new GenAIModelRegistry();
+            OpenAIModelFetcher fetcher = new OpenAIModelFetcher();
             LinkedHashMap<String, GenAIModel> apiModels = fetcher.fetchGenAIModels(providerLocationField.getText());
             // Prima aggiungi i modelli predefiniti
-            models.putAll(getModelsByProvider(GenAIModelRegistry.getModels(), selectedProvider.name()));
+            models.putAll(getModelsByProvider(MODELS, selectedProvider.name()));
 
             // Poi aggiungi i modelli dall'API (che sovrascrivono i duplicati)
             models.putAll(apiModels);
         }
 
         if (models.isEmpty()) {
-            models.putAll(getModelsByProvider(GenAIModelRegistry.getModels(),selectedProvider.name()));
+            models.putAll(getModelsByProvider(MODELS,selectedProvider.name()));
         }
 
         // Ordina la mappa alfabeticamente per chiave
@@ -1592,6 +1590,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
 
     private GenAIModel getModel(String modelName) {
         return preferencesManager.getGenAIModelByName(((GenAIProvider) providerComboBox.getSelectedItem()).name(),modelName);
+        //return MODELS.get(modelName);
     }
 
     private final PreferencesManager preferencesManager = PreferencesManager.getInstance();
@@ -2730,7 +2729,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
     private javax.swing.JScrollPane promptScrollPane;
     private javax.swing.JLayeredPane promptSettingsPane;
     private javax.swing.JTable promptTable;
-    private javax.swing.JComboBox<io.github.jeddict.ai.models.registry.GenAIProvider> providerComboBox;
+    private javax.swing.JComboBox<io.github.jeddict.ai.settings.GenAIProvider> providerComboBox;
     private javax.swing.JLabel providerLabel;
     private javax.swing.JTextField providerLocationField;
     private javax.swing.JLabel providerLocationLabel;

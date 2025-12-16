@@ -26,6 +26,8 @@
                 <jpda.listen>true</jpda.listen>
                 <netbeans.run.params.debug>-J-agentlib:jdwp=transport=dt_socket,suspend=n,server=n,address=${jpda.address}</netbeans.run.params.debug>
                 <skipTests>true</skipTests>
+                
+                
             </properties>
         </action>
     </actions>
