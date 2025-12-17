@@ -178,7 +178,7 @@ public abstract class AssistantChat extends TopComponent {
         parentPanel.setLayout(new BoxLayout(parentPanel, BoxLayout.Y_AXIS));
         add(parentPanel, BorderLayout.CENTER);
     }
-    
+
     public abstract void onChatReset();
 
     public abstract void onSubmit();
@@ -306,58 +306,11 @@ public abstract class AssistantChat extends TopComponent {
             AssistantAction selectedAction = (AssistantAction) actionComboBox.getSelectedItem();
             if (selectedAction == AssistantAction.BUILD) {
                 if (this.project == null) {
-                    Project[] openProjects = org.netbeans.api.project.ui.OpenProjects.getDefault().getOpenProjects();
-                    if (openProjects.length == 1) {
-                        project = openProjects[0];
-                        DialogDisplayer.getDefault().notify(
-                                new NotifyDescriptor.Message(
-                                        "Connected chat to project: " + ProjectUtils.getInformation(project).getDisplayName(),
-                                        NotifyDescriptor.INFORMATION_MESSAGE
-                                )
-                        );
-                    } else if (openProjects.length > 1) {
-                        JComboBox<Project> projectComboBox = new JComboBox<>(openProjects);
-                        projectComboBox.setRenderer(new javax.swing.ListCellRenderer<>() {
-                            private final javax.swing.DefaultListCellRenderer defaultRenderer = new javax.swing.DefaultListCellRenderer();
-
-                            @Override
-                            public java.awt.Component getListCellRendererComponent(javax.swing.JList<? extends Project> list, Project value, int index, boolean isSelected, boolean cellHasFocus) {
-                                String displayName = (value == null) ? "" : ProjectUtils.getInformation(value).getDisplayName();
-                                return defaultRenderer.getListCellRendererComponent(list, displayName, index, isSelected, cellHasFocus);
-                            }
-                        });
-                        NotifyDescriptor descriptor = new NotifyDescriptor(
-                                projectComboBox,
-                                "Select Project for AI Agent Mode",
-                                NotifyDescriptor.OK_CANCEL_OPTION,
-                                NotifyDescriptor.QUESTION_MESSAGE,
-                                null,
-                                NotifyDescriptor.OK_OPTION
-                        );
-                        Object dialogResult = DialogDisplayer.getDefault().notify(descriptor);
-                        if (NotifyDescriptor.OK_OPTION.equals(dialogResult)) {
-                            Project selectedProject = (Project) projectComboBox.getSelectedItem();
-                            if (selectedProject != null) {
-                                project = selectedProject;
-                                DialogDisplayer.getDefault().notify(
-                                        new NotifyDescriptor.Message(
-                                                "Connected chat to project: " + ProjectUtils.getInformation(project).getDisplayName(),
-                                                NotifyDescriptor.INFORMATION_MESSAGE
-                                        )
-                                );
-                            } else {
-                                actionComboBox.setSelectedItem(AssistantAction.ASK);
-                            }
-                        } else {
-                            actionComboBox.setSelectedItem(AssistantAction.ASK);
-                        }
-                    } else {
-                        NotifyDescriptor.Message msg = new NotifyDescriptor.Message(
-                                "To use AI agent mode, connect chat to any project by dropping any source file on chat window or start new chat from project/package/source file context.",
-                                NotifyDescriptor.WARNING_MESSAGE
-                        );
-                        DialogDisplayer.getDefault().notify(msg);
+                    final Project selectedProject = selectProject();
+                    if (selectedProject == null) {
                         actionComboBox.setSelectedItem(AssistantAction.ASK);
+                    } else {
+                        this.project = selectedProject;
                     }
                 }
             }
@@ -640,7 +593,7 @@ public abstract class AssistantChat extends TopComponent {
             queryPane.requestFocus();
         });
     }
-  
+
     public void clearFiles() {
         filePanel.removeAll();
         refreshFilePanel();
@@ -1002,7 +955,7 @@ public abstract class AssistantChat extends TopComponent {
         Preferences prefs = Preferences.userNodeForPackage(this.getClass());
         prefs.put(QUESTION_KEY, questionPane.getText());
     }
-    
+
     public JPanel getParentPanel() {
         return parentPanel;
     }
@@ -1277,6 +1230,68 @@ public abstract class AssistantChat extends TopComponent {
             }
         }
     }
+
+    public Project getProject() {
+        return project;
+    }
+
+    public Project selectProject() {
+        final Project[] openProjects = org.netbeans.api.project.ui.OpenProjects.getDefault().getOpenProjects();
+        if (openProjects.length == 1) {
+            project = openProjects[0];
+            DialogDisplayer.getDefault().notify(
+                    new NotifyDescriptor.Message(
+                            "Connected chat to project: " + ProjectUtils.getInformation(project).getDisplayName(),
+                            NotifyDescriptor.INFORMATION_MESSAGE
+                    )
+            );
+        } else if (openProjects.length > 1) {
+            JComboBox<Project> projectComboBox = new JComboBox<>(openProjects);
+            projectComboBox.setRenderer(new javax.swing.ListCellRenderer<>() {
+                private final javax.swing.DefaultListCellRenderer defaultRenderer = new javax.swing.DefaultListCellRenderer();
+
+                @Override
+                public java.awt.Component getListCellRendererComponent(javax.swing.JList<? extends Project> list, Project value, int index, boolean isSelected, boolean cellHasFocus) {
+                    String displayName = (value == null) ? "" : ProjectUtils.getInformation(value).getDisplayName();
+                    return defaultRenderer.getListCellRendererComponent(list, displayName, index, isSelected, cellHasFocus);
+                }
+            });
+            NotifyDescriptor descriptor = new NotifyDescriptor(
+                    projectComboBox,
+                    "Select Project for AI Agent Mode",
+                    NotifyDescriptor.OK_CANCEL_OPTION,
+                    NotifyDescriptor.QUESTION_MESSAGE,
+                    null,
+                    NotifyDescriptor.OK_OPTION
+            );
+            Object dialogResult = DialogDisplayer.getDefault().notify(descriptor);
+            if (NotifyDescriptor.OK_OPTION.equals(dialogResult)) {
+                Project selectedProject = (Project) projectComboBox.getSelectedItem();
+                if (selectedProject != null) {
+                    project = selectedProject;
+                    DialogDisplayer.getDefault().notify(
+                            new NotifyDescriptor.Message(
+                                    "Connected chat to project: " + ProjectUtils.getInformation(project).getDisplayName(),
+                                    NotifyDescriptor.INFORMATION_MESSAGE
+                            )
+                    );
+
+                    return project;
+                }
+            }
+        } else {
+            NotifyDescriptor.Message msg = new NotifyDescriptor.Message(
+                    "To use AI agent mode, connect chat to any project by dropping any source file on chat window or start new chat from project/package/source file context.",
+                    NotifyDescriptor.WARNING_MESSAGE
+            );
+            DialogDisplayer.getDefault().notify(msg);
+            actionComboBox.setSelectedItem(AssistantAction.ASK);
+        }
+
+        return null;
+    }
+
+    // --------------------------------------------------------- private methods
 
     private boolean isAnonymousInnerMethod(MethodDeclaration method) {
         return method.getParentNode().isPresent() && method.getParentNode().get() instanceof ObjectCreationExpr;
