@@ -17,6 +17,7 @@ package io.github.jeddict.ai.agent.pair;
 
 import com.sun.source.tree.MethodTree;
 import com.sun.source.util.TreePath;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.UserMessage;
@@ -25,6 +26,8 @@ import static io.github.jeddict.ai.agent.pair.PairProgrammer.LOG;
 import io.github.jeddict.ai.lang.JeddictBrain;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 
 /**
@@ -34,10 +37,11 @@ import org.apache.commons.lang3.StringUtils;
 public interface Assistant extends PairProgrammer {
 
     public static final String SYSTEM_MESSAGE = """
-You are an expert developer that can address complex questions and resolving
+You are an expert developer that can address complex questions and resolve
 problems, proposing solutions, writing and correcting code.
 Take into account the following rules, if any:
 global rules:
+- All code must be in fenced ```<language> blocks; never output unfenced code.
 {{globalRules}}
 
 project rules:
@@ -53,6 +57,7 @@ project rules:
     String chat(
         @V("prompt")       final String prompt,
         @V("code")         final String code,
+        @UserMessage       List<ImageContent> images,
         @V("project")      final String projectInfo,
         @V("globalRules")  final String globalRules,
         @V("projectRules") final String projectRules
@@ -63,6 +68,7 @@ project rules:
     TokenStream chatstream(
         @V("prompt")       final String prompt,
         @V("code")         final String code,
+        @UserMessage       List<ImageContent> images,
         @V("project")      final String projectInfo,
         @V("globalRules")  final String globalRules,
         @V("projectRules") final String projectRules
@@ -88,6 +94,7 @@ project rules:
         return chat(
             StringUtils.defaultIfBlank(prompt, ""),
             code,
+            List.of(),
             StringUtils.defaultIfBlank(projectInfo, ""),
             StringUtils.defaultIfBlank(globalRules, ""),
             StringUtils.defaultIfBlank(projectRules, "")
@@ -97,6 +104,26 @@ project rules:
     default String chat(final String prompt) {
         return chat(prompt, (TreePath)null, null, null, null);
     }
+
+    default String chat(
+        final String prompt,
+        final List<String> images,
+        final String project,
+        final String globalRules,
+        final String projectRules
+    ) {
+        LOG.finest(() -> "\nprompt: %s\n# images: %d\nproject: %s\nglobal rules: %s\nproject rules: %s\n".formatted(
+            StringUtils.abbreviate(prompt, 80),
+            (images != null) ? images.size() : 0,
+            StringUtils.abbreviate(project, 80),
+            StringUtils.abbreviate(globalRules, 80),
+            StringUtils.abbreviate(projectRules, 80)
+        ));
+
+        return chat(prompt, "", imageContent(images), project, globalRules, projectRules);
+    }
+
+    // ----------------------------------------------------- streaming interface
 
     default void chat(
         final PropertyChangeListener listener,
@@ -119,6 +146,44 @@ project rules:
         chatstream(
             StringUtils.defaultIfBlank(prompt, ""),
             code,
+            List.of(),
+            StringUtils.defaultIfBlank(projectInfo, ""),
+            StringUtils.defaultIfBlank(globalRules, ""),
+            StringUtils.defaultIfBlank(projectRules, "")
+        ).onCompleteResponse(complete -> {
+            listener.propertyChange(new PropertyChangeEvent(this, JeddictBrain.EventProperty.CHAT_COMPLETED.name, null, complete));
+        })
+        .onPartialResponse(partial -> {
+            listener.propertyChange(new PropertyChangeEvent(this, JeddictBrain.EventProperty.CHAT_PARTIAL.name, null, partial));
+        })
+        .onIntermediateResponse(intermediate -> listener.propertyChange(new PropertyChangeEvent(this, JeddictBrain.EventProperty.CHAT_INTERMEDIATE.name, null, intermediate)))
+        .beforeToolExecution(execution -> listener.propertyChange(new PropertyChangeEvent(this, JeddictBrain.EventProperty.TOOL_BEFORE_EXECUTION.name, null, execution)))
+        .onToolExecuted(execution -> listener.propertyChange(new PropertyChangeEvent(this, JeddictBrain.EventProperty.TOOL_EXECUTED.name, null, execution)))
+        .onError(error -> {
+            listener.propertyChange(new PropertyChangeEvent(this, JeddictBrain.EventProperty.CHAT_ERROR.name, null, error));
+        }).start();
+    }
+
+    default void chat(
+        final PropertyChangeListener listener,
+        final String prompt,
+        final List<String> images,
+        final String projectInfo,
+        final String globalRules,
+        final String projectRules
+    ) {
+        LOG.finest(() -> "\n"
+            + "prompt: " + StringUtils.abbreviate(prompt, 80) + "\n"
+            + "# of images: " + ((images == null) ? 0 : images.size()) + "\n"
+            + "projectInfo: " + StringUtils.abbreviate(projectInfo, 80) + "\n"
+            + "globalRules: " + StringUtils.abbreviate(globalRules, 80) + "\n"
+            + "globalRules: " + StringUtils.abbreviate(projectRules, 80) + "\n"
+        );
+
+        chatstream(
+            StringUtils.defaultIfBlank(prompt, ""),
+            "",
+            imageContent(images),
             StringUtils.defaultIfBlank(projectInfo, ""),
             StringUtils.defaultIfBlank(globalRules, ""),
             StringUtils.defaultIfBlank(projectRules, "")
@@ -140,6 +205,8 @@ project rules:
         chat(listener, prompt, (TreePath)null, null, null, null);
     }
 
+    // -------------------------------------------------------------------------
+
     default String code(final TreePath code) {
         final StringBuffer sb = new StringBuffer();
 
@@ -151,5 +218,17 @@ project rules:
         }
 
         return sb.toString();
+    }
+
+    default List<ImageContent> imageContent(final List<String> images) {
+        List<ImageContent> content = new ArrayList();
+
+        if ((images != null)) {
+            images.forEach((image) -> {
+                content.add(new ImageContent(image));
+            });
+        }
+
+        return content;
     }
 }

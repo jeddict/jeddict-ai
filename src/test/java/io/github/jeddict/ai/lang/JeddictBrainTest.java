@@ -15,6 +15,7 @@
  */
 package io.github.jeddict.ai.lang;
 
+import dev.langchain4j.model.chat.response.ChatResponse;
 import io.github.jeddict.ai.agent.AbstractTool;
 import io.github.jeddict.ai.agent.pair.Assistant;
 import io.github.jeddict.ai.agent.pair.Hacker;
@@ -22,6 +23,7 @@ import io.github.jeddict.ai.agent.pair.PairProgrammer;
 import static io.github.jeddict.ai.agent.pair.PairProgrammer.Specialist.ASSISTANT;
 import static io.github.jeddict.ai.agent.pair.PairProgrammer.Specialist.HACKER;
 import static io.github.jeddict.ai.agent.pair.PairProgrammer.Specialist.TEST;
+import static io.github.jeddict.ai.lang.JeddictBrain.EventProperty.CHAT_COMPLETED;
 import io.github.jeddict.ai.settings.PreferencesManager;
 import io.github.jeddict.ai.test.DummyPropertyChangeListener;
 import io.github.jeddict.ai.test.DummyTool;
@@ -148,6 +150,7 @@ public class JeddictBrainTest extends TestBase {
 
     @Test
     public void get_agentic_Hacker_streaming() {
+        final DummyPropertyChangeListener streamListener = new DummyPropertyChangeListener();
         final DummyTool tool = new DummyTool();
         final String[] msg = new String[2];
         final JeddictBrain brain = new JeddictBrain(
@@ -157,17 +160,24 @@ public class JeddictBrainTest extends TestBase {
 
         Hacker h = brain.pairProgrammer(HACKER);
 
-        h.hackstream("execute mock dummyTool").onToolExecuted(
-            (execution) -> { msg[1] = execution.result(); }
-        ).onCompleteResponse(
-            (response) -> {
-                msg[0] = response.aiMessage().text();
-            }
-        ).onError((t) -> t.printStackTrace())
-        .start();
+        h.hack(streamListener, "execute mock dummyTool");
 
-        then(msg).containsExactly("true", "true");
         then(tool.executed()).isTrue();
+
+        int i = 0;
+        then(streamListener.events).isNotEmpty();
+        PropertyChangeEvent e = streamListener.events.get(i++);
+        then(e.getPropertyName()).isEqualTo(JeddictBrain.EventProperty.CHAT_INTERMEDIATE.name);
+        e = streamListener.events.get(i++);
+        then(e.getPropertyName()).isEqualTo(JeddictBrain.EventProperty.TOOL_BEFORE_EXECUTION.name);
+        e = streamListener.events.get(i++);
+        then(e.getPropertyName()).isEqualTo(JeddictBrain.EventProperty.TOOL_EXECUTED.name);
+        e = streamListener.events.get(i++);
+        then(e.getPropertyName()).isEqualTo(JeddictBrain.EventProperty.CHAT_PARTIAL.name);
+        then(e.getNewValue()).isEqualTo("true");
+        e = streamListener.events.get(i++);
+        then(e.getPropertyName()).isEqualTo(CHAT_COMPLETED.name);
+        then(((ChatResponse)e.getNewValue()).aiMessage().text()).isEqualTo("true");
     }
 
     @Test
@@ -192,7 +202,14 @@ public class JeddictBrainTest extends TestBase {
 
         a.chat(streamListener, "use mock 'hello world.txt'");
 
+        int i = 0;
         then(streamListener.events).isNotEmpty();
+        PropertyChangeEvent e = streamListener.events.get(i++);
+        then(e.getPropertyName()).isEqualTo(JeddictBrain.EventProperty.CHAT_PARTIAL.name);
+        then(e.getNewValue()).isEqualTo("hello world");
+        e = streamListener.events.get(i++);
+        then(e.getPropertyName()).isEqualTo(CHAT_COMPLETED.name);
+        then(((ChatResponse)e.getNewValue()).aiMessage().text()).isEqualTo("hello world\n");
     }
 
     @Test

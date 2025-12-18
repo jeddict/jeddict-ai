@@ -18,17 +18,28 @@ package io.github.jeddict.ai.agent.pair;
 import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.util.JavacTask;
 import com.sun.source.util.TreePath;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.AiServices;
 import static io.github.jeddict.ai.lang.JeddictBrain.EventProperty.CHAT_COMPLETED;
 import static io.github.jeddict.ai.lang.JeddictBrain.EventProperty.CHAT_PARTIAL;
 import io.github.jeddict.ai.test.DummyPropertyChangeListener;
+import io.github.jeddict.ai.util.ContextHelper;
 import java.beans.PropertyChangeEvent;
+import java.io.File;
 import java.io.IOException;
+import java.util.List;
+import java.util.Set;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openide.filesystems.FileObject;
+import org.openide.filesystems.FileUtil;
 
 /**
  *
@@ -123,6 +134,45 @@ public class AssistantTest extends PairProgrammerTestBase {
     }
 
     @Test
+    public void chat_with_images_returns_AI_provided_response() {
+        final String expectedSystem = Assistant.SYSTEM_MESSAGE
+            .replace("{{globalRules}}", GLOBAL_RULES)
+            .replace("{{projectRules}}", PROJECT_RULES);
+        final String expectedUser = Assistant.USER_MESSAGE
+                .replace("{{prompt}}", PROMPT)
+                .replace("{{code}}", "")
+                .replace("{{project}}", PROJECT);
+
+
+        final FileObject imgFO = FileUtil.toFileObject(
+            FileUtil.normalizeFile(new File(".", "src/test/resources/images/4x4.png"))
+        );
+
+        final List<String> images = ContextHelper.getImageFilesContext(Set.of(imgFO), List.of("png"));
+
+        final String answer = pair.chat(
+            PROMPT, images, PROJECT, GLOBAL_RULES, PROJECT_RULES
+        );
+
+        final ChatModelRequestContext request = listener.lastRequestContext.get();
+        final List<ChatMessage> messages = request.chatRequest().messages();
+
+        //
+        // System message
+        //
+        then(((SystemMessage)messages.get(0)).text())
+            .isEqualTo(expectedSystem);
+
+        final UserMessage userMessage = (UserMessage)messages.get(1);
+        then(userMessage.contents()).containsExactly(
+            TextContent.from(expectedUser),
+            ImageContent.from(images.get(0))
+        );
+
+        then(answer.trim()).isEqualTo("hello world");
+    }
+
+    @Test
     public void chat_with_streaming_prompt_only() {
         final DummyPropertyChangeListener streamListener = new DummyPropertyChangeListener();
 
@@ -131,6 +181,51 @@ public class AssistantTest extends PairProgrammerTestBase {
             .build();
 
         pair.chat(streamListener, PROMPT);
+
+        then(streamListener.events).isNotEmpty();
+        PropertyChangeEvent e = streamListener.events.get(0);
+        then(e.getPropertyName()).isEqualTo(CHAT_PARTIAL.name);
+        then(e.getNewValue()).isEqualTo("hello world");
+        e = streamListener.events.get(1);
+        then(e.getPropertyName()).isEqualTo(CHAT_COMPLETED.name);
+        then(((ChatResponse)e.getNewValue()).aiMessage().text()).isEqualTo("hello world\n");
+    }
+
+    @Test
+    public void chat_with_streaming_and_code() throws Exception {
+        final TreePath tree = codeFromSayHello();
+        final DummyPropertyChangeListener streamListener = new DummyPropertyChangeListener();
+
+        pair = AiServices.builder(Assistant.class)
+            .streamingChatModel(model)
+            .build();
+
+        pair.chat(streamListener, PROMPT, tree, PROJECT, GLOBAL_RULES, PROJECT_RULES);
+
+        then(streamListener.events).isNotEmpty();
+        PropertyChangeEvent e = streamListener.events.get(0);
+        then(e.getPropertyName()).isEqualTo(CHAT_PARTIAL.name);
+        then(e.getNewValue()).isEqualTo("hello world");
+        e = streamListener.events.get(1);
+        then(e.getPropertyName()).isEqualTo(CHAT_COMPLETED.name);
+        then(((ChatResponse)e.getNewValue()).aiMessage().text()).isEqualTo("hello world\n");
+    }
+
+    @Test
+    public void chat_with_streaming_and_images() {
+        final DummyPropertyChangeListener streamListener = new DummyPropertyChangeListener();
+
+        pair = AiServices.builder(Assistant.class)
+            .streamingChatModel(model)
+            .build();
+
+        final FileObject imgFO = FileUtil.toFileObject(
+            FileUtil.normalizeFile(new File(".", "src/test/resources/images/4x4.png"))
+        );
+
+        final List<String> images = ContextHelper.getImageFilesContext(Set.of(imgFO), List.of("png"));
+
+        pair.chat(streamListener, PROMPT, images, PROJECT, GLOBAL_RULES, PROJECT_RULES);
 
         then(streamListener.events).isNotEmpty();
         PropertyChangeEvent e = streamListener.events.get(0);

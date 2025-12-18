@@ -15,31 +15,26 @@
  */
 package io.github.jeddict.ai.agent.pair;
 
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.ImageContent;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.AiServices;
+import io.github.jeddict.ai.lang.JeddictBrain;
+import static io.github.jeddict.ai.lang.JeddictBrain.EventProperty.CHAT_COMPLETED;
+import io.github.jeddict.ai.test.DummyPropertyChangeListener;
 import io.github.jeddict.ai.test.DummyTool;
-import io.github.jeddict.ai.util.ContextHelper;
-import java.io.File;
+import java.beans.PropertyChangeEvent;
 import java.util.List;
-import java.util.Set;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.openide.filesystems.FileObject;
-import org.openide.filesystems.FileUtil;
 
 /**
  *
  */
 public class HackerTest extends PairProgrammerTestBase {
 
-    private static final String PROJECT_INFO = "JDK 17";
-
+    private static final String GLOBAL_RULES = "globale rules";
+    private static final String PROJECT_RULES = "project rules";
 
     private Hacker pair;
 
@@ -61,8 +56,8 @@ public class HackerTest extends PairProgrammerTestBase {
     @Test
     public void hack_returns_AI_provided_response() {
         final String expectedSystem = Hacker.SYSTEM_MESSAGE
-            .replace("{{project}}", PROJECT_INFO)
-            .replace("{{rules}}", "none");
+            .replace("{{globalRules}}", "none")
+            .replace("{{projectRules}}", "none");
         final String expectedUser = "use mock 'hello world.txt'";
 
         final String answer = pair.hack(expectedUser);
@@ -78,11 +73,11 @@ public class HackerTest extends PairProgrammerTestBase {
     @Test
     public void hack_with_rules_returns_AI_provided_response() {
         final String expectedSystem = Hacker.SYSTEM_MESSAGE
-            .replace("{{project}}", PROJECT_INFO)
-            .replace("{{rules}}", "some rules");
+            .replace("{{globalRules}}", GLOBAL_RULES)
+            .replace("{{projectRules}}", PROJECT_RULES);
         final String expectedUser = "use mock 'hello world.txt'";
 
-        final String answer = pair.hack(expectedUser, "some rules");
+        final String answer = pair.hack(expectedUser, GLOBAL_RULES, PROJECT_RULES);
 
         final ChatModelRequestContext request = listener.lastRequestContext.get();
         thenMessagesMatch(
@@ -93,42 +88,8 @@ public class HackerTest extends PairProgrammerTestBase {
     }
 
     @Test
-    public void hack_with_images_returns_AI_provided_response() {
-        final SystemMessage expectedSystem = new SystemMessage(
-            Hacker.SYSTEM_MESSAGE.replace("{{rules}}", "some rules")
-        );
-        final String expectedUser = "use mock 'hello world.txt'";
-
-        final FileObject imgFO = FileUtil.toFileObject(
-            FileUtil.normalizeFile(new File(".", "src/test/resources/images/4x4.png"))
-        );
-
-        final List<String> images = ContextHelper.getImageFilesContext(Set.of(imgFO), List.of("png"));
-
-        final String answer = pair.hack(
-            expectedUser, images, "some rules"
-        );
-
-        final ChatModelRequestContext request = listener.lastRequestContext.get();
-        final List<ChatMessage> messages = request.chatRequest().messages();
-
-        //
-        // System message
-        //
-        then(String.valueOf((SystemMessage)messages.get(0)))
-            .isEqualTo(String.valueOf(expectedSystem));
-
-        final UserMessage userMessage = (UserMessage)messages.get(1);
-        then(userMessage.contents()).containsExactly(
-            TextContent.from(expectedUser),
-            ImageContent.from(images.get(0))
-        );
-
-        then(answer.trim()).isEqualTo("hello world");
-    }
-
-    @Test
     public void hack_with_streaming() {
+        final DummyPropertyChangeListener streamListener = new DummyPropertyChangeListener();
         final DummyTool tool = new DummyTool();
         final String[] msg = new String[2];
 
@@ -137,17 +98,23 @@ public class HackerTest extends PairProgrammerTestBase {
             .tools(List.of(tool))
             .build();
 
-        pair.hackstream("execute mock dummyTool").onToolExecuted(
-            (execution) -> { msg[1] = execution.result(); }
-        ).onCompleteResponse(
-            (response) -> {
-                msg[0] = response.aiMessage().text();
-            }
-        ).onError((t) -> t.printStackTrace())
-        .start();
-
-        then(msg).containsExactly("true", "true");
+        pair.hack(streamListener, "execute mock dummyTool", "", "");
         then(tool.executed()).isTrue();
+
+        int i = 0;
+        then(streamListener.events).isNotEmpty();
+        PropertyChangeEvent e = streamListener.events.get(i++);
+        then(e.getPropertyName()).isEqualTo(JeddictBrain.EventProperty.CHAT_INTERMEDIATE.name);
+        e = streamListener.events.get(i++);
+        then(e.getPropertyName()).isEqualTo(JeddictBrain.EventProperty.TOOL_BEFORE_EXECUTION.name);
+        e = streamListener.events.get(i++);
+        then(e.getPropertyName()).isEqualTo(JeddictBrain.EventProperty.TOOL_EXECUTED.name);
+        e = streamListener.events.get(i++);
+        then(e.getPropertyName()).isEqualTo(JeddictBrain.EventProperty.CHAT_PARTIAL.name);
+        then(e.getNewValue()).isEqualTo("true");
+        e = streamListener.events.get(i++);
+        then(e.getPropertyName()).isEqualTo(CHAT_COMPLETED.name);
+        then(((ChatResponse)e.getNewValue()).aiMessage().text()).isEqualTo("true");
     }
 
 }

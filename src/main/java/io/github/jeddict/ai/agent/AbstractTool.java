@@ -62,7 +62,7 @@ public abstract class AbstractTool {
     }
 
     public void log(Supplier<String> supplier) {
-        log.info(supplier);
+        log.info(supplier.get());
     }
 
     public void progress(String message) {
