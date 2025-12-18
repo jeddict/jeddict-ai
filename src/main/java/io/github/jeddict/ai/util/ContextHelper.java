@@ -117,8 +117,6 @@ public class ContextHelper {
                     final String mimeType = Files.probeContentType(Path.of(file.toURI()));
 
                     if (!mimeType.startsWith("image")) {
-
-
                         String text = getLatestContent(file);
                         if (text != null) {
                             if ("java".equals(file.getExt()) && excludeJavadoc) {
@@ -151,7 +149,7 @@ public class ContextHelper {
             //
             try {
                 final String mimeType = Files.probeContentType(Path.of(file.toURI()));
-                if (mimeType.startsWith("image/")) {
+                if ((mimeType != null) && mimeType.startsWith("image/")) {
                     try (InputStream is = file.getInputStream()) {
                         byte[] imageBytes = is.readAllBytes();
                         String base64 = Base64.getEncoder().encodeToString(imageBytes);
