@@ -24,14 +24,18 @@ import dev.langchain4j.agentic.agent.AgentBuilder;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.service.AiServices;
 import io.github.jeddict.ai.agent.AbstractTool;
 import io.github.jeddict.ai.agent.pair.PairProgrammer;
+import io.github.jeddict.ai.response.TokenHandler;
 import io.github.jeddict.ai.util.PropertyChangeEmitter;
 import java.beans.PropertyChangeListener;
 import java.util.List;
 import java.util.Optional;
 import java.util.logging.Logger;
+//import opennlp.tools.tokenize.Tokenizer;
 
 public class JeddictBrain implements PropertyChangeEmitter {
 
@@ -40,8 +44,8 @@ public class JeddictBrain implements PropertyChangeEmitter {
     private int memorySize = 0;
 
     public enum InteractionMode {
-        QUERY,       // no tools, mainly queries
-        AGENT,       // tools execution no human interaction
+        QUERY, // no tools, mainly queries
+        AGENT, // tools execution no human interaction
         INTERACTIVE  // tools execution previa human confirmation
     }
 
@@ -52,8 +56,7 @@ public class JeddictBrain implements PropertyChangeEmitter {
         CHAT_PARTIAL("chatPartial"),
         CHAT_INTERMEDIATE("chatIntermediate"),
         TOOL_BEFORE_EXECUTION("toolBeforeExecution"),
-        TOOL_EXECUTED("toolExecuted")
-        ;
+        TOOL_EXECUTED("toolExecuted");
 
         public final String name;
 
@@ -73,30 +76,30 @@ public class JeddictBrain implements PropertyChangeEmitter {
     public final String modelName;
 
     public JeddictBrain(
-        final boolean streaming
+            final boolean streaming
     ) {
         this("", streaming, InteractionMode.QUERY, List.of());
     }
 
     public JeddictBrain(
-        final String modelName, final boolean streaming
+            final String modelName, final boolean streaming
     ) {
         this(modelName, streaming, InteractionMode.QUERY, List.of());
     }
 
     public JeddictBrain(
-        final String modelName,
-        final boolean streaming,
-        final InteractionMode mode,
-        final List<AbstractTool> tools
+            final String modelName,
+            final boolean streaming,
+            final InteractionMode mode,
+            final List<AbstractTool> tools
     ) {
         if (modelName == null) {
             throw new IllegalArgumentException("modelName can not be null");
         }
         this.modelName = modelName;
 
-        final JeddictChatModelBuilder builder =
-            new JeddictChatModelBuilder(this.modelName);
+        final JeddictChatModelBuilder builder
+                = new JeddictChatModelBuilder(this.modelName, new TokenTrackingListener());
 
         if (streaming) {
             this.streamingChatModel = Optional.of(builder.buildStreaming());
@@ -107,8 +110,8 @@ public class JeddictBrain implements PropertyChangeEmitter {
         }
         this.mode = mode;
         this.tools = (tools != null)
-                   ? List.copyOf(tools) // immutable
-                   : List.of();
+                ? List.copyOf(tools) // immutable
+                : List.of();
     }
 
     /**
@@ -131,14 +134,17 @@ public class JeddictBrain implements PropertyChangeEmitter {
         if (size < 0) {
             throw new IllegalArgumentException("size must be greather than 0 (where 0 means no memory)");
         }
-        this.memorySize = size; return this;
+        this.memorySize = size;
+        return this;
     }
 
     /**
-     * Creates and configures a pair programmer agent based on the specified specialist.
+     * Creates and configures a pair programmer agent based on the specified
+     * specialist.
      *
      * @param <T> the type of the agent to be created
-     * @param specialist the specialist that defines the type of the agent and its behavior
+     * @param specialist the specialist that defines the type of the agent and
+     * its behavior
      *
      * @return an instance of the configured agent
      */
@@ -155,8 +161,8 @@ public class JeddictBrain implements PropertyChangeEmitter {
         // interactions with the AI. It is mainly for use in QUERY interaction
         // mode. Since it supports streaming, we need to use AiServices.
         //
-        if ((specialist == PairProgrammer.Specialist.HACKER) ||
-            (specialist == PairProgrammer.Specialist.ASSISTANT)) {
+        if ((specialist == PairProgrammer.Specialist.HACKER)
+                || (specialist == PairProgrammer.Specialist.ASSISTANT)) {
             final AiServices builder = AiServices.builder(specialist.specialistClass);
 
             if (specialist == PairProgrammer.Specialist.HACKER) {
@@ -164,29 +170,29 @@ public class JeddictBrain implements PropertyChangeEmitter {
             }
 
             chatModel.ifPresentOrElse(
-                (model) -> builder.chatModel(model),
-                () -> builder.streamingChatModel(streamingChatModel.get())
+                    (model) -> builder.chatModel(model),
+                    () -> builder.streamingChatModel(streamingChatModel.get())
             );
 
             if (memorySize > 0) {
                 builder.chatMemory(MessageWindowChatMemory.withMaxMessages(memorySize));
             }
 
-            return (T)builder.build();
+            return (T) builder.build();
         }
 
         //
         // Build normal utility agents
         //
-        AgentBuilder<T> builder =
-            AgenticServices.agentBuilder(specialist.specialistClass)
-                .chatModel(chatModel.get());
+        AgentBuilder<T> builder
+                = AgenticServices.agentBuilder(specialist.specialistClass)
+                        .chatModel(chatModel.get());
 
         if (memorySize > 0) {
             builder.chatMemory(MessageWindowChatMemory.withMaxMessages(memorySize));
         }
 
-        return (T)builder.build();
+        return (T) builder.build();
     }
 
     public void addProgressListener(final PropertyChangeListener listener) {
@@ -195,6 +201,36 @@ public class JeddictBrain implements PropertyChangeEmitter {
 
     public void removeProgressListener(final PropertyChangeListener listener) {
         removePropertyChangeListener(listener);
+    }
+
+    private void fireEvent(EventProperty property, Object value) {
+        LOG.finest(() -> "Firing event " + property + " with value " + value);
+        firePropertyChange(property.name, null, value);
+    }
+
+    // --------------------------------------------------- TokenTrackingListener
+    private class TokenTrackingListener implements ChatModelListener {
+
+        /**
+         * The main purpose of this listener is to estimate the amount of tokens
+         * a request generates. However, there is not a standard definition of
+         * what a token is and what is considered a token derived from the
+         * user messages and what is instead generated by the models.
+         * Models can turn the provided prompt and tool definition into something
+         * more digestable for the model and count the added tokens.
+         * Therefore, instead of trying to approximate closely what the AI model
+         * may consider a token the estimation extracted here is based on the
+         * {@code String.valueOf()} of the context's request.
+         *
+         * @param context
+         */
+        @Override
+        public void onRequest(ChatModelRequestContext context) {
+            fireEvent(
+                EventProperty.CHAT_TOKENS,
+                TokenHandler.saveInputToken(String.valueOf(context.chatRequest()))
+            );
+        }
     }
 
 }

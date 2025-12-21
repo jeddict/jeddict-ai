@@ -18,10 +18,12 @@ package io.github.jeddict.ai.lang.impl;
 import dev.langchain4j.http.client.jdk.JdkHttpClient;
 import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import io.github.jeddict.ai.lang.ChatModelBuilder;
 import java.net.http.HttpClient;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -160,6 +162,11 @@ public class LMStudioBuilder implements ChatModelBuilder {
     public ChatModelBuilder allowCodeExecution(final boolean allowCodeExecution) {
         //NOOP
         return this;
+    }
+
+    @Override
+    public ChatModelBuilder listeners(List<ChatModelListener> listeners) {
+        builder.listeners(listeners); return this;
     }
 
     @Override
