@@ -15,6 +15,7 @@
  */
 package io.github.jeddict.ai.agent;
 
+import com.github.caciocavallosilano.cacio.ctc.junit.CacioTest;
 import io.github.jeddict.ai.test.TestBase;
 import java.io.File;
 import java.io.IOException;
@@ -26,6 +27,7 @@ import org.netbeans.spi.project.ProjectState;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
 
+@CacioTest
 public class ProjectToolsTest extends TestBase {
 
     final NbMavenProjectFactory projectFactory = new NbMavenProjectFactory();
