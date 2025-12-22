@@ -18,7 +18,7 @@ package io.github.jeddict.ai.lang;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import io.github.jeddict.ai.agent.AbstractTool;
 import io.github.jeddict.ai.agent.pair.Assistant;
-import io.github.jeddict.ai.agent.pair.Hacker;
+import io.github.jeddict.ai.agent.pair.HackerWithTools;
 import io.github.jeddict.ai.agent.pair.PairProgrammer;
 import static io.github.jeddict.ai.agent.pair.PairProgrammer.Specialist.ASSISTANT;
 import static io.github.jeddict.ai.agent.pair.PairProgrammer.Specialist.HACKER;
@@ -131,14 +131,14 @@ public class JeddictBrainTest extends TestBase {
     }
 
     @Test
-    public void get_agentic_Hacker() {
+    public void get_agentic_haker_with_tools() {
         final DummyTool tool = new DummyTool();
         final JeddictBrain brain = new JeddictBrain(
             "dummy-with-tools", false,
             JeddictBrain.InteractionMode.AGENT, List.of(tool)
         );
 
-        Hacker h = brain.pairProgrammer(HACKER);
+        HackerWithTools h = brain.pairProgrammer(HACKER);
 
         h.hack("execute tool dummyTool");
 
@@ -155,7 +155,7 @@ public class JeddictBrainTest extends TestBase {
             JeddictBrain.InteractionMode.AGENT, List.of(tool)
         );
 
-        Hacker h = brain.pairProgrammer(HACKER);
+        HackerWithTools h = brain.pairProgrammer(HACKER);
 
         h.hack(streamListener, "execute tool dummyTool");
 
@@ -179,7 +179,6 @@ public class JeddictBrainTest extends TestBase {
 
     @Test
     public void get_assistant_chat_and_streaming() {
-        final String[] msg = new String[1];
         JeddictBrain brain = new JeddictBrain(
             "dummy", false,
             JeddictBrain.InteractionMode.QUERY, List.of()

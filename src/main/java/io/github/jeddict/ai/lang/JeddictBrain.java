@@ -137,10 +137,10 @@ public class JeddictBrain implements PropertyChangeEmitter {
      *
      * @return an instance of the configured agent
      */
-    public <T> T pairProgrammer(final PairProgrammer.Specialist specialist) {
+    public <T> T pairProgrammer(PairProgrammer.Specialist specialist) {
         //
-        // The HACKER is a top level AI agent that interacts with the user. As
-        // such it must support many more functionalities then other Agents and
+        // HACKER is a top level AI agent that interacts with the user. As such,
+        // it must support many more functionalities then other agents and
         // overcome some design limitations currently in langchain4j agents (see
         // https://github.com/langchain4j/langchain4j/issues/4098,
         // https://github.com/langchain4j/langchain4j/issues/4177,
@@ -150,30 +150,29 @@ public class JeddictBrain implements PropertyChangeEmitter {
         // interactions with the AI. It is mainly for use in QUERY interaction
         // mode. Since it supports streaming, we need to use AiServices.
         //
-        Class specialistClass = specialist.specialistClass;
-        if ((specialist == PairProgrammer.Specialist.HACKER)
-                || (specialist == PairProgrammer.Specialist.ASSISTANT)) {
+        if (
+            (specialist == PairProgrammer.Specialist.HACKER) ||
+            (specialist == PairProgrammer.Specialist.ASSISTANT) ||
+            (specialist == PairProgrammer.Specialist.HACKER_WITHOUT_TOOLS)) {
             if (specialist == PairProgrammer.Specialist.HACKER) {
                 if (!probeToolSupport()) {
-                    specialistClass = PairProgrammer.Specialist.HACKER_WITHOUT_TOOLS.specialistClass;
+                    specialist = PairProgrammer.Specialist.HACKER_WITHOUT_TOOLS;
                 }
             }
 
-            final AiServices builder = AiServices.builder(specialistClass);
-
-            if (specialist == PairProgrammer.Specialist.HACKER) {
-                builder.tools(tools.toArray());
-            }
-
+            final AiServices builder = AiServices.builder(specialist.specialistClass);
             if (streaming) {
                 builder.streamingChatModel(model());
             } else {
                 builder.chatModel(model());
             }
-
             if (memorySize > 0) {
                 builder.chatMemory(MessageWindowChatMemory.withMaxMessages(memorySize));
             }
+            if (specialist == PairProgrammer.Specialist.HACKER) {
+                builder.tools(tools.toArray());
+            }
+
 
             return (T) builder.build();
         }
@@ -181,8 +180,8 @@ public class JeddictBrain implements PropertyChangeEmitter {
         //
         // Build normal utility agents
         //
-        AgentBuilder<T> builder
-                = AgenticServices.agentBuilder(specialistClass)
+        final AgentBuilder<T> builder
+                = AgenticServices.agentBuilder(specialist.specialistClass)
                         .chatModel(model());
 
         if (memorySize > 0) {
@@ -210,11 +209,13 @@ public class JeddictBrain implements PropertyChangeEmitter {
         //
         if (probedModels.containsKey(modelName)) {
             final boolean toolsSupport = probedModels.get(modelName);
-            LOG.info(
+            LOG.info(() ->
                 (LOG_MSG + " (cached)").formatted(modelName, (toolsSupport) ? "supports" : "does not support")
             );
             return toolsSupport;
         }
+
+        LOG.finest(() -> "probing that %s supports tools".formatted(modelName));
 
         //
         // Otherwise probe the model by trying to trigger the execution of the

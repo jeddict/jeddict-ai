@@ -31,19 +31,19 @@ import org.junit.jupiter.api.Test;
 /**
  *
  */
-public class HackerTest extends PairProgrammerTestBase {
+public class HackerWithToolsTest extends PairProgrammerTestBase {
 
     private static final String GLOBAL_RULES = "globale rules";
     private static final String PROJECT_RULES = "project rules";
 
-    private Hacker pair;
+    private HackerWithTools pair;
 
     @BeforeEach
     @Override
     public void beforeEach() throws Exception {
         super.beforeEach();
 
-        pair = AiServices.builder(Hacker.class)
+        pair = AiServices.builder(HackerWithTools.class)
             .chatModel(model)
             .build();
     }
@@ -55,7 +55,7 @@ public class HackerTest extends PairProgrammerTestBase {
 
     @Test
     public void hack_returns_AI_provided_response() {
-        final String expectedSystem = Hacker.SYSTEM_MESSAGE
+        final String expectedSystem = HackerWithTools.SYSTEM_MESSAGE
             .replace("{{globalRules}}", "none")
             .replace("{{projectRules}}", "none");
         final String expectedUser = "use mock 'hello world.txt'";
@@ -72,7 +72,7 @@ public class HackerTest extends PairProgrammerTestBase {
 
     @Test
     public void hack_with_rules_returns_AI_provided_response() {
-        final String expectedSystem = Hacker.SYSTEM_MESSAGE
+        final String expectedSystem = HackerWithTools.SYSTEM_MESSAGE
             .replace("{{globalRules}}", GLOBAL_RULES)
             .replace("{{projectRules}}", PROJECT_RULES);
         final String expectedUser = "use mock 'hello world.txt'";
@@ -93,7 +93,7 @@ public class HackerTest extends PairProgrammerTestBase {
         final DummyTool tool = new DummyTool();
         final String[] msg = new String[2];
 
-        pair = AiServices.builder(Hacker.class)
+        pair = AiServices.builder(HackerWithTools.class)
             .streamingChatModel(model)
             .tools(List.of(tool))
             .build();
