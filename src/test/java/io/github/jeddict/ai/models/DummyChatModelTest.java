@@ -256,7 +256,8 @@ public class DummyChatModelTest extends TestBase {
 
             @Override
             public void onCompleteResponse(final ChatResponse res) {
-                messages.add(res.aiMessage().text());
+                // .trim() to make it platform independent (i.e. \n vs \r\n)
+                messages.add(res.aiMessage().text().trim());
             }
 
             @Override
@@ -264,7 +265,7 @@ public class DummyChatModelTest extends TestBase {
             }
         });
 
-        then(messages).containsExactly("hello world", "hello world\n");
+        then(messages).containsExactly("hello world", "hello world");
     }
 
     @Test

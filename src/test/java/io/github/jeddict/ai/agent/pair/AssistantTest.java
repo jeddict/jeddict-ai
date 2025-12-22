@@ -92,12 +92,12 @@ public class AssistantTest extends PairProgrammerTestBase {
             request.chatRequest().messages(), expectedSystem, expectedUser
         );
 
-        then(answer).isEqualTo("hello world\n");
+        then(answer).isEqualToIgnoringNewLines("hello world");
     }
 
     @Test
     public void chat_with_prompt_only() {
-        then(pair.chat("use mock 'hello world.txt'")).isEqualTo("hello world\n");
+        then(pair.chat("use mock 'hello world.txt'")).isEqualToIgnoringNewLines("hello world");
     }
 
     @Test
@@ -130,7 +130,7 @@ public class AssistantTest extends PairProgrammerTestBase {
         then(e.getNewValue()).isEqualTo("hello world");
         e = streamListener.events.get(1);
         then(e.getPropertyName()).isEqualTo(CHAT_COMPLETED.name);
-        then(((ChatResponse)e.getNewValue()).aiMessage().text()).isEqualTo("hello world\n");
+        then(((ChatResponse)e.getNewValue()).aiMessage().text()).isEqualToIgnoringNewLines("hello world");
     }
 
     @Test
@@ -188,7 +188,7 @@ public class AssistantTest extends PairProgrammerTestBase {
         then(e.getNewValue()).isEqualTo("hello world");
         e = streamListener.events.get(1);
         then(e.getPropertyName()).isEqualTo(CHAT_COMPLETED.name);
-        then(((ChatResponse)e.getNewValue()).aiMessage().text()).isEqualTo("hello world\n");
+        then(((ChatResponse)e.getNewValue()).aiMessage().text()).isEqualToIgnoringNewLines("hello world");
     }
 
     @Test
@@ -208,7 +208,7 @@ public class AssistantTest extends PairProgrammerTestBase {
         then(e.getNewValue()).isEqualTo("hello world");
         e = streamListener.events.get(1);
         then(e.getPropertyName()).isEqualTo(CHAT_COMPLETED.name);
-        then(((ChatResponse)e.getNewValue()).aiMessage().text()).isEqualTo("hello world\n");
+        then(((ChatResponse)e.getNewValue()).aiMessage().text()).isEqualToIgnoringNewLines("hello world");
     }
 
     @Test
@@ -233,7 +233,7 @@ public class AssistantTest extends PairProgrammerTestBase {
         then(e.getNewValue()).isEqualTo("hello world");
         e = streamListener.events.get(1);
         then(e.getPropertyName()).isEqualTo(CHAT_COMPLETED.name);
-        then(((ChatResponse)e.getNewValue()).aiMessage().text()).isEqualTo("hello world\n");
+        then(((ChatResponse)e.getNewValue()).aiMessage().text()).isEqualToIgnoringNewLines("hello world");
     }
 
     // --------------------------------------------------------- private methods

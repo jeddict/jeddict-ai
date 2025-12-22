@@ -67,7 +67,7 @@ public class FileWizardTest extends PairProgrammerTestBase {
             .contains("the content")
             .contains("project info: JDK 21");
 
-        then(content).isEqualTo("hello world\n");
+        then(content).isEqualToIgnoringNewLines("hello world");
     }
 
     @Test
@@ -90,7 +90,7 @@ public class FileWizardTest extends PairProgrammerTestBase {
             .contains("context: use mock 'hello world.txt'\n")
             .contains("content:\n```\n\n```\n");
 
-        then(content).isEqualTo("hello world\n");
+        then(content).isEqualToIgnoringNewLines("hello world");
 
         content = pair.newFile(
             "use mock 'hello world.txt'",null , "", "  ", "\n", "", ""
@@ -109,7 +109,7 @@ public class FileWizardTest extends PairProgrammerTestBase {
             .contains("content:\n```\n\n```\n")
             .contains("project info: \n");
 
-        then(content).isEqualTo("hello world\n");
+        then(content).isEqualToIgnoringNewLines("hello world");
 
     }
 

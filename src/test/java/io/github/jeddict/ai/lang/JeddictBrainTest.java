@@ -190,7 +190,7 @@ public class JeddictBrainTest extends TestBase {
 
         Assistant a = brain.pairProgrammer(ASSISTANT);
 
-        then(a.chat("use mock 'hello world.txt'")).isEqualTo("hello world\n");
+        then(a.chat("use mock 'hello world.txt'")).isEqualToIgnoringNewLines("hello world");
 
         final DummyPropertyChangeListener streamListener
             = new DummyPropertyChangeListener();
@@ -209,7 +209,7 @@ public class JeddictBrainTest extends TestBase {
         then(e.getNewValue()).isEqualTo("hello world");
         e = streamListener.events.get(i++);
         then(e.getPropertyName()).isEqualTo(CHAT_COMPLETED.name);
-        then(((ChatResponse)e.getNewValue()).aiMessage().text()).isEqualTo("hello world\n");
+        then(((ChatResponse)e.getNewValue()).aiMessage().text()).isEqualToIgnoringNewLines("hello world");
     }
 
     @Test
