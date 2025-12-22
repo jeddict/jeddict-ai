@@ -17,6 +17,7 @@ package io.github.jeddict.ai.lang;
 
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import io.github.jeddict.ai.models.DummyChatModel;
 import io.github.jeddict.ai.settings.PreferencesManager;
@@ -49,12 +50,21 @@ public class JeddictChatModelBuilder {
     final private String modelName;
     final private boolean withTools;
 
+    private final ChatModelListener listener;
+
     public JeddictChatModelBuilder() {
         this(null);
     }
 
-    public JeddictChatModelBuilder(String modelName) {
+    public JeddictChatModelBuilder(final String modelName) {
+        this(modelName, null);
+    }
+
+    public JeddictChatModelBuilder(
+        final String modelName, final ChatModelListener listener
+    ) {
         this.modelName = modelName; // P2 - TODO: can this be null?
+        this.listener = listener;
         withTools = (modelName != null) && modelName.endsWith("-with-tools");
     }
 

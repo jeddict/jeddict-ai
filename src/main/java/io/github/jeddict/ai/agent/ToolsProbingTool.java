@@ -30,8 +30,8 @@ public class ToolsProbingTool {
     public final String probeText = UUID.randomUUID().toString();
 
     @Tool("""
-        Tool to prove if the model supports tools/function.
-        This tool does not accept any arguments and returns a predefined value
+        Tool to probe if the model supports tools/function.
+        This tool does not accept any arguments and returns a random value
     """)
     public String probeToolsSupport() {
         return probeText;

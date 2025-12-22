@@ -15,7 +15,6 @@
  */
 package io.github.jeddict.ai.hints;
 
-import io.github.jeddict.ai.agent.AssistantAction;
 import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.MethodTree;
 import com.sun.source.tree.Tree;
@@ -34,25 +33,19 @@ import io.github.jeddict.ai.agent.FileSystemTools;
 import io.github.jeddict.ai.agent.GradleTools;
 import io.github.jeddict.ai.agent.MavenTools;
 import io.github.jeddict.ai.agent.RefactoringTools;
+import io.github.jeddict.ai.agent.pair.Assistant;
 import io.github.jeddict.ai.agent.pair.DBSpecialist;
 import io.github.jeddict.ai.agent.pair.DiffSpecialist;
+import io.github.jeddict.ai.agent.pair.Hacker;
 import io.github.jeddict.ai.agent.pair.PairProgrammer;
 import io.github.jeddict.ai.agent.pair.TechWriter;
 import io.github.jeddict.ai.agent.pair.TestSpecialist;
-import static io.github.jeddict.ai.classpath.JeddictQueryCompletionQuery.JEDDICT_EDITOR_CALLBACK;
 import io.github.jeddict.ai.completion.Action;
 import io.github.jeddict.ai.completion.SQLCompletion;
 import io.github.jeddict.ai.components.AssistantChat;
-import static io.github.jeddict.ai.components.AssistantChat.createEditorKit;
 import io.github.jeddict.ai.components.ContextDialog;
 import io.github.jeddict.ai.components.CustomScrollBarUI;
-import io.github.jeddict.ai.components.FileTab;
-import io.github.jeddict.ai.components.FileTransferHandler;
 import static io.github.jeddict.ai.components.MarkdownPane.getHtmlWrapWidth;
-import io.github.jeddict.ai.components.MessageContextComponentAdapter;
-import static io.github.jeddict.ai.components.QueryPane.createIconButton;
-import static io.github.jeddict.ai.components.QueryPane.createStyledComboBox;
-import io.github.jeddict.ai.components.TokenUsageChartDialog;
 import io.github.jeddict.ai.lang.JeddictBrain;
 import io.github.jeddict.ai.lang.JeddictBrainListener;
 import io.github.jeddict.ai.response.Block;
@@ -60,7 +53,7 @@ import io.github.jeddict.ai.response.Response;
 import io.github.jeddict.ai.review.Review;
 import static io.github.jeddict.ai.review.ReviewUtil.convertReviewsToHtml;
 import static io.github.jeddict.ai.review.ReviewUtil.parseReviewsFromYaml;
-import static io.github.jeddict.ai.settings.GenAIProvider.getModelsByProvider;
+import io.github.jeddict.ai.scanner.ProjectMetadataInfo;
 import io.github.jeddict.ai.settings.PreferencesManager;
 import io.github.jeddict.ai.util.ColorUtil;
 import static io.github.jeddict.ai.util.ContextHelper.getFilesContextList;
@@ -70,33 +63,13 @@ import static io.github.jeddict.ai.util.ContextHelper.getTextFilesContext;
 import io.github.jeddict.ai.util.EditorUtil;
 import static io.github.jeddict.ai.util.EditorUtil.getBackgroundColorFromMimeType;
 import static io.github.jeddict.ai.util.EditorUtil.getHTMLContent;
-import static io.github.jeddict.ai.util.Icons.ICON_ATTACH;
-import static io.github.jeddict.ai.util.Icons.ICON_CONTEXT;
-import static io.github.jeddict.ai.util.Icons.ICON_NEW_CHAT;
-import static io.github.jeddict.ai.util.Icons.ICON_NEXT;
-import static io.github.jeddict.ai.util.Icons.ICON_PREV;
-import static io.github.jeddict.ai.util.Icons.ICON_SEND;
-import static io.github.jeddict.ai.util.Icons.ICON_SETTINGS;
-import static io.github.jeddict.ai.util.Icons.ICON_STATS;
-import static io.github.jeddict.ai.util.Icons.ICON_WEB;
-import io.github.jeddict.ai.util.Labels;
 import static io.github.jeddict.ai.util.MimeUtil.MIME_PLAIN_TEXT;
 import static io.github.jeddict.ai.util.ProjectUtil.getSourceFiles;
 import io.github.jeddict.ai.util.RandomTweetSelector;
 import io.github.jeddict.ai.util.StringUtil;
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Desktop;
-import java.awt.Dimension;
 import java.awt.EventQueue;
-import java.awt.FlowLayout;
-import java.awt.event.ActionEvent;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
-import java.awt.event.KeyEvent;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -113,33 +86,17 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.logging.Logger;
-import java.util.prefs.Preferences;
-import javax.swing.AbstractAction;
-import javax.swing.BorderFactory;
-import javax.swing.Box;
-import javax.swing.BoxLayout;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
-import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JEditorPane;
-import javax.swing.JFileChooser;
 import javax.swing.JFrame;
-import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.KeyStroke;
-import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
-import javax.swing.Timer;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
 import javax.swing.event.HyperlinkEvent;
-import javax.swing.text.Document;
+import org.apache.commons.lang3.StringUtils;
 import org.netbeans.api.java.source.JavaSource;
 import org.netbeans.api.java.source.TreePathHandle;
 import org.netbeans.api.java.source.WorkingCopy;
-import org.netbeans.api.options.OptionsDisplayer;
 import org.netbeans.api.project.FileOwnerQuery;
 import org.netbeans.api.project.Project;
 import org.netbeans.api.project.ProjectInformation;
@@ -167,19 +124,11 @@ public class AssistantChatManager extends JavaFix {
     private TreePath treePath;
     private final Action action;
     private SQLCompletion sqlCompletion;
-    private ComponentAdapter buttonPanelAdapter;
-    private JComboBox<String> models;
-    private JComboBox<AssistantAction> actionComboBox;
-    private Timer timer;
-    private JButton prevButton, nextButton, openInBrowserButton, submitButton;//copyButton, saveButton,
-    private AssistantChat topComponent;
-    private JEditorPane questionPane;
-    private JScrollPane questionScrollPane;
+    private AssistantChat tc;
     private final List<Response> responseHistory = new ArrayList<>(); // TODO: to be reviewed/removed once all agents will use buit-in memory
     private int currentResponseIndex = -1;
     private String sourceCode;
     private Project projectContext;
-    private Project project;
     private final Set<FileObject> sessionContext = new HashSet<>();
     private final Set<FileObject> messageContext = new HashSet<>();
     private FileObject fileObject;
@@ -188,19 +137,33 @@ public class AssistantChatManager extends JavaFix {
     private Tree leaf;
     private final Map<String, String> params = new HashMap();
 
-    /**
+    private Future result;
+    private JeddictBrainListener handler;
+
+    private boolean commitMessage, codeReview;
+
+    /*
      * After a first kickoff in performRewrite the conversation can continue in
      * the chat window, handled in the handleQuestion() method. This requires
-     * the history to be retained, which is done by langchain4j's agents, as long
-     * as the same instance is used. Therefore testSpecialist, dbSpecialist,
-     * diffSpecialist keep the instance of the agent once created.
+     * the history to be retained, which is done by langchain4j's agents, as
+     * long as the same instance is used. Therefore testSpecialist,
+     * dbSpecialist, diffSpecialist keep the instance of the agent once created.
      */
     private TestSpecialist testSpecialist = null;
     private DBSpecialist dbSpecialist = null;
     private DiffSpecialist diffSpecialist = null;
 
+    /*
+     * Similarly, a conversation opened creating a new chat window or from
+     * project context, shall retain memory of the conversation
+     */
+    private Assistant assistant = null;
+    private Assistant projectAssistant = null;
+    private Hacker hacker = null;
+
     private Project getProject() {
-        if (project == null) {
+        Project project = null;
+
             if (projectContext != null) {
                 project = projectContext;
             } else if (sessionContext != null && !sessionContext.isEmpty()) {
@@ -209,10 +172,13 @@ public class AssistantChatManager extends JavaFix {
                 project = FileOwnerQuery.getOwner(fileObject);
             } else if (messageContext != null && !messageContext.isEmpty()) {
                 project = FileOwnerQuery.getOwner(messageContext.toArray(FileObject[]::new)[0]);
-            }
+        } else if (tc != null) {
+            project = tc.getProject();
         }
 
-        LOG.finest(() -> "returning project " + project);
+        final Project logProject = project;
+        LOG.finest(() -> "returning project " + logProject);
+
         return project;
     }
 
@@ -278,12 +244,12 @@ public class AssistantChatManager extends JavaFix {
     }
 
     @Override
-    protected void performRewrite(JavaFix.TransformationContext tc) throws Exception {
-        WorkingCopy copy = tc.getWorkingCopy();
+    protected void performRewrite(JavaFix.TransformationContext context) throws Exception {
+        WorkingCopy copy = context.getWorkingCopy();
         if (copy.toPhase(JavaSource.Phase.RESOLVED).compareTo(JavaSource.Phase.RESOLVED) < 0) {
             return;
         }
-        leaf = tc.getPath().getLeaf();
+        leaf = context.getPath().getLeaf();
         this.fileObject = copy.getFileObject();
 
         if (leaf.getKind() == CLASS
@@ -301,22 +267,22 @@ public class AssistantChatManager extends JavaFix {
                 Set<FileObject> messageContextCopy = new HashSet<>(messageContext);
                 SwingUtilities.invokeLater(() -> {
                     displayHtmlContent(fileName, name + " AI Assistant");
-                    JeddictBrainListener handler = new JeddictBrainListener(topComponent) {
+                    JeddictBrainListener handler = new JeddictBrainListener(tc) {
                         @Override
                         public void onCompleteResponse(ChatResponse response) {
                             super.onCompleteResponse(response);
 
                             final Response r = new Response(null, response.aiMessage().text(), messageContextCopy);
-                            sourceCode = EditorUtil.updateEditors(null, getProject(), topComponent, r, getContextFiles());
+                            sourceCode = EditorUtil.updateEditors(null, getProject(), tc, r, getContextFiles());
 
                             // TODO: to be removed once all agents will use buit-in memory
                             responseHistory.add(r);
                             currentResponseIndex = responseHistory.size() - 1;
                         }
                     };
-                    final PreferencesManager pm = PreferencesManager.getInstance();
+                    String modelName = tc.getModelName();
                     if (action == Action.TEST) {
-                        final TestSpecialist pair = testSpecialist(handler);
+                        final TestSpecialist pair = testSpecialist(handler, modelName);
                         final String prompt = pm.getPrompts().get("test");
                         final String rules = pm.getSessionRules();
                         if (leaf instanceof MethodTree) {
@@ -326,7 +292,9 @@ public class AssistantChatManager extends JavaFix {
                         }
                     } else {
                         final String rules = pm.getSessionRules();
-                        final TechWriter pair = newJeddictBrain(handler, getModelName()).pairProgrammer(PairProgrammer.Specialist.TECHWRITER);
+                        final TechWriter pair =
+                            newJeddictBrain(handler, modelName, JeddictBrain.InteractionMode.QUERY)
+                            .pairProgrammer(PairProgrammer.Specialist.TECHWRITER);
                         if (leaf instanceof MethodTree) {
                             async(() -> pair.describeCode(leaf.toString(), rules), handler);
                         } else {
@@ -352,8 +320,6 @@ public class AssistantChatManager extends JavaFix {
         handleQuestion(intitalCommitMessage, messageContext, true);
     }
 
-    private boolean commitMessage, codeReview;
-
     public void askQueryForCodeReview() {
         ProjectInformation info = ProjectUtils.getInformation(projectContext);
         String projectName = info.getDisplayName();
@@ -362,20 +328,150 @@ public class AssistantChatManager extends JavaFix {
         handleQuestion("", messageContext, true);
     }
 
+    private AssistantChat createChatInstance(String title, String type, Project project) {
+        BiConsumer<String, Set<FileObject>> queryUpdate = (newQuery, messageContext) -> {
+            handleQuestion(newQuery, messageContext, false);
+        };
+        return new AssistantChat(title, type, project) {
+            @Override
+            public void onChatReset() {
+                initialMessage();
+                responseHistory.clear(); // TODO: to be removed once all agents will use buit-in memory
+                currentResponseIndex = -1;
+                tc.updateButtons(currentResponseIndex > 0, currentResponseIndex < responseHistory.size() - 1);
+            }
+
+            @Override
+            public void onSubmit() {
+                if (result != null && !result.isDone()) {
+                    NotifyDescriptor.Confirmation confirmDialog = new NotifyDescriptor.Confirmation(
+                            "The AI Assistant is still processing the request. Do you want to cancel it?",
+                            "Interrupt AI Assistant",
+                            NotifyDescriptor.YES_NO_OPTION
+                    );
+                    Object answer = DialogDisplayer.getDefault().notify(confirmDialog);
+                    if (NotifyDescriptor.YES_OPTION.equals(answer)) {
+                        result.cancel(true);
+                        if (handler != null && handler.getProgressHandle() != null) {
+                            handler.getProgressHandle().finish();
+                        }
+                        result = null;
+                        stopLoading();
+                    }
+                } else {
+                    result = null;
+                    String question = tc.getQuestionPane().getText();
+                    Map<String, String> prompts = PreferencesManager.getInstance().getPrompts();
+
+                    //
+                    // To make sure the longest matching shortcut matches (i.e.
+                    // 'shortcutlong' is 'shortcut' is defined as well) let's
+                    // sort the shurtcuts in descending order; this guarantees
+                    // 'shortcut2' is matched before "shortcut" in the for loop
+                    //
+                    ArrayList<String> promptKeys = new ArrayList();
+                    promptKeys.addAll(prompts.keySet());
+                    promptKeys.sort(Comparator.reverseOrder());
+
+                    for (String key : promptKeys) {
+                        String prompt = prompts.get(key);
+
+                        String toReplace = "/" + key;
+
+                        if (question.contains(toReplace)) {
+                            question = question.replace(toReplace, prompt);
+                        }
+                    }
+                    if (!question.isEmpty()) {
+                        handleQuestion(question, messageContext, true);
+                    }
+                }
+            }
+
+            @Override
+            public void onPrev() {
+                // TODO: to be reviewed once all agents will use buit-in memory
+                if (currentResponseIndex > 0) {
+                    currentResponseIndex--;
+                    Response historyResponse = responseHistory.get(currentResponseIndex);
+                    sourceCode = EditorUtil.updateEditors(queryUpdate, getProject(), tc, historyResponse, getContextFiles());
+                    updateButtons(currentResponseIndex > 0, currentResponseIndex < responseHistory.size() - 1);
+                }
+            }
+
+            @Override
+            public void onNext() {
+                // TODO: to be reviewed once all agents will use buit-in memory
+                if (currentResponseIndex < responseHistory.size() - 1) {
+                    currentResponseIndex++;
+                    Response historyResponse = responseHistory.get(currentResponseIndex);
+                    sourceCode = EditorUtil.updateEditors(queryUpdate, getProject(), tc, historyResponse, getContextFiles());
+                    updateButtons(currentResponseIndex > 0, currentResponseIndex < responseHistory.size() - 1);
+                }
+            }
+
+            @Override
+            public void onSessionContext() {
+                Set<FileObject> fileObjects = getContextFiles();
+                String projectRootDir = null;
+                if (projectContext != null) {
+                    projectRootDir = projectContext.getProjectDirectory().getPath();
+                } else if (!fileObjects.isEmpty()) {
+                    projectRootDir = FileOwnerQuery.getOwner(fileObjects.iterator().next()).getProjectDirectory().getPath();
+                }
+
+                boolean enableRules = true;
+                String rules = pm.getSessionRules();
+                if (commitChanges != null) {
+                    rules = commitChanges;
+                    enableRules = false;
+                }
+                ContextDialog dialog = new ContextDialog((JFrame) SwingUtilities.windowForComponent(tc),
+                        enableRules, rules,
+                        projectRootDir, fileObjects);
+                dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+                dialog.setSize(800, 800);
+                dialog.setLocationRelativeTo(SwingUtilities.windowForComponent(tc));
+                dialog.setVisible(true);
+                if (commitChanges == null) {
+                    pm.setSessionRules(dialog.getRules());
+                }
+            }
+
+            @Override
+            public void addFileTab(FileObject file) {
+                if (!messageContext.contains(file)) {
+                    messageContext.add(file);
+                     Consumer<FileObject> onCloseCallback =  f -> {
+                        messageContext.remove(f);
+                        tc.refreshFilePanel();
+                    };
+                    tc.addFile(file, onCloseCallback);
+                }
+            }
+
+            @Override
+            public void clearFileTab() {
+                messageContext.clear();
+                tc.clearFiles();
+            }
+
+        };
+    }
+
     public void displayHtmlContent(String filename, String title) {
-        Preferences prefs = Preferences.userNodeForPackage(AssistantChat.class);
-        prefs.putBoolean(AssistantChat.PREFERENCE_KEY, true);
-        topComponent = new AssistantChat(title, null, getProject());
-        topComponent.putClientProperty(ASSISTANT_CHAT_MANAGER_KEY, new WeakReference<>(AssistantChatManager.this));
-        JScrollPane scrollPane = new JScrollPane(topComponent.getParentPanel());
-        topComponent.add(scrollPane, BorderLayout.CENTER);
-        topComponent.add(createBottomPanel(null, filename, null), BorderLayout.SOUTH);
-        topComponent.open();
-        topComponent.requestActive();
+        tc = createChatInstance(title, null, getProject());
+        tc.putClientProperty(ASSISTANT_CHAT_MANAGER_KEY, new WeakReference<>(AssistantChatManager.this));
+        JScrollPane scrollPane = new JScrollPane(tc.getParentPanel());
+        tc.add(scrollPane, BorderLayout.CENTER);
+        tc.add(tc.createBottomPanel(null, filename, null), BorderLayout.SOUTH);
+        tc.open();
+        tc.requestActive();
+        tc.updateButtons(currentResponseIndex > 0, currentResponseIndex < responseHistory.size() - 1);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             SwingUtilities.invokeLater(() -> {
-                if (topComponent != null) {
-                    topComponent.close();
+                if (tc != null) {
+                    tc.close();
                 }
             });
         }));
@@ -384,12 +480,10 @@ public class AssistantChatManager extends JavaFix {
     public void openChat(String type, final String query, String fileName, String title, Consumer<String> action) {
         SwingUtilities.invokeLater(() -> {
             new JeddictUpdateManager().checkForJeddictUpdate();
-            Preferences prefs = Preferences.userNodeForPackage(AssistantChat.class);
-            prefs.putBoolean(AssistantChat.PREFERENCE_KEY, true);
-            topComponent = new AssistantChat(title, type, getProject());
-            topComponent.setLayout(new BorderLayout());
-            topComponent.putClientProperty(ASSISTANT_CHAT_MANAGER_KEY, new WeakReference<>(AssistantChatManager.this));
-            JScrollPane scrollPane = new JScrollPane(topComponent.getParentPanel());
+            tc = createChatInstance(title, type, getProject());
+            tc.setLayout(new BorderLayout());
+            tc.putClientProperty(ASSISTANT_CHAT_MANAGER_KEY, new WeakReference<>(AssistantChatManager.this));
+            JScrollPane scrollPane = new JScrollPane(tc.getParentPanel());
             Color bgColor = getBackgroundColorFromMimeType(MIME_PLAIN_TEXT);
             boolean isDark = ColorUtil.isDarkColor(bgColor);
             if (isDark) {
@@ -397,25 +491,27 @@ public class AssistantChatManager extends JavaFix {
                 scrollPane.getVerticalScrollBar().setUI(new CustomScrollBarUI());
                 scrollPane.getHorizontalScrollBar().setUI(new CustomScrollBarUI());
             }
-            topComponent.add(scrollPane, BorderLayout.CENTER);
-            topComponent.add(createBottomPanel(type, fileName, action), BorderLayout.SOUTH);
+            tc.add(scrollPane, BorderLayout.CENTER);
+            tc.add(tc.createBottomPanel(type, fileName, action), BorderLayout.SOUTH);
             if (PreferencesManager.getInstance().getChatPlacement().equals("Left")) {
                 WindowManager.getDefault()
                         .findMode("explorer")
-                        .dockInto(topComponent);
+                        .dockInto(tc);
             } else if (PreferencesManager.getInstance().getChatPlacement().equals("Right")) {
                 WindowManager.getDefault()
                         .findMode("properties")
-                        .dockInto(topComponent);
+                        .dockInto(tc);
             }
-            topComponent.open();
-            topComponent.requestActive();
+            tc.open();
+            tc.requestActive();
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                if (topComponent != null) {
-                    SwingUtilities.invokeLater(() -> topComponent.close());
+                if (tc != null) {
+                    SwingUtilities.invokeLater(() -> tc.close());
                 }
             }));
-            questionPane.setText(query);
+            if (!query.isEmpty()) {
+                tc.getQuestionPane().setText(query);
+            }
             initialMessage();
         });
     }
@@ -425,7 +521,6 @@ public class AssistantChatManager extends JavaFix {
     }
 
     // --------------------------------------------------------- private methods
-
     private static final String HOME_PAGE = "<div style='margin:20px; padding:20px; border-radius:10px;'>"
             + "<div style='text-align:center;'>"
             + "👋 <strong>Welcome!</strong><br><br>"
@@ -439,8 +534,8 @@ public class AssistantChatManager extends JavaFix {
             + "</div>";
 
     private void initialMessage() {
-        JEditorPane init = topComponent.createHtmlPane(HOME_PAGE);
-        EventQueue.invokeLater(() -> questionPane.requestFocusInWindow());
+        JEditorPane init = tc.createHtmlPane(HOME_PAGE);
+        EventQueue.invokeLater(() -> tc.getQuestionPane().requestFocusInWindow());
         init.addHyperlinkListener(e -> {
             if (HyperlinkEvent.EventType.ACTIVATED.equals(e.getEventType())) {
                 String link = e.getDescription();
@@ -462,523 +557,21 @@ public class AssistantChatManager extends JavaFix {
         });
     }
 
-    private JPanel filePanel;
-    private MessageContextComponentAdapter filePanelAdapter;
-
-    public void addFileTab(FileObject file) {
-        if (!messageContext.contains(file)) {
-            messageContext.add(file);
-            FileTab fileTab = new FileTab(file, filePanel, f -> {
-                messageContext.remove(f);
-                filePanelAdapter.componentResized(null);
-            });
-            filePanel.add(fileTab);
-            filePanelAdapter.componentResized(null);
-            filePanel.revalidate();
-            filePanel.repaint();
-        }
-    }
-
-    public void clearFileTab() {
-        messageContext.clear();
-        filePanel.removeAll();
-        filePanelAdapter.componentResized(null);
-        filePanel.revalidate();
-        filePanel.repaint();
-    }
-
-    private JPanel createBottomPanel(String type, String fileName, Consumer<String> action) {
-        JPanel bottomPanel = new JPanel(new BorderLayout());
-
-        Color backgroundColor = getBackgroundColorFromMimeType(MIME_PLAIN_TEXT);
-        filePanel = new JPanel();
-        filePanelAdapter = new MessageContextComponentAdapter(filePanel);
-        filePanel.setLayout(new FlowLayout(FlowLayout.LEFT));
-        filePanel.setBackground(backgroundColor);
-        filePanel.setBorder(BorderFactory.createEmptyBorder());
-        filePanel.addComponentListener(filePanelAdapter);
-
-        JPanel buttonPanel = new JPanel(new BorderLayout());
-        buttonPanel.setBackground(backgroundColor);
-        buttonPanel.setBorder(BorderFactory.createEmptyBorder());
-
-        JPanel rightButtonPanel = new JPanel();
-        rightButtonPanel.setLayout(new FlowLayout(FlowLayout.RIGHT, 8, 1));
-        rightButtonPanel.setBackground(backgroundColor);
-        rightButtonPanel.setBorder(BorderFactory.createEmptyBorder());
-        buttonPanel.add(rightButtonPanel, BorderLayout.EAST);
-
-        JPanel leftButtonPanel = new JPanel();
-        leftButtonPanel.setLayout(new FlowLayout(FlowLayout.LEFT, 8, 1));
-        leftButtonPanel.setBackground(backgroundColor);
-        leftButtonPanel.setBorder(BorderFactory.createEmptyBorder());
-        buttonPanel.add(leftButtonPanel, BorderLayout.WEST);
-
-        prevButton = createIconButton(Labels.PREV, ICON_PREV);
-        prevButton.setToolTipText("Previous Chat");
-        leftButtonPanel.add(prevButton);
-
-        nextButton = createIconButton(Labels.NEXT, ICON_NEXT);
-        nextButton.setToolTipText("Next Chat");
-        leftButtonPanel.add(nextButton);
-
-        openInBrowserButton = createIconButton(Labels.VIEW, ICON_WEB);
-        openInBrowserButton.setToolTipText("Open in Browser");
-        openInBrowserButton.setVisible(topComponent.getAllEditorCount() > 0);
-        leftButtonPanel.add(openInBrowserButton);
-
-        Set<String> modelsByProvider = getModelsByProvider(pm.getProvider());
-
-        modelsByProvider.add(pm.getModelName());
-        models = createStyledComboBox(modelsByProvider.toArray(new String[0]));
-        models.setSelectedItem(pm.getChatModel() != null ? pm.getChatModel() : pm.getModel());
-        models.setToolTipText("AI Models");
-        models.addActionListener(e -> {
-            String selectedModel = (String) models.getSelectedItem();
-            if (selectedModel != null) {
-                pm.setChatModel(selectedModel);
-            }
-        });
-        leftButtonPanel.add(models);
-
-        AssistantAction[] options = AssistantAction.values();
-        actionComboBox = createStyledComboBox(options);
-        String lastAction = pm.getAssistantAction();
-        if (lastAction != null) {
-            try {
-                actionComboBox.setSelectedItem(AssistantAction.valueOf(lastAction));
-            } catch (IllegalArgumentException ex) {
-                actionComboBox.setSelectedItem(AssistantAction.ASK);
-            }
-        } else {
-            actionComboBox.setSelectedItem(AssistantAction.ASK);
-        }
-        actionComboBox.setToolTipText("<html><b>Chat</b> – for general queries<br><b>Agent</b> – for file/project generation actions</html>");
-        actionComboBox.addActionListener(e -> {
-            AssistantAction selectedAction = (AssistantAction) actionComboBox.getSelectedItem();
-            if (selectedAction == AssistantAction.BUILD) {
-                if (getProject() == null) {
-                    Project[] openProjects = org.netbeans.api.project.ui.OpenProjects.getDefault().getOpenProjects();
-                    if (openProjects.length == 1) {
-                        project = openProjects[0];
-                        DialogDisplayer.getDefault().notify(
-                                new NotifyDescriptor.Message(
-                                        "Connected chat to project: " + ProjectUtils.getInformation(project).getDisplayName(),
-                                        NotifyDescriptor.INFORMATION_MESSAGE
-                                )
-                        );
-                    } else if (openProjects.length > 1) {
-                        JComboBox<Project> projectComboBox = new JComboBox<>(openProjects);
-                        projectComboBox.setRenderer(new javax.swing.ListCellRenderer<>() {
-                            private final javax.swing.DefaultListCellRenderer defaultRenderer = new javax.swing.DefaultListCellRenderer();
-
-                            @Override
-                            public java.awt.Component getListCellRendererComponent(javax.swing.JList<? extends Project> list, Project value, int index, boolean isSelected, boolean cellHasFocus) {
-                                String displayName = (value == null) ? "" : ProjectUtils.getInformation(value).getDisplayName();
-                                return defaultRenderer.getListCellRendererComponent(list, displayName, index, isSelected, cellHasFocus);
-                            }
-                        });
-                        NotifyDescriptor descriptor = new NotifyDescriptor(
-                                projectComboBox,
-                                "Select Project for AI Agent Mode",
-                                NotifyDescriptor.OK_CANCEL_OPTION,
-                                NotifyDescriptor.QUESTION_MESSAGE,
-                                null,
-                                NotifyDescriptor.OK_OPTION
-                        );
-                        Object dialogResult = DialogDisplayer.getDefault().notify(descriptor);
-                        if (NotifyDescriptor.OK_OPTION.equals(dialogResult)) {
-                            Project selectedProject = (Project) projectComboBox.getSelectedItem();
-                            if (selectedProject != null) {
-                                project = selectedProject;
-                                DialogDisplayer.getDefault().notify(
-                                        new NotifyDescriptor.Message(
-                                                "Connected chat to project: " + ProjectUtils.getInformation(project).getDisplayName(),
-                                                NotifyDescriptor.INFORMATION_MESSAGE
-                                        )
-                                );
-                            } else {
-                                actionComboBox.setSelectedItem(AssistantAction.ASK);
-                            }
-                        } else {
-                            actionComboBox.setSelectedItem(AssistantAction.ASK);
-                        }
-                    } else {
-                        NotifyDescriptor.Message msg = new NotifyDescriptor.Message(
-                                "To use AI agent mode, connect chat to any project by dropping any source file on chat window or start new chat from project/package/source file context.",
-                                NotifyDescriptor.WARNING_MESSAGE
-                        );
-                        DialogDisplayer.getDefault().notify(msg);
-                        actionComboBox.setSelectedItem(AssistantAction.ASK);
-                    }
-                }
-            }
-            selectedAction = (AssistantAction) actionComboBox.getSelectedItem();
-            if (selectedAction != null) {
-                pm.setAssistantAction(selectedAction.name());
-            }
-        });
-        leftButtonPanel.add(actionComboBox);
-
-        int javaEditorCount = topComponent.getAllCodeEditorCount();
-
-//        copyButton = createIconButton(Labels.COPY, ICON_COPY);
-//        copyButton.setToolTipText("Copy to clipboard");
-//        copyButton.setVisible(javaEditorCount > 0);
-//        leftButtonPanel.add(copyButton);
-//
-//        saveButton = createIconButton(Labels.SAVE, ICON_SAVE);
-//        saveButton.setToolTipText("Save as");
-//        saveButton.setVisible(javaEditorCount == 1);
-//        leftButtonPanel.add(saveButton);
-//        JButton saveToEditorButton = createIconButton(Labels.UPDATE + " " + fileName, ICON_UPDATE);
-//        saveToEditorButton.setToolTipText("Update " + fileName);
-//        saveToEditorButton.setVisible(fileName != null);
-//        leftButtonPanel.add(saveToEditorButton);
-        JButton showChartsButton = createIconButton(Labels.STATS, ICON_STATS);
-        showChartsButton.setToolTipText("Show Token Usage Charts");
-        rightButtonPanel.add(showChartsButton);
-        showChartsButton.addActionListener(e -> {
-            TokenUsageChartDialog.showDialog(SwingUtilities.getWindowAncestor(showChartsButton));
-        });
-
-        JButton optionsButton = createIconButton(Labels.SETTINGS, ICON_SETTINGS);
-        optionsButton.setToolTipText("Open Jeddict AI Assistant Settings");
-        optionsButton.addActionListener(e -> OptionsDisplayer.getDefault().open("JeddictAIAssistant"));
-        rightButtonPanel.add(optionsButton);
-
-        JButton messageContextButton = createIconButton(Labels.MESSAGE_CONTEXT, ICON_ATTACH);
-        messageContextButton.setToolTipText("Attach a file to current message context");
-        rightButtonPanel.add(messageContextButton);
-
-        JButton sessionContextButton = createIconButton(Labels.SESSION_CONTEXT, ICON_CONTEXT);
-        sessionContextButton.setToolTipText("View detailed context of the current chat session context.");
-        sessionContextButton.addActionListener(e -> showFilePathPopup());
-        rightButtonPanel.add(sessionContextButton);
-
-        JButton newChatButton = createIconButton(Labels.NEW_CHAT, ICON_NEW_CHAT);
-        newChatButton.setToolTipText("Start a new chat");
-        leftButtonPanel.add(newChatButton);
-
-        submitButton = createIconButton(Labels.SEND, ICON_SEND);
-        submitButton.setToolTipText("Ask a question");
-        rightButtonPanel.add(submitButton);
-
-        buttonPanelAdapter = new ComponentAdapter() {
-            boolean showOnlyIcons = false;
-
-            @Override
-            public void componentResized(ComponentEvent e) {
-                double totalButtonWidth = leftButtonPanel.getPreferredSize().width
-                        + rightButtonPanel.getPreferredSize().width;
-                if (showOnlyIcons) {
-                    totalButtonWidth = totalButtonWidth * 2;
-                }
-
-                int availableWidth = buttonPanel.getWidth();
-                showOnlyIcons = availableWidth < totalButtonWidth;
-
-                updateButton(prevButton, showOnlyIcons, ICON_PREV, Labels.PREV + " " + ICON_PREV);
-                updateButton(nextButton, showOnlyIcons, ICON_NEXT, Labels.NEXT + " " + ICON_NEXT);
-                updateButton(openInBrowserButton, showOnlyIcons, ICON_WEB, Labels.VIEW + " " + ICON_WEB);
-//                updateButton(copyButton, showOnlyIcons, ICON_COPY, Labels.COPY + " " + ICON_COPY);
-//                updateButton(saveButton, showOnlyIcons, ICON_SAVE, Labels.SAVE + " " + ICON_SAVE);
-//                updateButton(saveToEditorButton, showOnlyIcons, ICON_UPDATE, Labels.UPDATE + " " + ICON_UPDATE);
-                updateButton(newChatButton, showOnlyIcons, ICON_NEW_CHAT, Labels.NEW_CHAT + " " + ICON_NEW_CHAT);
-                updateButton(showChartsButton, showOnlyIcons, ICON_STATS, Labels.STATS + " " + ICON_STATS);
-                updateButton(optionsButton, showOnlyIcons, ICON_SETTINGS, Labels.SETTINGS + " " + ICON_SETTINGS);
-                updateButton(messageContextButton, showOnlyIcons, ICON_ATTACH, Labels.MESSAGE_CONTEXT + " " + ICON_ATTACH);
-                updateButton(sessionContextButton, showOnlyIcons, ICON_CONTEXT, Labels.SESSION_CONTEXT + " " + ICON_CONTEXT);
-                updateButton(submitButton, showOnlyIcons, ICON_SEND, Labels.SEND + " " + ICON_SEND);
-                updateCombobox(models, showOnlyIcons);
-                updateCombobox(actionComboBox, showOnlyIcons);
-                topComponent.updateUserPaneButtons(showOnlyIcons);
-
-            }
-
-            private void updateButton(JButton button, boolean iconOnly, String iconText, String fullText) {
-                button.setText(iconOnly ? iconText : fullText);
-            }
-
-            private <T> void updateCombobox(JComboBox<T> comboBox, boolean iconOnly) {
-                comboBox.putClientProperty("minimal", iconOnly);
-            }
-        };
-        buttonPanel.addComponentListener(buttonPanelAdapter);
-
-        questionPane = new JEditorPane();
-        questionPane.setEditorKit(createEditorKit("text/x-" + (type == null ? "java" : type)));
-        Document doc = questionPane.getDocument();
-        doc.putProperty(JEDDICT_EDITOR_CALLBACK, (Consumer<FileObject>) this::addFileTab);
-
-        questionScrollPane = new JScrollPane(questionPane);
-        questionScrollPane.setBorder(BorderFactory.createEmptyBorder());
-        questionScrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
-        questionScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        Color bgColor = getBackgroundColorFromMimeType(MIME_PLAIN_TEXT);
-        boolean isDark = ColorUtil.isDarkColor(bgColor);
-        if (isDark) {
-            questionScrollPane.getViewport().setBackground(Color.DARK_GRAY);
-            questionScrollPane.getVerticalScrollBar().setUI(new CustomScrollBarUI());
-            questionScrollPane.getHorizontalScrollBar().setUI(new CustomScrollBarUI());
-        }
-        questionPane.getDocument().addDocumentListener(new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                updateHeight();
-            }
-
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                updateHeight();
-            }
-
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                updateHeight();
-            }
-        });
-
-//        copyButton.addActionListener(e -> {
-//            StringSelection stringSelection = new StringSelection(topComponent.getAllCodeEditorText());
-//            Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-//            clipboard.setContents(stringSelection, null);
-//        });
-//        saveButton.addActionListener(e -> {
-//            topComponent.saveAs(null, topComponent.getAllCodeEditorText());
-//        });
-//        saveToEditorButton.addActionListener(e -> {
-//            if (action != null) {
-//                action.accept(topComponent.getAllCodeEditorText());
-//            }
-//        });
-        newChatButton.addActionListener(e -> {
-            topComponent.clear();
-            topComponent.repaint();
-            initialMessage();
-            responseHistory.clear(); // TODO: to be removed once all agents will use buit-in memory
-            questionPane.setText("");
-            clearFileTab();
-            currentResponseIndex = -1;
-            updateButtons(prevButton, nextButton);
-        });
-
-        openInBrowserButton.addActionListener(e -> {
-            try {
-                File latestTempFile = File.createTempFile("gen-ai", ".html");
-                latestTempFile.deleteOnExit();
-                try ( FileWriter writer = new FileWriter(latestTempFile)) {
-                    writer.write(topComponent.getAllEditorText());
-                }
-                if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
-                    Desktop.getDesktop().browse(latestTempFile.toURI());
-                }
-            } catch (IOException ex) {
-                ex.printStackTrace();
-            }
-        });
-
-        submitButton.setAction(new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent ae) {
-                if (result != null && !result.isDone()) {
-                    NotifyDescriptor.Confirmation confirmDialog = new NotifyDescriptor.Confirmation(
-                            "The AI Assistant is still processing the request. Do you want to cancel it?",
-                            "Interrupt AI Assistant",
-                            NotifyDescriptor.YES_NO_OPTION
-                    );
-                    Object answer = DialogDisplayer.getDefault().notify(confirmDialog);
-                    if (NotifyDescriptor.YES_OPTION.equals(answer)) {
-                        result.cancel(true);
-                        if (handler != null && handler.getProgressHandle() != null) {
-                            handler.getProgressHandle().finish();
-                        }
-                        result = null;
-                        stopLoading();
-                    }
-                } else {
-                    result = null;
-                    String question = questionPane.getText();
-                    Map<String, String> prompts = PreferencesManager.getInstance().getPrompts();
-
-                    //
-                    // To make sure the longest matching shortcut matches (i.e.
-                    // 'shortcutlong' is 'shortcut' is defined as well) let's
-                    // sort the shurtcuts in descending order; this guarantees
-                    // 'shortcut2' is matched before "shortcut" in the for loop
-                    //
-                    ArrayList<String> promptKeys = new ArrayList();
-                    promptKeys.addAll(prompts.keySet());
-                    promptKeys.sort(Comparator.reverseOrder());
-
-                    for (String key: promptKeys) {
-                        String prompt = prompts.get(key);
-
-                        String toReplace = "/" + key;
-
-                        if (question.contains(toReplace)) {
-                            question = question.replace(toReplace, prompt);
-                        }
-                    }
-                    if (!question.isEmpty()) {
-                        handleQuestion(question, messageContext, true);
-                    }
-                }
-            }
-        });
-
-        BiConsumer<String, Set<FileObject>> queryUpdate = (newQuery, messageContext) -> {
-            handleQuestion(newQuery, messageContext, false);
-        };
-        prevButton.addActionListener(e -> {
-            // TODO: to be reviewed once all agents will use buit-in memory
-            if (currentResponseIndex > 0) {
-                currentResponseIndex--;
-                Response historyResponse = responseHistory.get(currentResponseIndex);
-                sourceCode = EditorUtil.updateEditors(queryUpdate, getProject(), topComponent, historyResponse, getContextFiles());
-                updateButtons(prevButton, nextButton);
-            }
-        });
-
-        nextButton.addActionListener(e -> {
-            // TODO: to be reviewed once all agents will use buit-in memory
-            if (currentResponseIndex < responseHistory.size() - 1) {
-                currentResponseIndex++;
-                Response historyResponse = responseHistory.get(currentResponseIndex);
-                sourceCode = EditorUtil.updateEditors(queryUpdate, getProject(), topComponent, historyResponse, getContextFiles());
-                updateButtons(prevButton, nextButton);
-            }
-        });
-
-        updateButtons(prevButton, nextButton);
-
-        messageContextButton.addActionListener(e -> {
-            JFileChooser fileChooser = new JFileChooser(pm.getLastBrowseDirectory());
-            int result = fileChooser.showOpenDialog(bottomPanel);
-            if (result == JFileChooser.APPROVE_OPTION) {
-                File selectedFile = fileChooser.getSelectedFile();
-                pm.setLastBrowseDirectory(selectedFile.getParent());
-                addFileTab(FileUtil.toFileObject(selectedFile));
-            }
-        });
-
-        FileTransferHandler.register(bottomPanel, this::addFileTab);
-        FileTransferHandler.register(questionPane, this::addFileTab);
-
-        //
-        // intercept shortkeys to submit the prompt
-        //
-        final String actionKey = "submit-prompt";
-
-        String shortcut = pm.getSubmitShortcut(); // e.g. "Ctrl + Enter", "Enter", "Shift + Enter", "Alt + Enter"
-
-        javax.swing.KeyStroke submitKey;
-        switch (shortcut) {
-            case "Enter":
-                submitKey = KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0);
-                break;
-            case "Shift + Enter":
-                submitKey = KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, KeyEvent.SHIFT_DOWN_MASK);
-                break;
-            default: // "Ctrl + Enter"
-                submitKey = KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, KeyEvent.CTRL_DOWN_MASK);
-        }
-
-        final javax.swing.InputMap inputMap = questionPane.getInputMap(JComponent.WHEN_FOCUSED);
-        final javax.swing.ActionMap actionMap = questionPane.getActionMap();
-
-        inputMap.put(submitKey, actionKey);
-        actionMap.put(actionKey, submitButton.getAction());
-
-        // ---
-
-        bottomPanel.setLayout(new BoxLayout(bottomPanel, BoxLayout.Y_AXIS));
-        bottomPanel.add(filePanel);
-        bottomPanel.add(Box.createVerticalStrut(0));
-        bottomPanel.add(questionScrollPane);
-        bottomPanel.add(Box.createVerticalStrut(0));
-        bottomPanel.add(buttonPanel);
-
-        return bottomPanel;
-    }
-
-    private void startLoading() {
-        final String[] spinnerFrames = {"◐", "◓", "◑", "◒"};
-        final int[] frameIndex = {0};
-        timer = new Timer(200, e -> {
-            submitButton.setText(spinnerFrames[frameIndex[0]]);
-            frameIndex[0] = (frameIndex[0] + 1) % spinnerFrames.length;
-        });
-        timer.start();
-    }
-
-    private void stopLoading() {
-        timer.stop();
-    }
-
-    private void updateHeight() {
-        int lineHeight = questionPane.getFontMetrics(questionPane.getFont()).getHeight();
-        String text = questionPane.getText().trim();
-        int preferredHeight;
-        int linePadding = 5;
-        if (text.isEmpty()) {
-            preferredHeight = lineHeight * 3 + linePadding;
-        } else {
-            preferredHeight = questionPane.getPreferredSize().height;
-            preferredHeight = Math.max(lineHeight * 3 + linePadding,
-                    Math.min(preferredHeight, lineHeight * 12 + linePadding));
-        }
-
-        Dimension size = new Dimension(questionScrollPane.getWidth(), preferredHeight);
-        questionScrollPane.setPreferredSize(size);
-        questionScrollPane.revalidate();
-    }
-
     private Set<FileObject> getContextFiles() {
         Set<FileObject> fileObjects = new HashSet<>();
         if (projectContext != null) {
             fileObjects.addAll(getProjectContextList());
         }
         if (sessionContext != null) {
-            fileObjects.addAll(getFilesContextList(sessionContext));
+            fileObjects.addAll(getFilesContextList(sessionContext, pm.getFileExtensionListToInclude()));
         }
         return fileObjects;
     }
 
-    private void showFilePathPopup() {
-        Set<FileObject> fileObjects = getContextFiles();
-        String projectRootDir = null;
-        if (projectContext != null) {
-            projectRootDir = projectContext.getProjectDirectory().getPath();
-        } else if (!fileObjects.isEmpty()) {
-            projectRootDir = FileOwnerQuery.getOwner(fileObjects.iterator().next()).getProjectDirectory().getPath();
-        }
-
-        boolean enableRules = true;
-        String rules = pm.getSessionRules();
-        if (commitChanges != null) {
-            rules = commitChanges;
-            enableRules = false;
-        }
-        ContextDialog dialog = new ContextDialog((JFrame) SwingUtilities.windowForComponent(topComponent),
-                enableRules, rules,
-                projectRootDir, fileObjects);
-        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
-        dialog.setSize(800, 800);
-        dialog.setLocationRelativeTo(SwingUtilities.windowForComponent(topComponent));
-        dialog.setVisible(true);
-        if (commitChanges == null) {
-            pm.setSessionRules(dialog.getRules());
-        }
-    }
-
-    private Future result;
-    private JeddictBrainListener handler;
-
     private void handleQuestion(String question, Set<FileObject> messageContext, boolean newQuery) {
         result = executorService.submit(() -> {
             try {
-                startLoading();
+                tc.startLoading();
                 // TODO: to be removed once all agents will use buit-in memory
                 if (currentResponseIndex >= 0
                         && currentResponseIndex + 1 < responseHistory.size()) {
@@ -999,20 +592,21 @@ public class AssistantChatManager extends JavaFix {
                     prevChatResponses = responseHistory.subList(startIndex, responseHistory.size());
                 }
                 Set<FileObject> messageContextCopy = new HashSet<>(messageContext);
-                handler = new JeddictBrainListener(topComponent) {
+                handler = new JeddictBrainListener(tc) {
                     @Override
                     public void onCompleteResponse(ChatResponse response) {
-                        super.onCompleteResponse(response);
+                         super.onCompleteResponse(response);
 
-                        final StringBuilder textResponse = new StringBuilder(response.aiMessage().text());
+                        final StringBuilder textResponse = new StringBuilder(StringUtils.defaultString(response.aiMessage().text()));
 
                         LOG.finest(() -> "response completed with\ntext\n" + textResponse + "\nand\ntooling\n" + toolingResponse);
 
-                        if(!toolingResponse.isEmpty()) {
+                        if (!toolingResponse.isEmpty()) {
                             textResponse.insert(0, "```tooling\n" + toolingResponse.toString() + "\n```\n");
                         }
                         final Response r = new Response(question, textResponse.toString(), messageContextCopy);
-                        // TODO: to be removed once all agents will use buit-in memory
+                        // TODO: this shall be used for history; it won't be used for memory,
+                        // which is instead managed by the agents and services
                         if (responseHistory.isEmpty() || !textResponse.equals(responseHistory.get(responseHistory.size() - 1))) {
                             responseHistory.add(r);
                             currentResponseIndex = responseHistory.size() - 1;
@@ -1024,46 +618,53 @@ public class AssistantChatManager extends JavaFix {
                             if (codeReview) {
                                 List<Review> reviews = parseReviewsFromYaml(r.getBlocks().get(0).getContent());
                                 String web = convertReviewsToHtml(reviews);
-                                topComponent.setReviews(reviews);
+                                tc.setReviews(reviews);
                                 r.getBlocks().clear();
                                 r.getBlocks().add(new Block("web", web));
                             }
-                            sourceCode = EditorUtil.updateEditors(queryUpdate, getProject(), topComponent, r, getContextFiles());
+                            sourceCode = EditorUtil.updateEditors(queryUpdate, getProject(), tc, r, getContextFiles());
 
-                            stopLoading();
-                            updateButtons(prevButton, nextButton);
-                            buttonPanelAdapter.componentResized(null);
+                            tc.stopLoading();
+                            tc.updateButtons(currentResponseIndex > 0, currentResponseIndex < responseHistory.size() - 1);
+                            tc.buttonPanelResized();
                         });
                     }
                 };
-                String response;
-                boolean agentEnabled = actionComboBox.getSelectedItem() == AssistantAction.BUILD;
+
+                final boolean agentEnabled = tc.isAgentEnabled();
+                final boolean excludeJavadoc = pm.isExcludeJavadocEnabled();
+                final String globalRules = pm.getGlobalRules();
+                final String sessionRules = pm.getSessionRules();
+                final List<String> includeFiles = pm.getFileExtensionListToInclude();
+                final String modelName = tc.getModelName();
+
+                String response = null;
                 if (sqlCompletion != null) {
                     String context = sqlCompletion.getMetaData();
-                    String messageScopeContent = getTextFilesContext(messageContext, getProject(), agentEnabled);
+                    String messageScopeContent = getTextFilesContext(messageContext, getProject(), excludeJavadoc, includeFiles, agentEnabled);
                     if (messageScopeContent != null && !messageScopeContent.isEmpty()) {
                         context = context + "\n\n Files:\n" + messageScopeContent;
                     }
-                    response = dbSpecialist(handler).assistDbMetadata(question, context, pm.getSessionRules());
+                    response = dbSpecialist(handler, modelName).assistDbMetadata(question, context, sessionRules);
                 } else if (commitMessage && commitChanges != null) {
                     String context = commitChanges;
-                    String messageScopeContent = getTextFilesContext(messageContext, getProject(), agentEnabled);
+                    String messageScopeContent = getTextFilesContext(messageContext, getProject(), excludeJavadoc,includeFiles, agentEnabled);
                     if (messageScopeContent != null && !messageScopeContent.isEmpty()) {
                         context = context + "\n\n Files:\n" + messageScopeContent;
                     }
-                    response = diffSpecialist(handler).suggestCommitMessages(context, question);
+                    response = diffSpecialist(handler, modelName).suggestCommitMessages(context, question);
                 } else if (codeReview) {
                     String context = params.get("diff");
                     if (context == null) {
                         context = "";
                     }
-                    final String messageScopeContent = getTextFilesContext(messageContext, projectContext, agentEnabled);
+                    final String messageScopeContent = getTextFilesContext(messageContext, projectContext, excludeJavadoc, includeFiles, agentEnabled);
                     if (messageScopeContent != null && !messageScopeContent.isEmpty()) {
                         context = context + "\n\n Files:\n" + messageScopeContent;
                     }
-                    response = diffSpecialist(handler).reviewChanges(context, params.get("granularity"), params.get("feature"));
+                    response = diffSpecialist(handler, modelName).reviewChanges(context, params.get("granularity"), params.get("feature"));
                 } else if (action == Action.TEST) {
-                    final TestSpecialist pair = testSpecialist(handler);
+                    final TestSpecialist pair = testSpecialist(handler, modelName);
                     final String prompt = pm.getPrompts().get("test");
                     final String rules = pm.getSessionRules();
                     if (leaf instanceof MethodTree) {
@@ -1072,32 +673,75 @@ public class AssistantChatManager extends JavaFix {
                         response = pair.generateTestCase(question, null, treePath.getCompilationUnit().toString(), null, prompt, rules, prevChatResponses);
                     }
                 } else if (projectContext != null || sessionContext != null) {
-                    Set<FileObject> mainSessionContext;
-                    String sessionScopeContent;
-                    if (projectContext != null) {
-                        mainSessionContext = getProjectContextList();
-                        sessionScopeContent = getProjectContext(mainSessionContext, getProject(), agentEnabled);
-                    } else {
-                        mainSessionContext = this.sessionContext;
-                        sessionScopeContent = getTextFilesContext(mainSessionContext, getProject(), agentEnabled);
-                    }
-                    List<String> sessionScopeImages = getImageFilesContext(mainSessionContext);
+                    Project selectedProject = getProject();
+                    //
+                    // Here we are in a generic chat created by the user
+                    //
+                    // If not agentic, provide all project context, otherwise
+                    // no project context is provided, just the global and
+                    // project rules; the agent is instructed to gather the
+                    // information it requires using tools
+                    //
+                    if (!agentEnabled) {
+                        final Set<FileObject> mainSessionContext;
+                        final String sessionScopeContent;
 
-                    Set<FileObject> fitleredMessageContext = new HashSet<>(messageContext);
-                    fitleredMessageContext.removeAll(mainSessionContext);
-                    String messageScopeContent = getTextFilesContext(fitleredMessageContext, getProject(), agentEnabled);
-                    List<String> messageScopeImages = getImageFilesContext(fitleredMessageContext);
-                    List<String> images = new ArrayList<>();
-                    images.addAll(sessionScopeImages);
-                    images.addAll(messageScopeImages);
-                    response = newJeddictBrain(handler, getModelName())
-                        .generateDescription(getProject(), agentEnabled, sessionScopeContent + '\n' + messageScopeContent, null, images, prevChatResponses, question, pm.getSessionRules());
-                } else if (treePath == null) {
-                    response = newJeddictBrain(handler, getModelName())
-                        .generateDescription(getProject(), null, null, null, prevChatResponses, question, pm.getSessionRules());
+                        if (projectContext != null) {
+                            mainSessionContext = getProjectContextList();
+                            sessionScopeContent = getProjectContext(mainSessionContext, selectedProject, excludeJavadoc, agentEnabled);
+                        } else {
+                            mainSessionContext = this.sessionContext;
+                            sessionScopeContent = getTextFilesContext(mainSessionContext, selectedProject, excludeJavadoc, includeFiles, agentEnabled);
+                        }
+                        List<String> sessionScopeImages = getImageFilesContext(mainSessionContext, includeFiles);
+
+                        Set<FileObject> fitleredMessageContext = new HashSet<>(messageContext);
+                        fitleredMessageContext.removeAll(mainSessionContext);
+                        String messageScopeContent = getTextFilesContext(fitleredMessageContext, selectedProject, excludeJavadoc, includeFiles, agentEnabled);
+                        List<String> messageScopeImages = getImageFilesContext(fitleredMessageContext, includeFiles);
+                        List<String> images = new ArrayList<>();
+                        images.addAll(sessionScopeImages);
+                        images.addAll(messageScopeImages);
+
+                        final String projectInfo = ProjectMetadataInfo.get(selectedProject);
+                        final String prompt = question
+                                            + "\nSession content: " + sessionScopeContent
+                                            + "\nAdditional conent: " + messageScopeContent
+                                            ;
+
+                        final Assistant a  = projectAssistant(handler, modelName);
+                        if (pm.isStreamEnabled()) {
+                            a.chat(handler, prompt, images, projectInfo, globalRules, sessionRules);
+                        } else {
+                            response = a.chat(prompt, images, projectInfo, globalRules, sessionRules);
+                        }
+                    } else {
+                        //
+                        // When agent enabled, a project is required (in the future
+                        // we may just add a tool to pick a project if none is seleted).
+                        // If no project is associated to the window, trigger
+                        // the selection of actionComboBox, which will pop up
+                        // a dialog to pick one.
+                        //
+                        if (agentEnabled && (selectedProject == null)) {
+                            tc.selectProject();
+                            selectedProject = getProject();
+                        }
+                        final Hacker h = hacker(handler, modelName);
+                        if (pm.isStreamEnabled()) {
+                            h.hack(handler, question, pm.getGlobalRules(), sessionRules);
+                        } else {
+                            response = h.hack(question, pm.getGlobalRules(), sessionRules);
+                        }
+                    }
                 } else {
-                    response = newJeddictBrain(handler, getModelName())
-                        .generateDescription(getProject(), treePath.getCompilationUnit().toString(), treePath.getLeaf() instanceof MethodTree ? treePath.getLeaf().toString() : null, null, prevChatResponses, question, pm.getSessionRules());
+                    final Assistant a = assistant(handler, modelName);
+                    final String projectInfo = ProjectMetadataInfo.get(getProject());
+                    if (pm.isStreamEnabled()) {
+                        a.chat(handler, question, treePath, projectInfo, globalRules, sessionRules);
+                    } else {
+                        response = a.chat(question, treePath, projectInfo, globalRules, sessionRules);
+                    }
                 }
 
                 //
@@ -1107,76 +751,74 @@ public class AssistantChatManager extends JavaFix {
                     handler.onCompleteResponse(ChatResponse.builder().aiMessage(new AiMessage(response)).build());
                 }
 
-                questionPane.setText("");
-                updateHeight();
-                clearFileTab();
+                tc.getQuestionPane().setText("");
+                tc.updateHeight();
+                tc.clearFileTab();
             } catch (Exception e) {
                 Exceptions.printStackTrace(e);
-                buttonPanelAdapter.componentResized(null);
+                tc.buttonPanelResized();
             }
         });
     }
 
-    private String getModelName() {
-        String modelName = (String) models.getSelectedItem();
-        if (modelName == null || modelName.isEmpty()) {
-            return pm.getModel();
-        }
-        return modelName;
+    private JeddictBrain newJeddictBrain(
+        final JeddictBrainListener listener,
+        final String modelName
+    ) {
+        return newJeddictBrain(listener, modelName, JeddictBrain.InteractionMode.QUERY);
     }
 
-    private void updateButtons(JButton prevButton, JButton nextButton) {
-        // TODO: to be reviewed once all agents will use buit-in memory
-        prevButton.setVisible(currentResponseIndex > 0);
-        nextButton.setVisible(currentResponseIndex < responseHistory.size() - 1);
-
-        int javaEditorCount = topComponent.getAllCodeEditorCount();
-//        copyButton.setVisible(javaEditorCount > 0);
-//        saveButton.setVisible(javaEditorCount > 0);
-
-        openInBrowserButton.setVisible(topComponent.getAllEditorCount() > 0);
-    }
-
-    private JeddictBrain newJeddictBrain(final JeddictBrainListener listener, final String name) {
+    private JeddictBrain newJeddictBrain(
+        final JeddictBrainListener listener,
+        final String modelName,
+        final JeddictBrain.InteractionMode mode
+    ) {
         final JeddictBrain brain = new JeddictBrain(
-            name, PreferencesManager.getInstance().isStreamEnabled(), buildToolsList(project, listener));
+            modelName, pm.isStreamEnabled(),
+            mode,
+            (mode == JeddictBrain.InteractionMode.QUERY) ? null : buildToolsList(getProject(), listener)
+        );
         brain.addProgressListener(listener);
         return brain;
     }
 
     /**
      * Returns a TestSpecialist with memory reusing a previously created agent
-     * if <code>testSpecialist</code> is not null. If null, a new  instance is
+     * if <code>testSpecialist</code> is not null. If null, a new instance is
      * created.
      *
      * @return
      */
-    private TestSpecialist testSpecialist(final JeddictBrainListener listener) {
+    private TestSpecialist testSpecialist(final JeddictBrainListener listener, final String modelName) {
 
-        if (testSpecialist != null) return testSpecialist;
+        if (testSpecialist != null) {
+            return testSpecialist;
+        }
 
         int memorySize = pm.getConversationContext();
 
-        JeddictBrain brain = newJeddictBrain(listener, getModelName());
+        JeddictBrain brain = newJeddictBrain(listener, modelName, JeddictBrain.InteractionMode.QUERY);
         brain.withMemory((memorySize < 0) ? Integer.MAX_VALUE : memorySize);
 
         return (testSpecialist = brain.pairProgrammer(PairProgrammer.Specialist.TEST));
     }
 
     /**
-     * Returns a DBSpecialist with memory reusing a previously created agent
-     * if <code>dbSpecialist</code> is not null. If null, a new  instance is
+     * Returns a DBSpecialist with memory reusing a previously created agent if
+     * <code>dbSpecialist</code> is not null. If null, a new instance is
      * created.
      *
      * @return
      */
-    private DBSpecialist dbSpecialist(final JeddictBrainListener listener) {
+    private DBSpecialist dbSpecialist(final JeddictBrainListener listener, final String modelName) {
 
-        if (dbSpecialist != null) return dbSpecialist;
+        if (dbSpecialist != null) {
+            return dbSpecialist;
+        }
 
         int memorySize = pm.getConversationContext();
 
-        JeddictBrain brain = newJeddictBrain(listener, getModelName());
+        JeddictBrain brain = newJeddictBrain(listener, modelName, JeddictBrain.InteractionMode.QUERY);
         brain.withMemory((memorySize < 0) ? Integer.MAX_VALUE : memorySize);
 
         return (dbSpecialist = brain.pairProgrammer(PairProgrammer.Specialist.DB));
@@ -1184,23 +826,90 @@ public class AssistantChatManager extends JavaFix {
 
     /**
      * Returns a DiffSpecialist with memory reusing a previously created agent
-     * if <code>diffSpecialist</code> is not null. If null, a new  instance is
+     * if <code>diffSpecialist</code> is not null. If null, a new instance is
      * created.
      *
-     * @return
+     * @return a new orexisting DiffSpecialist
      */
-    private DiffSpecialist diffSpecialist(final JeddictBrainListener listener) {
+    private DiffSpecialist diffSpecialist(final JeddictBrainListener listener, final String modelName) {
 
-        if (diffSpecialist != null) return diffSpecialist;
+        if (diffSpecialist != null) {
+            return diffSpecialist;
+        }
 
         int memorySize = pm.getConversationContext();
 
-        JeddictBrain brain = newJeddictBrain(listener, getModelName());
+        JeddictBrain brain = newJeddictBrain(listener, modelName, JeddictBrain.InteractionMode.QUERY);
         brain.withMemory((memorySize < 0) ? Integer.MAX_VALUE : memorySize);
 
         return (diffSpecialist = brain.pairProgrammer(PairProgrammer.Specialist.DIFF));
     }
 
+    /**
+     * Returns a Assistant with memory reusing a previously created agent
+     * if <code>assistant</code> is not null. If null, a new  instance is
+     * created.
+     *
+     * @return a new or existing Assistant object
+     */
+    private Assistant assistant(final JeddictBrainListener listener, final String modelName) {
+
+        if (assistant != null) return assistant;
+
+        int memorySize = pm.getConversationContext();
+
+        JeddictBrain brain = newJeddictBrain(listener, modelName, JeddictBrain.InteractionMode.QUERY);
+        brain.withMemory((memorySize < 0) ? Integer.MAX_VALUE : memorySize);
+
+        return (assistant = brain.pairProgrammer(PairProgrammer.Specialist.ASSISTANT));
+    }
+
+    /**
+     * Returns a Assistant with memory reusing a previously created agent
+     * if <code>assistant</code> is not null. If null, a new  instance is
+     * created.
+     *
+     * @return a new or existing Assistant object
+     */
+    private Assistant projectAssistant(final JeddictBrainListener listener, final String modelName) {
+
+        if (projectAssistant != null) return projectAssistant;
+
+        int memorySize = pm.getConversationContext();
+
+        JeddictBrain brain = newJeddictBrain(listener, modelName, JeddictBrain.InteractionMode.QUERY);
+        brain.withMemory((memorySize < 0) ? Integer.MAX_VALUE : memorySize);
+
+        return (projectAssistant = brain.pairProgrammer(PairProgrammer.Specialist.ASSISTANT));
+    }
+
+    /**
+     * Returns an Hacker with memory reusing a previously created agent
+     * if <code>hacker</code> is not null. If null, a new  instance is
+     * created. An Hacker is agentic and executes tools.
+     *
+     * @return a new or existing Hacker object
+     */
+    private Hacker hacker(final JeddictBrainListener listener, final String modelName) {
+
+        if (hacker != null) return hacker;
+
+        int memorySize = pm.getConversationContext();
+
+        JeddictBrain brain = newJeddictBrain(listener, modelName, JeddictBrain.InteractionMode.AGENT);
+        brain.withMemory((memorySize < 0) ? Integer.MAX_VALUE : memorySize);
+
+        return (hacker = brain.pairProgrammer(PairProgrammer.Specialist.HACKER));
+    }
+
+    /**
+     * Buildes the tool list to be given to JeddictBrain for agentic interactions
+     *
+     * @param project instance of the project attached to the chat
+     * @param handler a event listener to track events generated in the conversation
+     *
+     * @return the list of Tool objects
+     */
     private List<AbstractTool> buildToolsList(
         final Project project, final JeddictBrainListener handler
     ) {

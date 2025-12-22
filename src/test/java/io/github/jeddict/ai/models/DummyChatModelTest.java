@@ -23,10 +23,12 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import io.github.jeddict.ai.agent.ToolsProbingTool;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import io.github.jeddict.ai.test.DummyChatModelListener;
+import io.github.jeddict.ai.test.DummyTool;
 import io.github.jeddict.ai.test.TestBase;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.BDDAssertions.thenThrownBy;
@@ -69,7 +71,7 @@ public class DummyChatModelTest extends TestBase {
         ).build();
 
         then(chat.doChat(chatRequest).aiMessage().text().trim())
-            .startsWith("To use the mock server, send a prompt containing the following instruction:");
+            .startsWith("To use a mock, send a prompt containing the following instruction:");
     }
 
     @Test
@@ -161,10 +163,10 @@ public class DummyChatModelTest extends TestBase {
 
         ChatRequest request = ChatRequest.builder()
             .messages(List.of(
-                UserMessage.from("execute probeToolsSupport")
+                UserMessage.from("execute tool dummyTool")
             ))
             .toolSpecifications(
-                ToolSpecifications.toolSpecificationsFrom(new ToolsProbingTool())
+                ToolSpecifications.toolSpecificationsFrom(new DummyTool())
             )
             .build();
 
@@ -184,10 +186,10 @@ public class DummyChatModelTest extends TestBase {
 
         request = ChatRequest.builder()
             .messages(List.of(
-                UserMessage.from("execute probeToolsSupport")
+                UserMessage.from("execute tool dummyTool")
             ))
             .toolSpecifications(
-                ToolSpecifications.toolSpecificationsFrom(new ToolsProbingTool())
+                ToolSpecifications.toolSpecificationsFrom(new DummyTool())
             )
             .build();
 
@@ -204,10 +206,10 @@ public class DummyChatModelTest extends TestBase {
         // Given
         request = ChatRequest.builder()
             .messages(List.of(
-                UserMessage.from("execute fileRead")
+                UserMessage.from("execute tool fileRead")
             ))
             .toolSpecifications(
-                ToolSpecifications.toolSpecificationsFrom(new ToolsProbingTool())
+                ToolSpecifications.toolSpecificationsFrom(new DummyTool())
             )
             .build();
 
@@ -227,10 +229,10 @@ public class DummyChatModelTest extends TestBase {
 
         ChatRequest request = ChatRequest.builder()
             .messages(List.of(
-                UserMessage.from("execute probeToolsSupport")
+                UserMessage.from("execute tool dummyTool")
             ))
             .toolSpecifications(
-                ToolSpecifications.toolSpecificationsFrom(new ToolsProbingTool())
+                ToolSpecifications.toolSpecificationsFrom(new DummyTool())
             )
             .build();
 
@@ -242,6 +244,31 @@ public class DummyChatModelTest extends TestBase {
     }
 
     @Test
+    public void simulate_streaming() {
+        final DummyChatModel chat = new DummyChatModel();
+
+        final List<String> messages = new ArrayList();
+        chat.chat("use mock 'hello world.txt'", new StreamingChatResponseHandler() {
+            @Override
+            public void onPartialResponse(final String partialResponse) {
+                messages.add(partialResponse);
+            }
+
+            @Override
+            public void onCompleteResponse(final ChatResponse res) {
+                // .trim() to make it platform independent (i.e. \n vs \r\n)
+                messages.add(res.aiMessage().text().trim());
+            }
+
+            @Override
+            public void onError(Throwable thrwbl) {
+            }
+        });
+
+        then(messages).containsExactly("hello world", "hello world");
+    }
+
+    @Test
     public void simulate_model_error() {
         final DummyChatModel chat = new DummyChatModel();
 
@@ -250,6 +277,10 @@ public class DummyChatModelTest extends TestBase {
         thenThrownBy(() -> chat.chat("any prompt"))
             .isInstanceOf(RuntimeException.class)
             .hasMessage("this is an error");
+
+        //
+        // TODO: add error handling when streaming
+        //
     }
 
     // --------------------------------------------------------- private methods

@@ -15,6 +15,7 @@
  */
 package io.github.jeddict.ai.test;
 
+import dev.langchain4j.agent.tool.Tool;
 import io.github.jeddict.ai.agent.AbstractTool;
 import java.io.File;
 
@@ -23,11 +24,22 @@ import java.io.File;
  */
 public class DummyTool extends AbstractTool {
 
+    protected boolean executed = false;
+
     public DummyTool() {
         this(new File(".").getAbsolutePath());
     }
 
     public DummyTool(String basedir) {
         super(basedir);
+    }
+
+    public boolean executed() {
+        return executed;
+    }
+
+    @Tool
+    public String dummyTool() {
+        return String.valueOf(executed = true);
     }
 }

@@ -28,6 +28,7 @@ import static io.github.jeddict.ai.util.SourceUtil.findFileInProjects;
 import static io.github.jeddict.ai.util.SourceUtil.openFileInEditor;
 import static io.github.jeddict.ai.util.SourceUtil.openFileInEditorAtLine;
 import java.awt.Font;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -56,6 +57,8 @@ import org.netbeans.api.editor.settings.FontColorNames;
 import org.netbeans.api.editor.settings.FontColorSettings;
 import org.netbeans.api.project.Project;
 import org.netbeans.editor.BaseDocument;
+import org.netbeans.modules.editor.NbEditorKit;
+import org.openide.cookies.EditorCookie;
 import org.openide.filesystems.FileObject;
 import org.openide.util.Exceptions;
 
@@ -503,7 +506,7 @@ public class EditorUtil {
         while (matcher.find()) {
             String token = matcher.group(1);
             if (!token.matches("[\\w\\.]+")) {
-                matcher.appendReplacement(sb, matcher.group());
+                matcher.appendReplacement(sb, Matcher.quoteReplacement(matcher.group()));
                 continue;
             }
             String lastSegment = token.contains(".") ? token.substring(token.lastIndexOf('.') + 1) : token;
@@ -512,7 +515,7 @@ public class EditorUtil {
                 replacement = Matcher.quoteReplacement(replacement);
                 matcher.appendReplacement(sb, replacement);
             } else {
-                matcher.appendReplacement(sb, matcher.group());
+                matcher.appendReplacement(sb, Matcher.quoteReplacement(matcher.group()));
             }
         }
         matcher.appendTail(sb);
@@ -559,4 +562,50 @@ public class EditorUtil {
         }
         return ""; // NOI18N
     }
+    
+    public static NbEditorKit createEditorKit(String mimeType) {
+        if (mimeType == null || mimeType.isBlank()) {
+            mimeType = MIME_PLAIN_TEXT;
+        }
+
+        NbEditorKit kit = MimeLookup.getLookup(MimePath.parse(mimeType))
+                .lookup(NbEditorKit.class);
+        return kit;
+    }
+
+    public static JEditorPane createInMemoryEditorCopy(String mimeType) {
+        JEditorPane mirrorEditor;
+        try {
+            String ext = getExtension(mimeType);
+
+            FileObject fo = org.openide.filesystems.FileUtil.createMemoryFileSystem()
+                    .getRoot()
+                    .createData("code-preview." + ext);
+
+            EditorCookie ec = fo.getLookup().lookup(EditorCookie.class);
+
+            try {
+                ec.open();
+
+                JEditorPane[] panes = ec.getOpenedPanes();
+                if (panes != null && panes.length > 0) {
+                    JEditorPane source = panes[0];
+                    mirrorEditor = new JEditorPane();
+                    mirrorEditor.setEditorKit(source.getEditorKit());
+                    mirrorEditor.setEditable(source.isEditable());
+                    return mirrorEditor;
+                }
+            } finally {
+                ec.close();
+                if (fo.isValid()) {
+                    fo.delete();
+                }
+            }
+        } catch (IOException ex) {
+            Exceptions.printStackTrace(ex);
+        }
+
+        return new JEditorPane(); // fallback
+    }
+
 }

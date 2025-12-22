@@ -31,7 +31,10 @@ import java.util.Collections;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.ModelProvider;
@@ -96,7 +99,7 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
         LOG.info(() -> "> " + String.valueOf(chatRequest));
 
         if (error != null) {
-            LOG.info(() -> "> DummyChatModel instructed to raise " + error);
+            LOG.info(() -> "DummyChatModel instructed to raise " + error);
 
             throw error;
         }
@@ -113,10 +116,18 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
         //
         chatRequest.messages().forEach((msg) -> {
             bodyBuilder.append("\n");
-            if (msg instanceof UserMessage) {
-                bodyBuilder.append(((UserMessage)msg).singleText());
-            } else if (msg instanceof SystemMessage) {
-                bodyBuilder.append(((SystemMessage)msg).text());
+            if (msg instanceof UserMessage usrMsg) {
+                for(Content c: usrMsg.contents()) {
+                    if (c instanceof TextContent txt) {
+                        bodyBuilder.append(txt.text()).append("\n");
+                    } else if (c instanceof ImageContent img) {
+                        bodyBuilder.append(img.image().url());
+                    } else {
+                        bodyBuilder.append(String.valueOf(usrMsg));
+                    }
+                }
+            } else if (msg instanceof SystemMessage sysMsg) {
+                bodyBuilder.append(sysMsg.text());
             } else {
                 bodyBuilder.append(String.valueOf(msg));
             }
@@ -153,12 +164,18 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
             if (!toolExecuted) {
                 final String tool = on(chatRequest.toolSpecifications()).loop((specification) -> {
                     final String name = specification.name();
-                    if (body.contains(name)) {
+                    // (?i) makes "execute tool " case-insensitive
+                    // \Q and \E escape the 'name' to ensure special characters don't break the regex
+                    final String regex = "(?i)execute tool " + Pattern.quote(name);
+
+                    if (Pattern.compile(regex).matcher(body).find()) {
                         _break_(name);
                     }
                 });
 
                 if (tool != null) {
+                    LOG.info(() -> "Requesting to execute tool %s".formatted(tool));
+
                     toolExecuted = true; // set before execution to make sure
                                          // execution is done even in case of
                                          // exceptions
@@ -177,7 +194,6 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
                         _break_(AiMessage.from(toolResult.text()));
                     }
                 });
-
             }
         }
 
@@ -227,7 +243,7 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
         for (ChatModelListener listener : listeners) {
             listener.onResponse(responseContext);
         }
-        
+
         LOG.info(() -> "< " + String.valueOf(chatResponse));
 
         return chatResponse;
@@ -236,7 +252,17 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
     @Override
     public void doChat(final ChatRequest chatRequest, final StreamingChatResponseHandler handler) {
         LOG.info(() -> "> " + chatRequest + ", " + handler);
-        StreamingChatModel.super.doChat(chatRequest, handler);
+
+        final ChatResponse response = doChat(chatRequest);
+        final String answer = response.aiMessage().text();
+
+        if (answer != null) {
+            for(String m: answer.trim().split("\n")) {
+                handler.onPartialResponse(m.trim());
+            }
+        }
+
+        handler.onCompleteResponse(response);
     }
 
     @Override

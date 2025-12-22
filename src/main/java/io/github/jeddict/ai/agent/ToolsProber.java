@@ -33,7 +33,7 @@ public interface ToolsProber {
         You are an assistant to probe if a model supports tools.
     """;
     public static final String USER_MESSAGE = """
-        Execute the tool probeToolsSupport and return the result of the execution.
+        Execute tool probeToolsSupport and return the result of the execution.
         If you do not know probeToolsSupport return "unsupported".
     """;
 

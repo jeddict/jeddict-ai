@@ -15,7 +15,15 @@
  */
 package io.github.jeddict.ai.agent.pair;
 
-import dev.langchain4j.agentic.AgenticServices;
+import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.service.AiServices;
+import io.github.jeddict.ai.lang.JeddictBrain;
+import static io.github.jeddict.ai.lang.JeddictBrain.EventProperty.CHAT_COMPLETED;
+import io.github.jeddict.ai.test.DummyPropertyChangeListener;
+import io.github.jeddict.ai.test.DummyTool;
+import java.beans.PropertyChangeEvent;
+import java.util.List;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,6 +33,9 @@ import org.junit.jupiter.api.Test;
  */
 public class HackerTest extends PairProgrammerTestBase {
 
+    private static final String GLOBAL_RULES = "globale rules";
+    private static final String PROJECT_RULES = "project rules";
+
     private Hacker pair;
 
     @BeforeEach
@@ -32,14 +43,78 @@ public class HackerTest extends PairProgrammerTestBase {
     public void beforeEach() throws Exception {
         super.beforeEach();
 
-        pair = AgenticServices.agentBuilder(Hacker.class)
+        pair = AiServices.builder(Hacker.class)
             .chatModel(model)
             .build();
     }
-    
+
     @Test
     public void pair_is_a_PairProgrammer() {
         then(pair).isInstanceOf(PairProgrammer.class);
+    }
+
+    @Test
+    public void hack_returns_AI_provided_response() {
+        final String expectedSystem = Hacker.SYSTEM_MESSAGE
+            .replace("{{globalRules}}", "none")
+            .replace("{{projectRules}}", "none");
+        final String expectedUser = "use mock 'hello world.txt'";
+
+        final String answer = pair.hack(expectedUser);
+
+        final ChatModelRequestContext request = listener.lastRequestContext.get();
+        thenMessagesMatch(
+            request.chatRequest().messages(), expectedSystem, expectedUser
+        );
+
+        then(answer.trim()).isEqualTo("hello world");
+    }
+
+    @Test
+    public void hack_with_rules_returns_AI_provided_response() {
+        final String expectedSystem = Hacker.SYSTEM_MESSAGE
+            .replace("{{globalRules}}", GLOBAL_RULES)
+            .replace("{{projectRules}}", PROJECT_RULES);
+        final String expectedUser = "use mock 'hello world.txt'";
+
+        final String answer = pair.hack(expectedUser, GLOBAL_RULES, PROJECT_RULES);
+
+        final ChatModelRequestContext request = listener.lastRequestContext.get();
+        thenMessagesMatch(
+            request.chatRequest().messages(), expectedSystem, expectedUser
+        );
+
+        then(answer.trim()).isEqualTo("hello world");
+    }
+
+    @Test
+    public void hack_with_streaming() {
+        final DummyPropertyChangeListener streamListener = new DummyPropertyChangeListener();
+        final DummyTool tool = new DummyTool();
+        final String[] msg = new String[2];
+
+        pair = AiServices.builder(Hacker.class)
+            .streamingChatModel(model)
+            .tools(List.of(tool))
+            .build();
+
+        pair.hack(streamListener, "execute tool dummyTool", "", "");
+        then(tool.executed()).isTrue();
+
+        int i = 0;
+        then(streamListener.events).isNotEmpty();
+        PropertyChangeEvent e = streamListener.events.get(i++);
+        then(e.getPropertyName()).isEqualTo(JeddictBrain.EventProperty.CHAT_INTERMEDIATE.name);
+        e = streamListener.events.get(i++);
+        then(e.getPropertyName()).isEqualTo(JeddictBrain.EventProperty.TOOL_BEFORE_EXECUTION.name);
+        e = streamListener.events.get(i++);
+        then(e.getPropertyName()).isEqualTo(JeddictBrain.EventProperty.TOOL_EXECUTED.name);
+        e = streamListener.events.get(i++);
+        then(e.getPropertyName()).isEqualTo(JeddictBrain.EventProperty.CHAT_PARTIAL.name);
+        then(e.getNewValue()).isEqualTo("true");
+        e = streamListener.events.get(i++);
+        then(e.getPropertyName()).isEqualTo(CHAT_COMPLETED.name);
+        then(((ChatResponse)e.getNewValue()).aiMessage().text()).isEqualTo("true");
     }
 
 }

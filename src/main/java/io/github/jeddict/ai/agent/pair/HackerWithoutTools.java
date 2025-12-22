@@ -18,16 +18,20 @@ package io.github.jeddict.ai.agent.pair;
 
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.service.UserMessage;
+import dev.langchain4j.service.SystemMessage;
+import dev.langchain4j.service.V;
 
 
 public interface HackerWithoutTools extends PairProgrammer {
-    public static final String SYSTEM_MESSAGE_WITH_TOOLS = """
+    public static final String SYSTEM_MESSAGE = """
     You are an expert developer that can address complex tasks by resolving problems,
     proposing solutions, writing and correcting code.
     """
     ;
     @Agent("Performs the most complex hacking tasks without using tools")
+    @SystemMessage(SYSTEM_MESSAGE)
+    @UserMessage("{{prompt}}")
     String hack(
-        @UserMessage final String prompt
+        @V("prompt") final String prompt
     );
 }

@@ -30,6 +30,7 @@ public interface PairProgrammer {
 
     public static enum Specialist {
         ADVISOR(CodeAdvisor.class),
+        ASSISTANT(Assistant.class),
         DB(DBSpecialist.class),
         DIFF(DiffSpecialist.class),
         GHOSTWRITER(Ghostwriter.class),
@@ -39,7 +40,8 @@ public interface PairProgrammer {
         REFACTOR(RefactorSpecialist.class),
         REST(RestSpecialist.class),
         SHAKESPEARE(Shakespeare.class),
-        TEST(TestSpecialist.class);
+        TEST(TestSpecialist.class),
+        WIZARD(FileWizard.class);
 
         public final Class specialistClass;
 

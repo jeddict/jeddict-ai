@@ -15,8 +15,8 @@
  */
 package io.github.jeddict.ai.models;
 
-import io.github.jeddict.ai.settings.GenAIModel;
-import io.github.jeddict.ai.settings.GenAIProvider;
+import io.github.jeddict.ai.models.registry.GenAIModel;
+import io.github.jeddict.ai.models.registry.GenAIProvider;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;

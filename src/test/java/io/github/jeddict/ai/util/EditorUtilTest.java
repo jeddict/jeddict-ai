@@ -13,28 +13,20 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package io.github.jeddict.ai.agent;
+package io.github.jeddict.ai.util;
 
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.service.TokenStream;
-import java.util.List;
+import io.github.jeddict.ai.test.TestBase;
+import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- *
- * @author Gaurav Gupta
- */
-public interface Assistant {
+public class EditorUtilTest extends TestBase {
 
-    // simple one-shot request → response
-    String chat(String input);
+    @Test
+    public void wrapClassNamesWithAnchor_should_handle_special_characters_in_code_blocks() {
+        String input = "Here is some code: <code>$variable</code> and <code>C:\\path</code>";
+        String result = EditorUtil.wrapClassNamesWithAnchor(input);
 
-    // full conversation style (structured)
-    ChatResponse chat(List<ChatMessage> messages);
-
-    // streaming (one-shot)
-    TokenStream stream(String input);
-
-    // streaming (structured messages)
-    TokenStream stream(List<ChatMessage> messages);
+        assertThat(result).contains("<code>$variable</code>");
+        assertThat(result).contains("<code>C:\\path</code>");
+    }
 }

@@ -18,7 +18,6 @@ package io.github.jeddict.ai.models;
 import io.github.jeddict.ai.agent.pair.Hacker;
 import io.github.jeddict.ai.agent.pair.PairProgrammer;
 import io.github.jeddict.ai.lang.JeddictBrain;
-import java.util.List;
 import static ste.lloop.Loop.on;
 
 /**
@@ -37,7 +36,7 @@ public class ToolsSupportProber {
     public static void main(String... args) {
         System.out.println("----------");
         on(args).loop((model) -> {
-            final JeddictBrain brain = new JeddictBrain(model, false, List.of());
+            final JeddictBrain brain = new JeddictBrain(model, false);
             PairProgrammer pair = brain.pairProgrammer(PairProgrammer.Specialist.HACKER);
 
             System.out.format("%s: %b\n", model, pair instanceof Hacker);
