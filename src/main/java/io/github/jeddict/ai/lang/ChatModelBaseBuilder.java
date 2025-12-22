@@ -15,7 +15,9 @@
  */
 package io.github.jeddict.ai.lang;
 
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -179,6 +181,15 @@ public interface ChatModelBaseBuilder<T> {
      * @return The builder instance
      */
     ChatModelBaseBuilder<T> allowCodeExecution(final boolean allowCodeExecution);
+
+    /**
+     * Sets listeners to the underlying model events
+     *
+     * @param listeners listeners to notify of model events
+     *
+     * @return The builder instance
+     */
+    ChatModelBaseBuilder<T> listeners(final List<ChatModelListener> listeners);
 
     /**
      * Builds and returns the configured chat model instance.

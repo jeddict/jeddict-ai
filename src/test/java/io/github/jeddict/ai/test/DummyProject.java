@@ -20,6 +20,8 @@ import org.netbeans.api.project.Project;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
 import org.openide.util.Lookup;
+import org.openide.util.lookup.AbstractLookup;
+import org.openide.util.lookup.InstanceContent;
 
 /**
  *
@@ -27,16 +29,21 @@ import org.openide.util.Lookup;
 public class DummyProject implements Project {
 
     private final FileObject projectDir;
+    private final Lookup lookup;
+
+    public final InstanceContent instances;
 
     public DummyProject(final File projectDir) {
         if (projectDir == null) {
-            throw new IllegalArgumentException("project directory cannot be null");
+            throw new IllegalArgumentException("projectDir cannot be null");
         }
         FileObject fo = FileUtil.toFileObject(FileUtil.normalizeFile(projectDir));
         if (fo == null) {
             throw new IllegalArgumentException("project directory cannot be null or invalid");
         }
         this.projectDir = fo;
+        this.instances = new InstanceContent();
+        this.lookup = new AbstractLookup(instances);
     }
 
     public DummyProject(final FileObject projectDir) {
@@ -44,6 +51,8 @@ public class DummyProject implements Project {
             throw new IllegalArgumentException("projectDir cannot be null");
         }
         this.projectDir = projectDir;
+        this.instances = new InstanceContent();
+        this.lookup = new AbstractLookup(instances);
     }
 
     @Override
@@ -53,7 +62,6 @@ public class DummyProject implements Project {
 
     @Override
     public Lookup getLookup() {
-        return Lookup.getDefault();
+        return lookup;
     }
-    
 }

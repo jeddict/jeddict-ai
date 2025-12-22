@@ -17,18 +17,19 @@ package io.github.jeddict.ai.lang;
 
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import io.github.jeddict.ai.models.DummyChatModel;
 import io.github.jeddict.ai.settings.PreferencesManager;
 import java.util.logging.Logger;
 
 /**
  *
- * This is a replacement of the class JeddictChatModelBuilder that is used when 
+ * This is a replacement of the class JeddictChatModelBuilder that is used when
  * running the tests (maven loads first classes in testing classpath, thus this
- * code is loaded instead of the production code). 
- * It creates a Dummy model that inspects the request body for an instruction 
- * to "use mock {file}", where {file} is the path to a mock file in 
- * src/test/resources/mocks. The model will respond with the content of the 
+ * code is loaded instead of the production code).
+ * It creates a Dummy model that inspects the request body for an instruction
+ * to "use mock {file}", where {file} is the path to a mock file in
+ * src/test/resources/mocks. The model will respond with the content of the
  * specified mock file.
  * <p>
  * The file name can be unquoted or enclosed in double quotes.
@@ -38,7 +39,7 @@ import java.util.logging.Logger;
  *     <li>use mock "my file with spaces.txt"</li>
  * </ul>
  * <p>
- * 
+ *
  */
 public class JeddictChatModelBuilder {
 
@@ -47,12 +48,21 @@ public class JeddictChatModelBuilder {
     protected static PreferencesManager pm = PreferencesManager.getInstance();
     private String modelName;
 
+    private final ChatModelListener listener;
+
     public JeddictChatModelBuilder() {
         this(null);
     }
 
-    public JeddictChatModelBuilder(String modelName) {
+    public JeddictChatModelBuilder(final String modelName) {
+        this(modelName, null);
+    }
+
+    public JeddictChatModelBuilder(
+        final String modelName, final ChatModelListener listener
+    ) {
         this.modelName = modelName; // P2 - TODO: can this be null?
+        this.listener = listener;
     }
 
     public ChatModel build() {

@@ -28,7 +28,7 @@ import org.apache.commons.lang3.StringUtils;
 
 
 /**
- * Provides an interface for suggesting improved variable names based on the context of Java code.
+ * An agent that suggests improved code based on the context of Java code.
  *
  * Implementations of this interface analyze a given line of code, its containing class,
  * and all relevant project classes to generate a list of up to three descriptive names

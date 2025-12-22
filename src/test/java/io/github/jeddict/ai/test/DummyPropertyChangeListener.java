@@ -15,31 +15,21 @@
  */
 package io.github.jeddict.ai.test;
 
-import dev.langchain4j.agent.tool.Tool;
-import io.github.jeddict.ai.agent.AbstractTool;
-import java.io.File;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  *
  */
-public class DummyTool extends AbstractTool {
+public class DummyPropertyChangeListener implements PropertyChangeListener {
 
-    protected boolean executed = false;
+    public final List<PropertyChangeEvent> events = new ArrayList();
 
-    public DummyTool() {
-        this(new File(".").getAbsolutePath());
+    @Override
+    public void propertyChange(PropertyChangeEvent event) {
+        events.add(event);
     }
 
-    public DummyTool(String basedir) {
-        super(basedir);
-    }
-
-    public boolean executed() {
-        return executed;
-    }
-
-    @Tool
-    public String dummyTool() {
-        return String.valueOf(executed = true);
-    }
 }
