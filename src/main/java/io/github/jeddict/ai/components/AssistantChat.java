@@ -84,7 +84,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.prefs.Preferences;
 import java.util.regex.Matcher;
@@ -552,7 +551,7 @@ public abstract class AssistantChat extends TopComponent {
         }
     }
 
-    private void createUserPaneButtons(BiConsumer<String, Set<FileObject>> queryUpdate, Set<FileObject> messageContext, JPanel buttonPanel) {
+    private void createUserPaneButtons(Consumer<String> queryUpdate, Set<FileObject> messageContext, JPanel buttonPanel) {
         copyButton = QueryPane.createIconButton(Labels.COPY, ICON_COPY);
         editButton = QueryPane.createIconButton(Labels.EDIT, ICON_EDIT);
         saveButton = QueryPane.createIconButton(Labels.SAVE, ICON_SEND);
@@ -572,7 +571,7 @@ public abstract class AssistantChat extends TopComponent {
 
             String question = queryPane.getText();
             if (!question.isEmpty()) {
-                queryUpdate.accept(question, messageContext);
+                queryUpdate.accept(question);
             }
         });
 
@@ -613,7 +612,7 @@ public abstract class AssistantChat extends TopComponent {
         filePanelAdapter.componentResized(null);
     }
 
-    public JEditorPane createUserQueryPane(BiConsumer<String, Set<FileObject>> queryUpdate, String content, Set<FileObject> messageContext) {
+    public JEditorPane createUserQueryPane(Consumer<String> queryUpdate, String content, Set<FileObject> messageContext) {
 
         Consumer<FileObject> callback = file -> {
             if (!messageContext.contains(file)) {

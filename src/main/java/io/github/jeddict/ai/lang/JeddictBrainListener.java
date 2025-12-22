@@ -1,18 +1,3 @@
-/**
- * Copyright 2025 the original author or authors from the Jeddict project (https://jeddict.github.io/).
- *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not
- * use this file except in compliance with the License. You may obtain a copy of
- * the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations under
- * the License.
- */
 package io.github.jeddict.ai.lang;
 
 import dev.langchain4j.data.message.AiMessage;
@@ -27,7 +12,6 @@ import io.github.jeddict.ai.response.TokenHandler;
 import io.github.jeddict.ai.util.Utilities;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.lang.reflect.InvocationTargetException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.concurrent.CompletableFuture;
@@ -42,7 +26,6 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import org.netbeans.api.progress.ProgressHandle;
-import org.openide.util.Exceptions;
 import org.openide.util.NbBundle;
 
 /**
@@ -54,7 +37,7 @@ import org.openide.util.NbBundle;
  *
  * @author Shiwani Gupta
  */
-public abstract class JeddictBrainListener
+public class JeddictBrainListener
     implements PropertyChangeListener
 {
 
@@ -62,7 +45,6 @@ public abstract class JeddictBrainListener
     protected boolean init = true;
     protected JTextArea textArea;
     protected final ProgressHandle handle;
-    protected boolean complete;
     protected final StringBuilder toolingResponse = new StringBuilder();
 
     private static final Logger LOG = Logger.getLogger(JeddictBrainListener.class.getName());
@@ -71,7 +53,6 @@ public abstract class JeddictBrainListener
         this.topComponent = topComponent;
 
         handle = ProgressHandle.createHandle(NbBundle.getMessage(JeddictUpdateManager.class, "ProgressHandle", 0));
-        handle.start();
     }
 
     public ProgressHandle getProgressHandle() {
@@ -83,18 +64,24 @@ public abstract class JeddictBrainListener
         LOG.finest(() -> String.valueOf(e));
         final String name = e.getPropertyName();
 
-
         if (name.equals(JeddictBrain.EventProperty.CHAT_TOKENS.name)) {
             SwingUtilities.invokeLater(() -> {
                 final String progress = NbBundle.getMessage(JeddictUpdateManager.class, "ProgressHandle", (int)e.getNewValue());
+                handle.start();
                 handle.progress(progress);
                 handle.setDisplayName(progress);
             });
         } else if (name.equals(JeddictBrain.EventProperty.CHAT_PARTIAL.name)) {
             onPartialResponse((String)e.getNewValue());
         } else if (name.equals(JeddictBrain.EventProperty.CHAT_COMPLETED.name)) {
+            SwingUtilities.invokeLater(() -> {
+                handle.finish();
+            });
             onCompleteResponse((ChatResponse)e.getNewValue());
-        } else if (name.equals(JeddictBrain.EventProperty.CHAT_ERROR)) {
+        } else if (name.equals(JeddictBrain.EventProperty.CHAT_ERROR.name)) {
+            SwingUtilities.invokeLater(() -> {
+                handle.finish();
+            });
             onError((Exception)e.getNewValue());
         } else if (name.equals(AbstractTool.PROPERTY_MESSAGE)) {
             final String msg = (String)e.getNewValue() + '\n';
@@ -104,44 +91,31 @@ public abstract class JeddictBrainListener
     }
 
     public void onPartialResponse(String partialResponse) {
-        try {
-            LOG.finest(() -> "partial response: " + partialResponse);
-            SwingUtilities.invokeAndWait(() -> {
-                if (init) {
-                    topComponent.clear();
-                    textArea = topComponent.createTextAreaPane();
-                    textArea.setText(partialResponse);
-                    init = false;
-                } else {
-                    textArea.append(partialResponse);
-                }
-            });
-        } catch (InterruptedException | InvocationTargetException ex) {
-            Exceptions.printStackTrace(ex);
-        }
+        LOG.finest(() -> "partial response: " + partialResponse);
+        SwingUtilities.invokeLater(() -> {
+            if (init) {
+                topComponent.clear();
+                textArea = topComponent.createTextAreaPane();
+                textArea.setText(partialResponse);
+                init = false;
+            } else {
+                textArea.append(partialResponse);
+            }
+        });
     }
 
     public void onCompleteResponse(ChatResponse completeResponse) {
         LOG.finest(() -> "complete response received: " + completeResponse);
-        complete = true;
 
         String response = completeResponse.aiMessage().text();
         if (response != null && !response.isEmpty()) {
             CompletableFuture.runAsync(() -> TokenHandler.saveOutputToken(response));
         }
-        SwingUtilities.invokeLater(() -> {
-            handle.finish();
-        });
-    }
-
-    public boolean isComplete() {
-        return complete;
     }
 
     public void onError(final Throwable throwable) {
         LOG.finest(() -> "error received: " + throwable);
 
-        complete = true;
         // Log the error with timestamp and thread info
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
         String threadName = Thread.currentThread().getName();
@@ -149,12 +123,9 @@ public abstract class JeddictBrainListener
         LOG.log(Level.SEVERE, "Exception in JeddictStreamHandler", throwable);
 
         final String error = Utilities.errorHTMLBlock(throwable);
-        // Update UI on the Event Dispatch Thread
-        SwingUtilities.invokeLater(() -> {
-            onCompleteResponse(
-                ChatResponse.builder().aiMessage(new AiMessage(error)).build()
-            );
-        });
+        onCompleteResponse(
+            ChatResponse.builder().aiMessage(new AiMessage(error)).build()
+        );
 
         if (throwable instanceof AuthenticationException) {
             confirmApiKey();
@@ -163,7 +134,6 @@ public abstract class JeddictBrainListener
         } else {
             showError(throwable.getMessage());
         }
-
     }
 
     private void confirmApiKey() {

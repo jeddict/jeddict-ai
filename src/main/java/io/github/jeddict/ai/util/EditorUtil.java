@@ -36,7 +36,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
@@ -73,7 +73,7 @@ public class EditorUtil {
     private static final Set<String> TEXT_BLOCK_TYPES = Set.of("text", "web", "html");
     private static final Logger LOG = Logger.getLogger(EditorUtil.class.getName());
 
-    public static String updateEditors(BiConsumer<String, Set<FileObject>> queryUpdate, Project project, AssistantChat topComponent, Response response, Set<FileObject> threadContext) {
+    public static String updateEditors(Consumer<String> queryUpdate, Project project, AssistantChat topComponent, Response response, Set<FileObject> threadContext) {
         StringBuilder code = new StringBuilder();
 
         topComponent.clear();
@@ -562,7 +562,7 @@ public class EditorUtil {
         }
         return ""; // NOI18N
     }
-    
+
     public static NbEditorKit createEditorKit(String mimeType) {
         if (mimeType == null || mimeType.isBlank()) {
             mimeType = MIME_PLAIN_TEXT;

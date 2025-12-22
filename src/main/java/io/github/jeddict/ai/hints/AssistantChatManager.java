@@ -79,10 +79,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.logging.Logger;
@@ -118,13 +114,12 @@ public class AssistantChatManager extends JavaFix {
 
     private static final Logger LOG = Logger.getLogger(AssistantChatManager.class.getCanonicalName());
 
-    private static final ExecutorService executorService = Executors.newSingleThreadExecutor();
     public static final String ASSISTANT_CHAT_MANAGER_KEY = "ASSISTANT_CHAT_MANAGER_KEY";
 
     private TreePath treePath;
     private final Action action;
     private SQLCompletion sqlCompletion;
-    private AssistantChat tc;
+    private AssistantChat ac;
     private final List<Response> responseHistory = new ArrayList<>(); // TODO: to be reviewed/removed once all agents will use buit-in memory
     private int currentResponseIndex = -1;
     private String sourceCode;
@@ -137,7 +132,8 @@ public class AssistantChatManager extends JavaFix {
     private Tree leaf;
     private final Map<String, String> params = new HashMap();
 
-    private Future result;
+    private String question;
+    private SwingWorker result;
     private JeddictBrainListener handler;
 
     private boolean commitMessage, codeReview;
@@ -172,8 +168,8 @@ public class AssistantChatManager extends JavaFix {
                 project = FileOwnerQuery.getOwner(fileObject);
             } else if (messageContext != null && !messageContext.isEmpty()) {
                 project = FileOwnerQuery.getOwner(messageContext.toArray(FileObject[]::new)[0]);
-        } else if (tc != null) {
-            project = tc.getProject();
+        } else if (ac != null) {
+            project = ac.getProject();
         }
 
         final Project logProject = project;
@@ -253,56 +249,54 @@ public class AssistantChatManager extends JavaFix {
         this.fileObject = copy.getFileObject();
 
         if (leaf.getKind() == CLASS
-                || leaf.getKind() == INTERFACE
-                || leaf.getKind() == ENUM
-                || leaf.getKind() == METHOD) {
-            executorService.submit(() -> {
-                String name;
-                if (leaf instanceof MethodTree) {
-                    name = ((MethodTree) leaf).getName().toString();
-                } else {
-                    name = ((ClassTree) leaf).getSimpleName().toString();
-                }
-                String fileName = fileObject != null ? fileObject.getName() : null;
-                Set<FileObject> messageContextCopy = new HashSet<>(messageContext);
-                SwingUtilities.invokeLater(() -> {
-                    displayHtmlContent(fileName, name + " AI Assistant");
-                    JeddictBrainListener handler = new JeddictBrainListener(tc) {
-                        @Override
-                        public void onCompleteResponse(ChatResponse response) {
-                            super.onCompleteResponse(response);
+            || leaf.getKind() == INTERFACE
+            || leaf.getKind() == ENUM
+            || leaf.getKind() == METHOD) {
 
-                            final Response r = new Response(null, response.aiMessage().text(), messageContextCopy);
-                            sourceCode = EditorUtil.updateEditors(null, getProject(), tc, r, getContextFiles());
+            String name;
+            if (leaf instanceof MethodTree) {
+                name = ((MethodTree) leaf).getName().toString();
+            } else {
+                name = ((ClassTree) leaf).getSimpleName().toString();
+            }
+            String fileName = fileObject != null ? fileObject.getName() : null;
+            Set<FileObject> messageContextCopy = new HashSet<>(messageContext);
+            SwingUtilities.invokeLater(() -> {
+                displayHtmlContent(fileName, name + " AI Assistant");
+                JeddictBrainListener handler = new JeddictBrainListener(ac) {
+                    @Override
+                    public void onCompleteResponse(ChatResponse response) {
+                        super.onCompleteResponse(response);
 
-                            // TODO: to be removed once all agents will use buit-in memory
-                            responseHistory.add(r);
-                            currentResponseIndex = responseHistory.size() - 1;
-                        }
-                    };
-                    String modelName = tc.getModelName();
-                    if (action == Action.TEST) {
-                        final TestSpecialist pair = testSpecialist(handler, modelName);
-                        final String prompt = pm.getPrompts().get("test");
-                        final String rules = pm.getSessionRules();
-                        if (leaf instanceof MethodTree) {
-                            async(() -> pair.generateTestCase(null, null, null, leaf.toString(), prompt, rules), handler);
-                        } else {
-                            async(() -> pair.generateTestCase(null, null, treePath.getCompilationUnit().toString(), null, prompt, rules), handler);
-                        }
-                    } else {
-                        final String rules = pm.getSessionRules();
-                        final TechWriter pair =
-                            newJeddictBrain(handler, modelName, JeddictBrain.InteractionMode.QUERY)
-                            .pairProgrammer(PairProgrammer.Specialist.TECHWRITER);
-                        if (leaf instanceof MethodTree) {
-                            async(() -> pair.describeCode(leaf.toString(), rules), handler);
-                        } else {
-                            async(() -> pair.describeCode(treePath.getCompilationUnit().toString(), rules), handler);
-                        }
+                        final Response r = new Response(null, response.aiMessage().text(), messageContextCopy);
+                        sourceCode = EditorUtil.updateEditors(null, getProject(), ac, r, getContextFiles());
+
+                        // TODO: to be removed once all agents will use buit-in memory
+                        responseHistory.add(r);
+                        currentResponseIndex = responseHistory.size() - 1;
                     }
-                });
-
+                };
+                String modelName = ac.getModelName();
+                if (action == Action.TEST) {
+                    final TestSpecialist pair = testSpecialist(handler, modelName);
+                    final String prompt = pm.getPrompts().get("test");
+                    final String rules = pm.getSessionRules();
+                    if (leaf instanceof MethodTree) {
+                        async(() -> pair.generateTestCase(null, null, null, leaf.toString(), prompt, rules), handler);
+                    } else {
+                        async(() -> pair.generateTestCase(null, null, treePath.getCompilationUnit().toString(), null, prompt, rules), handler);
+                    }
+                } else {
+                    final String rules = pm.getSessionRules();
+                    final TechWriter pair =
+                        newJeddictBrain(handler, modelName, JeddictBrain.InteractionMode.QUERY)
+                        .pairProgrammer(PairProgrammer.Specialist.TECHWRITER);
+                    if (leaf instanceof MethodTree) {
+                        async(() -> pair.describeCode(leaf.toString(), rules), handler);
+                    } else {
+                        async(() -> pair.describeCode(treePath.getCompilationUnit().toString(), rules), handler);
+                    }
+                }
             });
         }
     }
@@ -317,7 +311,7 @@ public class AssistantChatManager extends JavaFix {
         displayHtmlContent(null, projectName + " GenAI Commit");
         this.commitChanges = commitChanges;
         this.commitMessage = true;
-        handleQuestion(intitalCommitMessage, messageContext, true);
+        handleQuestion(intitalCommitMessage, true);
     }
 
     public void askQueryForCodeReview() {
@@ -325,20 +319,21 @@ public class AssistantChatManager extends JavaFix {
         String projectName = info.getDisplayName();
         displayHtmlContent(null, projectName + " Code Review");
         this.codeReview = true;
-        handleQuestion("", messageContext, true);
+        handleQuestion("", true);
     }
 
     private AssistantChat createChatInstance(String title, String type, Project project) {
-        BiConsumer<String, Set<FileObject>> queryUpdate = (newQuery, messageContext) -> {
-            handleQuestion(newQuery, messageContext, false);
+        final Consumer<String> queryUpdate = (newQuery) -> {
+            handleQuestion(newQuery, false);
         };
-        return new AssistantChat(title, type, project) {
+
+        final AssistantChat assistant = new AssistantChat(title, type, project) {
             @Override
             public void onChatReset() {
                 initialMessage();
                 responseHistory.clear(); // TODO: to be removed once all agents will use buit-in memory
                 currentResponseIndex = -1;
-                tc.updateButtons(currentResponseIndex > 0, currentResponseIndex < responseHistory.size() - 1);
+                ac.updateButtons(currentResponseIndex > 0, currentResponseIndex < responseHistory.size() - 1);
             }
 
             @Override
@@ -360,7 +355,7 @@ public class AssistantChatManager extends JavaFix {
                     }
                 } else {
                     result = null;
-                    String question = tc.getQuestionPane().getText();
+                    String question = ac.getQuestionPane().getText();
                     Map<String, String> prompts = PreferencesManager.getInstance().getPrompts();
 
                     //
@@ -383,7 +378,7 @@ public class AssistantChatManager extends JavaFix {
                         }
                     }
                     if (!question.isEmpty()) {
-                        handleQuestion(question, messageContext, true);
+                        handleQuestion(question, true);
                     }
                 }
             }
@@ -394,7 +389,7 @@ public class AssistantChatManager extends JavaFix {
                 if (currentResponseIndex > 0) {
                     currentResponseIndex--;
                     Response historyResponse = responseHistory.get(currentResponseIndex);
-                    sourceCode = EditorUtil.updateEditors(queryUpdate, getProject(), tc, historyResponse, getContextFiles());
+                    sourceCode = EditorUtil.updateEditors(queryUpdate, getProject(), ac, historyResponse, getContextFiles());
                     updateButtons(currentResponseIndex > 0, currentResponseIndex < responseHistory.size() - 1);
                 }
             }
@@ -405,7 +400,7 @@ public class AssistantChatManager extends JavaFix {
                 if (currentResponseIndex < responseHistory.size() - 1) {
                     currentResponseIndex++;
                     Response historyResponse = responseHistory.get(currentResponseIndex);
-                    sourceCode = EditorUtil.updateEditors(queryUpdate, getProject(), tc, historyResponse, getContextFiles());
+                    sourceCode = EditorUtil.updateEditors(queryUpdate, getProject(), ac, historyResponse, getContextFiles());
                     updateButtons(currentResponseIndex > 0, currentResponseIndex < responseHistory.size() - 1);
                 }
             }
@@ -426,12 +421,12 @@ public class AssistantChatManager extends JavaFix {
                     rules = commitChanges;
                     enableRules = false;
                 }
-                ContextDialog dialog = new ContextDialog((JFrame) SwingUtilities.windowForComponent(tc),
+                ContextDialog dialog = new ContextDialog((JFrame) SwingUtilities.windowForComponent(ac),
                         enableRules, rules,
                         projectRootDir, fileObjects);
                 dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
                 dialog.setSize(800, 800);
-                dialog.setLocationRelativeTo(SwingUtilities.windowForComponent(tc));
+                dialog.setLocationRelativeTo(SwingUtilities.windowForComponent(ac));
                 dialog.setVisible(true);
                 if (commitChanges == null) {
                     pm.setSessionRules(dialog.getRules());
@@ -444,34 +439,75 @@ public class AssistantChatManager extends JavaFix {
                     messageContext.add(file);
                      Consumer<FileObject> onCloseCallback =  f -> {
                         messageContext.remove(f);
-                        tc.refreshFilePanel();
+                        ac.refreshFilePanel();
                     };
-                    tc.addFile(file, onCloseCallback);
+                    ac.addFile(file, onCloseCallback);
                 }
             }
 
             @Override
             public void clearFileTab() {
                 messageContext.clear();
-                tc.clearFiles();
+                ac.clearFiles();
             }
 
         };
+
+        handler = new JeddictBrainListener(assistant) {
+            @Override
+            public void onCompleteResponse(final ChatResponse response) {
+                 super.onCompleteResponse(response);
+
+                final StringBuilder textResponse = new StringBuilder(StringUtils.defaultString(response.aiMessage().text()));
+
+                LOG.finest(() -> "response completed with\ntext\n" + textResponse + "\nand\ntooling\n" + toolingResponse);
+
+                if (!toolingResponse.isEmpty()) {
+                    textResponse.insert(0, "```tooling\n" + toolingResponse.toString() + "\n```\n");
+                }
+                final Response r = new Response(question, textResponse.toString(), new HashSet<>(messageContext));
+                // TODO: this shall be used for history; it won't be used for memory,
+                // which is instead managed by the agents and services
+                if (responseHistory.isEmpty() || !textResponse.equals(responseHistory.get(responseHistory.size() - 1))) {
+                    responseHistory.add(r);
+                    currentResponseIndex = responseHistory.size() - 1;
+                }
+                SwingUtilities.invokeLater(() -> {
+                    Consumer<String> queryUpdate = (newQuery) -> {
+                        handleQuestion(newQuery, false);
+                    };
+                    if (codeReview) {
+                        List<Review> reviews = parseReviewsFromYaml(r.getBlocks().get(0).getContent());
+                        String web = convertReviewsToHtml(reviews);
+                        ac.setReviews(reviews);
+                        r.getBlocks().clear();
+                        r.getBlocks().add(new Block("web", web));
+                    }
+                    sourceCode = EditorUtil.updateEditors(queryUpdate, getProject(), ac, r, getContextFiles());
+
+                    ac.stopLoading();
+                    ac.updateButtons(currentResponseIndex > 0, currentResponseIndex < responseHistory.size() - 1);
+                    ac.buttonPanelResized();
+                });
+            }
+        };
+
+        return assistant;
     }
 
     public void displayHtmlContent(String filename, String title) {
-        tc = createChatInstance(title, null, getProject());
-        tc.putClientProperty(ASSISTANT_CHAT_MANAGER_KEY, new WeakReference<>(AssistantChatManager.this));
-        JScrollPane scrollPane = new JScrollPane(tc.getParentPanel());
-        tc.add(scrollPane, BorderLayout.CENTER);
-        tc.add(tc.createBottomPanel(null, filename, null), BorderLayout.SOUTH);
-        tc.open();
-        tc.requestActive();
-        tc.updateButtons(currentResponseIndex > 0, currentResponseIndex < responseHistory.size() - 1);
+        ac = createChatInstance(title, null, getProject());
+        ac.putClientProperty(ASSISTANT_CHAT_MANAGER_KEY, new WeakReference<>(AssistantChatManager.this));
+        JScrollPane scrollPane = new JScrollPane(ac.getParentPanel());
+        ac.add(scrollPane, BorderLayout.CENTER);
+        ac.add(ac.createBottomPanel(null, filename, null), BorderLayout.SOUTH);
+        ac.open();
+        ac.requestActive();
+        ac.updateButtons(currentResponseIndex > 0, currentResponseIndex < responseHistory.size() - 1);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             SwingUtilities.invokeLater(() -> {
-                if (tc != null) {
-                    tc.close();
+                if (ac != null) {
+                    ac.close();
                 }
             });
         }));
@@ -480,10 +516,10 @@ public class AssistantChatManager extends JavaFix {
     public void openChat(String type, final String query, String fileName, String title, Consumer<String> action) {
         SwingUtilities.invokeLater(() -> {
             new JeddictUpdateManager().checkForJeddictUpdate();
-            tc = createChatInstance(title, type, getProject());
-            tc.setLayout(new BorderLayout());
-            tc.putClientProperty(ASSISTANT_CHAT_MANAGER_KEY, new WeakReference<>(AssistantChatManager.this));
-            JScrollPane scrollPane = new JScrollPane(tc.getParentPanel());
+            ac = createChatInstance(title, type, getProject());
+            ac.setLayout(new BorderLayout());
+            ac.putClientProperty(ASSISTANT_CHAT_MANAGER_KEY, new WeakReference<>(AssistantChatManager.this));
+            JScrollPane scrollPane = new JScrollPane(ac.getParentPanel());
             Color bgColor = getBackgroundColorFromMimeType(MIME_PLAIN_TEXT);
             boolean isDark = ColorUtil.isDarkColor(bgColor);
             if (isDark) {
@@ -491,26 +527,26 @@ public class AssistantChatManager extends JavaFix {
                 scrollPane.getVerticalScrollBar().setUI(new CustomScrollBarUI());
                 scrollPane.getHorizontalScrollBar().setUI(new CustomScrollBarUI());
             }
-            tc.add(scrollPane, BorderLayout.CENTER);
-            tc.add(tc.createBottomPanel(type, fileName, action), BorderLayout.SOUTH);
+            ac.add(scrollPane, BorderLayout.CENTER);
+            ac.add(ac.createBottomPanel(type, fileName, action), BorderLayout.SOUTH);
             if (PreferencesManager.getInstance().getChatPlacement().equals("Left")) {
                 WindowManager.getDefault()
                         .findMode("explorer")
-                        .dockInto(tc);
+                        .dockInto(ac);
             } else if (PreferencesManager.getInstance().getChatPlacement().equals("Right")) {
                 WindowManager.getDefault()
                         .findMode("properties")
-                        .dockInto(tc);
+                        .dockInto(ac);
             }
-            tc.open();
-            tc.requestActive();
+            ac.open();
+            ac.requestActive();
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                if (tc != null) {
-                    SwingUtilities.invokeLater(() -> tc.close());
+                if (ac != null) {
+                    SwingUtilities.invokeLater(() -> ac.close());
                 }
             }));
             if (!query.isEmpty()) {
-                tc.getQuestionPane().setText(query);
+                ac.getQuestionPane().setText(query);
             }
             initialMessage();
         });
@@ -534,8 +570,8 @@ public class AssistantChatManager extends JavaFix {
             + "</div>";
 
     private void initialMessage() {
-        JEditorPane init = tc.createHtmlPane(HOME_PAGE);
-        EventQueue.invokeLater(() -> tc.getQuestionPane().requestFocusInWindow());
+        JEditorPane init = ac.createHtmlPane(HOME_PAGE);
+        EventQueue.invokeLater(() -> ac.getQuestionPane().requestFocusInWindow());
         init.addHyperlinkListener(e -> {
             if (HyperlinkEvent.EventType.ACTIVATED.equals(e.getEventType())) {
                 String link = e.getDescription();
@@ -568,10 +604,14 @@ public class AssistantChatManager extends JavaFix {
         return fileObjects;
     }
 
-    private void handleQuestion(String question, Set<FileObject> messageContext, boolean newQuery) {
-        result = executorService.submit(() -> {
-            try {
-                tc.startLoading();
+    private void handleQuestion(String question, boolean newQuery) {
+        this.question = question;
+        result = new SwingWorker<String, Object>() {
+            @Override
+            protected String doInBackground() throws Exception {
+                // ac.startLoading() is already called on EDT before execute()
+                // ac.startLoading(); // Moved to be called on EDT before worker.execute()
+
                 // TODO: to be removed once all agents will use buit-in memory
                 if (currentResponseIndex >= 0
                         && currentResponseIndex + 1 < responseHistory.size()) {
@@ -591,174 +631,160 @@ public class AssistantChatManager extends JavaFix {
                     int startIndex = Math.max(0, responseHistory.size() - historySize);
                     prevChatResponses = responseHistory.subList(startIndex, responseHistory.size());
                 }
-                Set<FileObject> messageContextCopy = new HashSet<>(messageContext);
-                handler = new JeddictBrainListener(tc) {
-                    @Override
-                    public void onCompleteResponse(ChatResponse response) {
-                         super.onCompleteResponse(response);
 
-                        final StringBuilder textResponse = new StringBuilder(StringUtils.defaultString(response.aiMessage().text()));
-
-                        LOG.finest(() -> "response completed with\ntext\n" + textResponse + "\nand\ntooling\n" + toolingResponse);
-
-                        if (!toolingResponse.isEmpty()) {
-                            textResponse.insert(0, "```tooling\n" + toolingResponse.toString() + "\n```\n");
-                        }
-                        final Response r = new Response(question, textResponse.toString(), messageContextCopy);
-                        // TODO: this shall be used for history; it won't be used for memory,
-                        // which is instead managed by the agents and services
-                        if (responseHistory.isEmpty() || !textResponse.equals(responseHistory.get(responseHistory.size() - 1))) {
-                            responseHistory.add(r);
-                            currentResponseIndex = responseHistory.size() - 1;
-                        }
-                        SwingUtilities.invokeLater(() -> {
-                            BiConsumer<String, Set<FileObject>> queryUpdate = (newQuery, messageContext) -> {
-                                handleQuestion(newQuery, messageContext, false);
-                            };
-                            if (codeReview) {
-                                List<Review> reviews = parseReviewsFromYaml(r.getBlocks().get(0).getContent());
-                                String web = convertReviewsToHtml(reviews);
-                                tc.setReviews(reviews);
-                                r.getBlocks().clear();
-                                r.getBlocks().add(new Block("web", web));
-                            }
-                            sourceCode = EditorUtil.updateEditors(queryUpdate, getProject(), tc, r, getContextFiles());
-
-                            tc.stopLoading();
-                            tc.updateButtons(currentResponseIndex > 0, currentResponseIndex < responseHistory.size() - 1);
-                            tc.buttonPanelResized();
-                        });
-                    }
-                };
-
-                final boolean agentEnabled = tc.isAgentEnabled();
+                final boolean agentEnabled = ac.isAgentEnabled();
                 final boolean excludeJavadoc = pm.isExcludeJavadocEnabled();
                 final String globalRules = pm.getGlobalRules();
                 final String sessionRules = pm.getSessionRules();
                 final List<String> includeFiles = pm.getFileExtensionListToInclude();
-                final String modelName = tc.getModelName();
+                final String modelName = ac.getModelName();
 
-                String response = null;
-                if (sqlCompletion != null) {
-                    String context = sqlCompletion.getMetaData();
-                    String messageScopeContent = getTextFilesContext(messageContext, getProject(), excludeJavadoc, includeFiles, agentEnabled);
-                    if (messageScopeContent != null && !messageScopeContent.isEmpty()) {
-                        context = context + "\n\n Files:\n" + messageScopeContent;
-                    }
-                    response = dbSpecialist(handler, modelName).assistDbMetadata(question, context, sessionRules);
-                } else if (commitMessage && commitChanges != null) {
-                    String context = commitChanges;
-                    String messageScopeContent = getTextFilesContext(messageContext, getProject(), excludeJavadoc,includeFiles, agentEnabled);
-                    if (messageScopeContent != null && !messageScopeContent.isEmpty()) {
-                        context = context + "\n\n Files:\n" + messageScopeContent;
-                    }
-                    response = diffSpecialist(handler, modelName).suggestCommitMessages(context, question);
-                } else if (codeReview) {
-                    String context = params.get("diff");
-                    if (context == null) {
-                        context = "";
-                    }
-                    final String messageScopeContent = getTextFilesContext(messageContext, projectContext, excludeJavadoc, includeFiles, agentEnabled);
-                    if (messageScopeContent != null && !messageScopeContent.isEmpty()) {
-                        context = context + "\n\n Files:\n" + messageScopeContent;
-                    }
-                    response = diffSpecialist(handler, modelName).reviewChanges(context, params.get("granularity"), params.get("feature"));
-                } else if (action == Action.TEST) {
-                    final TestSpecialist pair = testSpecialist(handler, modelName);
-                    final String prompt = pm.getPrompts().get("test");
-                    final String rules = pm.getSessionRules();
-                    if (leaf instanceof MethodTree) {
-                        response = pair.generateTestCase(question, null, null, leaf.toString(), prompt, rules, prevChatResponses);
-                    } else {
-                        response = pair.generateTestCase(question, null, treePath.getCompilationUnit().toString(), null, prompt, rules, prevChatResponses);
-                    }
-                } else if (projectContext != null || sessionContext != null) {
-                    Project selectedProject = getProject();
-                    //
-                    // Here we are in a generic chat created by the user
-                    //
-                    // If not agentic, provide all project context, otherwise
-                    // no project context is provided, just the global and
-                    // project rules; the agent is instructed to gather the
-                    // information it requires using tools
-                    //
-                    if (!agentEnabled) {
-                        final Set<FileObject> mainSessionContext;
-                        final String sessionScopeContent;
-
-                        if (projectContext != null) {
-                            mainSessionContext = getProjectContextList();
-                            sessionScopeContent = getProjectContext(mainSessionContext, selectedProject, excludeJavadoc, agentEnabled);
-                        } else {
-                            mainSessionContext = this.sessionContext;
-                            sessionScopeContent = getTextFilesContext(mainSessionContext, selectedProject, excludeJavadoc, includeFiles, agentEnabled);
+                String response = null; // This will hold the response for non-streaming cases
+                try {
+                    if (sqlCompletion != null) {
+                        String context = sqlCompletion.getMetaData();
+                        String messageScopeContent = getTextFilesContext(messageContext, getProject(), excludeJavadoc, includeFiles, agentEnabled);
+                        if (messageScopeContent != null && !messageScopeContent.isEmpty()) {
+                            context = context + "\n\n Files:\n" + messageScopeContent;
                         }
-                        List<String> sessionScopeImages = getImageFilesContext(mainSessionContext, includeFiles);
-
-                        Set<FileObject> fitleredMessageContext = new HashSet<>(messageContext);
-                        fitleredMessageContext.removeAll(mainSessionContext);
-                        String messageScopeContent = getTextFilesContext(fitleredMessageContext, selectedProject, excludeJavadoc, includeFiles, agentEnabled);
-                        List<String> messageScopeImages = getImageFilesContext(fitleredMessageContext, includeFiles);
-                        List<String> images = new ArrayList<>();
-                        images.addAll(sessionScopeImages);
-                        images.addAll(messageScopeImages);
-
-                        final String projectInfo = ProjectMetadataInfo.get(selectedProject);
-                        final String prompt = question
-                                            + "\nSession content: " + sessionScopeContent
-                                            + "\nAdditional conent: " + messageScopeContent
-                                            ;
-
-                        final Assistant a  = projectAssistant(handler, modelName);
-                        if (pm.isStreamEnabled()) {
-                            a.chat(handler, prompt, images, projectInfo, globalRules, sessionRules);
-                        } else {
-                            response = a.chat(prompt, images, projectInfo, globalRules, sessionRules);
+                        response = dbSpecialist(handler, modelName).assistDbMetadata(question, context, sessionRules);
+                    } else if (commitMessage && commitChanges != null) {
+                        String context = commitChanges;
+                        String messageScopeContent = getTextFilesContext(messageContext, getProject(), excludeJavadoc, includeFiles, agentEnabled);
+                        if (messageScopeContent != null && !messageScopeContent.isEmpty()) {
+                            context = context + "\n\n Files:\n" + messageScopeContent;
                         }
-                    } else {
+                        response = diffSpecialist(handler, modelName).suggestCommitMessages(context, question);
+                    } else if (codeReview) {
+                        String context = params.get("diff");
+                        if (context == null) {
+                            context = "";
+                        }
+                        final String messageScopeContent = getTextFilesContext(messageContext, projectContext, excludeJavadoc, includeFiles, agentEnabled);
+                        if (messageScopeContent != null && !messageScopeContent.isEmpty()) {
+                            context = context + "\n\n Files:\n" + messageScopeContent;
+                        }
+                        response = diffSpecialist(handler, modelName).reviewChanges(context, params.get("granularity"), params.get("feature"));
+                    } else if (action == Action.TEST) {
+                        final TestSpecialist pair = testSpecialist(handler, modelName);
+                        final String prompt = pm.getPrompts().get("test");
+                        final String rules = pm.getSessionRules();
+                        if (leaf instanceof MethodTree) {
+                            response = pair.generateTestCase(question, null, null, leaf.toString(), prompt, rules, prevChatResponses);
+                        } else {
+                            response = pair.generateTestCase(question, null, treePath.getCompilationUnit().toString(), null, prompt, rules, prevChatResponses);
+                        }
+                    } else if (projectContext != null || sessionContext != null) {
+                        Project selectedProject = getProject();
                         //
-                        // When agent enabled, a project is required (in the future
-                        // we may just add a tool to pick a project if none is seleted).
-                        // If no project is associated to the window, trigger
-                        // the selection of actionComboBox, which will pop up
-                        // a dialog to pick one.
+                        // Here we are in a generic chat created by the user
                         //
-                        if (agentEnabled && (selectedProject == null)) {
-                            tc.selectProject();
-                            selectedProject = getProject();
-                        }
-                        final Hacker h = hacker(handler, modelName);
-                        if (pm.isStreamEnabled()) {
-                            h.hack(handler, question, pm.getGlobalRules(), sessionRules);
+                        // If not agentic, provide all project context, otherwise
+                        // no project context is provided, just the global and
+                        // project rules; the agent is instructed to gather the
+                        // information it requires using tools
+                        //
+                        if (!agentEnabled) {
+                            final Set<FileObject> mainSessionContext;
+                            final String sessionScopeContent;
+
+                            if (projectContext != null) {
+                                mainSessionContext = getProjectContextList();
+                                sessionScopeContent = getProjectContext(mainSessionContext, selectedProject, excludeJavadoc, agentEnabled);
+                            } else {
+                                mainSessionContext = new HashSet(sessionContext);
+                                sessionScopeContent = getTextFilesContext(mainSessionContext, selectedProject, excludeJavadoc, includeFiles, agentEnabled);
+                            }
+                            List<String> sessionScopeImages = getImageFilesContext(mainSessionContext, includeFiles);
+
+                            Set<FileObject> fitleredMessageContext = new HashSet(messageContext);
+                            fitleredMessageContext.removeAll(mainSessionContext);
+                            String messageScopeContent = getTextFilesContext(fitleredMessageContext, selectedProject, excludeJavadoc, includeFiles, agentEnabled);
+                            List<String> messageScopeImages = getImageFilesContext(fitleredMessageContext, includeFiles);
+                            List<String> images = new ArrayList<>();
+                            images.addAll(sessionScopeImages);
+                            images.addAll(messageScopeImages);
+
+                            final String projectInfo = ProjectMetadataInfo.get(selectedProject);
+                            final String prompt = question
+                                    + "\nSession content: " + sessionScopeContent
+                                    + "\nAdditional conent: " + messageScopeContent;
+
+                            final Assistant a = projectAssistant(handler, modelName);
+                            if (pm.isStreamEnabled()) {
+                                a.chat(handler, prompt, images, projectInfo, globalRules, sessionRules);
+                            } else {
+                                response = a.chat(prompt, images, projectInfo, globalRules, sessionRules);
+                            }
                         } else {
-                            response = h.hack(question, pm.getGlobalRules(), sessionRules);
+                            //
+                            // When agent enabled, a project is required (in the future
+                            // we may just add a tool to pick a project if none is seleted).
+                            // If no project is associated to the window, trigger
+                            // the selection of actionComboBox, which will pop up
+                            // a dialog to pick one.
+                            //
+                            if (agentEnabled && (selectedProject == null)) {
+                                ac.selectProject();
+                                selectedProject = getProject();
+                            }
+                            final Hacker h = hacker(handler, modelName);
+                            if (pm.isStreamEnabled()) {
+                                h.hack(handler, question, pm.getGlobalRules(), sessionRules);
+                            } else {
+                                response = h.hack(question, pm.getGlobalRules(), sessionRules);
+                            }
+                        }
+                    } else {
+                        final Assistant a = assistant(handler, modelName);
+                        final String projectInfo = ProjectMetadataInfo.get(getProject());
+                        if (pm.isStreamEnabled()) {
+                            a.chat(handler, question, treePath, projectInfo, globalRules, sessionRules);
+                        } else {
+                            response = a.chat(question, treePath, projectInfo, globalRules, sessionRules);
                         }
                     }
-                } else {
-                    final Assistant a = assistant(handler, modelName);
-                    final String projectInfo = ProjectMetadataInfo.get(getProject());
-                    if (pm.isStreamEnabled()) {
-                        a.chat(handler, question, treePath, projectInfo, globalRules, sessionRules);
-                    } else {
-                        response = a.chat(question, treePath, projectInfo, globalRules, sessionRules);
-                    }
+                    return response;
+                } catch (Exception e) {
+                    Exceptions.printStackTrace(e);
+                    // The error handling needs to be done on the EDT, so re-throw
+                    // or pass the exception to the done() method.
+                    throw e; // Re-throwing will cause done() to be called with an exception
                 }
-
-                //
-                // TODO: BUG #214 - onCompleteResponse() called twice in AssistantChatManager
-                //
-                if (response != null && !response.isEmpty()) {
-                    handler.onCompleteResponse(ChatResponse.builder().aiMessage(new AiMessage(response)).build());
-                }
-
-                tc.getQuestionPane().setText("");
-                tc.updateHeight();
-                tc.clearFileTab();
-            } catch (Exception e) {
-                Exceptions.printStackTrace(e);
-                tc.buttonPanelResized();
             }
-        });
+
+            @Override
+            protected void done() {
+                try {
+                    String response = get(); // This retrieves the return value from doInBackground
+                    //
+                    // TODO: BUG #214 - onCompleteResponse() called twice in AssistantChatManager
+                    // This can be removed or handled here if response is null for streaming
+                    //
+                    if (response != null && !response.isEmpty()) {
+                        handler.onCompleteResponse(ChatResponse.builder().aiMessage(new AiMessage(response)).build());
+                    }
+
+                    ac.getQuestionPane().setText("");
+                    ac.updateHeight();
+                    ac.clearFileTab();
+                } catch (InterruptedException | ExecutionException ex) {
+                    // Handle exceptions from doInBackground
+                    Exceptions.printStackTrace(ex);
+                    Throwable cause = ex.getCause();
+                    if (cause instanceof Exception) { // check if cause is an actual Exception
+                        handler.onError(cause);
+                    } else {
+                        handler.onError(ex);
+                    }
+                } finally {
+                    ac.stopLoading();
+                    ac.buttonPanelResized();
+                }
+            }
+        };
+        ac.startLoading(); // Start loading indicator on EDT immediately
+        result.execute();
     }
 
     private JeddictBrain newJeddictBrain(
@@ -945,6 +971,9 @@ public class AssistantChatManager extends JavaFix {
         return toolsList;
     }
 
+    //
+    // TODO: remove handler
+    //
     private void async(Supplier<String> answer, final JeddictBrainListener handler) {
         new SwingWorker<String, Object>() {
             @Override
