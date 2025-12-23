@@ -197,6 +197,10 @@ public abstract class AssistantChat extends TopComponent {
         return questionPane;
     }
 
+    public JEditorPane getQueryPane() {
+        return queryPane;
+    }
+
     public void updateButtons(Boolean prevButtonVisible, Boolean nextButtonVisible) {
         // TODO: to be reviewed once all agents will use buit-in memory
         prevButton.setVisible(prevButtonVisible);
@@ -216,6 +220,7 @@ public abstract class AssistantChat extends TopComponent {
 
     public void stopLoading() {
         timer.stop();
+        buttonPanelResized();
     }
 
    public String getModelName() {

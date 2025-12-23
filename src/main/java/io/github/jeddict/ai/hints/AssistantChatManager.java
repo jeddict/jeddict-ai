@@ -606,13 +606,19 @@ public class AssistantChatManager extends JavaFix {
 
     private void handleQuestion(String question, boolean newQuery) {
         this.question = question;
+        ac.startLoading();
         result = new SwingWorker<String, Object>() {
             @Override
             protected String doInBackground() throws Exception {
-                // ac.startLoading() is already called on EDT before execute()
-                // ac.startLoading(); // Moved to be called on EDT before worker.execute()
 
-                // TODO: to be removed once all agents will use buit-in memory
+                //
+                // Note thay history is not the same think as memory. The former
+                // is applicaiton specific and has the purpose of reconstruct
+                // exactly the history of a chat from a user perspective. The
+                // lateter is model specific and may be different from the history
+                // (for example if the model - or the app, decides to remove
+                // or summarize past messages to improve the efficiency of the
+                // response)
                 if (currentResponseIndex >= 0
                         && currentResponseIndex + 1 < responseHistory.size()) {
                     responseHistory.subList(currentResponseIndex + 1, responseHistory.size()).clear();
@@ -764,10 +770,6 @@ public class AssistantChatManager extends JavaFix {
                     if (response != null && !response.isEmpty()) {
                         handler.onCompleteResponse(ChatResponse.builder().aiMessage(new AiMessage(response)).build());
                     }
-
-                    ac.getQuestionPane().setText("");
-                    ac.updateHeight();
-                    ac.clearFileTab();
                 } catch (InterruptedException | ExecutionException ex) {
                     // Handle exceptions from doInBackground
                     Exceptions.printStackTrace(ex);
@@ -783,7 +785,6 @@ public class AssistantChatManager extends JavaFix {
                 }
             }
         };
-        ac.startLoading(); // Start loading indicator on EDT immediately
         result.execute();
     }
 

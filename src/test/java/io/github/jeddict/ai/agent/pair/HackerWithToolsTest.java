@@ -106,7 +106,7 @@ public class HackerWithToolsTest extends PairProgrammerTestBase {
         PropertyChangeEvent e = streamListener.events.get(i++);
         then(e.getPropertyName()).isEqualTo(JeddictBrain.EventProperty.CHAT_INTERMEDIATE.name);
         e = streamListener.events.get(i++);
-        then(e.getPropertyName()).isEqualTo(JeddictBrain.EventProperty.TOOL_BEFORE_EXECUTION.name);
+        then(e.getPropertyName()).isEqualTo(JeddictBrain.EventProperty.TOOL_EXECUTING.name);
         e = streamListener.events.get(i++);
         then(e.getPropertyName()).isEqualTo(JeddictBrain.EventProperty.TOOL_EXECUTED.name);
         e = streamListener.events.get(i++);

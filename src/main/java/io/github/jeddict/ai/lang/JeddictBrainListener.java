@@ -3,6 +3,7 @@ package io.github.jeddict.ai.lang;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.AuthenticationException;
 import dev.langchain4j.exception.ModelNotFoundException;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import io.github.jeddict.ai.JeddictUpdateManager;
 import io.github.jeddict.ai.agent.AbstractTool;
@@ -14,6 +15,7 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -41,18 +43,16 @@ public class JeddictBrainListener
     implements PropertyChangeListener
 {
 
-    protected final AssistantChat topComponent;
+    protected final AssistantChat assistantChat;
     protected boolean init = true;
     protected JTextArea textArea;
-    protected final ProgressHandle handle;
+    protected ProgressHandle handle;
     protected final StringBuilder toolingResponse = new StringBuilder();
 
     private static final Logger LOG = Logger.getLogger(JeddictBrainListener.class.getName());
 
-    public JeddictBrainListener(AssistantChat topComponent) {
-        this.topComponent = topComponent;
-
-        handle = ProgressHandle.createHandle(NbBundle.getMessage(JeddictUpdateManager.class, "ProgressHandle", 0));
+    public JeddictBrainListener(AssistantChat assistantChat) {
+        this.assistantChat = assistantChat;
     }
 
     public ProgressHandle getProgressHandle() {
@@ -64,24 +64,28 @@ public class JeddictBrainListener
         LOG.finest(() -> String.valueOf(e));
         final String name = e.getPropertyName();
 
-        if (name.equals(JeddictBrain.EventProperty.CHAT_TOKENS.name)) {
+        if (name.equals(JeddictBrain.EventProperty.REQUEST_START.name)) {
             SwingUtilities.invokeLater(() -> {
-                final String progress = NbBundle.getMessage(JeddictUpdateManager.class, "ProgressHandle", (int)e.getNewValue());
-                handle.start();
-                handle.progress(progress);
+                final ChatRequest request = (ChatRequest)e.getNewValue();
+                final int n = TokenHandler.saveInputToken(String.valueOf(request));
+                final String progress = NbBundle.getMessage(JeddictUpdateManager.class, "ProgressHandle", n);
+                handle = ProgressHandle.createHandle(progress);
                 handle.setDisplayName(progress);
+                handle.start();
+            });
+        } if (name.equals(JeddictBrain.EventProperty.REQUEST_END.name)) {
+            SwingUtilities.invokeLater(() -> {
+                handle.finish();
+            });
+        }  if (name.equals(JeddictBrain.EventProperty.REQUEST_ERROR.name)) {
+            SwingUtilities.invokeLater(() -> {
+                handle.finish();
             });
         } else if (name.equals(JeddictBrain.EventProperty.CHAT_PARTIAL.name)) {
             onPartialResponse((String)e.getNewValue());
         } else if (name.equals(JeddictBrain.EventProperty.CHAT_COMPLETED.name)) {
-            SwingUtilities.invokeLater(() -> {
-                handle.finish();
-            });
             onCompleteResponse((ChatResponse)e.getNewValue());
         } else if (name.equals(JeddictBrain.EventProperty.CHAT_ERROR.name)) {
-            SwingUtilities.invokeLater(() -> {
-                handle.finish();
-            });
             onError((Exception)e.getNewValue());
         } else if (name.equals(AbstractTool.PROPERTY_MESSAGE)) {
             final String msg = (String)e.getNewValue() + '\n';
@@ -94,23 +98,33 @@ public class JeddictBrainListener
         LOG.finest(() -> "partial response: " + partialResponse);
         SwingUtilities.invokeLater(() -> {
             if (init) {
-                topComponent.clear();
-                textArea = topComponent.createTextAreaPane();
-                textArea.setText(partialResponse);
+                final String prompt = assistantChat.getQuestionPane().getText();
+                assistantChat.clear();
+                assistantChat.createUserQueryPane(System.out::println, prompt, Set.of());
+                textArea = assistantChat.createTextAreaPane();
+                assistantChat.getQuestionPane().setText("");
                 init = false;
-            } else {
-                textArea.append(partialResponse);
             }
+            textArea.append(partialResponse);
         });
     }
 
     public void onCompleteResponse(ChatResponse completeResponse) {
         LOG.finest(() -> "complete response received: " + completeResponse);
 
+        //
+        // TODO: use reponse's real token counts
+        //
         String response = completeResponse.aiMessage().text();
         if (response != null && !response.isEmpty()) {
             CompletableFuture.runAsync(() -> TokenHandler.saveOutputToken(response));
         }
+
+        assistantChat.getQuestionPane().setText("");
+        assistantChat.updateHeight();
+        assistantChat.clearFileTab();
+
+        init = true;
     }
 
     public void onError(final Throwable throwable) {
