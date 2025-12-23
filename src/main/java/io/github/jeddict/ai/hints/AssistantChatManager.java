@@ -779,20 +779,10 @@ public class AssistantChatManager extends JavaFix {
                     } else {
                         handler.onError(ex);
                     }
-                } finally {
-                    ac.stopLoading();
-                    ac.buttonPanelResized();
                 }
             }
         };
         result.execute();
-    }
-
-    private JeddictBrain newJeddictBrain(
-        final JeddictBrainListener listener,
-        final String modelName
-    ) {
-        return newJeddictBrain(listener, modelName, JeddictBrain.InteractionMode.QUERY);
     }
 
     private JeddictBrain newJeddictBrain(

@@ -134,6 +134,8 @@ import org.openide.windows.TopComponent;
  */
 public abstract class AssistantChat extends TopComponent {
 
+    private static final String SPINNER_FRAMES = "◐◓◑◒";
+
     private List<Review> reviews;
     public static final ImageIcon icon = new ImageIcon(AssistantChat.class.getResource("/icons/logo16.png"));
     public static final ImageIcon logoIcon = new ImageIcon(AssistantChat.class.getResource("/icons/logo28.png"));
@@ -148,8 +150,6 @@ public abstract class AssistantChat extends TopComponent {
     private String type = "java";
     private static final PreferencesManager pm = PreferencesManager.getInstance();
 
-    private Timer timer;
-
     // top query pane
     private JButton copyButton, editButton, saveButton, cancelButton;
     private JEditorPane queryPane;
@@ -163,6 +163,12 @@ public abstract class AssistantChat extends TopComponent {
     private JButton prevButton, nextButton, openInBrowserButton, submitButton;
     private JEditorPane questionPane;
     private JScrollPane questionScrollPane;
+
+    private final Timer timer = new Timer(200, e -> {
+        int index = SPINNER_FRAMES.indexOf(submitButton.getText().charAt(0));
+        index = (index < 0) ? 0 : ((index+1) % SPINNER_FRAMES.length());
+        submitButton.setText(String.valueOf(SPINNER_FRAMES.charAt(index)));
+    });
 
     public AssistantChat(String name, String type, Project project) {
         setName(name);
@@ -209,13 +215,7 @@ public abstract class AssistantChat extends TopComponent {
     }
 
     public void startLoading() {
-        final String[] spinnerFrames = {"◐", "◓", "◑", "◒"};
-        final int[] frameIndex = {0};
-        timer = new Timer(200, e -> {
-            submitButton.setText(spinnerFrames[frameIndex[0]]);
-            frameIndex[0] = (frameIndex[0] + 1) % spinnerFrames.length;
-        });
-        timer.start();
+        timer.restart();
     }
 
     public void stopLoading() {
