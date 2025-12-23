@@ -67,7 +67,7 @@ public class JeddictBrainTest extends TestBase {
         then(brain.tools).isEmpty();
 
         final DummyTool D = new DummyTool();
-        brain = new JeddictBrain(N2, true, JeddictBrain.InteractionMode.AGENT, List.of(D));
+        brain = new JeddictBrain(N2, true, InteractionMode.AGENT, List.of(D));
 
         then(brain.modelName).isSameAs(N2);
         then(brain.streaming).isTrue();
@@ -135,7 +135,7 @@ public class JeddictBrainTest extends TestBase {
         final DummyTool tool = new DummyTool();
         final JeddictBrain brain = new JeddictBrain(
             "dummy-with-tools", false,
-            JeddictBrain.InteractionMode.AGENT, List.of(tool)
+            InteractionMode.AGENT, List.of(tool)
         );
 
         HackerWithTools h = brain.pairProgrammer(HACKER);
@@ -152,7 +152,7 @@ public class JeddictBrainTest extends TestBase {
         final String[] msg = new String[2];
         final JeddictBrain brain = new JeddictBrain(
             "dummy-with-tools", true,
-            JeddictBrain.InteractionMode.AGENT, List.of(tool)
+            InteractionMode.AGENT, List.of(tool)
         );
 
         HackerWithTools h = brain.pairProgrammer(HACKER);
@@ -181,7 +181,7 @@ public class JeddictBrainTest extends TestBase {
     public void get_assistant_chat_and_streaming() {
         JeddictBrain brain = new JeddictBrain(
             "dummy", false,
-            JeddictBrain.InteractionMode.QUERY, List.of()
+            InteractionMode.ASK, List.of()
         );
 
         Assistant a = brain.pairProgrammer(ASSISTANT);
@@ -192,7 +192,7 @@ public class JeddictBrainTest extends TestBase {
             = new DummyPropertyChangeListener();
         brain = new JeddictBrain(
             "dummy", true,
-            JeddictBrain.InteractionMode.QUERY, List.of()
+            InteractionMode.ASK, List.of()
         );
         a = brain.pairProgrammer(ASSISTANT);
 

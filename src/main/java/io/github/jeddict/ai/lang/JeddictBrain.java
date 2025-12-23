@@ -44,12 +44,6 @@ public class JeddictBrain implements PropertyChangeEmitter {
 
     private int memorySize = 0;
 
-    public enum InteractionMode {
-        QUERY, // no tools, mainly queries
-        AGENT, // tools execution no human interaction
-        INTERACTIVE  // tools execution previa human confirmation
-    }
-
     private static final String EVENT_NAME_PREFIX = EventProperty.class.getPackageName() + ".event.";
     public enum EventProperty {
         CHAT_ERROR(EVENT_NAME_PREFIX + "chat.error"),
@@ -81,13 +75,13 @@ public class JeddictBrain implements PropertyChangeEmitter {
     public JeddictBrain(
             final boolean streaming
     ) {
-        this("", streaming, InteractionMode.QUERY, List.of());
+        this("", streaming, InteractionMode.ASK, List.of());
     }
 
     public JeddictBrain(
             final String modelName, final boolean streaming
     ) {
-        this(modelName, streaming, InteractionMode.QUERY, List.of());
+        this(modelName, streaming, InteractionMode.ASK, List.of());
     }
 
     public JeddictBrain(

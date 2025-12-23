@@ -32,7 +32,7 @@ import org.apache.commons.lang3.StringUtils;
 
 /**
  * AI assistant for chatting and non agentic tasks. It s meant to be the main
- * assistant for InterationMode.QUERY.
+ * assistant for InteractionMode.QUERY.
  */
 public interface Assistant extends PairProgrammer {
 

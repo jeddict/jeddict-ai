@@ -21,7 +21,7 @@ import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.expr.ObjectCreationExpr;
-import io.github.jeddict.ai.agent.AssistantAction;
+import io.github.jeddict.ai.lang.InteractionMode;
 import static io.github.jeddict.ai.classpath.JeddictQueryCompletionQuery.JEDDICT_EDITOR_CALLBACK;
 import static io.github.jeddict.ai.components.QueryPane.createIconButton;
 import static io.github.jeddict.ai.components.QueryPane.createStyledComboBox;
@@ -126,7 +126,9 @@ import org.openide.NotifyDescriptor;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
 import org.openide.loaders.DataObject;
+import org.openide.util.NbBundle;
 import org.openide.windows.TopComponent;
+import static ste.lloop.Loop.on;
 
 /**
  *
@@ -159,7 +161,7 @@ public abstract class AssistantChat extends TopComponent {
     private MessageContextComponentAdapter filePanelAdapter;
     private ComponentAdapter buttonPanelAdapter;
     private JComboBox<String> models;
-    private JComboBox<AssistantAction> actionComboBox;
+    private JComboBox<InteractionMode> actionComboBox;
     private JButton prevButton, nextButton, openInBrowserButton, submitButton;
     private JEditorPane questionPane;
     private JScrollPane questionScrollPane;
@@ -236,7 +238,7 @@ public abstract class AssistantChat extends TopComponent {
     }
 
     public boolean isAgentEnabled() {
-        return actionComboBox.getSelectedItem() != AssistantAction.ASK;
+        return actionComboBox.getSelectedItem() != InteractionMode.ASK;
     }
 
     public JPanel createBottomPanel(String type, String fileName, Consumer<String> action) {
@@ -293,32 +295,32 @@ public abstract class AssistantChat extends TopComponent {
         });
         leftButtonPanel.add(models);
 
-        AssistantAction[] options = AssistantAction.values();
+        InteractionMode[] options = InteractionMode.values();
         actionComboBox = createStyledComboBox(options);
         String lastAction = pm.getAssistantAction();
         if (lastAction != null) {
             try {
-                actionComboBox.setSelectedItem(AssistantAction.valueOf(lastAction));
+                actionComboBox.setSelectedItem(InteractionMode.valueOf(lastAction));
             } catch (IllegalArgumentException ex) {
-                actionComboBox.setSelectedItem(AssistantAction.ASK);
+                actionComboBox.setSelectedItem(InteractionMode.ASK);
             }
         } else {
-            actionComboBox.setSelectedItem(AssistantAction.ASK);
+            actionComboBox.setSelectedItem(InteractionMode.ASK);
         }
-        actionComboBox.setToolTipText("<html><b>Chat</b> – for general queries<br><b>Agent</b> – for file/project generation actions</html>");
+        actionComboBox.setToolTipText(interactionModeTooltip());
         actionComboBox.addActionListener(e -> {
-            AssistantAction selectedAction = (AssistantAction) actionComboBox.getSelectedItem();
-            if (selectedAction == AssistantAction.BUILD) {
+            InteractionMode selectedAction = (InteractionMode) actionComboBox.getSelectedItem();
+            if (selectedAction != InteractionMode.ASK) {
                 if (this.project == null) {
                     final Project selectedProject = selectProject();
                     if (selectedProject == null) {
-                            actionComboBox.setSelectedItem(AssistantAction.ASK);
+                            actionComboBox.setSelectedItem(InteractionMode.ASK);
                     } else {
                         this.project = selectedProject;
                     }
                 }
             }
-            selectedAction = (AssistantAction) actionComboBox.getSelectedItem();
+            selectedAction = (InteractionMode) actionComboBox.getSelectedItem();
             if (selectedAction != null) {
                 pm.setAssistantAction(selectedAction.name());
             }
@@ -1289,7 +1291,7 @@ public abstract class AssistantChat extends TopComponent {
                     NotifyDescriptor.WARNING_MESSAGE
             );
             DialogDisplayer.getDefault().notify(msg);
-            actionComboBox.setSelectedItem(AssistantAction.ASK);
+            actionComboBox.setSelectedItem(InteractionMode.ASK);
         }
 
         return null;
@@ -1409,6 +1411,21 @@ public abstract class AssistantChat extends TopComponent {
 
     public void setReviews(List<Review> reviews) {
         this.reviews = reviews;
+    }
+
+    private String interactionModeTooltip() {
+        final StringBuffer sb = new StringBuffer("<html>");
+        on(InteractionMode.values()).loop((mode) -> {
+            sb.append("<b>").append(mode.toString()).append("</b> - ");
+            sb.append(
+                NbBundle.getMessage(AssistantChat.class, mode.name())
+            ).append("<br>");
+        });
+        sb.append("</html>");
+
+        System.out.println(sb);
+
+        return sb.toString();
     }
 
 }

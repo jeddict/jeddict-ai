@@ -46,6 +46,7 @@ import io.github.jeddict.ai.components.AssistantChat;
 import io.github.jeddict.ai.components.ContextDialog;
 import io.github.jeddict.ai.components.CustomScrollBarUI;
 import static io.github.jeddict.ai.components.MarkdownPane.getHtmlWrapWidth;
+import io.github.jeddict.ai.lang.InteractionMode;
 import io.github.jeddict.ai.lang.JeddictBrain;
 import io.github.jeddict.ai.lang.JeddictBrainListener;
 import io.github.jeddict.ai.response.Block;
@@ -289,7 +290,7 @@ public class AssistantChatManager extends JavaFix {
                 } else {
                     final String rules = pm.getSessionRules();
                     final TechWriter pair =
-                        newJeddictBrain(handler, modelName, JeddictBrain.InteractionMode.QUERY)
+                        newJeddictBrain(handler, modelName, InteractionMode.ASK)
                         .pairProgrammer(PairProgrammer.Specialist.TECHWRITER);
                     if (leaf instanceof MethodTree) {
                         async(() -> pair.describeCode(leaf.toString(), rules), handler);
@@ -788,12 +789,12 @@ public class AssistantChatManager extends JavaFix {
     private JeddictBrain newJeddictBrain(
         final JeddictBrainListener listener,
         final String modelName,
-        final JeddictBrain.InteractionMode mode
+        final InteractionMode mode
     ) {
         final JeddictBrain brain = new JeddictBrain(
             modelName, pm.isStreamEnabled(),
             mode,
-            (mode == JeddictBrain.InteractionMode.QUERY) ? null : buildToolsList(getProject(), listener)
+            (mode == InteractionMode.ASK) ? null : buildToolsList(getProject(), listener)
         );
         brain.addProgressListener(listener);
         return brain;
@@ -814,7 +815,7 @@ public class AssistantChatManager extends JavaFix {
 
         int memorySize = pm.getConversationContext();
 
-        JeddictBrain brain = newJeddictBrain(listener, modelName, JeddictBrain.InteractionMode.QUERY);
+        JeddictBrain brain = newJeddictBrain(listener, modelName, InteractionMode.ASK);
         brain.withMemory((memorySize < 0) ? Integer.MAX_VALUE : memorySize);
 
         return (testSpecialist = brain.pairProgrammer(PairProgrammer.Specialist.TEST));
@@ -835,7 +836,7 @@ public class AssistantChatManager extends JavaFix {
 
         int memorySize = pm.getConversationContext();
 
-        JeddictBrain brain = newJeddictBrain(listener, modelName, JeddictBrain.InteractionMode.QUERY);
+        JeddictBrain brain = newJeddictBrain(listener, modelName, InteractionMode.ASK);
         brain.withMemory((memorySize < 0) ? Integer.MAX_VALUE : memorySize);
 
         return (dbSpecialist = brain.pairProgrammer(PairProgrammer.Specialist.DB));
@@ -856,7 +857,7 @@ public class AssistantChatManager extends JavaFix {
 
         int memorySize = pm.getConversationContext();
 
-        JeddictBrain brain = newJeddictBrain(listener, modelName, JeddictBrain.InteractionMode.QUERY);
+        JeddictBrain brain = newJeddictBrain(listener, modelName, InteractionMode.ASK);
         brain.withMemory((memorySize < 0) ? Integer.MAX_VALUE : memorySize);
 
         return (diffSpecialist = brain.pairProgrammer(PairProgrammer.Specialist.DIFF));
@@ -875,7 +876,7 @@ public class AssistantChatManager extends JavaFix {
 
         int memorySize = pm.getConversationContext();
 
-        JeddictBrain brain = newJeddictBrain(listener, modelName, JeddictBrain.InteractionMode.QUERY);
+        JeddictBrain brain = newJeddictBrain(listener, modelName, InteractionMode.ASK);
         brain.withMemory((memorySize < 0) ? Integer.MAX_VALUE : memorySize);
 
         return (assistant = brain.pairProgrammer(PairProgrammer.Specialist.ASSISTANT));
@@ -894,7 +895,7 @@ public class AssistantChatManager extends JavaFix {
 
         int memorySize = pm.getConversationContext();
 
-        JeddictBrain brain = newJeddictBrain(listener, modelName, JeddictBrain.InteractionMode.QUERY);
+        JeddictBrain brain = newJeddictBrain(listener, modelName, InteractionMode.ASK);
         brain.withMemory((memorySize < 0) ? Integer.MAX_VALUE : memorySize);
 
         return (projectAssistant = brain.pairProgrammer(PairProgrammer.Specialist.ASSISTANT));
@@ -913,7 +914,7 @@ public class AssistantChatManager extends JavaFix {
 
         int memorySize = pm.getConversationContext();
 
-        JeddictBrain brain = newJeddictBrain(listener, modelName, JeddictBrain.InteractionMode.AGENT);
+        JeddictBrain brain = newJeddictBrain(listener, modelName, InteractionMode.AGENT);
         brain.withMemory((memorySize < 0) ? Integer.MAX_VALUE : memorySize);
 
         return (hacker = brain.pairProgrammer(PairProgrammer.Specialist.HACKER));
