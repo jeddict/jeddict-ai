@@ -241,6 +241,14 @@ public abstract class AssistantChat extends TopComponent {
         return actionComboBox.getSelectedItem() != InteractionMode.ASK;
     }
 
+    public boolean isInteractiveMode() {
+        return actionComboBox.getSelectedItem() == InteractionMode.INTERACTIVE;
+    }
+
+    public InteractionMode interactiveMode() {
+        return (InteractionMode)actionComboBox.getSelectedItem();
+    }
+
     public JPanel createBottomPanel(String type, String fileName, Consumer<String> action) {
         JPanel bottomPanel = new JPanel(new BorderLayout());
 
@@ -1422,8 +1430,6 @@ public abstract class AssistantChat extends TopComponent {
             ).append("<br>");
         });
         sb.append("</html>");
-
-        System.out.println(sb);
 
         return sb.toString();
     }

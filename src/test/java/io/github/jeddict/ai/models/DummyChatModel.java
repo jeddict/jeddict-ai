@@ -166,7 +166,11 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
                     final String name = specification.name();
                     // (?i) makes "execute tool " case-insensitive
                     // \Q and \E escape the 'name' to ensure special characters don't break the regex
-                    final String regex = "(?i)execute tool " + Pattern.quote(name);
+                    // "(?![a-zA-Z])" lookahead expression asserting that the next character is not a-z or A-Z.
+                    // the lookahead is needed to make sure an exatct match (e.g.
+                    // is name is dummyTool, execute tool dummyToolSomething
+                    // does not match)
+                    final String regex = "(?i)execute tool " + Pattern.quote(name) + "(?![a-zA-Z])";
 
                     if (Pattern.compile(regex).matcher(body).find()) {
                         _break_(name);

@@ -336,6 +336,11 @@
         </dependency>
         <dependency>
             <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-libs-asm</artifactId>
+            <version>${netbeans.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
             <artifactId>org-netbeans-modules-editor-lib</artifactId>
             <version>${netbeans.version}</version>
         </dependency>
@@ -661,6 +666,12 @@
             <groupId>com.github.stefanofornari</groupId>
             <artifactId>lambda-loop</artifactId>
             <version>0.2.2</version>
+        </dependency>
+
+        <dependency>
+            <groupId>net.bytebuddy</groupId>
+            <artifactId>byte-buddy</artifactId>
+            <version>1.14.17</version>
         </dependency>
 
         <!--

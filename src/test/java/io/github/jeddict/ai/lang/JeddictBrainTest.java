@@ -15,9 +15,11 @@
  */
 package io.github.jeddict.ai.lang;
 
+import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import io.github.jeddict.ai.agent.AbstractTool;
 import io.github.jeddict.ai.agent.pair.Assistant;
+import io.github.jeddict.ai.agent.pair.Hacker;
 import io.github.jeddict.ai.agent.pair.HackerWithTools;
 import io.github.jeddict.ai.agent.pair.PairProgrammer;
 import static io.github.jeddict.ai.agent.pair.PairProgrammer.Specialist.ASSISTANT;
@@ -32,6 +34,7 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.BDDAssertions.thenThrownBy;
 import org.junit.jupiter.api.Test;
@@ -179,10 +182,7 @@ public class JeddictBrainTest extends TestBase {
 
     @Test
     public void get_assistant_chat_and_streaming() {
-        JeddictBrain brain = new JeddictBrain(
-            "dummy", false,
-            InteractionMode.ASK, List.of()
-        );
+        JeddictBrain brain = new JeddictBrain("dummy", false);
 
         Assistant a = brain.pairProgrammer(ASSISTANT);
 
@@ -190,10 +190,7 @@ public class JeddictBrainTest extends TestBase {
 
         final DummyPropertyChangeListener streamListener
             = new DummyPropertyChangeListener();
-        brain = new JeddictBrain(
-            "dummy", true,
-            InteractionMode.ASK, List.of()
-        );
+        brain = new JeddictBrain("dummy", true);
         a = brain.pairProgrammer(ASSISTANT);
 
         a.chat(streamListener, "use mock 'hello world.txt'");
@@ -244,5 +241,136 @@ public class JeddictBrainTest extends TestBase {
         brain.addProgressListener(listener);
 
         //brain.chat();
+    }
+
+    @Test
+    public void wrap_tools_if_interactive() {
+        final StringBuilder sb = new StringBuilder();
+        final DummyTool tools = new DummyTool();
+        final Function<String, Boolean> defaultInteraction = (s) -> {
+            sb.append(s);  return true;
+        };
+        JeddictBrain brain = new JeddictBrain(
+            "dummy-with-tools", false,
+            InteractionMode.INTERACTIVE,
+            defaultInteraction,
+            List.of(new DummyTool())
+        );
+
+        then(brain.tools.get(0).getClass()).isNotEqualTo(tools.getClass());
+
+        brain = new JeddictBrain(
+            "dummy-with-tools", false,
+            InteractionMode.AGENT,
+            defaultInteraction,
+            List.of(new DummyTool())
+        );
+
+        then(brain.tools.get(0).getClass()).isEqualTo(tools.getClass());
+
+        brain = new JeddictBrain(
+            "dummy-with-tools", false,
+            InteractionMode.ASK,
+            defaultInteraction,
+            List.of(new DummyTool())
+        );
+
+        then(brain.tools).isEmpty();
+    }
+
+    @Test
+    public void in_interactive_mode_use_default_hitm_if_not_provided() {
+        final JeddictBrain brain = new JeddictBrain(
+            "dummy-with-tools", false,
+            InteractionMode.INTERACTIVE,
+            null,
+            List.of(new DummyTool())
+        );
+
+        final DummyTool tool = (DummyTool)brain.tools.get(0);
+
+        final Hacker h = brain.pairProgrammer(PairProgrammer.Specialist.HACKER);
+
+        //
+        // No policy tool
+        //
+        h.hack("execute tool dummyTool", "", "");
+        then(tool.executed()).isFalse();
+
+        //
+        // Read policy tool
+        //
+        tool.reset();
+        h.hack("execute tool dummyToolRead", "", "");
+        then(tool.executed()).isTrue();
+
+        //
+        // Write policy tool
+        //
+        tool.reset();
+        h.hack("execute tool dummyToolWrite", "", "");
+        then(tool.executed()).isFalse();
+
+        //
+        // Interactive policy tool
+        //
+        tool.reset();
+        h.hack("execute tool dummyToolInteractive", "", "");
+        then(tool.executed()).isTrue();
+
+        //
+        // Unknown policy tool
+        //
+        tool.reset();
+        h.hack("execute tool dummyToolUnkown", "", "");
+        then(tool.executed()).isFalse();
+    }
+
+    @Test
+    public void in_agent_mode_do_not_use_any_hitm() {
+        final JeddictBrain brain = new JeddictBrain(
+            "dummy-with-tools", false,
+            InteractionMode.AGENT,
+            (s) -> { throw new ToolExecutionException("simulated exception"); },
+            List.of(new DummyTool())
+        );
+
+        final DummyTool tool = (DummyTool)brain.tools.get(0);
+
+        final Hacker h = brain.pairProgrammer(PairProgrammer.Specialist.HACKER);
+
+        //
+        // No policy tool
+        //
+        h.hack("execute tool dummyTool", "", "");
+        then(tool.executed()).isTrue();
+
+        //
+        // Read policy tool
+        //
+        tool.reset();
+        h.hack("execute tool dummyToolRead", "", "");
+        then(tool.executed()).isTrue();
+
+        //
+        // Write policy tool
+        //
+        tool.reset();
+        h.hack("execute tool dummyToolWrite", "", "");
+        then(tool.executed()).isTrue();
+
+        //
+        // Interactive policy tool
+        //
+        tool.reset();
+        h.hack("execute tool dummyToolInteractive", "", "");
+        then(tool.executed()).isTrue();
+
+        //
+        // Unknown policy tool
+        //
+        tool.reset();
+        h.hack("execute tool dummyToolUnknown", "", "");
+        then(tool.executed()).isTrue();
     }
 }

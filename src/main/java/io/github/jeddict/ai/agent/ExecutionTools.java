@@ -16,6 +16,7 @@
 package io.github.jeddict.ai.agent;
 
 import dev.langchain4j.agent.tool.Tool;
+import static io.github.jeddict.ai.agent.ToolPolicy.Policy.WRITE;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
@@ -54,11 +55,13 @@ public class ExecutionTools extends AbstractTool {
     }
 
     @Tool("Build the project and return full log")
+    @ToolPolicy(WRITE)
     public String buildProject() {
         return runCommand(buildCommand, "Building");
     }
 
     @Tool("Run project tests and return full log")
+    @ToolPolicy(WRITE)
     public String testProject() {
         return runCommand(testCommand, "Testing");
     }

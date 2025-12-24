@@ -5,9 +5,11 @@ import io.github.jeddict.ai.test.DummyTool;
 import static io.github.jeddict.ai.agent.AbstractTool.PROPERTY_MESSAGE;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.io.File;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.UnaryOperator;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.BDDAssertions.then;
@@ -21,6 +23,12 @@ public class AbstractToolTest extends TestBase {
 
         then(tool.basedir).isSameAs(projectDir);
         then(tool.basepath.toString()).isEqualTo(projectDir);
+
+        tool = new DummyTool();
+        then(tool.basedir).isEqualTo(new File(".").getAbsolutePath());
+        then(tool.basepath.toString()).isEqualTo(new File(".").getAbsolutePath());
+        then(tool.humanInTheMiddle()).isEmpty();
+
     }
 
     @Test
@@ -36,6 +44,19 @@ public class AbstractToolTest extends TestBase {
         DummyTool tool = new DummyTool(projectDir);
 
         then(tool.fullPath("relative")).isEqualTo(Paths.get(projectDir, "relative"));
+    }
+
+    @Test
+    public void set_and_get_humanInTheMiddle() {
+        DummyTool tool = new DummyTool();
+
+        final UnaryOperator<String> hitm = (s) -> {return s;};
+
+        tool.withHumanInTheMiddle(hitm);
+        then(tool.humanInTheMiddle()).contains(hitm);
+
+        tool.withHumanInTheMiddle(null);
+        then(tool.humanInTheMiddle()).isEmpty();
     }
 
     @Test

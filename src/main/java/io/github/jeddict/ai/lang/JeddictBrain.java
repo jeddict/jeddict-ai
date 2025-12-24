@@ -21,6 +21,7 @@ package io.github.jeddict.ai.lang;
  */
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.agent.AgentBuilder;
+import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -28,15 +29,20 @@ import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.service.AiServices;
 import io.github.jeddict.ai.agent.AbstractTool;
+import io.github.jeddict.ai.agent.HumanInTheMiddleWrapper;
 import io.github.jeddict.ai.agent.ToolsProber;
 import io.github.jeddict.ai.agent.ToolsProbingTool;
 import io.github.jeddict.ai.agent.pair.PairProgrammer;
+import static io.github.jeddict.ai.lang.InteractionMode.INTERACTIVE;
 import io.github.jeddict.ai.util.PropertyChangeEmitter;
 import java.beans.PropertyChangeListener;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.logging.Logger;
+import static ste.lloop.Loop.on;
 
 public class JeddictBrain implements PropertyChangeEmitter {
 
@@ -72,23 +78,37 @@ public class JeddictBrain implements PropertyChangeEmitter {
 
     protected Map<String, Boolean> probedModels = new HashMap(); // per instance on purpose to avoid race conditions
 
+    private Function<String, Boolean> defaultInteraction = (text) -> {
+        throw new ToolExecutionException("Write, unknown and null policy tools can not be executed");
+    };
+
     public JeddictBrain(
-            final boolean streaming
+        final boolean streaming
     ) {
-        this("", streaming, InteractionMode.ASK, List.of());
+        this("", streaming, InteractionMode.ASK, null, List.of());
     }
 
     public JeddictBrain(
-            final String modelName, final boolean streaming
+        final String modelName, final boolean streaming
     ) {
-        this(modelName, streaming, InteractionMode.ASK, List.of());
+        this(modelName, streaming, InteractionMode.ASK, null, List.of());
     }
 
     public JeddictBrain(
-            final String modelName,
-            final boolean streaming,
-            final InteractionMode mode,
-            final List<AbstractTool> tools
+        final String modelName,
+        final boolean streaming,
+        final InteractionMode mode,
+        final List<AbstractTool> tools
+    ) {
+        this(modelName, streaming, mode, null, tools);
+    }
+
+    public JeddictBrain(
+        final String modelName,
+        final boolean streaming,
+        final InteractionMode mode,
+        final Function<String, Boolean> defaultInteraction,
+        final List<AbstractTool> tools
     ) {
         if (modelName == null) {
             throw new IllegalArgumentException("modelName can not be null");
@@ -96,9 +116,40 @@ public class JeddictBrain implements PropertyChangeEmitter {
         this.modelName = modelName;
         this.streaming = streaming;
         this.mode = mode;
-        this.tools = (tools != null)
-                ? List.copyOf(tools) // immutable
-                : List.of();
+
+        //
+        // if interaction mode is INTERACTIVE, wrap the tools to make sure
+        // human in the middle is pplied (See HumanInTheMiddleWrapper)
+        //
+        if ((tools != null) && !tools.isEmpty()) {
+            switch (this.mode) {
+                case INTERACTIVE -> {
+                    if (defaultInteraction != null) {
+                        this.defaultInteraction = defaultInteraction;
+                    }
+                    final HumanInTheMiddleWrapper wrapper =
+                        new HumanInTheMiddleWrapper(this.defaultInteraction);
+
+                    this.tools = new ArrayList();
+                    on(tools).loop(
+                        (tool) -> this.tools.add(wrapper.wrap(tool))
+                    );
+                }
+
+                case AGENT -> {
+                    this.defaultInteraction = null;
+                    this.tools = List.copyOf(tools); // make an immutable copy
+                }
+
+                default -> {
+                    this.defaultInteraction = null;
+                    this.tools = List.of();
+                }
+            }
+        } else {
+            this.defaultInteraction = null;
+            this.tools = List.of();
+        }
     }
 
     /**

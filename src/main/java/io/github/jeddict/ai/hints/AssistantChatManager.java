@@ -47,6 +47,7 @@ import io.github.jeddict.ai.components.ContextDialog;
 import io.github.jeddict.ai.components.CustomScrollBarUI;
 import static io.github.jeddict.ai.components.MarkdownPane.getHtmlWrapWidth;
 import io.github.jeddict.ai.lang.InteractionMode;
+import static io.github.jeddict.ai.lang.InteractionMode.INTERACTIVE;
 import io.github.jeddict.ai.lang.JeddictBrain;
 import io.github.jeddict.ai.lang.JeddictBrainListener;
 import io.github.jeddict.ai.response.Block;
@@ -312,7 +313,7 @@ public class AssistantChatManager extends JavaFix {
         displayHtmlContent(null, projectName + " GenAI Commit");
         this.commitChanges = commitChanges;
         this.commitMessage = true;
-        handleQuestion(intitalCommitMessage, true);
+        handlePrompt(intitalCommitMessage, true);
     }
 
     public void askQueryForCodeReview() {
@@ -320,12 +321,12 @@ public class AssistantChatManager extends JavaFix {
         String projectName = info.getDisplayName();
         displayHtmlContent(null, projectName + " Code Review");
         this.codeReview = true;
-        handleQuestion("", true);
+        handlePrompt("", true);
     }
 
     private AssistantChat createChatInstance(String title, String type, Project project) {
         final Consumer<String> queryUpdate = (newQuery) -> {
-            handleQuestion(newQuery, false);
+            handlePrompt(newQuery, false);
         };
 
         final AssistantChat assistant = new AssistantChat(title, type, project) {
@@ -379,7 +380,7 @@ public class AssistantChatManager extends JavaFix {
                         }
                     }
                     if (!question.isEmpty()) {
-                        handleQuestion(question, true);
+                        handlePrompt(question, true);
                     }
                 }
             }
@@ -475,7 +476,7 @@ public class AssistantChatManager extends JavaFix {
                 }
                 SwingUtilities.invokeLater(() -> {
                     Consumer<String> queryUpdate = (newQuery) -> {
-                        handleQuestion(newQuery, false);
+                        handlePrompt(newQuery, false);
                     };
                     if (codeReview) {
                         List<Review> reviews = parseReviewsFromYaml(r.getBlocks().get(0).getContent());
@@ -605,7 +606,7 @@ public class AssistantChatManager extends JavaFix {
         return fileObjects;
     }
 
-    private void handleQuestion(String question, boolean newQuery) {
+    private void handlePrompt(String question, boolean newQuery) {
         this.question = question;
         ac.startLoading();
         result = new SwingWorker<String, Object>() {
@@ -725,17 +726,15 @@ public class AssistantChatManager extends JavaFix {
                             }
                         } else {
                             //
-                            // When agent enabled, a project is required (in the future
-                            // we may just add a tool to pick a project if none is seleted).
-                            // If no project is associated to the window, trigger
-                            // the selection of actionComboBox, which will pop up
-                            // a dialog to pick one.
+                            // When agentic mode is enabled, a project is required
+                            // (in the future we may just add a tool to pick a
+                            // project if none is seleted).
                             //
                             if (agentEnabled && (selectedProject == null)) {
                                 ac.selectProject();
                                 selectedProject = getProject();
                             }
-                            final Hacker h = hacker(handler, modelName);
+                            final Hacker h = hacker(handler, modelName, ac.interactiveMode());
                             if (pm.isStreamEnabled()) {
                                 h.hack(handler, question, pm.getGlobalRules(), sessionRules);
                             } else {
@@ -794,7 +793,7 @@ public class AssistantChatManager extends JavaFix {
         final JeddictBrain brain = new JeddictBrain(
             modelName, pm.isStreamEnabled(),
             mode,
-            (mode == InteractionMode.ASK) ? null : buildToolsList(getProject(), listener)
+            (mode == InteractionMode.ASK) ? null : buildToolsList(getProject(), listener, mode)
         );
         brain.addProgressListener(listener);
         return brain;
@@ -908,13 +907,16 @@ public class AssistantChatManager extends JavaFix {
      *
      * @return a new or existing Hacker object
      */
-    private Hacker hacker(final JeddictBrainListener listener, final String modelName) {
-
+    private Hacker hacker(
+        final JeddictBrainListener listener,
+        final String modelName,
+        final InteractionMode mode
+    ) {
         if (hacker != null) return hacker;
 
         int memorySize = pm.getConversationContext();
 
-        JeddictBrain brain = newJeddictBrain(listener, modelName, InteractionMode.AGENT);
+        JeddictBrain brain = newJeddictBrain(listener, modelName, mode);
         brain.withMemory((memorySize < 0) ? Integer.MAX_VALUE : memorySize);
 
         return (hacker = brain.pairProgrammer(PairProgrammer.Specialist.HACKER));
@@ -929,7 +931,9 @@ public class AssistantChatManager extends JavaFix {
      * @return the list of Tool objects
      */
     private List<AbstractTool> buildToolsList(
-        final Project project, final JeddictBrainListener handler
+        final Project project,
+        final JeddictBrainListener handler,
+        final InteractionMode mode
     ) {
         if (project == null) {
             return List.of();
@@ -943,7 +947,10 @@ public class AssistantChatManager extends JavaFix {
             .toAbsolutePath().normalize()
             .toString();
 
-        final List<AbstractTool> toolsList = List.of(
+        //
+        // Tools commmon to both AGENT and INTERACTIVE mode
+        //
+        final List<AbstractTool> toolsList = new ArrayList(List.of(
             new ExecutionTools(
                 basedir, project.getProjectDirectory().getName(),
                 pm.getBuildCommand(project), pm.getTestCommand(project)
@@ -953,7 +960,11 @@ public class AssistantChatManager extends JavaFix {
             new GradleTools(basedir),
             new MavenTools(basedir),
             new RefactoringTools(basedir)
-        );
+        ));
+
+        if (mode == INTERACTIVE) {
+//            toolsList.add(new DiffTools());
+        }
 
         //
         // The handler wants to know about tool execution
