@@ -16,6 +16,8 @@
 package io.github.jeddict.ai.agent;
 
 import dev.langchain4j.agent.tool.Tool;
+import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READ;
+import static io.github.jeddict.ai.agent.ToolPolicy.Policy.WRITE;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.*;
@@ -43,6 +45,7 @@ public class FileSystemTools extends AbstractCodeTool {
      * @return the file content, or an error message if it could not be read
      */
     @Tool("Read the content of a file by path")
+    @ToolPolicy(READ)
     public String readFile(String path) throws Exception {
         progress("📖 Reading file " + path);
         try {
@@ -62,6 +65,7 @@ public class FileSystemTools extends AbstractCodeTool {
      * @return all matches with their offsets, or a message if none were found
      */
     @Tool("Search for a regex pattern in a file by path")
+    @ToolPolicy(READ)
     public String searchInFile(String path, String pattern) throws Exception {
         progress("🔎 Looking for '" + pattern + "' inside '" + path + "'");
         String content = Files.readString(fullPath(path), Charset.defaultCharset());
@@ -84,6 +88,7 @@ public class FileSystemTools extends AbstractCodeTool {
      * @return a status message
      */
     @Tool("Replace parts of a file content matching a literal string with replacement text. Special regex characters are escaped automatically")
+    @ToolPolicy(WRITE)
     public String replaceSnippetByLiteral(String path, String literalText, String replacement)
             throws Exception {
         String escapedPattern = Pattern.quote(literalText);
@@ -100,6 +105,7 @@ public class FileSystemTools extends AbstractCodeTool {
      * @return a status message
      */
     @Tool("Replace parts of a file content matching a regex pattern with replacement text")
+    @ToolPolicy(WRITE)
     public String replaceSnippetByRegex(String path, String regexPattern, String replacement)
             throws Exception {
         progress("🔄 Replacing text matching regex '" + regexPattern + "' in file: " + path);
@@ -130,6 +136,7 @@ public class FileSystemTools extends AbstractCodeTool {
      * @return a status message
      */
     @Tool("Replace the full content of a file by path with new text")
+    @ToolPolicy(WRITE)
     public String replaceFileContent(String path, String newContent) throws Exception {
         progress("📝 Replacing entire content of file: " + path);
         try {
@@ -150,6 +157,7 @@ public class FileSystemTools extends AbstractCodeTool {
      * @return a status message
      */
     @Tool("Create a new file at the given path with optional content")
+    @ToolPolicy(WRITE)
     public String createFile(String path, String content) throws Exception {
         progress("📄 Creating new file: " + path);
         try {
@@ -178,6 +186,7 @@ public class FileSystemTools extends AbstractCodeTool {
      * @return a status message
      */
     @Tool("Delete a file at the given path")
+    @ToolPolicy(WRITE)
     public String deleteFile(String path) throws Exception {
         progress("🗑️ Attempting to delete file: " + path);
         try {
@@ -209,6 +218,7 @@ public class FileSystemTools extends AbstractCodeTool {
         one on each line. If the path is a directory, the pathname will end with
         a slash ('/').
     """)
+    @ToolPolicy(READ)
     public String listFilesInDirectory(String path) throws Exception {
         progress("📂 Listing contents of directory: " + path);
         Path dirPath = fullPath(path);
