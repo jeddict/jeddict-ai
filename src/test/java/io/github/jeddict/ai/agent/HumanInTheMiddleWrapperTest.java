@@ -88,8 +88,8 @@ public class HumanInTheMiddleWrapperTest extends TestBase {
         
         then(message).contains("Can I execute the tool below?");
         then(message).contains("dummyToolWithArgs");
-        then(message).contains(": val1");
-        then(message).contains(": [a, b]");
+        then(message).contains("arg1: val1");
+        then(message).contains("arg2: [a, b]");
     }
 
     @Test

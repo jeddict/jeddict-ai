@@ -172,10 +172,18 @@ public class HumanInTheMiddleWrapper {
             StringBuilder sb = new StringBuilder("Can I execute the tool below?\n");
             sb.append("   ").append(method.getName()).append("\n");
 
-            Parameter[] parameters = method.getParameters();
+            // Try to find the method on the target class to get better parameter names
+            Method targetMethod = method;
+            try {
+                targetMethod = target.getClass().getMethod(method.getName(), method.getParameterTypes());
+            } catch (NoSuchMethodException e) {
+                // Fallback to the original method if not found (shouldn't happen for valid overrides)
+            }
+
+            Parameter[] parameters = targetMethod.getParameters();
             if (parameters.length > 0) {
                 for (int i = 0; i < parameters.length; i++) {
-                    String paramName = parameters[i].getName(); // May be arg0, arg1 without -parameters
+                    String paramName = parameters[i].getName(); // Should be real name if compiled with -parameters
                     String valueString = "null";
                     if (args != null && i < args.length) {
                         Object value = args[i];
