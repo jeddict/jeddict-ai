@@ -81,6 +81,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.logging.Logger;
@@ -271,7 +272,7 @@ public class AssistantChatManager extends JavaFix {
                         super.onCompleteResponse(response);
 
                         final Response r = new Response(null, response.aiMessage().text(), messageContextCopy);
-                        sourceCode = EditorUtil.updateEditors(null, getProject(), ac, r, getContextFiles());
+                        sourceCode = EditorUtil.updateEditors(null, ac, r, getContextFiles());
 
                         // TODO: to be removed once all agents will use buit-in memory
                         responseHistory.add(r);
@@ -391,7 +392,7 @@ public class AssistantChatManager extends JavaFix {
                 if (currentResponseIndex > 0) {
                     currentResponseIndex--;
                     Response historyResponse = responseHistory.get(currentResponseIndex);
-                    sourceCode = EditorUtil.updateEditors(queryUpdate, getProject(), ac, historyResponse, getContextFiles());
+                    sourceCode = EditorUtil.updateEditors(queryUpdate, ac, historyResponse, getContextFiles());
                     updateButtons(currentResponseIndex > 0, currentResponseIndex < responseHistory.size() - 1);
                 }
             }
@@ -402,7 +403,7 @@ public class AssistantChatManager extends JavaFix {
                 if (currentResponseIndex < responseHistory.size() - 1) {
                     currentResponseIndex++;
                     Response historyResponse = responseHistory.get(currentResponseIndex);
-                    sourceCode = EditorUtil.updateEditors(queryUpdate, getProject(), ac, historyResponse, getContextFiles());
+                    sourceCode = EditorUtil.updateEditors(queryUpdate, ac, historyResponse, getContextFiles());
                     updateButtons(currentResponseIndex > 0, currentResponseIndex < responseHistory.size() - 1);
                 }
             }
@@ -485,7 +486,7 @@ public class AssistantChatManager extends JavaFix {
                         r.getBlocks().clear();
                         r.getBlocks().add(new Block("web", web));
                     }
-                    sourceCode = EditorUtil.updateEditors(queryUpdate, getProject(), ac, r, getContextFiles());
+                    sourceCode = EditorUtil.updateEditors(queryUpdate, ac, r, getContextFiles());
 
                     ac.stopLoading();
                     ac.updateButtons(currentResponseIndex > 0, currentResponseIndex < responseHistory.size() - 1);
@@ -793,6 +794,14 @@ public class AssistantChatManager extends JavaFix {
         final JeddictBrain brain = new JeddictBrain(
             modelName, pm.isStreamEnabled(),
             mode,
+            (message)-> {
+                try {
+                    Future<Boolean> ok = ac.promptConfirmation(message);
+                    return ok.get();
+                } catch (InterruptedException | ExecutionException x) {
+                    return false;
+                }
+            },
             (mode == InteractionMode.ASK) ? null : buildToolsList(getProject(), listener, mode)
         );
         brain.addProgressListener(listener);

@@ -84,6 +84,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 import java.util.function.Consumer;
 import java.util.prefs.Preferences;
 import java.util.regex.Matcher;
@@ -93,6 +95,9 @@ import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import javax.swing.OverlayLayout;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -165,6 +170,9 @@ public abstract class AssistantChat extends TopComponent {
     private JButton prevButton, nextButton, openInBrowserButton, submitButton;
     private JEditorPane questionPane;
     private JScrollPane questionScrollPane;
+
+    // confirmation pane
+    private JOptionPane confirmationPane;
 
     private final Timer timer = new Timer(200, e -> {
         int index = SPINNER_FRAMES.indexOf(submitButton.getText().charAt(0));
@@ -520,14 +528,57 @@ public abstract class AssistantChat extends TopComponent {
         actionMap.put(actionKey, submitButton.getAction());
 
         // ---
+        confirmationPane = new JOptionPane("", JOptionPane.QUESTION_MESSAGE, JOptionPane.YES_NO_OPTION);
+        confirmationPane.setVisible(false);
+
+        JPanel stack = new JPanel();
+        stack.setLayout(new OverlayLayout(stack));
+        stack.add(confirmationPane);
+        stack.add(questionScrollPane);
+
         bottomPanel.setLayout(new BoxLayout(bottomPanel, BoxLayout.Y_AXIS));
         bottomPanel.add(filePanel);
         bottomPanel.add(Box.createVerticalStrut(0));
-        bottomPanel.add(questionScrollPane);
+        bottomPanel.add(stack);
         bottomPanel.add(Box.createVerticalStrut(0));
         bottomPanel.add(buttonPanel);
 
         return bottomPanel;
+    }
+
+    public Future<Boolean> promptConfirmation(final String message) {
+        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        SwingUtilities.invokeLater(() -> {
+            confirmationPane.setMessage(message);
+            confirmationPane.setValue(JOptionPane.UNINITIALIZED_VALUE);
+            confirmationPane.setVisible(true);
+
+            // remove existing listeners if any
+            for (PropertyChangeListener pcl : confirmationPane.getPropertyChangeListeners(JOptionPane.VALUE_PROPERTY)) {
+                confirmationPane.removePropertyChangeListener(JOptionPane.VALUE_PROPERTY, pcl);
+            }
+
+            confirmationPane.addPropertyChangeListener(JOptionPane.VALUE_PROPERTY, new PropertyChangeListener() {
+                @Override
+                public void propertyChange(PropertyChangeEvent evt) {
+                    if (confirmationPane.isVisible() && evt.getNewValue() != null && evt.getNewValue() != JOptionPane.UNINITIALIZED_VALUE) {
+                        Object value = evt.getNewValue();
+                        confirmationPane.setVisible(false);
+
+                        boolean confirmed = (value instanceof Integer && ((Integer) value) == JOptionPane.YES_OPTION);
+                        future.complete(confirmed);
+
+                        // cleanup
+                        confirmationPane.removePropertyChangeListener(JOptionPane.VALUE_PROPERTY, this);
+                    }
+                }
+            });
+
+            // Revalidate to show
+            confirmationPane.getParent().revalidate();
+            confirmationPane.getParent().repaint();
+        });
+        return future;
     }
 
     public void updateHeight() {

@@ -73,55 +73,87 @@ public class EditorUtil {
     private static final Set<String> TEXT_BLOCK_TYPES = Set.of("text", "web", "html");
     private static final Logger LOG = Logger.getLogger(EditorUtil.class.getName());
 
-    public static String updateEditors(Consumer<String> queryUpdate, Project project, AssistantChat topComponent, Response response, Set<FileObject> threadContext) {
+    /**
+     *
+     * @param queryUpdate prompt that generated the response and that goes in the
+     *                    top query pane
+     * @param project project attached to the chat (to be removed as it's already in AssistantChat)
+     * @param assistantChat chat window
+     * @param response the response to update the windows with
+     * @param chatContext files attached to the chat window as additional context
+     *
+     * @return all code created printing each single block
+     */
+    public static String updateEditors(
+        final Consumer<String> queryUpdate,
+        final AssistantChat assistantChat,
+        final Response response,
+        final Set<FileObject> chatCo
+    ) {
         StringBuilder code = new StringBuilder();
 
-        topComponent.clear();
+        assistantChat.clear();
 
         if (response.getQuery() != null && !response.getQuery().isEmpty()) {
-            topComponent.createUserQueryPane(queryUpdate, response.getQuery(), response.getMessageContext());
+            assistantChat.createUserQueryPane(queryUpdate, response.getQuery(), response.getMessageContext());
         }
 
         JComponent firstPane = null;
-        Block prevBlock = null;
+
+        Block actionBlock = null;
         for (Block block : response.getBlocks()) {
-            JComponent pane = printBlock(code, prevBlock, block, project, topComponent);
+            LOG.finest(() -> ("block:\n" + block));
+            JComponent pane = printBlock(code, actionBlock, block, assistantChat);
+            actionBlock = null;
             if (firstPane == null) {
                 firstPane = pane;
             }
-            prevBlock = block;
         }
 
         if (firstPane != null) {
             firstPane.scrollRectToVisible(firstPane.getBounds());
         }
-        topComponent.revalidate();
-        topComponent.repaint();
+        assistantChat.revalidate();
+        assistantChat.repaint();
         List<FileObject> context = new ArrayList<>();
-        if (threadContext != null && !threadContext.isEmpty()) {
-            context.addAll(threadContext);
+        if (chatCo != null && !chatCo.isEmpty()) {
+            context.addAll(chatCo);
         }
         if (response.getMessageContext() != null && !response.getMessageContext().isEmpty()) {
             context.addAll(response.getMessageContext());
         }
-        topComponent.getParseCodeEditor(context);
-        topComponent.attachMenusToEditors();
+        assistantChat.getParseCodeEditor(context);
+        assistantChat.attachMenusToEditors();
+
         return code.toString();
     }
 
-    public static JComponent printBlock(StringBuilder code, Block prevBlock, Block block, Project project, AssistantChat topComponent) {
-        LOG.finest(() -> "printing blocks \n" + prevBlock + "\n" + block);
+    public static JComponent printBlock(
+        final StringBuilder code,
+        final Block actionBlock,
+        final Block contentBlock,
+        final AssistantChat assistantChat
+    ) {
+        final Project project = assistantChat.getProject();
 
+        LOG.finest(
+            () -> "\n" + code + "\n"
+                + actionBlock + "\n"
+                + contentBlock + "\n"
+                + project + "\n"
+                + assistantChat
+        );
         JComponent pane;
-        if (block != null && (TEXT_BLOCK_TYPES.contains(block.getType()))) {
+        if (contentBlock != null && (contentBlock.getType().equals("text") || contentBlock.getType().equals("web"))) {
+            LOG.finest(() -> "Creating a text/web pane");
             String html;
-            if (block.getType().equals("text")) {
-                html = renderer.render(parser.parse(block.getContent()));
+            if (contentBlock.getType().equals("text")) {
+                html = renderer.render(parser.parse(contentBlock.getContent()));
                 html = wrapClassNamesWithAnchor(html);
             } else {
-                html = String.format("<html><body>%s</body></html>", block.getContent());
+                html = contentBlock.getContent();
             }
-            JEditorPane htmlPane = topComponent.createHtmlPane(html);
+            JEditorPane htmlPane = assistantChat.createHtmlPane(html);
             pane = htmlPane;
             htmlPane.addHyperlinkListener(e -> {
                 if (HyperlinkEvent.EventType.ACTIVATED.equals(e.getEventType())) {
@@ -155,15 +187,44 @@ public class EditorUtil {
                     }
                 }
             });
+        } else if (
+            actionBlock != null &&
+            contentBlock != null &&
+            project != null
+        ) {
+            LOG.finest(() -> "Creating an interaction pane");
+
+            //
+            // Put here interaction UI!!!
+            //
+            //
+            // This is text for which we have an action and the chat is attached
+            // to a project. In the case the project is null the block can be
+            // handled as a normal block.
+            //
+            /*
+            FileAction action = FileActionParser.parse(actionBlock.getContent(), contentBlock.getContent());
+            code.append('\n').append(contentBlock.getContent()).append('\n');
+            pane = assistantChat.createActionPane(action);
+            */
+            pane = null;
         } else {
-            code.append('\n').append(block.getContent()).append('\n');
-            String mimeType = getMimeType(block.getType());
-            pane = switch (mimeType) {
-                case MIME_PUML -> topComponent.createSVGPane(block);
-                case MIME_MARKDOWN -> topComponent.createMarkdownPane(block);
-                case MIME_MERMAID -> topComponent.createMermaidPane(block);
-                default -> topComponent.createCodePane(mimeType, block);
-            };
+            LOG.finest(() -> "Creating specialized pane");
+            code.append('\n').append(contentBlock.getContent()).append('\n');
+            String mimeType = getMimeType(contentBlock.getType());
+            if (MIME_PUML.equals(mimeType)) {
+                LOG.finest(() -> "Creating an SVG pane");
+                pane = assistantChat.createSVGPane(contentBlock);
+            } else if (MIME_MARKDOWN.equals(mimeType)) {
+                LOG.finest(() -> "Creating a Markdown pane");
+                pane = assistantChat.createMarkdownPane(contentBlock);
+            } else if (MIME_MERMAID.equals(mimeType)) {
+                LOG.finest(() -> "Creating an Mermaid pane");
+                pane = assistantChat.createMermaidPane(contentBlock);
+            } else {
+                LOG.finest(() -> "Creating an generic code pane");
+                pane = assistantChat.createCodePane(mimeType, contentBlock);
+            }
         }
         return pane;
     }

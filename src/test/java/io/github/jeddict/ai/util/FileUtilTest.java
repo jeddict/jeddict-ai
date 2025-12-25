@@ -15,6 +15,7 @@
  */
 package io.github.jeddict.ai.util;
 
+import com.github.caciocavallosilano.cacio.ctc.junit.CacioTest;
 import static org.assertj.core.api.BDDAssertions.then;
 import java.net.FileNameMap;
 import java.net.URLConnection;
@@ -23,6 +24,7 @@ import java.io.IOException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.junit.jupiter.api.Test;
 
+@CacioTest
 public class FileUtilTest {
 
     @Test
