@@ -56,7 +56,7 @@ public class DummyTool extends AbstractTool {
     }
 
     @Tool
-    @ToolPolicy(READ)
+    @ToolPolicy(READONLY)
     public void dummyToolRead() {
         executed = true;
     }
@@ -68,7 +68,7 @@ public class DummyTool extends AbstractTool {
     }
 
     @Tool
-    @ToolPolicy(WRITE)
+    @ToolPolicy(READWRITE)
     public void dummyToolWrite() {
         executed = true;
     }

@@ -97,7 +97,6 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import javax.swing.OverlayLayout;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -528,18 +527,28 @@ public abstract class AssistantChat extends TopComponent {
         actionMap.put(actionKey, submitButton.getAction());
 
         // ---
-        confirmationPane = new JOptionPane("", JOptionPane.QUESTION_MESSAGE, JOptionPane.YES_NO_OPTION);
+        confirmationPane = new JOptionPane("", JOptionPane.QUESTION_MESSAGE, JOptionPane.YES_NO_OPTION) {
+            @Override
+            public Dimension getMaximumSize() {
+                return new Dimension(Integer.MAX_VALUE, getPreferredSize().height);
+            }
+        };
         confirmationPane.setVisible(false);
-
-        JPanel stack = new JPanel();
-        stack.setLayout(new OverlayLayout(stack));
-        stack.add(confirmationPane);
-        stack.add(questionScrollPane);
+        confirmationPane.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(92, 159, 194), 3),
+            BorderFactory.createEmptyBorder(5, 5, 5, 5)
+        ));
+        confirmationPane.setBackground(backgroundColor);
+        confirmationPane.setForeground(getTextColorFromMimeType(MIME_PLAIN_TEXT));
+        confirmationPane.setOpaque(true);
+        confirmationPane.setFont(getFontFromMimeType(MIME_PLAIN_TEXT));
+        confirmationPane.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         bottomPanel.setLayout(new BoxLayout(bottomPanel, BoxLayout.Y_AXIS));
         bottomPanel.add(filePanel);
         bottomPanel.add(Box.createVerticalStrut(0));
-        bottomPanel.add(stack);
+        bottomPanel.add(questionScrollPane);
+        bottomPanel.add(confirmationPane);
         bottomPanel.add(Box.createVerticalStrut(0));
         bottomPanel.add(buttonPanel);
 

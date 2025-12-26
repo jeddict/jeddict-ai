@@ -34,10 +34,10 @@ import java.lang.annotation.Target;
  * <p>
  * The policies are:
  * <ul>
- *     <li>{@link Policy#READ}: For safe, read-only operations that do not
+ *     <li>{@link Policy#READONLY}: For safe, read-only operations that do not
  *     change system state. These are typically allowed to run without
  *     interruption.</li>
- *     <li>{@link Policy#WRITE}: For operations that modify files or system
+ *     <li>{@link Policy#READWRITE}: For operations that modify files or system
  *     state. These are considered high-risk and should be intercepted for
  *     approval.</li>
  *     <li>{@link Policy#INTERACTIVE}: For tools that inherently require user
@@ -53,14 +53,14 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
 public @interface ToolPolicy {
-    
+
     Policy value() default Policy.UNKNOWN;
 
     enum Policy {
         /** A safe, read-only operation. */
-        READ,
+        READONLY,
         /** An operation that writes to the file system or changes state. */
-        WRITE,
+        READWRITE,
         /** An operation that is inherently interactive. */
         INTERACTIVE,
         /** An operation with an unspecified risk level (treated as high-risk). */

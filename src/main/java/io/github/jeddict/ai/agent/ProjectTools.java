@@ -16,9 +16,9 @@
 package io.github.jeddict.ai.agent;
 
 import dev.langchain4j.agent.tool.Tool;
-import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READ;
 import io.github.jeddict.ai.scanner.ProjectMetadataInfo;
 import org.netbeans.api.project.Project;
+import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READONLY;
 
 /**
  * Tool to return information about the project: jdk version, j2ee version
@@ -36,7 +36,7 @@ public class ProjectTools extends AbstractTool {
         name = "projectInfo",
         value = "Return information about the project: jdk version, j2ee version"
     )
-    @ToolPolicy(READ)
+    @ToolPolicy(READONLY)
     public String projectInfo()
     throws Exception {
         progress("Gathering project info: " + project);

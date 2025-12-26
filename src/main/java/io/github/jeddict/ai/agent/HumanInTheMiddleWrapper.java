@@ -152,7 +152,7 @@ public class HumanInTheMiddleWrapper {
                 ToolPolicy.Policy policy = (policyAnn != null) ? policyAnn.value() : UNKNOWN;
 
                 // For safe policies, execute directly
-                if (policy == READ || policy == INTERACTIVE) {
+                if (policy == READONLY || policy == INTERACTIVE) {
                     return method.invoke(target, args);
                 }
 
