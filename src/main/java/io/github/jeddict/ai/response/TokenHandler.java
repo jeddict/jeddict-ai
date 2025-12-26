@@ -16,11 +16,9 @@
 package io.github.jeddict.ai.response;
 
 import com.knuddels.jtokkit.Encodings;
-import dev.langchain4j.data.message.ChatMessage;
 import io.github.jeddict.ai.settings.PreferencesManager;
 import io.github.jeddict.ai.settings.ReportManager;
 import java.util.Iterator;
-import java.util.List;
 import org.json.JSONObject;
 
 /**
@@ -32,20 +30,7 @@ public class TokenHandler {
     private static final PreferencesManager preferencesManager = PreferencesManager.getInstance();
     private static final ReportManager reportManager = ReportManager.getInstance();
 
-    public static int saveInputToken(List<ChatMessage> messages) {
-        if (messages == null || messages.isEmpty()) {
-            return -1;
-        }
-
-        StringBuilder serialized = new StringBuilder();
-        for (ChatMessage msg : messages) {
-            serialized.append(msg.type().name().toLowerCase())
-                      .append(": ")
-                      .append(msg.toString())
-                      .append("\n");
-        }
-
-        String content = serialized.toString();
+    public static int saveInputToken(final String content) {
         int tokenCount = countTokens(content);
         saveTokenUsage(reportManager.getDailyInputTokenStats(), tokenCount, true);
         return tokenCount;

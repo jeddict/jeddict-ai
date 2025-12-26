@@ -22,6 +22,8 @@ import java.nio.file.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READONLY;
+import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READWRITE;
 
 /**
  * Collection of tools that expose file system and editor operations inside
@@ -43,6 +45,7 @@ public class FileSystemTools extends AbstractCodeTool {
      * @return the file content, or an error message if it could not be read
      */
     @Tool("Read the content of a file by path")
+    @ToolPolicy(READONLY)
     public String readFile(String path) throws Exception {
         progress("📖 Reading file " + path);
         try {
@@ -62,6 +65,7 @@ public class FileSystemTools extends AbstractCodeTool {
      * @return all matches with their offsets, or a message if none were found
      */
     @Tool("Search for a regex pattern in a file by path")
+    @ToolPolicy(READONLY)
     public String searchInFile(String path, String pattern) throws Exception {
         progress("🔎 Looking for '" + pattern + "' inside '" + path + "'");
         String content = Files.readString(fullPath(path), Charset.defaultCharset());
@@ -84,6 +88,7 @@ public class FileSystemTools extends AbstractCodeTool {
      * @return a status message
      */
     @Tool("Replace parts of a file content matching a literal string with replacement text. Special regex characters are escaped automatically")
+    @ToolPolicy(READWRITE)
     public String replaceSnippetByLiteral(String path, String literalText, String replacement)
             throws Exception {
         String escapedPattern = Pattern.quote(literalText);
@@ -100,6 +105,7 @@ public class FileSystemTools extends AbstractCodeTool {
      * @return a status message
      */
     @Tool("Replace parts of a file content matching a regex pattern with replacement text")
+    @ToolPolicy(READWRITE)
     public String replaceSnippetByRegex(String path, String regexPattern, String replacement)
             throws Exception {
         progress("🔄 Replacing text matching regex '" + regexPattern + "' in file: " + path);
@@ -130,6 +136,7 @@ public class FileSystemTools extends AbstractCodeTool {
      * @return a status message
      */
     @Tool("Replace the full content of a file by path with new text")
+    @ToolPolicy(READWRITE)
     public String replaceFileContent(String path, String newContent) throws Exception {
         progress("📝 Replacing entire content of file: " + path);
         try {
@@ -150,6 +157,7 @@ public class FileSystemTools extends AbstractCodeTool {
      * @return a status message
      */
     @Tool("Create a new file at the given path with optional content")
+    @ToolPolicy(READWRITE)
     public String createFile(String path, String content) throws Exception {
         progress("📄 Creating new file: " + path);
         try {
@@ -178,6 +186,7 @@ public class FileSystemTools extends AbstractCodeTool {
      * @return a status message
      */
     @Tool("Delete a file at the given path")
+    @ToolPolicy(READWRITE)
     public String deleteFile(String path) throws Exception {
         progress("🗑️ Attempting to delete file: " + path);
         try {
@@ -202,7 +211,14 @@ public class FileSystemTools extends AbstractCodeTool {
      * @param path the directory path relative to the project
      * @return a list of files and directories, or an error message
      */
-    @Tool("List all files and directories inside a given directory path")
+    @Tool("""
+        List all files and directories inside a given path. If the path does not
+        exist or is not a directory, it returns a "directory not found" message.
+        If path is an existing directory, it returns a list of pathnames,
+        one on each line. If the path is a directory, the pathname will end with
+        a slash ('/').
+    """)
+    @ToolPolicy(READONLY)
     public String listFilesInDirectory(String path) throws Exception {
         progress("📂 Listing contents of directory: " + path);
         Path dirPath = fullPath(path);

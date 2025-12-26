@@ -16,9 +16,12 @@
 package io.github.jeddict.ai.lang.impl;
 
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import io.github.jeddict.ai.lang.ChatModelBaseBuilder;
 import io.github.jeddict.ai.lang.ChatModelBuilder;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -155,7 +158,13 @@ public class OpenAiBuilder implements ChatModelBuilder {
     }
 
     @Override
+    public ChatModelBaseBuilder listeners(List<ChatModelListener> listeners) {
+        builder.listeners(listeners); return this;
+    }
+
+    @Override
     public ChatModel build() {
         return builder.build();
     }
+
 }

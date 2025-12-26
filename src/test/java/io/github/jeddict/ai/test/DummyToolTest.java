@@ -13,29 +13,30 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package io.github.jeddict.ai.agent;
 
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.model.output.Response;
-import dev.langchain4j.service.TokenStream;
-import java.util.List;
+package io.github.jeddict.ai.test;
+
+import java.io.File;
+import static org.assertj.core.api.BDDAssertions.then;
+import org.junit.jupiter.api.Test;
 
 /**
  *
- * @author Gaurav Gupta
  */
-public interface Assistant {
+public class DummyToolTest {
 
-    // simple one-shot request → response
-    String chat(String input);
+    @Test
+    public void initialization_with_basedir() {
+        then(new DummyTool().basedir()).isEqualTo(new File(".").getAbsolutePath());
+    }
 
-    // full conversation style (structured)
-     Response<AiMessage> chat(List<ChatMessage> messages);
+    @Test
+    public void track_executions() {
+        final DummyTool t = new DummyTool();
 
-    // streaming (one-shot)
-    TokenStream stream(String input);
+        then(t.executed).isFalse(); then(t.executed()).isFalse();
+        then(t.dummyTool()).isEqualTo("true");
+        then(t.executed).isTrue(); then(t.executed()).isTrue();
+    }
 
-    // streaming (structured messages)
-    TokenStream stream(List<ChatMessage> messages);
 }

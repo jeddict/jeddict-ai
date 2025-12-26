@@ -27,6 +27,11 @@ import org.netbeans.modules.maven.api.NbMavenProject;
 /**
  *
  * @author Gaurav Gupta
+ *
+ * TODO: add more info about the project like:
+ *       - base directory
+ *       - build system (maven, ant, gradle)
+ *       - project name
  */
 public class ProjectMetadataInfo {
 
@@ -45,7 +50,7 @@ public class ProjectMetadataInfo {
         // Append EE Version with appropriate label if importPrefix is "jakarta"
         if (cachedResult.getEeVersion() != null) {
             if ("jakarta".equals(cachedResult.getImportPrefix())) {
-                sb.append("Jakarta EE Version: ").append(cachedResult.getEeVersion()).append("\n");
+                sb.append("EE Version: ").append(cachedResult.getEeVersion()).append("\n");
             } else {
                 sb.append("EE Version: ").append(cachedResult.getEeVersion()).append("\n");
             }
@@ -57,10 +62,7 @@ public class ProjectMetadataInfo {
             sb.append("Java Version: ").append(cachedResult.getJdkVersion()).append("\n");
         }
 
-        if (!sb.isEmpty()) {
-            sb.insert(0, "Project Metadata:\n");
-        }
-        return sb.toString();
+        return sb.toString().trim();
     }
 
     public static CachedResult getCachedResult(Project project) {
@@ -128,8 +130,7 @@ public class ProjectMetadataInfo {
                 }
                 return "jakarta"; // Other versions of Jakarta EE
             }
-            if (dependency.getGroupId().equals("javax.enterprise")
-                    || dependency.getGroupId().startsWith("javax.")) {
+            if (dependency.getGroupId().startsWith("javax.")) {
                 return "javax"; // Java EE dependencies
             }
         }

@@ -19,7 +19,9 @@ import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Optional;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 import java.util.logging.Logger;
 
 public abstract class AbstractTool {
@@ -32,7 +34,11 @@ public abstract class AbstractTool {
     protected final String basedir;
     protected final Path basepath;
     protected final Logger log;
+
     private final PropertyChangeSupport toolListener = new PropertyChangeSupport(this);
+
+    // TODO: add comment
+    private Optional<UnaryOperator<String>> humanInTheMiddle = Optional.empty();
 
     public AbstractTool(final String basedir) {
         if (basedir == null) {
@@ -62,11 +68,23 @@ public abstract class AbstractTool {
     }
 
     public void log(Supplier<String> supplier) {
-        log.info(supplier);
+        log.info(supplier.get());
     }
 
     public void progress(String message) {
         log(() -> message);
         toolListener.firePropertyChange(PROPERTY_MESSAGE, null, message);
+    }
+
+    public String basedir() {
+        return basedir;
+    }
+
+    public Optional<UnaryOperator<String>> humanInTheMiddle() {
+        return humanInTheMiddle;
+    }
+
+    public void withHumanInTheMiddle(final UnaryOperator<String> hitm) {
+        humanInTheMiddle = (hitm == null) ? Optional.empty() : Optional.of(hitm);
     }
 }

@@ -13,24 +13,23 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package io.github.jeddict.ai.agent;
+package io.github.jeddict.ai.agent.pair;
 
-/**
- *
- * @author Gaurav Gupta
- */
-public enum AssistantAction {
-    ASK("Ask"),
-    BUILD("Agent");
+import java.beans.PropertyChangeListener;
 
-    private final String displayName;
 
-    AssistantAction(String displayName) {
-        this.displayName = displayName;
-    }
+public interface Hacker extends PairProgrammer {
 
-    @Override
-    public String toString() {
-        return displayName;
-    }
+    String hack(
+        final String prompt,
+        final String globalRules,
+        final String projectRules
+    );
+
+    void hack(
+        final PropertyChangeListener listener,
+        final String prompt,
+        final String globalRules, final String projectRules
+    );
+
 }

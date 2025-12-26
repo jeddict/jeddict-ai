@@ -19,6 +19,7 @@ import dev.langchain4j.agent.tool.Tool;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
+import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READWRITE;
 
 /**
  * This class provides tools to execute build and test commands in a project,
@@ -54,11 +55,13 @@ public class ExecutionTools extends AbstractTool {
     }
 
     @Tool("Build the project and return full log")
+    @ToolPolicy(READWRITE)
     public String buildProject() {
         return runCommand(buildCommand, "Building");
     }
 
     @Tool("Run project tests and return full log")
+    @ToolPolicy(READWRITE)
     public String testProject() {
         return runCommand(testCommand, "Testing");
     }

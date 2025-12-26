@@ -21,7 +21,7 @@ import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.expr.ObjectCreationExpr;
-import io.github.jeddict.ai.agent.AssistantAction;
+import io.github.jeddict.ai.lang.InteractionMode;
 import static io.github.jeddict.ai.classpath.JeddictQueryCompletionQuery.JEDDICT_EDITOR_CALLBACK;
 import static io.github.jeddict.ai.components.QueryPane.createIconButton;
 import static io.github.jeddict.ai.components.QueryPane.createStyledComboBox;
@@ -84,7 +84,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BiConsumer;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 import java.util.function.Consumer;
 import java.util.prefs.Preferences;
 import java.util.regex.Matcher;
@@ -94,6 +95,8 @@ import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -127,13 +130,17 @@ import org.openide.NotifyDescriptor;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
 import org.openide.loaders.DataObject;
+import org.openide.util.NbBundle;
 import org.openide.windows.TopComponent;
+import static ste.lloop.Loop.on;
 
 /**
  *
  * @author Shiwani Gupta
  */
 public abstract class AssistantChat extends TopComponent {
+
+    private static final String SPINNER_FRAMES = "◐◓◑◒";
 
     private List<Review> reviews;
     public static final ImageIcon icon = new ImageIcon(AssistantChat.class.getResource("/icons/logo16.png"));
@@ -149,8 +156,6 @@ public abstract class AssistantChat extends TopComponent {
     private String type = "java";
     private static final PreferencesManager pm = PreferencesManager.getInstance();
 
-    private Timer timer;
-
     // top query pane
     private JButton copyButton, editButton, saveButton, cancelButton;
     private JEditorPane queryPane;
@@ -160,10 +165,19 @@ public abstract class AssistantChat extends TopComponent {
     private MessageContextComponentAdapter filePanelAdapter;
     private ComponentAdapter buttonPanelAdapter;
     private JComboBox<String> models;
-    private JComboBox<AssistantAction> actionComboBox;
+    private JComboBox<InteractionMode> actionComboBox;
     private JButton prevButton, nextButton, openInBrowserButton, submitButton;
     private JEditorPane questionPane;
     private JScrollPane questionScrollPane;
+
+    // confirmation pane
+    private JOptionPane confirmationPane;
+
+    private final Timer timer = new Timer(200, e -> {
+        int index = SPINNER_FRAMES.indexOf(submitButton.getText().charAt(0));
+        index = (index < 0) ? 0 : ((index+1) % SPINNER_FRAMES.length());
+        submitButton.setText(String.valueOf(SPINNER_FRAMES.charAt(index)));
+    });
 
     public AssistantChat(String name, String type, Project project) {
         setName(name);
@@ -178,7 +192,7 @@ public abstract class AssistantChat extends TopComponent {
         parentPanel.setLayout(new BoxLayout(parentPanel, BoxLayout.Y_AXIS));
         add(parentPanel, BorderLayout.CENTER);
     }
-    
+
     public abstract void onChatReset();
 
     public abstract void onSubmit();
@@ -198,6 +212,10 @@ public abstract class AssistantChat extends TopComponent {
         return questionPane;
     }
 
+    public JEditorPane getQueryPane() {
+        return queryPane;
+    }
+
     public void updateButtons(Boolean prevButtonVisible, Boolean nextButtonVisible) {
         // TODO: to be reviewed once all agents will use buit-in memory
         prevButton.setVisible(prevButtonVisible);
@@ -206,17 +224,12 @@ public abstract class AssistantChat extends TopComponent {
     }
 
     public void startLoading() {
-        final String[] spinnerFrames = {"◐", "◓", "◑", "◒"};
-        final int[] frameIndex = {0};
-        timer = new Timer(200, e -> {
-            submitButton.setText(spinnerFrames[frameIndex[0]]);
-            frameIndex[0] = (frameIndex[0] + 1) % spinnerFrames.length;
-        });
-        timer.start();
+        timer.restart();
     }
 
     public void stopLoading() {
         timer.stop();
+        buttonPanelResized();
     }
 
    public String getModelName() {
@@ -232,7 +245,15 @@ public abstract class AssistantChat extends TopComponent {
     }
 
     public boolean isAgentEnabled() {
-        return actionComboBox.getSelectedItem() == AssistantAction.BUILD;
+        return actionComboBox.getSelectedItem() != InteractionMode.ASK;
+    }
+
+    public boolean isInteractiveMode() {
+        return actionComboBox.getSelectedItem() == InteractionMode.INTERACTIVE;
+    }
+
+    public InteractionMode interactiveMode() {
+        return (InteractionMode)actionComboBox.getSelectedItem();
     }
 
     public JPanel createBottomPanel(String type, String fileName, Consumer<String> action) {
@@ -289,79 +310,32 @@ public abstract class AssistantChat extends TopComponent {
         });
         leftButtonPanel.add(models);
 
-        AssistantAction[] options = AssistantAction.values();
+        InteractionMode[] options = InteractionMode.values();
         actionComboBox = createStyledComboBox(options);
         String lastAction = pm.getAssistantAction();
         if (lastAction != null) {
             try {
-                actionComboBox.setSelectedItem(AssistantAction.valueOf(lastAction));
+                actionComboBox.setSelectedItem(InteractionMode.valueOf(lastAction));
             } catch (IllegalArgumentException ex) {
-                actionComboBox.setSelectedItem(AssistantAction.ASK);
+                actionComboBox.setSelectedItem(InteractionMode.ASK);
             }
         } else {
-            actionComboBox.setSelectedItem(AssistantAction.ASK);
+            actionComboBox.setSelectedItem(InteractionMode.ASK);
         }
-        actionComboBox.setToolTipText("<html><b>Chat</b> – for general queries<br><b>Agent</b> – for file/project generation actions</html>");
+        actionComboBox.setToolTipText(interactionModeTooltip());
         actionComboBox.addActionListener(e -> {
-            AssistantAction selectedAction = (AssistantAction) actionComboBox.getSelectedItem();
-            if (selectedAction == AssistantAction.BUILD) {
+            InteractionMode selectedAction = (InteractionMode) actionComboBox.getSelectedItem();
+            if (selectedAction != InteractionMode.ASK) {
                 if (this.project == null) {
-                    Project[] openProjects = org.netbeans.api.project.ui.OpenProjects.getDefault().getOpenProjects();
-                    if (openProjects.length == 1) {
-                        project = openProjects[0];
-                        DialogDisplayer.getDefault().notify(
-                                new NotifyDescriptor.Message(
-                                        "Connected chat to project: " + ProjectUtils.getInformation(project).getDisplayName(),
-                                        NotifyDescriptor.INFORMATION_MESSAGE
-                                )
-                        );
-                    } else if (openProjects.length > 1) {
-                        JComboBox<Project> projectComboBox = new JComboBox<>(openProjects);
-                        projectComboBox.setRenderer(new javax.swing.ListCellRenderer<>() {
-                            private final javax.swing.DefaultListCellRenderer defaultRenderer = new javax.swing.DefaultListCellRenderer();
-
-                            @Override
-                            public java.awt.Component getListCellRendererComponent(javax.swing.JList<? extends Project> list, Project value, int index, boolean isSelected, boolean cellHasFocus) {
-                                String displayName = (value == null) ? "" : ProjectUtils.getInformation(value).getDisplayName();
-                                return defaultRenderer.getListCellRendererComponent(list, displayName, index, isSelected, cellHasFocus);
-                            }
-                        });
-                        NotifyDescriptor descriptor = new NotifyDescriptor(
-                                projectComboBox,
-                                "Select Project for AI Agent Mode",
-                                NotifyDescriptor.OK_CANCEL_OPTION,
-                                NotifyDescriptor.QUESTION_MESSAGE,
-                                null,
-                                NotifyDescriptor.OK_OPTION
-                        );
-                        Object dialogResult = DialogDisplayer.getDefault().notify(descriptor);
-                        if (NotifyDescriptor.OK_OPTION.equals(dialogResult)) {
-                            Project selectedProject = (Project) projectComboBox.getSelectedItem();
-                            if (selectedProject != null) {
-                                project = selectedProject;
-                                DialogDisplayer.getDefault().notify(
-                                        new NotifyDescriptor.Message(
-                                                "Connected chat to project: " + ProjectUtils.getInformation(project).getDisplayName(),
-                                                NotifyDescriptor.INFORMATION_MESSAGE
-                                        )
-                                );
-                            } else {
-                                actionComboBox.setSelectedItem(AssistantAction.ASK);
-                            }
-                        } else {
-                            actionComboBox.setSelectedItem(AssistantAction.ASK);
-                        }
+                    final Project selectedProject = selectProject();
+                    if (selectedProject == null) {
+                            actionComboBox.setSelectedItem(InteractionMode.ASK);
                     } else {
-                        NotifyDescriptor.Message msg = new NotifyDescriptor.Message(
-                                "To use AI agent mode, connect chat to any project by dropping any source file on chat window or start new chat from project/package/source file context.",
-                                NotifyDescriptor.WARNING_MESSAGE
-                        );
-                        DialogDisplayer.getDefault().notify(msg);
-                        actionComboBox.setSelectedItem(AssistantAction.ASK);
+                        this.project = selectedProject;
                     }
                 }
             }
-            selectedAction = (AssistantAction) actionComboBox.getSelectedItem();
+            selectedAction = (InteractionMode) actionComboBox.getSelectedItem();
             if (selectedAction != null) {
                 pm.setAssistantAction(selectedAction.name());
             }
@@ -553,14 +527,67 @@ public abstract class AssistantChat extends TopComponent {
         actionMap.put(actionKey, submitButton.getAction());
 
         // ---
+        confirmationPane = new JOptionPane("", JOptionPane.QUESTION_MESSAGE, JOptionPane.YES_NO_OPTION) {
+            @Override
+            public Dimension getMaximumSize() {
+                return new Dimension(Integer.MAX_VALUE, getPreferredSize().height);
+            }
+        };
+        confirmationPane.setVisible(false);
+        confirmationPane.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(92, 159, 194), 3),
+            BorderFactory.createEmptyBorder(5, 5, 5, 5)
+        ));
+        confirmationPane.setBackground(backgroundColor);
+        confirmationPane.setForeground(getTextColorFromMimeType(MIME_PLAIN_TEXT));
+        confirmationPane.setOpaque(true);
+        confirmationPane.setFont(getFontFromMimeType(MIME_PLAIN_TEXT));
+        confirmationPane.setAlignmentX(Component.CENTER_ALIGNMENT);
+
         bottomPanel.setLayout(new BoxLayout(bottomPanel, BoxLayout.Y_AXIS));
         bottomPanel.add(filePanel);
         bottomPanel.add(Box.createVerticalStrut(0));
         bottomPanel.add(questionScrollPane);
+        bottomPanel.add(confirmationPane);
         bottomPanel.add(Box.createVerticalStrut(0));
         bottomPanel.add(buttonPanel);
 
         return bottomPanel;
+    }
+
+    public Future<Boolean> promptConfirmation(final String message) {
+        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        SwingUtilities.invokeLater(() -> {
+            confirmationPane.setMessage(message);
+            confirmationPane.setValue(JOptionPane.UNINITIALIZED_VALUE);
+            confirmationPane.setVisible(true);
+
+            // remove existing listeners if any
+            for (PropertyChangeListener pcl : confirmationPane.getPropertyChangeListeners(JOptionPane.VALUE_PROPERTY)) {
+                confirmationPane.removePropertyChangeListener(JOptionPane.VALUE_PROPERTY, pcl);
+            }
+
+            confirmationPane.addPropertyChangeListener(JOptionPane.VALUE_PROPERTY, new PropertyChangeListener() {
+                @Override
+                public void propertyChange(PropertyChangeEvent evt) {
+                    if (confirmationPane.isVisible() && evt.getNewValue() != null && evt.getNewValue() != JOptionPane.UNINITIALIZED_VALUE) {
+                        Object value = evt.getNewValue();
+                        confirmationPane.setVisible(false);
+
+                        boolean confirmed = (value instanceof Integer && ((Integer) value) == JOptionPane.YES_OPTION);
+                        future.complete(confirmed);
+
+                        // cleanup
+                        confirmationPane.removePropertyChangeListener(JOptionPane.VALUE_PROPERTY, this);
+                    }
+                }
+            });
+
+            // Revalidate to show
+            confirmationPane.getParent().revalidate();
+            confirmationPane.getParent().repaint();
+        });
+        return future;
     }
 
     public void updateHeight() {
@@ -599,7 +626,7 @@ public abstract class AssistantChat extends TopComponent {
         }
     }
 
-    private void createUserPaneButtons(BiConsumer<String, Set<FileObject>> queryUpdate, Set<FileObject> messageContext, JPanel buttonPanel) {
+    private void createUserPaneButtons(Consumer<String> queryUpdate, Set<FileObject> messageContext, JPanel buttonPanel) {
         copyButton = QueryPane.createIconButton(Labels.COPY, ICON_COPY);
         editButton = QueryPane.createIconButton(Labels.EDIT, ICON_EDIT);
         saveButton = QueryPane.createIconButton(Labels.SAVE, ICON_SEND);
@@ -619,7 +646,7 @@ public abstract class AssistantChat extends TopComponent {
 
             String question = queryPane.getText();
             if (!question.isEmpty()) {
-                queryUpdate.accept(question, messageContext);
+                queryUpdate.accept(question);
             }
         });
 
@@ -640,7 +667,7 @@ public abstract class AssistantChat extends TopComponent {
             queryPane.requestFocus();
         });
     }
-  
+
     public void clearFiles() {
         filePanel.removeAll();
         refreshFilePanel();
@@ -660,7 +687,7 @@ public abstract class AssistantChat extends TopComponent {
         filePanelAdapter.componentResized(null);
     }
 
-    public JEditorPane createUserQueryPane(BiConsumer<String, Set<FileObject>> queryUpdate, String content, Set<FileObject> messageContext) {
+    public JEditorPane createUserQueryPane(Consumer<String> queryUpdate, String content, Set<FileObject> messageContext) {
 
         Consumer<FileObject> callback = file -> {
             if (!messageContext.contains(file)) {
@@ -1002,7 +1029,7 @@ public abstract class AssistantChat extends TopComponent {
         Preferences prefs = Preferences.userNodeForPackage(this.getClass());
         prefs.put(QUESTION_KEY, questionPane.getText());
     }
-    
+
     public JPanel getParentPanel() {
         return parentPanel;
     }
@@ -1118,7 +1145,7 @@ public abstract class AssistantChat extends TopComponent {
                 }
 
                 //
-                // For each EditoPane (i.e. code block) collect the method,
+                // For each EditorPane (i.e. code block) collect the method,
                 // class and interface signatures parsing the block first as a
                 // method, if it fails, as a class, if it fails as an interface.
                 // For each element the corresponding code is also saved in the
@@ -1278,6 +1305,68 @@ public abstract class AssistantChat extends TopComponent {
         }
     }
 
+    public Project getProject() {
+        return project;
+    }
+
+    public Project selectProject() {
+        final Project[] openProjects = org.netbeans.api.project.ui.OpenProjects.getDefault().getOpenProjects();
+        if (openProjects.length == 1) {
+            project = openProjects[0];
+            DialogDisplayer.getDefault().notify(
+                    new NotifyDescriptor.Message(
+                            "Connected chat to project: " + ProjectUtils.getInformation(project).getDisplayName(),
+                            NotifyDescriptor.INFORMATION_MESSAGE
+                    )
+            );
+        } else if (openProjects.length > 1) {
+            JComboBox<Project> projectComboBox = new JComboBox<>(openProjects);
+            projectComboBox.setRenderer(new javax.swing.ListCellRenderer<>() {
+                private final javax.swing.DefaultListCellRenderer defaultRenderer = new javax.swing.DefaultListCellRenderer();
+
+                @Override
+                public java.awt.Component getListCellRendererComponent(javax.swing.JList<? extends Project> list, Project value, int index, boolean isSelected, boolean cellHasFocus) {
+                    String displayName = (value == null) ? "" : ProjectUtils.getInformation(value).getDisplayName();
+                    return defaultRenderer.getListCellRendererComponent(list, displayName, index, isSelected, cellHasFocus);
+                }
+            });
+            NotifyDescriptor descriptor = new NotifyDescriptor(
+                    projectComboBox,
+                    "Select Project for AI Agent Mode",
+                    NotifyDescriptor.OK_CANCEL_OPTION,
+                    NotifyDescriptor.QUESTION_MESSAGE,
+                    null,
+                    NotifyDescriptor.OK_OPTION
+            );
+            Object dialogResult = DialogDisplayer.getDefault().notify(descriptor);
+            if (NotifyDescriptor.OK_OPTION.equals(dialogResult)) {
+                Project selectedProject = (Project) projectComboBox.getSelectedItem();
+                if (selectedProject != null) {
+                    project = selectedProject;
+                    DialogDisplayer.getDefault().notify(
+                            new NotifyDescriptor.Message(
+                                    "Connected chat to project: " + ProjectUtils.getInformation(project).getDisplayName(),
+                                    NotifyDescriptor.INFORMATION_MESSAGE
+                            )
+                    );
+
+                    return project;
+                }
+            }
+        } else {
+            NotifyDescriptor.Message msg = new NotifyDescriptor.Message(
+                    "To use AI agent mode, connect chat to any project by dropping any source file on chat window or start new chat from project/package/source file context.",
+                    NotifyDescriptor.WARNING_MESSAGE
+            );
+            DialogDisplayer.getDefault().notify(msg);
+            actionComboBox.setSelectedItem(InteractionMode.ASK);
+        }
+
+        return null;
+    }
+
+    // --------------------------------------------------------- private methods
+
     private boolean isAnonymousInnerMethod(MethodDeclaration method) {
         return method.getParentNode().isPresent() && method.getParentNode().get() instanceof ObjectCreationExpr;
     }
@@ -1390,6 +1479,19 @@ public abstract class AssistantChat extends TopComponent {
 
     public void setReviews(List<Review> reviews) {
         this.reviews = reviews;
+    }
+
+    private String interactionModeTooltip() {
+        final StringBuffer sb = new StringBuffer("<html>");
+        on(InteractionMode.values()).loop((mode) -> {
+            sb.append("<b>").append(mode.toString()).append("</b> - ");
+            sb.append(
+                NbBundle.getMessage(AssistantChat.class, mode.name())
+            ).append("<br>");
+        });
+        sb.append("</html>");
+
+        return sb.toString();
     }
 
 }

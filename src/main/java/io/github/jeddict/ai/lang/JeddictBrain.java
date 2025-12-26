@@ -21,53 +21,46 @@ package io.github.jeddict.ai.lang;
  */
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.agent.AgentBuilder;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.Content;
-import dev.langchain4j.data.message.ImageContent;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.service.AiServices;
 import io.github.jeddict.ai.agent.AbstractTool;
-import io.github.jeddict.ai.agent.Assistant;
+import io.github.jeddict.ai.agent.HumanInTheMiddleWrapper;
+import io.github.jeddict.ai.agent.ToolsProber;
+import io.github.jeddict.ai.agent.ToolsProbingTool;
 import io.github.jeddict.ai.agent.pair.PairProgrammer;
-import io.github.jeddict.ai.response.Response;
-import io.github.jeddict.ai.response.TokenHandler;
-import io.github.jeddict.ai.scanner.ProjectMetadataInfo;
-import io.github.jeddict.ai.settings.PreferencesManager;
+import static io.github.jeddict.ai.lang.InteractionMode.INTERACTIVE;
 import io.github.jeddict.ai.util.PropertyChangeEmitter;
-import io.github.jeddict.ai.util.Utilities;
 import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
+import java.util.Map;
+import java.util.function.Function;
 import java.util.logging.Logger;
-import org.netbeans.api.project.Project;
+import static ste.lloop.Loop.on;
 
 public class JeddictBrain implements PropertyChangeEmitter {
 
-    private static final Logger LOG = Logger.getLogger(JeddictBrain.class.getCanonicalName());
-
-    private static final String SYSTEM_INSTRUCTIONS = "All code must be in fenced ```language blocks; never output unfenced code.";
+    private final Logger LOG = Logger.getLogger(JeddictBrain.class.getCanonicalName());
 
     private int memorySize = 0;
 
+    private static final String EVENT_NAME_PREFIX = EventProperty.class.getPackageName() + ".event.";
     public enum EventProperty {
-        CHAT_TOKENS("chatTokens"),
-        CHAT_ERROR("chatError"),
-        CHAT_COMPLETED("chatComplete"),
-        CHAT_PARTIAL("chatPartial"),
-        CHAT_INTERMEDIATE("chatIntermediate"),
-        TOOL_BEFORE_EXECUTION("toolBeforeExecution"),
-        TOOL_EXECUTED("toolExecuted")
-        ;
+        CHAT_ERROR(EVENT_NAME_PREFIX + "chat.error"),
+        CHAT_COMPLETED(EVENT_NAME_PREFIX + "chat.completed"),
+        CHAT_PARTIAL(EVENT_NAME_PREFIX + "chat.partial"),
+        CHAT_INTERMEDIATE(EVENT_NAME_PREFIX + "chat.intermediate"),
+        REQUEST_START(EVENT_NAME_PREFIX + "request.start"),
+        REQUEST_END(EVENT_NAME_PREFIX + "request.end"),
+        REQUEST_ERROR(EVENT_NAME_PREFIX + "request.error"),
+        TOOL_EXECUTING(EVENT_NAME_PREFIX + "tool.executing"),
+        TOOL_EXECUTED(EVENT_NAME_PREFIX + "tool.executed");
 
         public final String name;
 
@@ -76,43 +69,87 @@ public class JeddictBrain implements PropertyChangeEmitter {
         }
     }
 
-    public static String UNSAVED_PROMPT = "Unsaved user message";
+    public final InteractionMode mode;
+    public final boolean streaming;
 
-    public final Optional<ChatModel> chatModel;
-    public final Optional<StreamingChatModel> streamingChatModel;
     protected final List<AbstractTool> tools;
 
     public final String modelName;
 
+    protected Map<String, Boolean> probedModels = new HashMap(); // per instance on purpose to avoid race conditions
+
+    private Function<String, Boolean> defaultInteraction = (text) -> {
+        throw new ToolExecutionException("Write, unknown and null policy tools can not be executed");
+    };
+
     public JeddictBrain(
         final boolean streaming
     ) {
-        this("", streaming, List.of());
+        this("", streaming, InteractionMode.ASK, null, List.of());
+    }
+
+    public JeddictBrain(
+        final String modelName, final boolean streaming
+    ) {
+        this(modelName, streaming, InteractionMode.ASK, null, List.of());
     }
 
     public JeddictBrain(
         final String modelName,
         final boolean streaming,
+        final InteractionMode mode,
+        final List<AbstractTool> tools
+    ) {
+        this(modelName, streaming, mode, null, tools);
+    }
+
+    public JeddictBrain(
+        final String modelName,
+        final boolean streaming,
+        final InteractionMode mode,
+        final Function<String, Boolean> defaultInteraction,
         final List<AbstractTool> tools
     ) {
         if (modelName == null) {
             throw new IllegalArgumentException("modelName can not be null");
         }
         this.modelName = modelName;
+        this.streaming = streaming;
+        this.mode = mode;
 
-        final JeddictChatModelBuilder builder =
-            new JeddictChatModelBuilder(this.modelName);
+        //
+        // if interaction mode is INTERACTIVE, wrap the tools to make sure
+        // human in the middle is pplied (See HumanInTheMiddleWrapper)
+        //
+        if ((tools != null) && !tools.isEmpty()) {
+            switch (this.mode) {
+                case INTERACTIVE -> {
+                    if (defaultInteraction != null) {
+                        this.defaultInteraction = defaultInteraction;
+                    }
+                    final HumanInTheMiddleWrapper wrapper =
+                        new HumanInTheMiddleWrapper(this.defaultInteraction);
 
-        if (streaming) {
-            this.streamingChatModel = Optional.of(builder.buildStreaming());
-            this.chatModel = Optional.empty();
+                    this.tools = new ArrayList();
+                    on(tools).loop(
+                        (tool) -> this.tools.add(wrapper.wrap(tool))
+                    );
+                }
+
+                case AGENT -> {
+                    this.defaultInteraction = null;
+                    this.tools = List.copyOf(tools); // make an immutable copy
+                }
+
+                default -> {
+                    this.defaultInteraction = null;
+                    this.tools = List.of();
+                }
+            }
         } else {
-            this.chatModel = Optional.of(builder.build());
-            this.streamingChatModel = Optional.empty();
+            this.defaultInteraction = null;
+            this.tools = List.of();
         }
-        this.tools = (tools != null)
-                   ? List.of(tools.toArray(new AbstractTool[0])) // immutable
-                   : List.of();
     }
 
     /**
@@ -135,231 +172,72 @@ public class JeddictBrain implements PropertyChangeEmitter {
         if (size < 0) {
             throw new IllegalArgumentException("size must be greather than 0 (where 0 means no memory)");
         }
-        this.memorySize = size; return this;
-    }
-
-    public String generate(final Project project, final String prompt) {
-        return generateInternal(project, false, prompt, null, null);
-    }
-
-    public String generate(final Project project, final String prompt, List<String> images, List<Response> responseHistory) {
-        return generateInternal(project, false, prompt, images, responseHistory);
-    }
-
-    public String generate(final Project project, boolean agentEnabled, final String prompt) {
-        return generateInternal(project, agentEnabled, prompt, null, null);
-    }
-
-    public String generate(final Project project, boolean agentEnabled, final String prompt, List<String> images, List<Response> responseHistory) {
-        return generateInternal(project, agentEnabled, prompt, images, responseHistory);
-    }
-
-    public UserMessage buildUserMessage(String prompt, List<String> imageBase64Urls) {
-        List<Content> parts = new ArrayList<>();
-
-        // Add the prompt text
-        parts.add(new TextContent(prompt));
-
-        // Add each image as ImageContent
-        for (String imageUrl : imageBase64Urls) {
-            parts.add(new ImageContent(imageUrl));
-        }
-
-        // Convert list to varargs
-        return UserMessage.from(parts.toArray(new Content[0]));
-    }
-
-    //
-    // TODO: P3 - better use of langchain4j functionalities (see https://docs.langchain4j.dev/tutorials/agents)
-    // TODO: P3 - after refactory project should not be needed any more
-    //
-    private String generateInternal(Project project, boolean agentEnabled, String prompt, List<String> images, List<Response> responseHistory) {
-        if (chatModel.isEmpty() && streamingChatModel.isEmpty()) {
-            throw new IllegalStateException("AI assistant model not intitalized, this looks like a bug!");
-        }
-
-        if (project != null) {
-            prompt = prompt + "\n" + ProjectMetadataInfo.get(project);
-        }
-        StringBuilder systemMessage = new StringBuilder();
-        String globalRules = PreferencesManager.getInstance().getGlobalRules();
-        if (globalRules != null) {
-            systemMessage.append(globalRules);
-        }
-        if (project != null) {
-            String projectRules = PreferencesManager.getInstance().getProjectRules(project);
-            if (projectRules != null) {
-                systemMessage.append('\n').append(projectRules);
-            }
-        }
-        if (systemMessage.length() > 0) {
-            systemMessage.append('\n');
-        }
-        systemMessage.append(SYSTEM_INSTRUCTIONS);
-        List<ChatMessage> messages = new ArrayList<>();
-        if (systemMessage.length() > 0) {
-            messages.add(SystemMessage.from(systemMessage.toString()));
-        }
-
-        //
-        // add conversation history (multiple responses)
-        //
-        // Note that the query can be null when the conversation started from
-        // AssistantChatManager.performRewrite() (i.e. from an AI hint)
-        //
-        if (responseHistory != null && !responseHistory.isEmpty()) {
-            for (Response res : responseHistory) {
-                final String q = (res.getQuery() != null)
-                               ? res.getQuery() : UNSAVED_PROMPT;
-                messages.add(UserMessage.from(q));
-                messages.add(AiMessage.from(res.toString()));
-            }
-        }
-
-        if (images != null && !images.isEmpty()) {
-            messages.add(buildUserMessage(prompt, images));
-        } else {
-            messages.add(UserMessage.from(prompt));
-        }
-        //
-        // TODO: P3 - decouple token counting from saving stats; saving stats should listen to this event
-        //
-        fireEvent(EventProperty.CHAT_TOKENS, TokenHandler.saveInputToken(messages));
-
-        final StringBuilder response = new StringBuilder();
-        try {
-
-            if (streamingChatModel.isPresent()) {
-                if(agentEnabled) {
-                    final Assistant assistant = AiServices.builder(Assistant.class)
-                        .streamingChatModel(streamingChatModel.get())
-                        .tools(tools.toArray())
-                        .build();
-
-                    assistant.stream(messages)
-                        .onCompleteResponse(complete -> {
-                            fireEvent(EventProperty.CHAT_COMPLETED, complete);
-                        })
-                        .onPartialResponse(partial -> {
-                            fireEvent(EventProperty.CHAT_PARTIAL, partial);
-                        })
-                        .onIntermediateResponse(intermediate -> fireEvent(EventProperty.CHAT_INTERMEDIATE, intermediate))
-                        .beforeToolExecution(execution -> fireEvent(EventProperty.TOOL_BEFORE_EXECUTION, execution))
-                        .onToolExecuted(execution -> fireEvent(EventProperty.TOOL_EXECUTED, execution))
-                        .onError(error -> {
-                            fireEvent(EventProperty.CHAT_ERROR, error);
-                        })
-                        .start();
-                } else {
-                    streamingChatModel.get().chat(messages, new StreamingChatResponseHandler() {
-                        @Override
-                        public void onPartialResponse(final String partial) {
-                            fireEvent(EventProperty.CHAT_PARTIAL, partial);
-                        }
-
-                        @Override
-                        public void onCompleteResponse(final ChatResponse completed) {
-                            fireEvent(EventProperty.CHAT_COMPLETED, completed);
-                        }
-
-                        @Override
-                        public void onError(final Throwable error) {
-                            fireEvent(EventProperty.CHAT_ERROR, error);
-                        }
-                    });
-                }
-            } else {
-                final ChatModel model = chatModel.get();
-
-                dev.langchain4j.model.output.Response<AiMessage> aiResponse;
-                ChatResponse chatResponse;
-                if (agentEnabled) {
-                    Assistant assistant = AiServices.builder(Assistant.class)
-                            .chatModel(model)
-                            .tools(tools.toArray())
-                            .build();
-                    aiResponse = assistant.chat(messages);
-                    chatResponse = ChatResponse.builder().aiMessage(aiResponse.content()).build();
-                } else {
-                    chatResponse = model.chat(messages);
-                }
-                fireEvent(EventProperty.CHAT_COMPLETED, chatResponse);
-                response.append(chatResponse.aiMessage().text());
-
-                //
-                // TODO: the token count is in the response
-                CompletableFuture.runAsync(() -> TokenHandler.saveOutputToken(response.toString()));
-            }
-        } catch (Exception x) {
-            LOG.finest(() -> "Communication error: " + x.getMessage());
-            response.append(Utilities.errorHTMLBlock(x));
-            fireEvent(EventProperty.CHAT_ERROR, x);
-        }
-
-        LOG.finest(() -> "Returning " + response);
-
-        return response.toString();
+        this.memorySize = size;
+        return this;
     }
 
     /**
-     * Creates and configures a pair programmer agent based on the specified specialist.
+     * Creates and configures a pair programmer agent based on the specified
+     * specialist.
      *
      * @param <T> the type of the agent to be created
-     * @param specialist the specialist that defines the type of the agent and its behavior
+     * @param specialist the specialist that defines the type of the agent and
+     * its behavior
      *
      * @return an instance of the configured agent
      */
-    public <T> T pairProgrammer(final PairProgrammer.Specialist specialist) {
-        AgentBuilder<T> builder =
-            AgenticServices.agentBuilder(specialist.specialistClass)
-            .chatModel(chatModel.get());
+    public <T> T pairProgrammer(PairProgrammer.Specialist specialist) {
+        //
+        // HACKER is a top level AI agent that interacts with the user. As such,
+        // it must support many more functionalities then other agents and
+        // overcome some design limitations currently in langchain4j agents (see
+        // https://github.com/langchain4j/langchain4j/issues/4098,
+        // https://github.com/langchain4j/langchain4j/issues/4177,
+        // https://github.com/langchain4j/langchain4j/issues/3519 )
+        //
+        // Assistant is a top level tool, but for generale enquiries and
+        // interactions with the AI. It is mainly for use in QUERY interaction
+        // mode. Since it supports streaming, we need to use AiServices.
+        //
+        if (
+            (specialist == PairProgrammer.Specialist.HACKER) ||
+            (specialist == PairProgrammer.Specialist.ASSISTANT) ||
+            (specialist == PairProgrammer.Specialist.HACKER_WITHOUT_TOOLS)) {
+            if (specialist == PairProgrammer.Specialist.HACKER) {
+                if (!probeToolSupport()) {
+                    specialist = PairProgrammer.Specialist.HACKER_WITHOUT_TOOLS;
+                }
+            }
+
+            final AiServices builder = AiServices.builder(specialist.specialistClass);
+            if (streaming) {
+                builder.streamingChatModel(model());
+            } else {
+                builder.chatModel(model());
+            }
+            if (memorySize > 0) {
+                builder.chatMemory(MessageWindowChatMemory.withMaxMessages(memorySize));
+            }
+            if (specialist == PairProgrammer.Specialist.HACKER) {
+                builder.tools(tools.toArray());
+            }
+
+
+            return (T) builder.build();
+        }
+
+        //
+        // Build normal utility agents
+        //
+        final AgentBuilder<T> builder
+                = AgenticServices.agentBuilder(specialist.specialistClass)
+                        .chatModel(model());
 
         if (memorySize > 0) {
             builder.chatMemory(MessageWindowChatMemory.withMaxMessages(memorySize));
         }
 
-        return (T)builder.build();
-    }
-
-    public String generateDescription(
-        final Project project,
-        final String source, final String methodContent, final List<String> images,
-        final List<Response> previousChatResponse, final String userQuery,
-        final String sessionRules
-    ) {
-        return generateDescription(project, false, source, methodContent, images, previousChatResponse, userQuery, sessionRules);
-    }
-
-    public String generateDescription(
-        final Project project, final boolean agentEnabled,
-        final String source, final String methodContent, final List<String> images,
-        final List<Response> previousChatResponse, final String userQuery,
-        final String sessionRules
-    ) {
-        StringBuilder prompt = new StringBuilder();
-        if (sessionRules != null && !sessionRules.isEmpty()) {
-            prompt.append(sessionRules).append("\n\n");
-        }
-
-        if (methodContent != null) {
-            prompt.append("Method Content:\n")
-                    .append(methodContent)
-                    .append("\n\nDo not return complete Java Class, return only Method");
-        } else if (source != null) {
-            prompt.append("Source:\n")
-                    .append(source)
-                    .append("\n\n");
-        }
-        prompt.append("User Query:\n")
-                .append(userQuery);
-        prompt.append("\nUser Query:");
-        
-
-        String response = generate(project, agentEnabled, prompt.toString(), images, previousChatResponse);
-
-        LOG.finest(response);
-
-        return response;
+        return (T) builder.build();
     }
 
     public void addProgressListener(final PropertyChangeListener listener) {
@@ -370,9 +248,123 @@ public class JeddictBrain implements PropertyChangeEmitter {
         removePropertyChangeListener(listener);
     }
 
+    // --------------------------------------------------------- private methods
+
+    protected boolean probeToolSupport() {
+        final String LOG_MSG = "model %s %s tools execution";
+
+        //
+        // If the model was already probed, return immediately the value
+        //
+        if (probedModels.containsKey(modelName)) {
+            final boolean toolsSupport = probedModels.get(modelName);
+            LOG.info(() ->
+                (LOG_MSG + " (cached)").formatted(modelName, (toolsSupport) ? "supports" : "does not support")
+            );
+            return toolsSupport;
+        }
+
+        LOG.finest(() -> "probing that %s supports tools".formatted(modelName));
+
+        //
+        // Otherwise probe the model by trying to trigger the execution of the
+        // ToolsProbingTool tool
+        //
+        final ToolsProbingTool probeTool = new ToolsProbingTool();
+        final ToolsProber prober = AgenticServices.agentBuilder(ToolsProber.class)
+            .chatModel(model(false))
+            .tools(probeTool)
+            .build();
+        final boolean toolsSupport = prober.probe(probeTool.probeText);
+
+        probedModels.put(modelName, toolsSupport);
+
+        LOG.info(
+            LOG_MSG.formatted(modelName, (toolsSupport) ? "supports" : "does not support")
+        );
+
+        return toolsSupport;
+    }
+
+    // --------------------------------------------------------- private methods
+
+    /**
+     * Returns a streaming or not streaming model based on preferred type provided
+     * in the constructor (and saved in {@code streaming}
+     *
+     * @param <T>
+     *
+     * @return the model
+     */
+    private <T> T model() {
+        return model(streaming);
+    }
+
+    /**
+     * Returns a streaming or not streaming model based on {@code usStreaming}
+     *
+     * @param <T>
+     * @param useStreaming
+     *
+     * @return the model
+     */
+    private <T> T model(final boolean useStreaming) {
+
+        final JeddictChatModelBuilder builder
+                = new JeddictChatModelBuilder(this.modelName, new TokenTrackingListener());
+
+        return (useStreaming) ? (T)builder.buildStreaming() : (T)builder.build();
+    }
+
+
     private void fireEvent(EventProperty property, Object value) {
-        LOG.finest(() -> "Firing event " + property + " with value " + value);
-        firePropertyChange(property.name, null, value);
+        fireEvent(property, null, value);
+    }
+
+    private void fireEvent(EventProperty property, Object oldValue, Object newValue) {
+        LOG.finest(() ->
+            "Firing event %s with values (%s,%s)"
+            .formatted(property, String.valueOf(oldValue), String.valueOf(newValue))
+        );
+        firePropertyChange(property.name, oldValue, newValue);
+    }
+
+    // --------------------------------------------------- TokenTrackingListener
+
+    private class TokenTrackingListener implements ChatModelListener {
+        /**
+         * The main purpose of this listener is to estimate the amount of tokens
+         * a request generates. However, there is not a standard definition of
+         * what a token is and what is considered a token derived from the
+         * user messages and what is instead generated by the models.
+         * Models can turn the provided prompt and tool definition into something
+         * more digestible for the model and count the added tokens.
+         * Therefore, instead of trying to approximate closely what the AI model
+         * may consider a token the estimation extracted here is based on the
+         * {@code String.valueOf()} of the context's request.
+         *
+         * @param context
+         */
+        @Override
+        public void onRequest(final ChatModelRequestContext context) {
+            fireEvent(
+                EventProperty.REQUEST_START, context.chatRequest()
+            );
+        }
+
+        @Override
+        public void onResponse(final ChatModelResponseContext context) {
+            fireEvent(
+                EventProperty.REQUEST_END, context.chatRequest(), context.chatResponse()
+            );
+        }
+
+        @Override
+        public void onError(final ChatModelErrorContext context) {
+            fireEvent(
+                EventProperty.REQUEST_ERROR, context.error()
+            );
+        }
     }
 
 }
