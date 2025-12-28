@@ -764,10 +764,6 @@ public class AssistantChatManager extends JavaFix {
             protected void done() {
                 try {
                     String response = get(); // This retrieves the return value from doInBackground
-                    //
-                    // TODO: BUG #214 - onCompleteResponse() called twice in AssistantChatManager
-                    // This can be removed or handled here if response is null for streaming
-                    //
                     if (response != null && !response.isEmpty()) {
                         handler.onCompleteResponse(ChatResponse.builder().aiMessage(new AiMessage(response)).build());
                     }
