@@ -84,11 +84,13 @@ public class FileSystemTools extends AbstractCodeTool {
              return "ERR: invalid directory " + path;
         }
 
+        final Pattern pattern = ((regexPattern == null) || regexPattern.isBlank())
+                              ? null : Pattern.compile(regexPattern);
+
         try (Stream<Path> stream = Files.walk(startDir)) {
             Stream<Path> fileStream = stream.filter(p -> !Files.isDirectory(p));
 
-            if (regexPattern != null && !regexPattern.isEmpty()) {
-                Pattern pattern = Pattern.compile(regexPattern);
+            if (pattern != null) {
                 fileStream = fileStream.filter(p -> pattern.matcher(p.toAbsolutePath().toString()).find());
             }
 
