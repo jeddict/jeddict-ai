@@ -43,6 +43,7 @@ public class TestBase {
     public final static String USER = "user";
 
     protected String projectDir;
+    protected Path projectPath;
     protected DummyLogHandler logHandler;
     //
     // Settings are currently saved in a file in the user home (see
@@ -56,7 +57,8 @@ public class TestBase {
 
     @BeforeEach
     public void beforeEach() throws Exception {
-        projectDir = HOME.resolve("dummy-project").toString();
+        projectPath = HOME.resolve("dummy-project");
+        projectDir = projectPath.toString();
 
         Logger logger = Logger.getLogger("io.github.jeddict.ai");
         logger.setLevel(Level.ALL);
@@ -67,10 +69,10 @@ public class TestBase {
             w.append("This is a test file content for real file testing.");
         }
 
-        Files.copy(Paths.get(
-        "src/test/resources/settings/jeddict.json"),
-        HOME.resolve("jeddict.json"),
-        StandardCopyOption.REPLACE_EXISTING
+        Files.copy(
+            Paths.get("src/test/resources/settings/jeddict.json"),
+            HOME.resolve("jeddict.json"),
+            StandardCopyOption.REPLACE_EXISTING
         );
 
         //

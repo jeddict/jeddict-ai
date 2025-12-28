@@ -192,4 +192,99 @@ public class FileSystemToolsTest extends TestBase {
         // TODO: logging
         //
     }
+
+    @Test
+    public void findFiles_finds_single_file() throws Exception {
+        final FileSystemTools tools = new FileSystemTools(projectDir);
+        final String directory = ".";
+        final String pattern = ".*testfile\\.txt";
+
+        final List<PropertyChangeEvent> events = new ArrayList<>();
+        tools.addPropertyChangeListener(evt -> events.add(evt));
+
+        String result = tools.findFiles(directory, pattern);
+
+        then(result).contains("folder/testfile.txt");
+        then(events).extracting(PropertyChangeEvent::getPropertyName).contains(PROPERTY_MESSAGE);
+    }
+
+    @Test
+    public void findFiles_finds_multiple_files() throws Exception {
+        final FileSystemTools tools = new FileSystemTools(projectDir);
+
+        // Create another file
+        Path extraFile = projectPath.resolve("folder/otherfile.txt");
+        Files.writeString(extraFile, "content");
+
+        final String directory = "folder";
+        final String pattern = ".*\\.txt";
+
+        String result = tools.findFiles(directory, pattern);
+
+        then(result).contains("folder/testfile.txt");
+        then(result).contains("folder/otherfile.txt");
+    }
+
+    @Test
+    public void findFiles_matches_folder_name() throws Exception {
+        final FileSystemTools tools = new FileSystemTools(projectDir);
+
+        // Create a specific folder structure
+        Path specialDir = projectPath.resolve("special_dir");
+        Files.createDirectories(specialDir);
+        Path specialFile = specialDir.resolve("content.data");
+        Files.writeString(specialFile, "data");
+
+        final String directory = ".";
+        // Search for anything containing "special_dir" in the path
+        final String pattern = ".*special_dir.*";
+
+        String result = tools.findFiles(directory, pattern);
+
+        then(result).contains("special_dir/content.data");
+    }
+
+    @Test
+    public void findFiles_no_matches() throws Exception {
+        final FileSystemTools tools = new FileSystemTools(projectDir);
+        final String directory = ".";
+        final String pattern = ".*missing\\.txt";
+
+        String result = tools.findFiles(directory, pattern);
+
+        then(result).isEqualTo("");
+    }
+
+    @Test
+    public void findFiles_empty_pattern_returns_all_files() throws Exception {
+        final FileSystemTools tools = new FileSystemTools(projectDir);
+
+        // Create another file in a subfolder
+        Path extraFile = projectPath.resolve("folder/otherfile.txt");
+        Files.writeString(extraFile, "content");
+
+        final String directory = ".";
+        final String pattern = ""; // Empty pattern
+
+        String result = tools.findFiles(directory, pattern);
+
+        then(result).contains("folder/testfile.txt");
+        then(result).contains("folder/otherfile.txt");
+    }
+
+    @Test
+    public void findFiles_directory_not_found() throws Exception {
+        final FileSystemTools tools = new FileSystemTools(projectDir);
+        final String directory = "nonexistent";
+        final String pattern = ".*";
+
+        final List<PropertyChangeEvent> events = new ArrayList<>();
+        tools.addPropertyChangeListener(evt -> events.add(evt));
+
+        String result = tools.findFiles(directory, pattern);
+
+        then(result).isEqualTo("ERR: invalid directory " + directory);
+        then(events).extracting(PropertyChangeEvent::getNewValue)
+                .contains("❌ invalid directory: " + directory);
+    }
 }

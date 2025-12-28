@@ -25,6 +25,7 @@ import io.github.jeddict.ai.lang.InteractionMode;
 import static io.github.jeddict.ai.classpath.JeddictQueryCompletionQuery.JEDDICT_EDITOR_CALLBACK;
 import static io.github.jeddict.ai.components.QueryPane.createIconButton;
 import static io.github.jeddict.ai.components.QueryPane.createStyledComboBox;
+import io.github.jeddict.ai.components.diff.DiffPane;
 import io.github.jeddict.ai.components.mermaid.MermaidPane;
 import static io.github.jeddict.ai.models.registry.GenAIProvider.getModelsByProvider;
 import io.github.jeddict.ai.response.Block;
@@ -97,6 +98,7 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.util.logging.Logger;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -141,6 +143,8 @@ import static ste.lloop.Loop.on;
 public abstract class AssistantChat extends TopComponent {
 
     private static final String SPINNER_FRAMES = "◐◓◑◒";
+
+    private final Logger LOG = Logger.getLogger(AssistantChat.class.getCanonicalName());
 
     private List<Review> reviews;
     public static final ImageIcon icon = new ImageIcon(AssistantChat.class.getResource("/icons/logo16.png"));
@@ -881,6 +885,15 @@ public abstract class AssistantChat extends TopComponent {
         addContextMenu(sourcePane);
         addEditorPaneRespectingTextArea(pane);
         return pane;
+    }
+
+    public DiffPane createDiffPane(final String path, final String content) {
+        LOG.finest(() -> "createDiffPane for interaction " + path);
+        final DiffPane diffPane = new DiffPane(getProject(), path, content);
+        diffPane.createPane();
+        addEditorPaneRespectingTextArea(diffPane);
+
+        return diffPane;
     }
 
     private void addContextMenu(JEditorPane editorPane) {

@@ -16,6 +16,7 @@
 package io.github.jeddict.ai.test;
 
 import java.io.File;
+import java.nio.file.Path;
 import org.netbeans.api.project.Project;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
@@ -53,6 +54,14 @@ public class DummyProject implements Project {
         this.projectDir = projectDir;
         this.instances = new InstanceContent();
         this.lookup = new AbstractLookup(instances);
+    }
+
+    public DummyProject(final Path projectDir) {
+        this((projectDir == null) ? (File)null : projectDir.toFile());
+    }
+
+    public DummyProject(final String projectDir) {
+        this((projectDir == null) ? (File)null : new File(projectDir));
     }
 
     @Override

@@ -27,6 +27,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import io.github.jeddict.ai.JeddictUpdateManager;
 import io.github.jeddict.ai.agent.AbstractTool;
+import io.github.jeddict.ai.agent.DiffTools;
 import io.github.jeddict.ai.agent.ExecutionTools;
 import io.github.jeddict.ai.agent.ExplorationTools;
 import io.github.jeddict.ai.agent.FileSystemTools;
@@ -81,7 +82,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.logging.Logger;
@@ -796,8 +796,7 @@ public class AssistantChatManager extends JavaFix {
             mode,
             (message)-> {
                 try {
-                    Future<Boolean> ok = ac.promptConfirmation(message);
-                    return ok.get();
+                    return ac.promptConfirmation(message).get();
                 } catch (InterruptedException | ExecutionException x) {
                     return false;
                 }
@@ -956,24 +955,29 @@ public class AssistantChatManager extends JavaFix {
             .toAbsolutePath().normalize()
             .toString();
 
+        final List<AbstractTool> toolsList = new ArrayList();
+
+        //
+        // Tools for interactive mode
+        //
+        if (mode == INTERACTIVE) {
+            toolsList.add(new DiffTools(basedir, ac));
+        }
+
         //
         // Tools commmon to both AGENT and INTERACTIVE mode
         //
-        final List<AbstractTool> toolsList = new ArrayList(List.of(
+        toolsList.add(new FileSystemTools(basedir));
+        toolsList.add(
             new ExecutionTools(
                 basedir, project.getProjectDirectory().getName(),
                 pm.getBuildCommand(project), pm.getTestCommand(project)
-            ),
-            new ExplorationTools(basedir, project.getLookup()),
-            new FileSystemTools(basedir),
-            new GradleTools(basedir),
-            new MavenTools(basedir),
-            new RefactoringTools(basedir)
-        ));
-
-        if (mode == INTERACTIVE) {
-//            toolsList.add(new DiffTools());
-        }
+            )
+        );
+        toolsList.add(new ExplorationTools(basedir, project.getLookup()));
+        toolsList.add(new GradleTools(basedir));
+        toolsList.add(new MavenTools(basedir));
+        toolsList.add(new RefactoringTools(basedir));
 
         //
         // The handler wants to know about tool execution

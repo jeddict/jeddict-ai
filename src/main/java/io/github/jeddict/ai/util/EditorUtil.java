@@ -103,6 +103,11 @@ public class EditorUtil {
         Block actionBlock = null;
         for (Block block : response.getBlocks()) {
             LOG.finest(() -> ("block:\n" + block));
+            if ("action".equals(block.getType())) {  // TODO: maybe we do not need it?
+                actionBlock = block;
+                continue;
+            }
+            LOG.finest("printing\n" + actionBlock + "\nand\n" + block);
             JComponent pane = printBlock(code, actionBlock, block, assistantChat);
             actionBlock = null;
             if (firstPane == null) {

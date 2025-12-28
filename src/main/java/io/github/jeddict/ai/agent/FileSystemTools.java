@@ -19,9 +19,11 @@ import dev.langchain4j.agent.tool.Tool;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.*;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READONLY;
 import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READWRITE;
 
@@ -53,6 +55,58 @@ public class FileSystemTools extends AbstractCodeTool {
             return content;
         } catch (IOException e) {
             progress("❌ Failed to read file: " + e.getMessage());
+            throw e;
+        }
+    }
+
+    /**
+     * Searches for files in the file system given a directory and a regex pattern.
+     * The tool scans all folders and subfolders of the given directory.
+     *
+     * @param path the directory path relative to the project to start the search from
+     * @param regexPattern the regex pattern to match against the absolute path of the files
+     * @return a list of matching file paths, or an empty string if none were found
+     */
+    @Tool("""
+    Recursively find files in a directory that match a regex pattern. The pattern
+    is matched against the full path of the file. Returns a newline-separated list
+    of relative file paths, or an empty string if no matches are found.
+    It returns an error message starting with "ERR:" if the starting path does not exist.
+    If the pattern is empty, it matches all files.
+    """)
+    @ToolPolicy(READONLY)
+    public String findFiles(String path, String regexPattern) throws Exception {
+        progress("🔎 Searching for files matching '" + regexPattern + "' in directory '" + path + "'");
+        Path startDir = fullPath(path);
+
+        if (!Files.exists(startDir) || !Files.isDirectory(startDir)) {
+             progress("❌ invalid directory: " + path);
+             return "ERR: invalid directory " + path;
+        }
+
+        try (Stream<Path> stream = Files.walk(startDir)) {
+            Stream<Path> fileStream = stream.filter(p -> !Files.isDirectory(p));
+
+            if (regexPattern != null && !regexPattern.isEmpty()) {
+                Pattern pattern = Pattern.compile(regexPattern);
+                fileStream = fileStream.filter(p -> pattern.matcher(p.toAbsolutePath().toString()).find());
+            }
+
+            List<String> matches = fileStream
+                    .map(p -> basepath.relativize(p).toString())
+                    .sorted()
+                    .collect(Collectors.toList());
+
+            if (matches.isEmpty()) {
+                progress("⚠️ No matches found for pattern '" + regexPattern + "' in: " + path);
+                return "";
+            }
+
+            String result = String.join("\n", matches);
+            progress("✅ Found " + matches.size() + " matching files.");
+            return result;
+        } catch (IOException e) {
+            progress("❌ Error searching files: " + e.getMessage());
             throw e;
         }
     }
@@ -220,11 +274,11 @@ public class FileSystemTools extends AbstractCodeTool {
     """)
     @ToolPolicy(READONLY)
     public String listFilesInDirectory(String path) throws Exception {
-        progress("📂 Listing contents of directory: " + path);
+        progress("📂 Listing content of directory: " + path);
         Path dirPath = fullPath(path);
 
         if (!Files.isDirectory(dirPath)) {
-            progress("⚠️ Directory not found: " + path);
+            progress("❌ invalid directory: " + path);
             return "Directory not found: " + path;
         }
 
