@@ -44,6 +44,8 @@ import org.netbeans.api.diff.StreamSource;
 import org.netbeans.api.project.Project;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
+import org.openide.loaders.DataObject;
+import org.openide.loaders.DataObjectNotFoundException;
 import org.openide.util.Exceptions;
 
 /**
@@ -60,6 +62,7 @@ public class DiffPane extends JPanel {
 
     private final JTabbedPane sourcePane;
     private DiffView diffView;
+    private JEditorPane sourceView;
 
     /**
      * Constructs a new {@code ActionPane}.
@@ -89,12 +92,19 @@ public class DiffPane extends JPanel {
         final JButton btnReject = new JButton("Reject");
 
         btnAccept.addActionListener((ActionEvent event) -> {
-            LOG.finest(()-> "onDone with action %s".formatted(ACCEPT));
+            //
+            // Save the content (if diffView is null, there is no diff and a new
+            // file is created saving the proposed wource
+            //
+            LOG.finest(() -> "changes accepted, saving %s".formatted(new File(project.getProjectDirectory().getPath(), path).toString()));
 
             //
-            // Save the content
+            // update the source text with the content of the source editor so
+            // that in the case of a new file, save() will use the latest text
             //
-            diffView.saveBase();
+            ctrl.content = sourceView.getText();
+
+            ctrl.save();
 
             //
             // Call tool's callback
@@ -114,6 +124,7 @@ public class DiffPane extends JPanel {
         });
 
         btnReject.addActionListener((ActionEvent event) -> {
+            LOG.finest("changes rejected");
             ctrl.onDone.accept(REJECT);
         });
 
@@ -151,6 +162,16 @@ public class DiffPane extends JPanel {
         if (fo != null) {
             LOG.finest("adding the diff tab");
             addDiffTab(fo, mimeType);
+            //
+            // find should not return null, it throws a DataObjectNotFoundException
+            // if the object is not found
+            //
+            try {
+                DataObject.find(ctrl.fileObject).addPropertyChangeListener(diffView);
+            } catch (DataObjectNotFoundException x) {
+                // nothign to do, the file should be there, unless deleted in
+                // the meantime
+            }
         }
 
         // suggested content tab
@@ -191,12 +212,12 @@ public class DiffPane extends JPanel {
     }
 
     private void addSourceTab(final String content, final String mimeType) {
-        JEditorPane editorPane = new JEditorPane();
+        sourceView = new JEditorPane();
         EditorKit editorKit = createEditorKit(mimeType);
-        editorPane.setEditorKit(editorKit);
-        editorPane.setText(ctrl.content);
-        editorPane.setEditable(true);
-        sourcePane.addTab("Source", new JScrollPane(editorPane));
+        sourceView.setEditorKit(editorKit);
+        sourceView.setText(ctrl.content);
+        sourceView.setEditable(true);
+        sourcePane.addTab("Source", new JScrollPane(sourceView));
     }
 
 }

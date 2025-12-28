@@ -32,10 +32,7 @@ import javax.swing.SwingUtilities;
 import org.netbeans.api.diff.DiffController;
 import org.netbeans.api.diff.StreamSource;
 import org.openide.awt.UndoRedo;
-import org.openide.cookies.SaveCookie;
 import org.openide.filesystems.FileObject;
-import org.openide.loaders.DataObject;
-import org.openide.util.Exceptions;
 import org.openide.util.ImageUtilities;
 import org.openide.util.Utilities;
 
@@ -52,7 +49,7 @@ public class DiffView extends JPanel implements PropertyChangeListener {
 
     private DiffController ctrl;
     private StreamSource baseSource;
-    private DataObject dataObject;
+
 
     /**
      * Creates new form SingleDiffPanel
@@ -77,13 +74,6 @@ public class DiffView extends JPanel implements PropertyChangeListener {
     public DiffView(final StreamSource modifiedSource, final FileStreamSource baseSource)
     throws IOException {
         this(modifiedSource, (StreamSource)baseSource);
-
-        //
-        // find should not return null, it throws a DataObjectNotFoundException
-        // if the object is not found
-        //
-        dataObject = DataObject.find(baseSource.fileObject);
-        dataObject.addPropertyChangeListener(this);
     }
 
     /**
@@ -230,29 +220,6 @@ public class DiffView extends JPanel implements PropertyChangeListener {
         return undoRedo;
     }
 
-    /**
-     * Save the content of the base file. This method is public to allow classes
-     * using it to save the content from outside the DiffView.
-     */
-    public void saveBase() {
-        LOG.finest(() -> "saving %s".formatted(baseSource));
-        if (!isEditable()) {
-            throw new IllegalStateException("base source is not editable, it can not be saved");
-        }
-
-        try {
-            SaveCookie saveCookie = dataObject.getLookup().lookup(SaveCookie.class);
-
-            // If there are unsaved changes, save the file
-            if (saveCookie != null) {
-                saveCookie.save();
-            }
-        } catch (IOException x) {
-            LOG.severe(() -> "error saving base " + baseSource + ": " + x.getMessage());
-            Exceptions.printStackTrace(x);
-        }
-    }
-
     // --------------------------------------------------------- private methods
 
     private void initMyComponents() {
@@ -295,15 +262,6 @@ public class DiffView extends JPanel implements PropertyChangeListener {
                 }
             }
         );
-    }
-
-    private boolean isEditable() {
-        return (baseSource instanceof FileStreamSource) &&
-            dataObject != null;
-    }
-
-    private boolean isModified() {
-        return isEditable() && (dataObject != null) && dataObject.isModified();
     }
 
     private FileObject getFileObject() {

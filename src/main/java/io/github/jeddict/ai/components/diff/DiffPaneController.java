@@ -6,6 +6,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.function.Consumer;
+import org.apache.commons.io.FileUtils;
+import org.openide.cookies.SaveCookie;
+import org.openide.filesystems.FileObject;
+import org.openide.filesystems.FileUtil;
+import org.openide.loaders.DataObject;
 import org.openide.util.Exceptions;
 
 /**
@@ -22,8 +27,9 @@ public class DiffPaneController {
     public final Project project;
     public final String path;
     public final String fullPath;
-    public final String content;
+    public final FileObject fileObject;
 
+    public String content = "";
     protected Consumer<UserAction> onDone = null;
 
     /**
@@ -50,6 +56,8 @@ public class DiffPaneController {
         this.path = path;
         this.fullPath = getValidatedFullPath(path);
         this.content = content;
+
+        this.fileObject = FileUtil.toFileObject(Paths.get(fullPath));
     }
 
     public String content() {
@@ -58,6 +66,40 @@ public class DiffPaneController {
         } catch (IOException x) {
             Exceptions.printStackTrace(x);
             return null;
+        }
+    }
+
+    /**
+     * Save the content of the base file. This method is public to allow classes
+     * using it to save the content from outside the DiffView.
+     */
+    public void save() {
+        try {
+            if (fileObject != null) {
+                //
+                // the file already existed, the diff editor has the latest
+                // version that can be saved with its cookie.
+                //
+
+                //
+                // find should not return null, it throws a DataObjectNotFoundException
+                // if the object is not found
+                //
+                final SaveCookie saveCookie = DataObject.find(fileObject).getLookup().lookup(SaveCookie.class);
+
+                // If there are unsaved changes, save the file
+                if (saveCookie != null) {
+                    saveCookie.save();
+                }
+            } else {
+                //
+                // it's a new file, content contains the text that is saved
+                // drirectly.
+                //
+                FileUtils.writeStringToFile(new File(fullPath), content, "UTF8");
+            }
+        } catch (IOException x) {
+            Exceptions.printStackTrace(x);
         }
     }
 

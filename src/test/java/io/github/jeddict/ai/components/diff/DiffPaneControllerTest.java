@@ -53,15 +53,16 @@ public class DiffPaneControllerTest extends TestBase {
         then(ctrl.project).isSameAs(P);
         then(ctrl.path).isSameAs(F);
         then(ctrl.fullPath).isEqualTo(new File(P.getProjectDirectory().getPath(), F).getAbsolutePath());
+        then(ctrl.fileObject).isNotNull();
     }
 
     @Test
-    public void creation_throws_exception_for_outside_project_dir() {
+    public void creation_throws_exception_for_outside_project_dir() throws Exception {
         final String PATH = "../outside.txt";
 
         assertThatThrownBy(() -> new DiffPaneController(P, PATH, C))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("file path '" + Paths.get(projectDir, PATH).toAbsolutePath().normalize() + "' must be within the project directory");
+                .hasMessage("file path '" + new File(projectDir, PATH).getCanonicalPath() + "' must be within the project directory");
     }
 
     @Test
