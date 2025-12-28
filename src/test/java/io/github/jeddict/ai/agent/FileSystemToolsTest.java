@@ -82,12 +82,23 @@ public class FileSystemToolsTest extends TestBase {
         final String content = "Sample content.";
 
         final FileSystemTools tools = new FileSystemTools(projectDir);
+        final List<PropertyChangeEvent> events = new ArrayList<>();
+        tools.addPropertyChangeListener(events::add);
+
         then(tools.createFile(path, content)).isEqualTo("File created");
         then(tools.createFile(path, content)).isEqualTo("File already exists: " + path);
 
-        //
-        // TODO: logging
-        //
+        // Logging assertions for progress messages
+        int i = 0;
+        then(events).hasSize(4);
+        then(events.get(i).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
+        then(events.get(i++).getNewValue()).isEqualTo("📄 Creating new file: " + path);
+        then(events.get(i).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
+        then(events.get(i++).getNewValue()).isEqualTo("✅ File created successfully: " + path);
+        then(events.get(i).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
+        then(events.get(i++).getNewValue()).isEqualTo("📄 Creating new file: " + path);
+        then(events.get(i).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
+        then(events.get(i++).getNewValue()).isEqualTo("⚠ File already exists: " + path);
     }
 
     @Test
@@ -97,14 +108,21 @@ public class FileSystemToolsTest extends TestBase {
 
         final Path fileToDelete = Paths.get(projectDir, path);
         then(fileToDelete).exists(); // just to make sure...
+
+        final List<PropertyChangeEvent> events = new ArrayList<>();
+        tools.addPropertyChangeListener(events::add);
+
         then(tools.deleteFile(path)).isEqualTo("File deleted");
         then(fileToDelete).doesNotExist();
 
         then(tools.deleteFile(path)).isEqualTo("File not found: " + path);
 
-        //
-        // TODO: logging
-        //
+        // Logging assertions for progress messages
+        then(events).extracting(PropertyChangeEvent::getNewValue).contains(
+                "🗑 Attempting to delete file: " + path,
+                "✅ File deleted successfully: " + path,
+                "⚠ File not found: " + path
+        );
     }
 
     @Test
@@ -113,13 +131,19 @@ public class FileSystemToolsTest extends TestBase {
         final String nonExistingDir = "nonexistingdir";
 
         final FileSystemTools tools = new FileSystemTools(projectDir);
+
+        final List<PropertyChangeEvent> events = new ArrayList<>();
+        tools.addPropertyChangeListener(events::add);
+
         then(tools.listFilesInDirectory(existingDir)).contains("testfile.txt");
 
         then(tools.listFilesInDirectory(nonExistingDir)).isEqualTo("Directory not found: " + nonExistingDir);
 
-        //
-        // TODO: logging
-        //
+        // Logging assertions for progress messages
+        then(events).extracting(PropertyChangeEvent::getNewValue).contains(
+                "📂 Listing content of directory: " + existingDir,
+                "❌ invalid directory: " + nonExistingDir
+        );
     }
 
     @Test
@@ -167,13 +191,17 @@ public class FileSystemToolsTest extends TestBase {
         final String path = "newdir";
 
         final FileSystemTools tools = new FileSystemTools(projectDir);
+        final List<PropertyChangeEvent> events = new ArrayList<>();
+        tools.addPropertyChangeListener(events::add);
 
         then(tools.createDirectory(path)).isEqualTo("Directory created");
         then(tools.createDirectory(path)).isEqualTo("Directory already exists: " + path);
 
-        //
-        // TODO: logging
-        //
+        // Logging assertions for progress messages
+        then(events).extracting(PropertyChangeEvent::getNewValue).contains(
+                "📂 Creating new directory: " + path,
+                "⚠ Directory already exists: " + path
+        );
     }
 
     @Test
@@ -185,12 +213,19 @@ public class FileSystemToolsTest extends TestBase {
 
         final FileSystemTools tools = new FileSystemTools(projectDir);
 
+        final List<PropertyChangeEvent> events = new ArrayList<>();
+        tools.addPropertyChangeListener(events::add);
+
         then(tools.deleteDirectory(path)).isEqualTo("Directory deleted");
         then(tools.deleteDirectory(path)).isEqualTo("Directory not found: " + path);
 
-        //
-        // TODO: logging
-        //
+        // Logging assertions for progress messages
+        then(events).extracting(PropertyChangeEvent::getNewValue).contains(
+                "🗑 Attempting to delete directory: " + path,
+                "✅ Directory deleted successfully: " + path,
+                "🗑 Attempting to delete directory: " + path,
+                "⚠ Directory not found: " + path
+        );
     }
 
     @Test
@@ -202,7 +237,7 @@ public class FileSystemToolsTest extends TestBase {
         final List<PropertyChangeEvent> events = new ArrayList<>();
         tools.addPropertyChangeListener(evt -> events.add(evt));
 
-        String result = tools.findFiles(directory, pattern);
+        String result = tools.findFiles(directory, pattern).replace('\\', '/');
 
         then(result).contains("folder/testfile.txt");
         then(events).extracting(PropertyChangeEvent::getPropertyName).contains(PROPERTY_MESSAGE);
@@ -219,7 +254,7 @@ public class FileSystemToolsTest extends TestBase {
         final String directory = "folder";
         final String pattern = ".*\\.txt";
 
-        String result = tools.findFiles(directory, pattern);
+        String result = tools.findFiles(directory, pattern).replace('\\', '/');
 
         then(result).contains("folder/testfile.txt");
         then(result).contains("folder/otherfile.txt");
@@ -239,7 +274,7 @@ public class FileSystemToolsTest extends TestBase {
         // Search for anything containing "special_dir" in the path
         final String pattern = ".*special_dir.*";
 
-        String result = tools.findFiles(directory, pattern);
+        String result = tools.findFiles(directory, pattern).replace('\\', '/');
 
         then(result).contains("special_dir/content.data");
     }
@@ -250,7 +285,7 @@ public class FileSystemToolsTest extends TestBase {
         final String directory = ".";
         final String pattern = ".*missing\\.txt";
 
-        String result = tools.findFiles(directory, pattern);
+        String result = tools.findFiles(directory, pattern).replace('\\', '/');
 
         then(result).isEqualTo("");
     }
@@ -266,7 +301,7 @@ public class FileSystemToolsTest extends TestBase {
         final String directory = ".";
         final String pattern = ""; // Empty pattern
 
-        String result = tools.findFiles(directory, pattern);
+        String result = tools.findFiles(directory, pattern).replace('\\', '/');
 
         then(result).contains("folder/testfile.txt");
         then(result).contains("folder/otherfile.txt");
@@ -281,7 +316,7 @@ public class FileSystemToolsTest extends TestBase {
         final List<PropertyChangeEvent> events = new ArrayList<>();
         tools.addPropertyChangeListener(evt -> events.add(evt));
 
-        String result = tools.findFiles(directory, pattern);
+        String result = tools.findFiles(directory, pattern).replace('\\', '/');
 
         then(result).isEqualTo("ERR: invalid directory " + directory);
         then(events).extracting(PropertyChangeEvent::getNewValue)

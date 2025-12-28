@@ -218,7 +218,7 @@ public class FileSystemTools extends AbstractCodeTool {
             Path filePath = fullPath(path);
 
             if (Files.exists(filePath)) {
-                progress("⚠️ File already exists: " + path);
+                progress("⚠ File already exists: " + path);
                 return "File already exists: " + path;
             }
 
@@ -242,11 +242,11 @@ public class FileSystemTools extends AbstractCodeTool {
     @Tool("Delete a file at the given path")
     @ToolPolicy(READWRITE)
     public String deleteFile(String path) throws Exception {
-        progress("🗑️ Attempting to delete file: " + path);
+        progress("🗑 Attempting to delete file: " + path);
         try {
             Path filePath = fullPath(path);
             if (!Files.exists(filePath)) {
-                progress("⚠️ File not found: " + path);
+                progress("⚠ File not found: " + path);
                 return "File not found: " + path;
             }
 
@@ -301,7 +301,7 @@ public class FileSystemTools extends AbstractCodeTool {
         try {
             Path dirPath = fullPath(path);
             if (Files.exists(dirPath)) {
-                progress("⚠️ Directory already exists: " + path);
+                progress("⚠ Directory already exists: " + path);
                 return "Directory already exists: " + path;
             }
 
@@ -322,15 +322,15 @@ public class FileSystemTools extends AbstractCodeTool {
      */
     @Tool("Delete a directory at the given path (must be empty)")
     public String deleteDirectory(String path) throws Exception {
-        progress("🗑️ Attempting to delete directory: " + path);
+        progress("🗑 Attempting to delete directory: " + path);
         try {
             Path dirPath = fullPath(path);
             if (!Files.exists(dirPath)) {
-                progress("⚠️ Directory not found: " + path);
+                progress("⚠ Directory not found: " + path);
                 return "Directory not found: " + path;
             }
             if (!Files.isDirectory(dirPath)) {
-                progress("⚠️ Not a directory: " + path);
+                progress("⚠ Not a directory: " + path);
                 return "Not a directory: " + path;
             }
 
