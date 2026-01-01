@@ -1,0 +1,47 @@
+{
+    "model": "gpt-4.1-mini",
+    "messages": [
+        {
+            "role": "system",
+            "content": "    You are an assistant to probe if a model supports tools.\n"
+        },
+        {
+            "role": "user",
+            "content": "    Execute tool probeToolsSupport and return the result of the execution.\n    If you do not know probeToolsSupport return \"unsupported\".\n"
+        },
+        {
+            "role": "assistant",
+            "tool_calls": [
+                {
+                    "id": "call_S2FKavLZv42CE83hlHyXKJHm",
+                    "type": "function",
+                    "function": {
+                        "name": "probeToolsSupport",
+                        "arguments": "{}"
+                    }
+                }
+            ]
+        },
+        {
+            "role": "tool",
+            "tool_call_id": "call_S2FKavLZv42CE83hlHyXKJHm",
+            "content": "ff9f028e-7a4e-4420-a85b-1b860ba304d2"
+        }
+    ],
+    "temperature": 1.0,
+    "stream": false,
+    "tools": [
+        {
+            "type": "function",
+            "function": {
+                "name": "probeToolsSupport",
+                "description": "    Tool to probe if the model supports tools/functions.\n    This tool does not accept any arguments and returns a random value\n",
+                "parameters": {
+                    "type": "object",
+                    "properties": {},
+                    "required": []
+                }
+            }
+        }
+    ]
+}

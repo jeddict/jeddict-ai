@@ -51,11 +51,11 @@ public class MarkdownStreamParser {
     }
 
     private final BlockListener blockListener;
-    private final AssistantChat topComponent;
+    private final AssistantChat assistantChat;
 
     public MarkdownStreamParser(BlockListener listener, AssistantChat topComponent) {
         this.blockListener = listener;
-        this.topComponent = topComponent;
+        this.assistantChat = topComponent;
         startBlockProcessor();
     }
 
@@ -137,7 +137,7 @@ public class MarkdownStreamParser {
                     if (block != null) {
                         // Here you can add processing logic if needed
                         SwingUtilities.invokeLater(() -> {
-                            JComponent comp = printBlock(code, null, block, null, topComponent);
+                            JComponent comp = printBlock(code, null, block, assistantChat);
                             comp.requestFocusInWindow();
                             comp.scrollRectToVisible(comp.getVisibleRect());
                             doneBlocks.offer(block);

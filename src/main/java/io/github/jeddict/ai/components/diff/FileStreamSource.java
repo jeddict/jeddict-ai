@@ -79,7 +79,7 @@ public class FileStreamSource extends StreamSource {
 
     /**
      * Retrieves the title for the stream source which for now, defaults to file name and extension.
-     * 
+     * Potential update to include file path relative to project root as per TODO in class description.
      *
      * @return the title of the stream source.
      */
@@ -107,6 +107,7 @@ public class FileStreamSource extends StreamSource {
      */
     @Override
     public Reader createReader() throws IOException {
+        System.out.println(">> " + FileEncodingQuery.getEncoding(fileObject));
         return new InputStreamReader(fileObject.getInputStream(), FileEncodingQuery.getEncoding(fileObject));
     }
 

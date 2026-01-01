@@ -1,4 +1,4 @@
-To use the mock server, send a prompt containing the following instruction:
+To use a mock, send a prompt containing the following instruction:
 
   use mock <file_path>
 

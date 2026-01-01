@@ -15,15 +15,35 @@
  */
 package io.github.jeddict.ai.test;
 
+import java.io.File;
 import java.io.IOException;
 import org.junit.Test;
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.assertj.core.api.BDDAssertions;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileSystem;
 import org.openide.filesystems.FileUtil;
+import org.openide.util.lookup.InstanceContent;
 
-public class DummyProjectTest {
+public class DummyProjectTest extends TestBase {
+
+    @Test
+    public void constructors() {
+        DummyProject p = new DummyProject(projectDir);
+        then(new File(p.getProjectDirectory().getPath())).exists().isDirectory();
+
+        p = new DummyProject(new File(projectDir));
+        then(new File(p.getProjectDirectory().getPath())).exists().isDirectory();
+
+        p = new DummyProject(new File(projectDir).toPath());
+        then(new File(p.getProjectDirectory().getPath())).exists().isDirectory();
+
+        BDDAssertions.thenThrownBy(() -> {
+            new DummyProject((File)null);
+        }).isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("projectDir can not be null");
+    }
 
     @Test
     public void get_project_directory_returns_correct_file_object() throws IOException {
@@ -46,5 +66,14 @@ public class DummyProjectTest {
         assertThatThrownBy(() -> new DummyProject(nonExistentFile))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("project directory cannot be null or invalid");
+    }
+
+    @Test
+    public void lookup_returns_provided_instances() throws IOException {
+        final FileSystem fs = FileUtil.createMemoryFileSystem();
+        final FileObject projectDir = fs.getRoot().createFolder("test-project");
+        final DummyProject project = new DummyProject((FileObject) projectDir);
+
+        then(project.instances).isInstanceOf(InstanceContent.class).isNotNull();
     }
 }

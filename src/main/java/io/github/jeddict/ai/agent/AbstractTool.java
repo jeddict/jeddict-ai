@@ -15,12 +15,16 @@
  */
 package io.github.jeddict.ai.agent;
 
-import java.beans.PropertyChangeListener;
-import java.beans.PropertyChangeSupport;
+import io.github.jeddict.ai.lang.JeddictBrainListener;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 import java.util.logging.Logger;
+import static ste.lloop.Loop.on;
 
 public abstract class AbstractTool {
 
@@ -32,7 +36,16 @@ public abstract class AbstractTool {
     protected final String basedir;
     protected final Path basepath;
     protected final Logger log;
-    private final PropertyChangeSupport toolListener = new PropertyChangeSupport(this);
+
+    //
+    // TODO: extend it to multiple listeners
+    //
+    protected Optional<JeddictBrainListener> listener = Optional.empty();
+
+    private final List<JeddictBrainListener> listeners = new CopyOnWriteArrayList<>();
+
+    // TODO: add comment
+    private Optional<UnaryOperator<String>> humanInTheMiddle = Optional.empty();
 
     public AbstractTool(final String basedir) {
         if (basedir == null) {
@@ -43,18 +56,18 @@ public abstract class AbstractTool {
         this.log = Logger.getLogger(this.getClass().getCanonicalName()); // this will be the concrete class name
     }
 
-    public void addPropertyChangeListener(PropertyChangeListener listener) {
+    public void addListener(final JeddictBrainListener listener) {
         if (listener == null) {
             throw new IllegalArgumentException("listener can not be null");
         }
-        toolListener.addPropertyChangeListener(listener);
+        listeners.add(listener);
     }
 
-    public void removePropertyChangeListener(PropertyChangeListener listener) {
+    public void removeListener(final JeddictBrainListener listener) {
         if (listener == null) {
             throw new IllegalArgumentException("listener can not be null");
         }
-        toolListener.removePropertyChangeListener(listener);
+        listeners.remove(listener);
     }
 
     public Path fullPath(final String path) {
@@ -62,11 +75,23 @@ public abstract class AbstractTool {
     }
 
     public void log(Supplier<String> supplier) {
-        log.info(supplier);
+        log.info(supplier.get());
     }
 
-    public void progress(String message) {
+    public void progress(final String message) {
         log(() -> message);
-        toolListener.firePropertyChange(PROPERTY_MESSAGE, null, message);
+        on(listeners).loop((l) -> l.onProgress(message));
+    }
+
+    public String basedir() {
+        return basedir;
+    }
+
+    public Optional<UnaryOperator<String>> humanInTheMiddle() {
+        return humanInTheMiddle;
+    }
+
+    public void withHumanInTheMiddle(final UnaryOperator<String> hitm) {
+        humanInTheMiddle = (hitm == null) ? Optional.empty() : Optional.of(hitm);
     }
 }

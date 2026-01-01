@@ -19,9 +19,13 @@ import dev.langchain4j.agent.tool.Tool;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.*;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READONLY;
+import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READWRITE;
 
 /**
  * Collection of tools that expose file system and editor operations inside
@@ -43,6 +47,7 @@ public class FileSystemTools extends AbstractCodeTool {
      * @return the file content, or an error message if it could not be read
      */
     @Tool("Read the content of a file by path")
+    @ToolPolicy(READONLY)
     public String readFile(String path) throws Exception {
         progress("📖 Reading file " + path);
         try {
@@ -55,6 +60,64 @@ public class FileSystemTools extends AbstractCodeTool {
     }
 
     /**
+     * Searches for files in the file system given a directory and a regex pattern.
+     * The tool scans all folders and subfolders of the given directory.
+     *
+     * @param path the directory path relative to the project to start the search from
+     * @param regexPattern the regex pattern to match against the absolute path of the files
+     * @return a list of matching file paths, or an empty string if none were found
+     */
+    @Tool("""
+    Recursively find files in a directory that match a regex pattern. The pattern
+    is matched against the full path of the file. Returns a newline-separated list"" when
+    of relative file paths, or an empty string if no matches are found.
+    It returns an error message starting with "ERR:" if the starting path does not exist.
+    If the pattern is empty, it matches all files.
+    """)
+    @ToolPolicy(READONLY)
+    public String findFiles(String path, String regexPattern) throws Exception {
+        progress("🔎 Searching for files matching '" + regexPattern + "' in directory '" + path + "'");
+        Path startDir = fullPath(path);
+
+        if (!Files.exists(startDir) || !Files.isDirectory(startDir)) {
+             progress("❌ invalid directory: " + path);
+             return "ERR: invalid directory " + path;
+        }
+
+        final Pattern pattern = ((regexPattern == null) || regexPattern.isBlank())
+                              ? null : Pattern.compile(regexPattern);
+
+        try (Stream<Path> stream = Files.walk(startDir)) {
+            Stream<Path> fileStream = stream.filter(p -> !Files.isDirectory(p));
+
+            if (pattern != null) {
+                fileStream = fileStream.filter(p -> pattern.matcher(p.toAbsolutePath().toString()).find());
+            }
+
+            List<String> matches = fileStream
+                    .map(p -> basepath.relativize(p).toString())
+                    .sorted()
+                    .collect(Collectors.toList());
+
+            if (matches.isEmpty()) {
+                progress("⚠️ No matches found for '" + regexPattern + "' in: " + path);
+                //
+                // TODO: back to return "" once https://github.com/langchain4j/langchain4j/issues/4300
+                //       will be fixed
+                //
+                return "No matches found for " + regexPattern;
+            }
+
+            String result = String.join("\n", matches);
+            progress("✅ Found " + matches.size() + " matching files.");
+            return result;
+        } catch (IOException e) {
+            progress("❌ Error searching files: " + e.getMessage());
+            throw e;
+        }
+    }
+
+    /**
      * Searches for a regular expression inside a file.
      *
      * @param path the file path relative to the project
@@ -62,6 +125,7 @@ public class FileSystemTools extends AbstractCodeTool {
      * @return all matches with their offsets, or a message if none were found
      */
     @Tool("Search for a regex pattern in a file by path")
+    @ToolPolicy(READONLY)
     public String searchInFile(String path, String pattern) throws Exception {
         progress("🔎 Looking for '" + pattern + "' inside '" + path + "'");
         String content = Files.readString(fullPath(path), Charset.defaultCharset());
@@ -84,6 +148,7 @@ public class FileSystemTools extends AbstractCodeTool {
      * @return a status message
      */
     @Tool("Replace parts of a file content matching a literal string with replacement text. Special regex characters are escaped automatically")
+    @ToolPolicy(READWRITE)
     public String replaceSnippetByLiteral(String path, String literalText, String replacement)
             throws Exception {
         String escapedPattern = Pattern.quote(literalText);
@@ -100,6 +165,7 @@ public class FileSystemTools extends AbstractCodeTool {
      * @return a status message
      */
     @Tool("Replace parts of a file content matching a regex pattern with replacement text")
+    @ToolPolicy(READWRITE)
     public String replaceSnippetByRegex(String path, String regexPattern, String replacement)
             throws Exception {
         progress("🔄 Replacing text matching regex '" + regexPattern + "' in file: " + path);
@@ -130,6 +196,7 @@ public class FileSystemTools extends AbstractCodeTool {
      * @return a status message
      */
     @Tool("Replace the full content of a file by path with new text")
+    @ToolPolicy(READWRITE)
     public String replaceFileContent(String path, String newContent) throws Exception {
         progress("📝 Replacing entire content of file: " + path);
         try {
@@ -150,13 +217,14 @@ public class FileSystemTools extends AbstractCodeTool {
      * @return a status message
      */
     @Tool("Create a new file at the given path with optional content")
+    @ToolPolicy(READWRITE)
     public String createFile(String path, String content) throws Exception {
         progress("📄 Creating new file: " + path);
         try {
             Path filePath = fullPath(path);
 
             if (Files.exists(filePath)) {
-                progress("⚠️ File already exists: " + path);
+                progress("⚠ File already exists: " + path);
                 return "File already exists: " + path;
             }
 
@@ -178,12 +246,13 @@ public class FileSystemTools extends AbstractCodeTool {
      * @return a status message
      */
     @Tool("Delete a file at the given path")
+    @ToolPolicy(READWRITE)
     public String deleteFile(String path) throws Exception {
-        progress("🗑️ Attempting to delete file: " + path);
+        progress("🗑 Attempting to delete file: " + path);
         try {
             Path filePath = fullPath(path);
             if (!Files.exists(filePath)) {
-                progress("⚠️ File not found: " + path);
+                progress("⚠ File not found: " + path);
                 return "File not found: " + path;
             }
 
@@ -202,13 +271,20 @@ public class FileSystemTools extends AbstractCodeTool {
      * @param path the directory path relative to the project
      * @return a list of files and directories, or an error message
      */
-    @Tool("List all files and directories inside a given directory path")
+    @Tool("""
+        List all files and directories inside a given path. If the path does not
+        exist or is not a directory, it returns a "directory not found" message.
+        If path is an existing directory, it returns a list of pathnames,
+        one on each line. If the path is a directory, the pathname will end with
+        a slash ('/').
+    """)
+    @ToolPolicy(READONLY)
     public String listFilesInDirectory(String path) throws Exception {
-        progress("📂 Listing contents of directory: " + path);
+        progress("📂 Listing content of directory: " + path);
         Path dirPath = fullPath(path);
 
         if (!Files.isDirectory(dirPath)) {
-            progress("⚠️ Directory not found: " + path);
+            progress("❌ invalid directory: " + path);
             return "Directory not found: " + path;
         }
 
@@ -231,7 +307,7 @@ public class FileSystemTools extends AbstractCodeTool {
         try {
             Path dirPath = fullPath(path);
             if (Files.exists(dirPath)) {
-                progress("⚠️ Directory already exists: " + path);
+                progress("⚠ Directory already exists: " + path);
                 return "Directory already exists: " + path;
             }
 
@@ -252,15 +328,15 @@ public class FileSystemTools extends AbstractCodeTool {
      */
     @Tool("Delete a directory at the given path (must be empty)")
     public String deleteDirectory(String path) throws Exception {
-        progress("🗑️ Attempting to delete directory: " + path);
+        progress("🗑 Attempting to delete directory: " + path);
         try {
             Path dirPath = fullPath(path);
             if (!Files.exists(dirPath)) {
-                progress("⚠️ Directory not found: " + path);
+                progress("⚠ Directory not found: " + path);
                 return "Directory not found: " + path;
             }
             if (!Files.isDirectory(dirPath)) {
-                progress("⚠️ Not a directory: " + path);
+                progress("⚠ Not a directory: " + path);
                 return "Not a directory: " + path;
             }
 

@@ -20,11 +20,11 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.Test;
 
-public class DummyJeddictBrainListenerTest {
+public class DummyJeddictBrainHandlerTest {
 
     @Test
     public void onPartialResponse_accumulates_content() {
-        final DummyJeddictBrainListener H = new DummyJeddictBrainListener();
+        final DummyJeddictBrainHandler H = new DummyJeddictBrainHandler();
 
         H.onPartialResponse("Hello, ");
         H.onPartialResponse("world!");
@@ -37,7 +37,7 @@ public class DummyJeddictBrainListenerTest {
     @Test
     public void onComplete_records_the_message() {
         final AiMessage M = AiMessage.from("hi");
-        final DummyJeddictBrainListener H = new DummyJeddictBrainListener();
+        final DummyJeddictBrainHandler H = new DummyJeddictBrainHandler();
         final ChatResponse R = ChatResponse.builder().aiMessage(M).build();
 
         H.onCompleteResponse(R);
@@ -47,7 +47,7 @@ public class DummyJeddictBrainListenerTest {
 
     @Test
     public void onError_records_the_exception() {
-        final DummyJeddictBrainListener H = new DummyJeddictBrainListener();
+        final DummyJeddictBrainHandler H = new DummyJeddictBrainHandler();
         final Throwable T = new Throwable();
 
         H.onPartialResponse("Hello, ");
