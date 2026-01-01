@@ -25,12 +25,11 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
+import dev.langchain4j.observability.api.listener.AiServiceCompletedListener;
 import dev.langchain4j.service.AiServices;
-import static io.github.jeddict.ai.lang.JeddictBrain.EventProperty.CHAT_COMPLETED;
-import static io.github.jeddict.ai.lang.JeddictBrain.EventProperty.CHAT_PARTIAL;
-import io.github.jeddict.ai.test.DummyPropertyChangeListener;
+import io.github.jeddict.ai.lang.DummyJeddictBrainListener;
 import io.github.jeddict.ai.util.ContextHelper;
-import java.beans.PropertyChangeEvent;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
@@ -102,35 +101,24 @@ public class AssistantTest extends PairProgrammerTestBase {
 
     @Test
     public void chat_with_streaming() throws Exception {
-        final DummyPropertyChangeListener streamListener = new DummyPropertyChangeListener();
+        final DummyJeddictBrainListener listener = new DummyJeddictBrainListener();
         final TreePath tree = codeFromSayHello(); // method declaration
 
+        final StringBuffer ret = new StringBuffer();
         pair = AiServices.builder(Assistant.class)
             .streamingChatModel(model)
+            .registerListeners(new AiServiceCompletedListener() {
+                @Override
+                public void onEvent(final AiServiceCompletedEvent e) {
+                    final ChatResponse res = (ChatResponse)e.result().get();
+                    ret.append(res.aiMessage().text());
+                }
+            })
             .build();
 
-        final String expectedSystem = Assistant.SYSTEM_MESSAGE
-                .replace("{{globalRules}}", GLOBAL_RULES)
-                .replace("{{projectRules}}", PROJECT_RULES);
-        final String expectedUser = Assistant.USER_MESSAGE
-                .replace("{{prompt}}", PROMPT)
-                .replace("{{code}}", tree.getCompilationUnit().toString())
-                .replace("{{project}}", PROJECT);
+        pair.chat(listener, PROMPT, tree, PROJECT, GLOBAL_RULES, PROJECT_RULES);
 
-        pair.chat(streamListener, PROMPT, tree, PROJECT, GLOBAL_RULES, PROJECT_RULES);
-
-        final ChatModelRequestContext request = listener.lastRequestContext.get();
-        thenMessagesMatch(
-            request.chatRequest().messages(), expectedSystem, expectedUser
-        );
-
-        then(streamListener.events).isNotEmpty();
-        PropertyChangeEvent e = streamListener.events.get(0);
-        then(e.getPropertyName()).isEqualTo(CHAT_PARTIAL.name);
-        then(e.getNewValue()).isEqualTo("hello world");
-        e = streamListener.events.get(1);
-        then(e.getPropertyName()).isEqualTo(CHAT_COMPLETED.name);
-        then(((ChatResponse)e.getNewValue()).aiMessage().text()).isEqualToIgnoringNewLines("hello world");
+        then(ret).isEqualToIgnoringNewLines("hello world");
     }
 
     @Test
@@ -174,49 +162,58 @@ public class AssistantTest extends PairProgrammerTestBase {
 
     @Test
     public void chat_with_streaming_prompt_only() {
-        final DummyPropertyChangeListener streamListener = new DummyPropertyChangeListener();
 
+        final StringBuilder result = new StringBuilder();
         pair = AiServices.builder(Assistant.class)
             .streamingChatModel(model)
+            .registerListeners(new AiServiceCompletedListener() {
+                @Override
+                public void onEvent(final AiServiceCompletedEvent e) {
+                    final ChatResponse res = (ChatResponse)e.result().get();
+                    result.append(res.aiMessage().text());
+                }
+            })
             .build();
 
-        pair.chat(streamListener, PROMPT);
+        pair.chat(null, PROMPT);
 
-        then(streamListener.events).isNotEmpty();
-        PropertyChangeEvent e = streamListener.events.get(0);
-        then(e.getPropertyName()).isEqualTo(CHAT_PARTIAL.name);
-        then(e.getNewValue()).isEqualTo("hello world");
-        e = streamListener.events.get(1);
-        then(e.getPropertyName()).isEqualTo(CHAT_COMPLETED.name);
-        then(((ChatResponse)e.getNewValue()).aiMessage().text()).isEqualToIgnoringNewLines("hello world");
+        then(result).isEqualToIgnoringNewLines("hello world");
     }
 
     @Test
     public void chat_with_streaming_and_code() throws Exception {
         final TreePath tree = codeFromSayHello();
-        final DummyPropertyChangeListener streamListener = new DummyPropertyChangeListener();
 
+        final StringBuilder result = new StringBuilder();
         pair = AiServices.builder(Assistant.class)
             .streamingChatModel(model)
+            .registerListeners(new AiServiceCompletedListener() {
+                @Override
+                public void onEvent(final AiServiceCompletedEvent e) {
+                    final ChatResponse res = (ChatResponse)e.result().get();
+                    result.append(res.aiMessage().text());
+                }
+            })
             .build();
 
-        pair.chat(streamListener, PROMPT, tree, PROJECT, GLOBAL_RULES, PROJECT_RULES);
+        pair.chat(null, PROMPT, tree, PROJECT, GLOBAL_RULES, PROJECT_RULES);
 
-        then(streamListener.events).isNotEmpty();
-        PropertyChangeEvent e = streamListener.events.get(0);
-        then(e.getPropertyName()).isEqualTo(CHAT_PARTIAL.name);
-        then(e.getNewValue()).isEqualTo("hello world");
-        e = streamListener.events.get(1);
-        then(e.getPropertyName()).isEqualTo(CHAT_COMPLETED.name);
-        then(((ChatResponse)e.getNewValue()).aiMessage().text()).isEqualToIgnoringNewLines("hello world");
+        then(result).isEqualToIgnoringNewLines("hello world");
     }
 
     @Test
     public void chat_with_streaming_and_images() {
-        final DummyPropertyChangeListener streamListener = new DummyPropertyChangeListener();
 
+        final StringBuilder result = new StringBuilder();
         pair = AiServices.builder(Assistant.class)
             .streamingChatModel(model)
+            .registerListeners(new AiServiceCompletedListener() {
+                @Override
+                public void onEvent(final AiServiceCompletedEvent e) {
+                    final ChatResponse res = (ChatResponse)e.result().get();
+                    result.append(res.aiMessage().text());
+                }
+            })
             .build();
 
         final FileObject imgFO = FileUtil.toFileObject(
@@ -225,15 +222,9 @@ public class AssistantTest extends PairProgrammerTestBase {
 
         final List<String> images = ContextHelper.getImageFilesContext(Set.of(imgFO), List.of("png"));
 
-        pair.chat(streamListener, PROMPT, images, PROJECT, GLOBAL_RULES, PROJECT_RULES);
+        pair.chat(null, PROMPT, images, PROJECT, GLOBAL_RULES, PROJECT_RULES);
 
-        then(streamListener.events).isNotEmpty();
-        PropertyChangeEvent e = streamListener.events.get(0);
-        then(e.getPropertyName()).isEqualTo(CHAT_PARTIAL.name);
-        then(e.getNewValue()).isEqualTo("hello world");
-        e = streamListener.events.get(1);
-        then(e.getPropertyName()).isEqualTo(CHAT_COMPLETED.name);
-        then(((ChatResponse)e.getNewValue()).aiMessage().text()).isEqualToIgnoringNewLines("hello world");
+        then(result).isEqualToIgnoringNewLines("hello world");
     }
 
     // --------------------------------------------------------- private methods

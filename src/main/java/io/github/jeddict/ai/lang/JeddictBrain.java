@@ -19,15 +19,30 @@ package io.github.jeddict.ai.lang;
  *
  * @author Shiwani Gupta
  */
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.agent.AgentBuilder;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
-import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
+import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
+import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
+import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
+import dev.langchain4j.observability.api.event.ToolExecutedEvent;
+import dev.langchain4j.observability.api.listener.AiServiceCompletedListener;
+import dev.langchain4j.observability.api.listener.AiServiceErrorListener;
+import dev.langchain4j.observability.api.listener.AiServiceListener;
+import dev.langchain4j.observability.api.listener.AiServiceResponseReceivedListener;
+import dev.langchain4j.observability.api.listener.AiServiceStartedListener;
+import dev.langchain4j.observability.api.listener.ToolExecutedEventListener;
 import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.tool.ToolErrorContext;
+import dev.langchain4j.service.tool.ToolErrorHandlerResult;
 import io.github.jeddict.ai.agent.AbstractTool;
 import io.github.jeddict.ai.agent.HumanInTheMiddleWrapper;
 import io.github.jeddict.ai.agent.ToolsProber;
@@ -35,11 +50,12 @@ import io.github.jeddict.ai.agent.ToolsProbingTool;
 import io.github.jeddict.ai.agent.pair.PairProgrammer;
 import static io.github.jeddict.ai.lang.InteractionMode.INTERACTIVE;
 import io.github.jeddict.ai.util.PropertyChangeEmitter;
-import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Function;
 import java.util.logging.Logger;
 import static ste.lloop.Loop.on;
@@ -50,23 +66,21 @@ public class JeddictBrain implements PropertyChangeEmitter {
 
     private int memorySize = 0;
 
-    private static final String EVENT_NAME_PREFIX = EventProperty.class.getPackageName() + ".event.";
-    public enum EventProperty {
-        CHAT_ERROR(EVENT_NAME_PREFIX + "chat.error"),
-        CHAT_COMPLETED(EVENT_NAME_PREFIX + "chat.completed"),
-        CHAT_PARTIAL(EVENT_NAME_PREFIX + "chat.partial"),
-        CHAT_INTERMEDIATE(EVENT_NAME_PREFIX + "chat.intermediate"),
-        REQUEST_START(EVENT_NAME_PREFIX + "request.start"),
-        REQUEST_END(EVENT_NAME_PREFIX + "request.end"),
-        REQUEST_ERROR(EVENT_NAME_PREFIX + "request.error"),
-        TOOL_EXECUTING(EVENT_NAME_PREFIX + "tool.executing"),
-        TOOL_EXECUTED(EVENT_NAME_PREFIX + "tool.executed");
+    private final List<JeddictBrainListener> listeners = new CopyOnWriteArrayList<>();
 
-        public final String name;
-
-        EventProperty(final String name) {
-            this.name = JeddictBrain.class.getCanonicalName() + '.' + name;
+    public void addListener(JeddictBrainListener listener) {
+        if (listener == null) {
+            throw new IllegalArgumentException("listener cannot be null");
         }
+        listeners.add(listener);
+    }
+
+    public void removeListener(JeddictBrainListener listener) {
+        listeners.remove(listener);
+    }
+
+    public List<JeddictBrainListener> listeners() {
+        return Collections.unmodifiableList(listeners);
     }
 
     public final InteractionMode mode;
@@ -222,6 +236,17 @@ public class JeddictBrain implements PropertyChangeEmitter {
                 builder.tools(tools.toArray());
             }
 
+            //
+            // check this note in:
+            // NOTE: If you create a DefaultToolExecutor manually or use a custom
+            // ToolExecutor, ensure that a ToolExecutionException is thrown by
+            // ToolExecutor in such cases. For DefaultToolExecutor, you can
+            // enable this by setting DefaultToolExecutor.Builder.propagateToolExecutionExceptions(Boolean)
+            // to true.
+            //
+            builder.registerListeners(allListeners());
+            builder.toolExecutionErrorHandler(this::toolExecutionErrorHandler);
+            builder.toolArgumentsErrorHandler(this::toolArgumentsErrorHandler);
 
             return (T) builder.build();
         }
@@ -240,13 +265,20 @@ public class JeddictBrain implements PropertyChangeEmitter {
         return (T) builder.build();
     }
 
-    public void addProgressListener(final PropertyChangeListener listener) {
-        addPropertyChangeListener(listener);
+    // -------------------------------------------------------- ToolErrorHandler
+
+    public ToolErrorHandlerResult toolExecutionErrorHandler(Throwable error, ToolErrorContext context) {
+        LOG.finest("tool execution error: %s (%s)".formatted(error.getMessage(), String.valueOf(context)));
+        return ToolErrorHandlerResult.text(error.getMessage());
     }
 
-    public void removeProgressListener(final PropertyChangeListener listener) {
-        removePropertyChangeListener(listener);
+    // -------------------------------------------------------- ToolErrorHandler
+
+    public ToolErrorHandlerResult toolArgumentsErrorHandler(Throwable error,  ToolErrorContext context) {
+        LOG.finest("tool arguments error: %s (%s)".formatted(error.getMessage(), String.valueOf(context)));
+        return ToolErrorHandlerResult.text(error.getMessage());
     }
+
 
     // --------------------------------------------------------- private methods
 
@@ -286,6 +318,7 @@ public class JeddictBrain implements PropertyChangeEmitter {
         return toolsSupport;
     }
 
+
     // --------------------------------------------------------- private methods
 
     /**
@@ -301,7 +334,7 @@ public class JeddictBrain implements PropertyChangeEmitter {
     }
 
     /**
-     * Returns a streaming or not streaming model based on {@code usStreaming}
+     * Returns a new streaming or not streaming model based on {@code useStreaming}
      *
      * @param <T>
      * @param useStreaming
@@ -311,60 +344,77 @@ public class JeddictBrain implements PropertyChangeEmitter {
     private <T> T model(final boolean useStreaming) {
 
         final JeddictChatModelBuilder builder
-                = new JeddictChatModelBuilder(this.modelName, new TokenTrackingListener());
+                = new JeddictChatModelBuilder(this.modelName);
 
         return (useStreaming) ? (T)builder.buildStreaming() : (T)builder.build();
     }
 
+    private List<AiServiceListener> allListeners() {
+        return List.of(
+            new AiServiceCompletedListener() {
+                @Override
+                public void onEvent(AiServiceCompletedEvent e) {
+                    //
+                    // e.resul() can be a ChatResponse or other objects (e.g.
+                    // a String). If not the former, let's convert it taking
+                    // the toString() of the object so that the listener can
+                    // rely on receive always the same object
+                    //
+                    final Object obj = e.result().get();
 
-    private void fireEvent(EventProperty property, Object value) {
-        fireEvent(property, null, value);
-    }
+                    final ChatResponse result = (obj instanceof ChatResponse)
+                                              ? (ChatResponse)obj
+                                              : ChatResponse.builder().aiMessage(AiMessage.from(String.valueOf(obj))).build();
+                    LOG.finest(() ->
+                        "%s\n%s".formatted(String.valueOf(e.eventClass()), String.valueOf(result))
+                    );
+                    on(listeners).loop((l) -> l.onChatCompleted(result));
+                }
+            },
+            new AiServiceErrorListener() {
+                @Override
+                public void onEvent(final AiServiceErrorEvent e) {
+                    final Throwable t = e.error();
+                    LOG.finest(() -> e.eventClass() + "\n" + t);
+                    on(listeners).loop((l) -> l.onError(t));
+                }
+            },
+            new AiServiceResponseReceivedListener() {
+                @Override
+                public void onEvent(final AiServiceResponseReceivedEvent e) {
+                    final ChatRequest request = e.request();
+                    final ChatResponse response = e.response();
+                    LOG.finest(() ->
+                        "%s\n>>> %s\n<<< %s".formatted(String.valueOf(e.eventClass()), String.valueOf(request), String.valueOf(response))
+                    );
+                    on(listeners).loop((l) -> l.onResponse(request, response));
+                }
+            },
+            new AiServiceStartedListener() {
+                @Override
+                public void onEvent(final AiServiceStartedEvent e) {
+                    final SystemMessage system = e.systemMessage().get();
+                    final UserMessage user = e.userMessage();
+                    LOG.finest(() ->
+                        "%s\n%s\n%s".formatted(String.valueOf(e.eventClass()), String.valueOf(system), String.valueOf(user))
+                    );
 
-    private void fireEvent(EventProperty property, Object oldValue, Object newValue) {
-        LOG.finest(() ->
-            "Firing event %s with values (%s,%s)"
-            .formatted(property, String.valueOf(oldValue), String.valueOf(newValue))
+                    on(listeners).loop((l) -> l.onChatStarted(system, user));
+                }
+            },
+            new ToolExecutedEventListener() {
+                @Override
+                public void onEvent(final ToolExecutedEvent e) {
+                    final ToolExecutionRequest request = e.request();
+                    final String result = e.resultText();
+                    LOG.finest(() ->
+                        "%s\n%s\n%s".formatted(String.valueOf(e.eventClass()), String.valueOf(request), String.valueOf(result))
+                    );
+
+                    on(listeners).loop((l) -> l.onToolExecuted(request, result));
+                }
+            }
         );
-        firePropertyChange(property.name, oldValue, newValue);
-    }
-
-    // --------------------------------------------------- TokenTrackingListener
-
-    private class TokenTrackingListener implements ChatModelListener {
-        /**
-         * The main purpose of this listener is to estimate the amount of tokens
-         * a request generates. However, there is not a standard definition of
-         * what a token is and what is considered a token derived from the
-         * user messages and what is instead generated by the models.
-         * Models can turn the provided prompt and tool definition into something
-         * more digestible for the model and count the added tokens.
-         * Therefore, instead of trying to approximate closely what the AI model
-         * may consider a token the estimation extracted here is based on the
-         * {@code String.valueOf()} of the context's request.
-         *
-         * @param context
-         */
-        @Override
-        public void onRequest(final ChatModelRequestContext context) {
-            fireEvent(
-                EventProperty.REQUEST_START, context.chatRequest()
-            );
-        }
-
-        @Override
-        public void onResponse(final ChatModelResponseContext context) {
-            fireEvent(
-                EventProperty.REQUEST_END, context.chatRequest(), context.chatResponse()
-            );
-        }
-
-        @Override
-        public void onError(final ChatModelErrorContext context) {
-            fireEvent(
-                EventProperty.REQUEST_ERROR, context.error()
-            );
-        }
     }
 
 }

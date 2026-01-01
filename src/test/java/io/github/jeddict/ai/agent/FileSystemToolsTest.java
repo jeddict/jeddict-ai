@@ -16,14 +16,10 @@
 package io.github.jeddict.ai.agent;
 
 import io.github.jeddict.ai.test.TestBase;
-import static io.github.jeddict.ai.agent.AbstractTool.PROPERTY_MESSAGE;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
+import io.github.jeddict.ai.lang.DummyJeddictBrainListener;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.commons.io.FileUtils;
 import org.assertj.core.api.BDDAssertions;
 import static org.assertj.core.api.BDDAssertions.then;
@@ -42,18 +38,12 @@ public class FileSystemToolsTest extends TestBase {
         final String pattern = "test file";
 
         final FileSystemTools tools = new FileSystemTools(projectDir);
-        final List<PropertyChangeEvent> events = new ArrayList<>();
-        tools.addPropertyChangeListener(new PropertyChangeListener() {
-            @Override
-            public void propertyChange(PropertyChangeEvent evt) {
-                events.add(evt);
-            }
-        });
+        final DummyJeddictBrainListener listener = new DummyJeddictBrainListener();
+        tools.addListener(listener);
 
         then(tools.searchInFile(path, pattern)).contains("Match at").contains("test file");
-        then(events).hasSize(1);
-        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(0).getNewValue()).isEqualTo("🔎 Looking for '" + pattern + "' inside '" + path + "'");
+        then(listener.collector).hasSize(1);
+        then(listener.collector.get(0)).asString().isEqualTo("🔎 Looking for '" + pattern + "' inside '" + path + "'");
     }
 
     @Test
@@ -62,18 +52,12 @@ public class FileSystemToolsTest extends TestBase {
         final String pattern = "abc";
 
         final FileSystemTools tools = new FileSystemTools(projectDir);
-        final List<PropertyChangeEvent> events = new ArrayList<>();
-        tools.addPropertyChangeListener(new PropertyChangeListener() {
-            @Override
-            public void propertyChange(PropertyChangeEvent evt) {
-                events.add(evt);
-            }
-        });
+        final DummyJeddictBrainListener listener = new DummyJeddictBrainListener();
+        tools.addListener(listener);
 
         then(tools.searchInFile(path, pattern)).isEqualTo("No matches found");
-        then(events).hasSize(1);
-        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(0).getNewValue()).isEqualTo("🔎 Looking for '" + pattern + "' inside '" + path + "'");
+        then(listener.collector).hasSize(1);
+        then(listener.collector.get(0)).asString().isEqualTo("🔎 Looking for '" + pattern + "' inside '" + path + "'");
     }
 
     @Test
@@ -82,23 +66,19 @@ public class FileSystemToolsTest extends TestBase {
         final String content = "Sample content.";
 
         final FileSystemTools tools = new FileSystemTools(projectDir);
-        final List<PropertyChangeEvent> events = new ArrayList<>();
-        tools.addPropertyChangeListener(events::add);
+        final DummyJeddictBrainListener listener = new DummyJeddictBrainListener();
+        tools.addListener(listener);
 
         then(tools.createFile(path, content)).isEqualTo("File created");
         then(tools.createFile(path, content)).isEqualTo("File already exists: " + path);
 
         // Logging assertions for progress messages
         int i = 0;
-        then(events).hasSize(4);
-        then(events.get(i).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(i++).getNewValue()).isEqualTo("📄 Creating new file: " + path);
-        then(events.get(i).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(i++).getNewValue()).isEqualTo("✅ File created successfully: " + path);
-        then(events.get(i).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(i++).getNewValue()).isEqualTo("📄 Creating new file: " + path);
-        then(events.get(i).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(i++).getNewValue()).isEqualTo("⚠ File already exists: " + path);
+        then(listener.collector).hasSize(4);
+        then(listener.collector.get(i++)).asString().isEqualTo("📄 Creating new file: " + path);
+        then(listener.collector.get(i++)).asString().isEqualTo("✅ File created successfully: " + path);
+        then(listener.collector.get(i++)).asString().isEqualTo("📄 Creating new file: " + path);
+        then(listener.collector.get(i++)).asString().isEqualTo("⚠ File already exists: " + path);
     }
 
     @Test
@@ -109,8 +89,8 @@ public class FileSystemToolsTest extends TestBase {
         final Path fileToDelete = Paths.get(projectDir, path);
         then(fileToDelete).exists(); // just to make sure...
 
-        final List<PropertyChangeEvent> events = new ArrayList<>();
-        tools.addPropertyChangeListener(events::add);
+        final DummyJeddictBrainListener listener = new DummyJeddictBrainListener();
+        tools.addListener(listener);
 
         then(tools.deleteFile(path)).isEqualTo("File deleted");
         then(fileToDelete).doesNotExist();
@@ -118,7 +98,7 @@ public class FileSystemToolsTest extends TestBase {
         then(tools.deleteFile(path)).isEqualTo("File not found: " + path);
 
         // Logging assertions for progress messages
-        then(events).extracting(PropertyChangeEvent::getNewValue).contains(
+        then(listener.collector).contains(
                 "🗑 Attempting to delete file: " + path,
                 "✅ File deleted successfully: " + path,
                 "⚠ File not found: " + path
@@ -132,15 +112,15 @@ public class FileSystemToolsTest extends TestBase {
 
         final FileSystemTools tools = new FileSystemTools(projectDir);
 
-        final List<PropertyChangeEvent> events = new ArrayList<>();
-        tools.addPropertyChangeListener(events::add);
+        final DummyJeddictBrainListener listener = new DummyJeddictBrainListener();
+        tools.addListener(listener);
 
         then(tools.listFilesInDirectory(existingDir)).contains("testfile.txt");
 
         then(tools.listFilesInDirectory(nonExistingDir)).isEqualTo("Directory not found: " + nonExistingDir);
 
         // Logging assertions for progress messages
-        then(events).extracting(PropertyChangeEvent::getNewValue).contains(
+        then(listener.collector).contains(
                 "📂 Listing content of directory: " + existingDir,
                 "❌ invalid directory: " + nonExistingDir
         );
@@ -153,37 +133,29 @@ public class FileSystemToolsTest extends TestBase {
         final String expectedContent = FileUtils.readFileToString(fullPathOK.toFile(), "UTF8");
 
         final FileSystemTools tools = new FileSystemTools(projectDir);
-        final List<PropertyChangeEvent> events = new ArrayList<>();
-        tools.addPropertyChangeListener(new PropertyChangeListener() {
-            @Override
-            public void propertyChange(PropertyChangeEvent evt) {
-                events.add(evt);
-            }
-        });
+        final DummyJeddictBrainListener listener = new DummyJeddictBrainListener();
+        tools.addListener(listener);
 
         //
         // success
         //
         then(tools.readFile(pathOK)).isEqualTo(expectedContent);
-        then(events).hasSize(1);
-        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(0).getNewValue()).isEqualTo("📖 Reading file " + pathOK);
+        then(listener.collector).hasSize(1);
+        then(listener.collector.get(0)).asString().isEqualTo("📖 Reading file " + pathOK);
 
         //
         // failure
         //
         final String pathKO = "nowhere.txt";
         final Path fullPathKO = Paths.get(projectDir, pathKO);
-        events.clear();
+        listener.collector.clear();
 
         BDDAssertions.thenThrownBy( () ->
             tools.readFile(pathKO)
         );
-        then(events).hasSize(2);
-        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(0).getNewValue()).isEqualTo("📖 Reading file " + pathKO);
-        then(events.get(1).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(1).getNewValue()).isEqualTo("❌ Failed to read file: " + fullPathKO);
+        then(listener.collector).hasSize(2);
+        then(listener.collector.get(0)).asString().isEqualTo("📖 Reading file " + pathKO);
+        then(listener.collector.get(1)).asString().isEqualTo("❌ Failed to read file: " + fullPathKO);
     }
 
     @Test
@@ -191,14 +163,14 @@ public class FileSystemToolsTest extends TestBase {
         final String path = "newdir";
 
         final FileSystemTools tools = new FileSystemTools(projectDir);
-        final List<PropertyChangeEvent> events = new ArrayList<>();
-        tools.addPropertyChangeListener(events::add);
+        final DummyJeddictBrainListener listener = new DummyJeddictBrainListener();
+        tools.addListener(listener);
 
         then(tools.createDirectory(path)).isEqualTo("Directory created");
         then(tools.createDirectory(path)).isEqualTo("Directory already exists: " + path);
 
         // Logging assertions for progress messages
-        then(events).extracting(PropertyChangeEvent::getNewValue).contains(
+        then(listener.collector).contains(
                 "📂 Creating new directory: " + path,
                 "⚠ Directory already exists: " + path
         );
@@ -213,14 +185,14 @@ public class FileSystemToolsTest extends TestBase {
 
         final FileSystemTools tools = new FileSystemTools(projectDir);
 
-        final List<PropertyChangeEvent> events = new ArrayList<>();
-        tools.addPropertyChangeListener(events::add);
+        final DummyJeddictBrainListener listener = new DummyJeddictBrainListener();
+        tools.addListener(listener);
 
         then(tools.deleteDirectory(path)).isEqualTo("Directory deleted");
         then(tools.deleteDirectory(path)).isEqualTo("Directory not found: " + path);
 
         // Logging assertions for progress messages
-        then(events).extracting(PropertyChangeEvent::getNewValue).contains(
+        then(listener.collector).contains(
                 "🗑 Attempting to delete directory: " + path,
                 "✅ Directory deleted successfully: " + path,
                 "🗑 Attempting to delete directory: " + path,
@@ -234,13 +206,13 @@ public class FileSystemToolsTest extends TestBase {
         final String directory = ".";
         final String pattern = ".*testfile\\.txt";
 
-        final List<PropertyChangeEvent> events = new ArrayList<>();
-        tools.addPropertyChangeListener(evt -> events.add(evt));
+        final DummyJeddictBrainListener listener = new DummyJeddictBrainListener();
+        tools.addListener(listener);
 
         String result = tools.findFiles(directory, pattern).replace('\\', '/');
 
         then(result).contains("folder/testfile.txt");
-        then(events).extracting(PropertyChangeEvent::getPropertyName).contains(PROPERTY_MESSAGE);
+        then(listener.collector).isNotEmpty();
     }
 
     @Test
@@ -280,15 +252,19 @@ public class FileSystemToolsTest extends TestBase {
     }
 
     @Test
-    public void findFiles_no_matches() throws Exception {
-        final FileSystemTools tools = new FileSystemTools(projectDir);
-        final String directory = ".";
-        final String pattern = ".*missing\\.txt";
+public void findFiles_no_matches() throws Exception {
+    final FileSystemTools tools = new FileSystemTools(projectDir);
+    final String directory = ".";
+    final String pattern = ".*missing\\.txt";
 
-        String result = tools.findFiles(directory, pattern).replace('\\', '/');
+    String result = tools.findFiles(directory, pattern);
 
-        then(result).isEqualTo("");
-    }
+    //
+    // TODO: Back to then(result).isEmpty() once https://github.com/langchain4j/langchain4j/issues/4300
+    //       will be fixed
+    //
+    then(result).isEqualTo("No matches found for " + pattern);
+}
 
     @Test
     public void findFiles_empty_pattern_returns_all_files() throws Exception {
@@ -313,13 +289,12 @@ public class FileSystemToolsTest extends TestBase {
         final String directory = "nonexistent";
         final String pattern = ".*";
 
-        final List<PropertyChangeEvent> events = new ArrayList<>();
-        tools.addPropertyChangeListener(evt -> events.add(evt));
+        final DummyJeddictBrainListener listener = new DummyJeddictBrainListener();
+        tools.addListener(listener);
 
         String result = tools.findFiles(directory, pattern).replace('\\', '/');
 
         then(result).isEqualTo("ERR: invalid directory " + directory);
-        then(events).extracting(PropertyChangeEvent::getNewValue)
-                .contains("❌ invalid directory: " + directory);
+        then(listener.collector).contains("❌ invalid directory: " + directory);
     }
 }

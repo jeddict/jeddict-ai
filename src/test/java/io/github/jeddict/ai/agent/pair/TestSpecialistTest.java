@@ -22,11 +22,8 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import io.github.jeddict.ai.lang.JeddictBrainListener;
 import java.util.List;
 import static org.assertj.core.api.BDDAssertions.then;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -46,26 +43,6 @@ public class TestSpecialistTest extends PairProgrammerTestBase {
     public void pair_is_a_PairProgrammer() {
         final TestSpecialist pair = pair();
         then(pair).isInstanceOf(PairProgrammer.class);
-    }
-
-    //
-    // TODO: review why this is disabled
-    @Disabled
-    public void chat_triggers_the_handler() {
-        final StringBuilder responseBuilder = new StringBuilder();
-        final JeddictBrainListener changeListener = new JeddictBrainListener(null) {
-            @Override
-            public void onCompleteResponse(ChatResponse response) {
-                responseBuilder.append(response.aiMessage().text().trim());
-            }
-        };
-        final TestSpecialist pair = pair();
-        //pair.addPropertyChangeListener(changeListener);
-
-        final String answer = pair.generateTestCase(QUERY, ALL_CLASSES, CLASS, METHOD, PROMPT, SESSION_RULES, List.of());
-
-        then(answer.trim()).isEqualTo("hello world");
-        then(responseBuilder.toString()).isEqualTo("hello world");
     }
 
     @Test

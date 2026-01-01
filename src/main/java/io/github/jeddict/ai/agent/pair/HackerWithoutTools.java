@@ -21,9 +21,7 @@ import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.V;
 import static io.github.jeddict.ai.agent.pair.PairProgrammer.LOG;
-import io.github.jeddict.ai.lang.JeddictBrain;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
+import io.github.jeddict.ai.lang.JeddictBrainListener;
 import org.apache.commons.lang3.StringUtils;
 
 
@@ -60,7 +58,7 @@ public interface HackerWithoutTools extends Hacker {
 
     @Override
     default void hack(
-        final PropertyChangeListener listener,
+        final JeddictBrainListener listener,
         final String prompt,
         final String globalRules, final String projectRules
     ) {
@@ -71,15 +69,16 @@ public interface HackerWithoutTools extends Hacker {
         ));
 
         _hackstream_(prompt, globalRules, projectRules)
-        .onCompleteResponse(complete -> {
-            listener.propertyChange(new PropertyChangeEvent(this, JeddictBrain.EventProperty.CHAT_COMPLETED.name, null, complete));
-        })
-        .onPartialResponse(partial -> {
-            listener.propertyChange(new PropertyChangeEvent(this, JeddictBrain.EventProperty.CHAT_PARTIAL.name, null, partial));
-        })
-        .onIntermediateResponse(intermediate -> listener.propertyChange(new PropertyChangeEvent(this, JeddictBrain.EventProperty.CHAT_INTERMEDIATE.name, null, intermediate)))
         .onError(error -> {
-            listener.propertyChange(new PropertyChangeEvent(this, JeddictBrain.EventProperty.CHAT_ERROR.name, null, error));
-        }).start();
+            if (listener != null) {
+                listener.onError(error);
+            }
+        })
+        .onPartialResponse(progress -> {
+            if (listener != null) {
+                listener.onProgress(progress);
+            }
+        })
+        .start();
     }
 }

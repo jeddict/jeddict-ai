@@ -47,8 +47,8 @@ public class JeddictChatModelBuilder {
     public final Logger LOG = Logger.getLogger(JeddictChatModelBuilder.class.getCanonicalName());
 
     protected static PreferencesManager pm = PreferencesManager.getInstance();
-    final private String modelName;
-    final private boolean withTools;
+    final protected String modelName;
+    final protected boolean withTools, withError;
 
     private final ChatModelListener listener;
 
@@ -65,7 +65,8 @@ public class JeddictChatModelBuilder {
     ) {
         this.modelName = modelName; // P2 - TODO: can this be null?
         this.listener = listener;
-        withTools = (modelName != null) && modelName.endsWith("-with-tools");
+        withTools = (modelName != null) && modelName.contains("-with-tools");
+        withError = (modelName != null) && modelName.contains("-with-error");
     }
 
     public ChatModel build() {
@@ -77,7 +78,11 @@ public class JeddictChatModelBuilder {
 
         final DummyChatModel model = new DummyChatModel();
 
+        if (listener != null) {
+            model.addListener(listener);
+        }
         model.toolChoice = (withTools) ? ToolChoice.AUTO : ToolChoice.NONE;
+        model.error = (withError) ? new RuntimeException("something went wrong") : null;
 
         return model;
     }
@@ -87,7 +92,11 @@ public class JeddictChatModelBuilder {
 
         final DummyChatModel model = new DummyChatModel();
 
+        if (listener != null) {
+            model.addListener(listener);
+        }
         model.toolChoice = (withTools) ? ToolChoice.AUTO : ToolChoice.NONE;
+        model.error = (withError) ? new RuntimeException("something went wrong") : null;
 
         return model;
     }

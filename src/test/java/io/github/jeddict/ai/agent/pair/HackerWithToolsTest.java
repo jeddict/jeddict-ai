@@ -17,12 +17,12 @@ package io.github.jeddict.ai.agent.pair;
 
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
+import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
+import dev.langchain4j.observability.api.listener.AiServiceCompletedListener;
+import dev.langchain4j.observability.api.listener.AiServiceResponseReceivedListener;
 import dev.langchain4j.service.AiServices;
-import io.github.jeddict.ai.lang.JeddictBrain;
-import static io.github.jeddict.ai.lang.JeddictBrain.EventProperty.CHAT_COMPLETED;
-import io.github.jeddict.ai.test.DummyPropertyChangeListener;
 import io.github.jeddict.ai.test.DummyTool;
-import java.beans.PropertyChangeEvent;
 import java.util.List;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.BeforeEach;
@@ -89,32 +89,33 @@ public class HackerWithToolsTest extends PairProgrammerTestBase {
 
     @Test
     public void hack_with_streaming() {
-        final DummyPropertyChangeListener streamListener = new DummyPropertyChangeListener();
         final DummyTool tool = new DummyTool();
         final String[] msg = new String[2];
 
+        final StringBuilder result = new StringBuilder();
         pair = AiServices.builder(HackerWithTools.class)
             .streamingChatModel(model)
             .tools(List.of(tool))
+            .registerListeners(new AiServiceCompletedListener() {
+                @Override
+                public void onEvent(final AiServiceCompletedEvent e) {
+                    final ChatResponse res = (ChatResponse)e.result().get();
+                    result.append('=').append(res.aiMessage().text());
+                }
+            }, new AiServiceResponseReceivedListener() {
+                @Override
+                public void onEvent(final AiServiceResponseReceivedEvent e) {
+                    final ChatResponse response = e.response();
+                    if (response.aiMessage().hasToolExecutionRequests()) {
+                        result.append(response.aiMessage().toolExecutionRequests().get(0).name());
+                    }
+                }
+            })
             .build();
 
-        pair.hack(streamListener, "execute tool dummyTool", "", "");
+        pair.hack(null, "execute tool dummyTool", "", "");
+
         then(tool.executed()).isTrue();
-
-        int i = 0;
-        then(streamListener.events).isNotEmpty();
-        PropertyChangeEvent e = streamListener.events.get(i++);
-        then(e.getPropertyName()).isEqualTo(JeddictBrain.EventProperty.CHAT_INTERMEDIATE.name);
-        e = streamListener.events.get(i++);
-        then(e.getPropertyName()).isEqualTo(JeddictBrain.EventProperty.TOOL_EXECUTING.name);
-        e = streamListener.events.get(i++);
-        then(e.getPropertyName()).isEqualTo(JeddictBrain.EventProperty.TOOL_EXECUTED.name);
-        e = streamListener.events.get(i++);
-        then(e.getPropertyName()).isEqualTo(JeddictBrain.EventProperty.CHAT_PARTIAL.name);
-        then(e.getNewValue()).isEqualTo("true");
-        e = streamListener.events.get(i++);
-        then(e.getPropertyName()).isEqualTo(CHAT_COMPLETED.name);
-        then(((ChatResponse)e.getNewValue()).aiMessage().text()).isEqualTo("true");
+        then(result.toString()).isEqualTo("dummyTool=true");
     }
-
 }

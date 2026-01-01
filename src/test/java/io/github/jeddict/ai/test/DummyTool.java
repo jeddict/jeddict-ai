@@ -47,6 +47,7 @@ public class DummyTool extends AbstractTool {
 
     @Tool
     public String dummyTool() {
+        progress("executing dummyTool");
         return String.valueOf(executed = true);
     }
 

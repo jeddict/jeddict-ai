@@ -42,11 +42,11 @@ import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import static ste.lloop.Loop._break_;
@@ -76,7 +76,7 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
         this.listeners = new ArrayList<>();
     }
 
-    public void addListener(ChatModelListener listener) {
+    public void addListener(final ChatModelListener listener) {
         this.listeners.add(listener);
     }
 
@@ -102,11 +102,6 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
             LOG.info(() -> "DummyChatModel instructed to raise " + error);
 
             throw error;
-        }
-
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(chatRequest, provider(), Collections.emptyMap());
-        for (ChatModelListener listener : listeners) {
-            listener.onRequest(requestContext);
         }
 
         final StringBuilder bodyBuilder = new StringBuilder();
@@ -192,12 +187,19 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
                     responseMessage = AiMessage.from(toolRequest);
                 }
             } else {
-                toolExecuted = false;  // geeting ready for the next prompt
+                toolExecuted = false;  // getting ready for the next prompt
                 responseMessage = on(chatRequest.messages()).loop((msg) -> {
                     if (msg instanceof ToolExecutionResultMessage toolResult) {
                         _break_(AiMessage.from(toolResult.text()));
                     }
                 });
+            }
+        }
+
+        if (!toolExecuted) {
+            ChatModelRequestContext requestContext = new ChatModelRequestContext(chatRequest, provider(), Collections.emptyMap());
+            for (ChatModelListener listener : listeners) {
+                listener.onRequest(requestContext);
             }
         }
 

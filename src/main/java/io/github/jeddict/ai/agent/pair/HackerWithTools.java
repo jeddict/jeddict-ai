@@ -21,15 +21,13 @@ import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import static io.github.jeddict.ai.agent.pair.PairProgrammer.LOG;
-import io.github.jeddict.ai.lang.JeddictBrain;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
+import io.github.jeddict.ai.lang.JeddictBrainListener;
 import org.apache.commons.lang3.StringUtils;
 
 
 public interface HackerWithTools extends Hacker {
     public static final String SYSTEM_MESSAGE = """
-**You are an expert software developer and problem solver.** Your role is to analyze
+You are an expert software developer and problem solver. Your role is to analyze
 complex programming tasks, design robust solutions, and implement or correct code as needed.
 
 ### Responsibilities
@@ -99,13 +97,13 @@ complex programming tasks, design robust solutions, and implement or correct cod
 
     // ----------------------------------------------------- streaming interface
 
-    default void hack(final PropertyChangeListener listener, final String prompt) {
+    default void hack(final JeddictBrainListener listener, final String prompt) {
         hack(listener, prompt, "none", "none");
     }
 
     @Override
     default void hack(
-        final PropertyChangeListener listener,
+        final JeddictBrainListener listener,
         final String prompt,
         final String globalRules, final String projectRules
     ) {
@@ -119,17 +117,17 @@ complex programming tasks, design robust solutions, and implement or correct cod
             prompt,
             StringUtils.defaultIfBlank(globalRules, "none"),
             StringUtils.defaultIfBlank(projectRules, "none")
-        ).onCompleteResponse(complete -> {
-            listener.propertyChange(new PropertyChangeEvent(this, JeddictBrain.EventProperty.CHAT_COMPLETED.name, null, complete));
-        })
-        .onPartialResponse(partial -> {
-            listener.propertyChange(new PropertyChangeEvent(this, JeddictBrain.EventProperty.CHAT_PARTIAL.name, null, partial));
-        })
-        .onIntermediateResponse(intermediate -> listener.propertyChange(new PropertyChangeEvent(this, JeddictBrain.EventProperty.CHAT_INTERMEDIATE.name, null, intermediate)))
-        .beforeToolExecution(execution -> listener.propertyChange(new PropertyChangeEvent(this, JeddictBrain.EventProperty.TOOL_EXECUTING.name, null, execution)))
-        .onToolExecuted(execution -> listener.propertyChange(new PropertyChangeEvent(this, JeddictBrain.EventProperty.TOOL_EXECUTED.name, null, execution)))
+        )
         .onError(error -> {
-            listener.propertyChange(new PropertyChangeEvent(this, JeddictBrain.EventProperty.CHAT_ERROR.name, null, error));
-        }).start();
+            if (listener != null) {
+                listener.onError(error);
+            }
+        })
+        .onPartialResponse(progress -> {
+            if (listener != null) {
+                listener.onProgress(progress);
+            }
+        })
+        .start();
     }
 }

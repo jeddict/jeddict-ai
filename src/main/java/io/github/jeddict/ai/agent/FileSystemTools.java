@@ -69,7 +69,7 @@ public class FileSystemTools extends AbstractCodeTool {
      */
     @Tool("""
     Recursively find files in a directory that match a regex pattern. The pattern
-    is matched against the full path of the file. Returns a newline-separated list
+    is matched against the full path of the file. Returns a newline-separated list"" when
     of relative file paths, or an empty string if no matches are found.
     It returns an error message starting with "ERR:" if the starting path does not exist.
     If the pattern is empty, it matches all files.
@@ -100,8 +100,12 @@ public class FileSystemTools extends AbstractCodeTool {
                     .collect(Collectors.toList());
 
             if (matches.isEmpty()) {
-                progress("⚠️ No matches found for pattern '" + regexPattern + "' in: " + path);
-                return "";
+                progress("⚠️ No matches found for '" + regexPattern + "' in: " + path);
+                //
+                // TODO: back to return "" once https://github.com/langchain4j/langchain4j/issues/4300
+                //       will be fixed
+                //
+                return "No matches found for " + regexPattern;
             }
 
             String result = String.join("\n", matches);

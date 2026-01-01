@@ -15,7 +15,11 @@
  */
 package io.github.jeddict.ai.lang;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.ToolExecutionException;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import io.github.jeddict.ai.agent.AbstractTool;
 import io.github.jeddict.ai.agent.pair.Assistant;
@@ -25,19 +29,16 @@ import io.github.jeddict.ai.agent.pair.PairProgrammer;
 import static io.github.jeddict.ai.agent.pair.PairProgrammer.Specialist.ASSISTANT;
 import static io.github.jeddict.ai.agent.pair.PairProgrammer.Specialist.HACKER;
 import static io.github.jeddict.ai.agent.pair.PairProgrammer.Specialist.TEST;
-import static io.github.jeddict.ai.lang.JeddictBrain.EventProperty.CHAT_COMPLETED;
 import io.github.jeddict.ai.settings.PreferencesManager;
-import io.github.jeddict.ai.test.DummyPropertyChangeListener;
 import io.github.jeddict.ai.test.DummyTool;
 import io.github.jeddict.ai.test.TestBase;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.BDDAssertions.thenThrownBy;
 import org.junit.jupiter.api.Test;
+import static ste.lloop.Loop.on;
 
 
 /**
@@ -86,32 +87,174 @@ public class JeddictBrainTest extends TestBase {
     }
 
     @Test
-    public void add_and_remove_listeners() {
-        final String N = "jeddict";
+    void add_and_remove_listeners() {
+        final JeddictBrain brain = new JeddictBrain("dummy", false);
 
-        final PropertyChangeListener L1 = new PropertyChangeListener() {
-            @Override
-            public void propertyChange(PropertyChangeEvent pce) { }
-        },
-        L2 = new PropertyChangeListener() {
-            @Override
-            public void propertyChange(PropertyChangeEvent pce) { }
-        };
+        final JeddictBrainListener listener1 = new DummyJeddictBrainListener();
+        final JeddictBrainListener listener2 = new DummyJeddictBrainListener();
 
-        final JeddictBrain brain = new JeddictBrain(N, false);
+        then(brain.listeners()).isEmpty();
 
-        then(brain.getSupport().getPropertyChangeListeners()).isEmpty();
+        brain.addListener(listener1);
+        then(brain.listeners()).containsExactly(listener1);
 
-        brain.addProgressListener(L1);
-        brain.addProgressListener(L2);
-        then(brain.getSupport().getPropertyChangeListeners()).containsExactlyInAnyOrder(L1, L2);
+        brain.addListener(listener2);
+        then(brain.listeners()).containsExactly(listener1, listener2);
 
-        brain.removeProgressListener(L2);
-        then(brain.getSupport().getPropertyChangeListeners()).containsExactly(L1);
+        brain.removeListener(listener1);
+        then(brain.listeners()).containsExactly(listener2);
 
-        brain.removeProgressListener(L1);
-        then(brain.getSupport().getPropertyChangeListeners()).isEmpty();
+        brain.removeListener(listener2);
+        then(brain.listeners()).isEmpty();
+
+        // Sanity checks
+        thenThrownBy(() -> brain.addListener(null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("listener cannot be null");
+
+        // Should not throw when removing null or non-existent listener
+        brain.removeListener(null);
+        brain.removeListener(new DummyJeddictBrainListener());
     }
+
+    @Test
+    public void all_listeners_receive_receive_all_events_ok() {
+        final DummyTool tool = new DummyTool();
+        final JeddictBrain brain = new JeddictBrain("dummy-with-tools", false, InteractionMode.AGENT, List.of(tool));
+
+        final DummyJeddictBrainListener listener1 = new DummyJeddictBrainListener(),
+            listener2 = new DummyJeddictBrainListener();
+
+        brain.probedModels.put("dummy-with-tools", Boolean.TRUE);
+        brain.addListener(listener1);
+        brain.addListener(listener2);
+        tool.addListener(listener1);
+        tool.addListener(listener2);
+
+        final Hacker a = brain.pairProgrammer(HACKER);
+        a.hack("execute tool dummyTool", "", "");
+
+        //
+        // chatStarted
+        //
+        final AtomicInteger i = new AtomicInteger();
+        on(listener1, listener2).loop((listener) -> {
+            final Object[] args = (Object [])listener.collector.get(i.get());
+            final SystemMessage s = (SystemMessage)args[0];
+            final UserMessage u = (UserMessage)args[1];
+            then(s.text()).startsWith("You are an expert software developer");
+            then(u.singleText()).startsWith("execute tool dummyTool");
+        });
+
+        //
+        // chatResponse - tool execution
+        //
+        i.getAndIncrement();
+        on(listener1, listener2).loop((listener) -> {
+            final Object[] args = (Object [])listener.collector.get(i.get());
+            final ChatRequest req = (ChatRequest)args[0];
+            final ChatResponse res = (ChatResponse)args[1];
+            final SystemMessage s = (SystemMessage)req.messages().get(0);
+            final UserMessage u = (UserMessage)req.messages().get(1);
+
+            then(s.text()).startsWith("You are an expert software developer");
+            then(u.singleText()).startsWith("execute tool dummyTool");
+            then(res.aiMessage().hasToolExecutionRequests()).isTrue();
+        });
+
+        //
+        // toolProgress
+        //
+        i.getAndIncrement();
+        on(listener1, listener2).loop((listener) -> {
+            final String progress = (String)listener.collector.get(i.get());
+            then(progress).isEqualTo("executing dummyTool");
+        });
+
+        //
+        // toolExecuted
+        //
+        i.getAndIncrement();
+        on(listener1, listener2).loop((listener) -> {
+            final Object[] args = (Object[])listener.collector.get(i.get());
+            final ToolExecutionRequest request = (ToolExecutionRequest)args[0];
+            final String result = (String)args[1];
+
+            then(request.name()).isEqualTo("dummyTool");
+            then(result).isEqualTo("true");
+        });
+
+        //
+        //  chatResponse
+        //
+        i.getAndIncrement();
+        on(listener1, listener2).loop((listener) -> {
+            final Object[] args = (Object [])listener.collector.get(i.get());
+            final ChatRequest req = (ChatRequest)args[0];
+            final ChatResponse res = (ChatResponse)args[1];
+
+            then(req.messages()).hasSize(4); // System, User, Ai, ToolExecutionResult
+            then(res.aiMessage().text()).isEqualTo("true");
+        });
+
+        //
+        // chatCompleted
+        //
+        i.getAndIncrement();
+        on(listener1, listener2).loop((listener) -> {
+            final ChatResponse res = (ChatResponse)listener.collector.get(i.get());
+            then(res.aiMessage().text()).isEqualToIgnoringNewLines("true");
+        });
+    }
+
+    @Test
+    public void all_listeners_receive_receive_all_events_error() {
+        //
+        // Given a JeddictBrain with a dummy model in QUERY mode that will throw
+        // an error
+        //
+        final JeddictBrain brain = new JeddictBrain("dummy-with-error", false);
+
+        //
+        // Given more than one listener
+        //
+        final DummyJeddictBrainListener listener1 = new DummyJeddictBrainListener(),
+            listener2 = new DummyJeddictBrainListener();
+        brain.addListener(listener1);
+        brain.addListener(listener2);
+
+
+        //
+        // When chatting...
+        //
+        final Assistant a = brain.pairProgrammer(ASSISTANT);
+        try { a.chat("hello world"); } catch (RuntimeException x) {}
+
+        //
+        // Then the error is signalled as an event
+        //
+        //
+        // chatStarted
+        //
+        final AtomicInteger i = new AtomicInteger();
+        on(listener1, listener2).loop((listener) -> {
+            final Object[] args = (Object [])listener.collector.get(i.get());
+            final SystemMessage s = (SystemMessage)args[0];
+            final UserMessage u = (UserMessage)args[1];
+            then(s.text()).startsWith("You are an expert software developer");
+            then(u.singleText()).startsWith("hello world");
+        });
+
+        //
+        // error
+        //
+        i.getAndIncrement();
+        on(listener1, listener2).loop((listener) -> {
+            final Throwable t = (Throwable)listener.collector.get(i.get());
+            then(t).hasMessage("something went wrong");
+        });
+    }
+
 
     @Test
     public void get_new_pair_programmer() {
@@ -150,34 +293,75 @@ public class JeddictBrainTest extends TestBase {
 
     @Test
     public void get_agentic_Hacker_streaming() {
-        final DummyPropertyChangeListener streamListener = new DummyPropertyChangeListener();
+        final DummyJeddictBrainListener listener = new DummyJeddictBrainListener();
         final DummyTool tool = new DummyTool();
         final String[] msg = new String[2];
         final JeddictBrain brain = new JeddictBrain(
             "dummy-with-tools", true,
             InteractionMode.AGENT, List.of(tool)
         );
+        brain.addListener(listener);
 
         HackerWithTools h = brain.pairProgrammer(HACKER);
 
-        h.hack(streamListener, "execute tool dummyTool");
+        h.hack(listener, "execute tool dummyTool");
 
         then(tool.executed()).isTrue();
 
         int i = 0;
-        then(streamListener.events).isNotEmpty();
-        PropertyChangeEvent e = streamListener.events.get(i++);
-        then(e.getPropertyName()).isEqualTo(JeddictBrain.EventProperty.CHAT_INTERMEDIATE.name);
-        e = streamListener.events.get(i++);
-        then(e.getPropertyName()).isEqualTo(JeddictBrain.EventProperty.TOOL_EXECUTING.name);
-        e = streamListener.events.get(i++);
-        then(e.getPropertyName()).isEqualTo(JeddictBrain.EventProperty.TOOL_EXECUTED.name);
-        e = streamListener.events.get(i++);
-        then(e.getPropertyName()).isEqualTo(JeddictBrain.EventProperty.CHAT_PARTIAL.name);
-        then(e.getNewValue()).isEqualTo("true");
-        e = streamListener.events.get(i++);
-        then(e.getPropertyName()).isEqualTo(CHAT_COMPLETED.name);
-        then(((ChatResponse)e.getNewValue()).aiMessage().text()).isEqualTo("true");
+        then(listener.collector).isNotEmpty().hasSize(6);
+
+        //
+        // chatStarted
+        //
+        Object[] args = (Object [])listener.collector.get(i++);
+        SystemMessage s = (SystemMessage)args[0];
+        UserMessage u = (UserMessage)args[1];
+        then(s.text()).startsWith("You are an expert software developer");
+        then(u.singleText()).startsWith("execute tool dummyTool");
+
+        //
+        // chatResponse
+        //
+        args = (Object[])listener.collector.get(i++);
+        ChatRequest req = (ChatRequest)args[0];
+        ChatResponse res = (ChatResponse)args[1];
+        s = (SystemMessage)req.messages().get(0);
+        u = (UserMessage)req.messages().get(1);
+        then(s.text()).startsWith("You are an expert software developer");
+        then(u.singleText()).startsWith("execute tool dummyTool");
+        then(res.aiMessage().hasToolExecutionRequests()).isTrue();
+
+        //
+        //  toolExecuted
+        //
+        args = (Object[])listener.collector.get(i++);
+        ToolExecutionRequest ter = (ToolExecutionRequest)args[0];
+        String result = "true";
+        then(ter.name()).isEqualTo("dummyTool");
+        then(result).isEqualTo("true");
+
+        //
+        // progress
+        //
+        then(listener.collector.get(i++)).isEqualTo("true");
+
+        //
+        // chatResponse
+        //
+        args = (Object[])listener.collector.get(i++);
+        req = (ChatRequest)args[0];
+        res = (ChatResponse)args[1];
+        then(req.messages()).hasSize(4); // (System, User, Ai, TioolExecutionResult)
+        then(u.singleText()).startsWith("execute tool dummyTool");
+        then(res.aiMessage().text()).isEqualTo("true");
+
+        //
+        //  chatCompleted
+        //
+        res = (ChatResponse)listener.collector.get(i++);
+        then(res.aiMessage().text()).isEqualToIgnoringNewLines("true");
+
     }
 
     @Test
@@ -188,21 +372,48 @@ public class JeddictBrainTest extends TestBase {
 
         then(a.chat("use mock 'hello world.txt'")).isEqualToIgnoringNewLines("hello world");
 
-        final DummyPropertyChangeListener streamListener
-            = new DummyPropertyChangeListener();
+        final DummyJeddictBrainListener listener
+            = new DummyJeddictBrainListener();
         brain = new JeddictBrain("dummy", true);
+        brain.addListener(listener);
         a = brain.pairProgrammer(ASSISTANT);
 
-        a.chat(streamListener, "use mock 'hello world.txt'");
+        a.chat(listener, "use mock 'hello world.txt'");
 
         int i = 0;
-        then(streamListener.events).isNotEmpty();
-        PropertyChangeEvent e = streamListener.events.get(i++);
-        then(e.getPropertyName()).isEqualTo(JeddictBrain.EventProperty.CHAT_PARTIAL.name);
-        then(e.getNewValue()).isEqualTo("hello world");
-        e = streamListener.events.get(i++);
-        then(e.getPropertyName()).isEqualTo(CHAT_COMPLETED.name);
-        then(((ChatResponse)e.getNewValue()).aiMessage().text()).isEqualToIgnoringNewLines("hello world");
+        then(listener.collector).isNotEmpty().hasSize(4);
+
+        //
+        // chatStarted
+        //
+        Object[] args = (Object [])listener.collector.get(i++);
+        SystemMessage s = (SystemMessage)args[0];
+        UserMessage u = (UserMessage)args[1];
+        then(s.text()).startsWith("You are an expert software developer");
+        then(u.singleText()).startsWith("use mock 'hello world.txt'");
+
+        //
+        // progress
+        //
+        then(listener.collector.get(i++)).isEqualTo("hello world");
+
+        //
+        // chatResponse
+        //
+        args = (Object[])listener.collector.get(i++);
+        ChatRequest req = (ChatRequest)args[0];
+        ChatResponse res = (ChatResponse)args[1];
+        s = (SystemMessage)req.messages().get(0);
+        u = (UserMessage)req.messages().get(1);
+        then(s.text()).startsWith("You are an expert software developer");
+        then(u.singleText()).startsWith("use mock 'hello world.txt'");
+        then(res.aiMessage().text()).isEqualToIgnoringNewLines("hello world");
+
+        //
+        //  chatCompleted
+        //
+        res = (ChatResponse)listener.collector.get(i++);
+        then(res.aiMessage().text()).isEqualToIgnoringNewLines("hello world");
     }
 
     @Test
@@ -220,27 +431,6 @@ public class JeddictBrainTest extends TestBase {
         thenThrownBy(() -> brain.withMemory(-1))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("size must be greather than 0 (where 0 means no memory)");
-    }
-
-    @Test
-    /**
-     * NOTE: maybe not the best design, it does not look natural. It is good
-     * enough for now, it may be reviewed in the future
-     *
-     */
-    public void handle_token_streaming_of_a_response() {
-        final JeddictBrain brain = new JeddictBrain(true);
-        final List<PropertyChangeEvent> events = new ArrayList();
-        final PropertyChangeListener listener = new PropertyChangeListener() {
-            @Override
-            public void propertyChange(PropertyChangeEvent event) {
-                events.add(event);
-            }
-        };
-
-        brain.addProgressListener(listener);
-
-        //brain.chat();
     }
 
     @Test

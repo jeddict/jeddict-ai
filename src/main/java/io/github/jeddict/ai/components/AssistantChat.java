@@ -221,7 +221,6 @@ public abstract class AssistantChat extends TopComponent {
     }
 
     public void updateButtons(Boolean prevButtonVisible, Boolean nextButtonVisible) {
-        // TODO: to be reviewed once all agents will use buit-in memory
         prevButton.setVisible(prevButtonVisible);
         nextButton.setVisible(nextButtonVisible);
         openInBrowserButton.setVisible(getAllEditorCount() > 0);

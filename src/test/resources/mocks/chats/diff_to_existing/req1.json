@@ -17,7 +17,7 @@
             "type": "function",
             "function": {
                 "name": "diff",
-                "description": "Preview the new content of a file for review and acceptance (e.g. via a diff viewer",
+                "description": "Preview the new content of a file for review and acceptance (e.g. via a diff viewer)",
                 "parameters": {
                     "type": "object",
                     "properties": {

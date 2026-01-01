@@ -13,23 +13,27 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package io.github.jeddict.ai.agent.pair;
+package io.github.jeddict.ai.lang;
 
-import io.github.jeddict.ai.lang.JeddictBrainListener;
+import static org.assertj.core.api.BDDAssertions.then;
+import org.junit.jupiter.api.Test;
 
+/**
+ *
+ */
+public class JeddictChatModelBuilderTest {
 
-public interface Hacker extends PairProgrammer {
+    @Test
+    public void name_containing_with_error() {
+        JeddictChatModelBuilder builder = new JeddictChatModelBuilder("dummy-with-error");
 
-    String hack(
-        final String prompt,
-        final String globalRules,
-        final String projectRules
-    );
+        then(builder.withError).isTrue();
+        then(builder.withTools).isFalse();
 
-    void hack(
-        final JeddictBrainListener listener,
-        final String prompt,
-        final String globalRules, final String projectRules
-    );
+        builder = new JeddictChatModelBuilder("dummy");
 
+        then(builder.withError).isFalse();
+        then(builder.withTools).isFalse();
+    }
+    
 }

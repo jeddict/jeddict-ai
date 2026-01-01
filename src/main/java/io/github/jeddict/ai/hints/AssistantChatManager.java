@@ -23,6 +23,7 @@ import static com.sun.source.tree.Tree.Kind.ENUM;
 import static com.sun.source.tree.Tree.Kind.INTERFACE;
 import static com.sun.source.tree.Tree.Kind.METHOD;
 import com.sun.source.util.TreePath;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import io.github.jeddict.ai.JeddictUpdateManager;
@@ -44,6 +45,7 @@ import io.github.jeddict.ai.agent.pair.TestSpecialist;
 import io.github.jeddict.ai.completion.Action;
 import io.github.jeddict.ai.completion.SQLCompletion;
 import io.github.jeddict.ai.components.AssistantChat;
+import io.github.jeddict.ai.components.AssistantJeddictBrainListener;
 import io.github.jeddict.ai.components.ContextDialog;
 import io.github.jeddict.ai.components.CustomScrollBarUI;
 import static io.github.jeddict.ai.components.MarkdownPane.getHtmlWrapWidth;
@@ -92,7 +94,6 @@ import javax.swing.JScrollPane;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.event.HyperlinkEvent;
-import org.apache.commons.lang3.StringUtils;
 import org.netbeans.api.java.source.JavaSource;
 import org.netbeans.api.java.source.TreePathHandle;
 import org.netbeans.api.java.source.WorkingCopy;
@@ -123,7 +124,7 @@ public class AssistantChatManager extends JavaFix {
     private final Action action;
     private SQLCompletion sqlCompletion;
     private AssistantChat ac;
-    private final List<Response> responseHistory = new ArrayList<>(); // TODO: to be reviewed/removed once all agents will use buit-in memory
+    private final List<Response> responseHistory = new ArrayList<>();
     private int currentResponseIndex = -1;
     private String sourceCode;
     private Project projectContext;
@@ -137,7 +138,7 @@ public class AssistantChatManager extends JavaFix {
 
     private String question;
     private SwingWorker result;
-    private JeddictBrainListener handler;
+    private AssistantJeddictBrainListener listener;
 
     private boolean commitMessage, codeReview;
 
@@ -266,38 +267,37 @@ public class AssistantChatManager extends JavaFix {
             Set<FileObject> messageContextCopy = new HashSet<>(messageContext);
             SwingUtilities.invokeLater(() -> {
                 displayHtmlContent(fileName, name + " AI Assistant");
-                JeddictBrainListener handler = new JeddictBrainListener(ac) {
+                JeddictBrainListener listener = new AssistantJeddictBrainListener(ac) {
                     @Override
-                    public void onCompleteResponse(ChatResponse response) {
-                        super.onCompleteResponse(response);
+                    public void onChatCompleted(final ChatResponse response) {
+                        super.onChatCompleted(response);
 
                         final Response r = new Response(null, response.aiMessage().text(), messageContextCopy);
                         sourceCode = EditorUtil.updateEditors(null, ac, r, getContextFiles());
 
-                        // TODO: to be removed once all agents will use buit-in memory
                         responseHistory.add(r);
                         currentResponseIndex = responseHistory.size() - 1;
                     }
                 };
                 String modelName = ac.getModelName();
                 if (action == Action.TEST) {
-                    final TestSpecialist pair = testSpecialist(handler, modelName);
+                    final TestSpecialist pair = testSpecialist(listener, modelName);
                     final String prompt = pm.getPrompts().get("test");
                     final String rules = pm.getSessionRules();
                     if (leaf instanceof MethodTree) {
-                        async(() -> pair.generateTestCase(null, null, null, leaf.toString(), prompt, rules), handler);
+                        async(() -> pair.generateTestCase(null, null, null, leaf.toString(), prompt, rules), listener);
                     } else {
-                        async(() -> pair.generateTestCase(null, null, treePath.getCompilationUnit().toString(), null, prompt, rules), handler);
+                        async(() -> pair.generateTestCase(null, null, treePath.getCompilationUnit().toString(), null, prompt, rules), listener);
                     }
                 } else {
                     final String rules = pm.getSessionRules();
                     final TechWriter pair =
-                        newJeddictBrain(handler, modelName, InteractionMode.ASK)
+                        newJeddictBrain(listener, modelName, InteractionMode.ASK)
                         .pairProgrammer(PairProgrammer.Specialist.TECHWRITER);
                     if (leaf instanceof MethodTree) {
-                        async(() -> pair.describeCode(leaf.toString(), rules), handler);
+                        async(() -> pair.describeCode(leaf.toString(), rules), listener);
                     } else {
-                        async(() -> pair.describeCode(treePath.getCompilationUnit().toString(), rules), handler);
+                        async(() -> pair.describeCode(treePath.getCompilationUnit().toString(), rules), listener);
                     }
                 }
             });
@@ -334,7 +334,7 @@ public class AssistantChatManager extends JavaFix {
             @Override
             public void onChatReset() {
                 initialMessage();
-                responseHistory.clear(); // TODO: to be removed once all agents will use buit-in memory
+                responseHistory.clear();
                 currentResponseIndex = -1;
                 ac.updateButtons(currentResponseIndex > 0, currentResponseIndex < responseHistory.size() - 1);
             }
@@ -350,8 +350,8 @@ public class AssistantChatManager extends JavaFix {
                     Object answer = DialogDisplayer.getDefault().notify(confirmDialog);
                     if (NotifyDescriptor.YES_OPTION.equals(answer)) {
                         result.cancel(true);
-                        if (handler != null && handler.getProgressHandle() != null) {
-                            handler.getProgressHandle().finish();
+                        if (listener != null && listener.getProgressHandle() != null) {
+                            listener.getProgressHandle().finish();
                         }
                         result = null;
                         stopLoading();
@@ -388,7 +388,6 @@ public class AssistantChatManager extends JavaFix {
 
             @Override
             public void onPrev() {
-                // TODO: to be reviewed once all agents will use buit-in memory
                 if (currentResponseIndex > 0) {
                     currentResponseIndex--;
                     Response historyResponse = responseHistory.get(currentResponseIndex);
@@ -399,7 +398,6 @@ public class AssistantChatManager extends JavaFix {
 
             @Override
             public void onNext() {
-                // TODO: to be reviewed once all agents will use buit-in memory
                 if (currentResponseIndex < responseHistory.size() - 1) {
                     currentResponseIndex++;
                     Response historyResponse = responseHistory.get(currentResponseIndex);
@@ -456,12 +454,16 @@ public class AssistantChatManager extends JavaFix {
 
         };
 
-        handler = new JeddictBrainListener(assistant) {
-            @Override
-            public void onCompleteResponse(final ChatResponse response) {
-                 super.onCompleteResponse(response);
+        //
+        // TODO: can't we merge this in the base AssistantJeddictBrainListener ?
+        listener = new AssistantJeddictBrainListener(assistant) {
+            private final StringBuilder toolingResponse = new StringBuilder();
 
-                final StringBuilder textResponse = new StringBuilder(StringUtils.defaultString(response.aiMessage().text()));
+            @Override
+            public void onChatCompleted(final ChatResponse response) {
+                 super.onChatCompleted(response);
+
+                final StringBuilder textResponse = new StringBuilder(response.aiMessage().text());
 
                 LOG.finest(() -> "response completed with\ntext\n" + textResponse + "\nand\ntooling\n" + toolingResponse);
 
@@ -493,7 +495,13 @@ public class AssistantChatManager extends JavaFix {
                     ac.buttonPanelResized();
                 });
             }
-        };
+
+            @Override
+            public void onToolExecuted(final ToolExecutionRequest request, final String result) {
+                toolingResponse.append(request.name()).append(' ').append(request.arguments());
+                toolingResponse.append("\n  >").append(result.replaceAll("\n", "\n  "));
+            }
+       };
 
         return assistant;
     }
@@ -656,14 +664,14 @@ public class AssistantChatManager extends JavaFix {
                         if (messageScopeContent != null && !messageScopeContent.isEmpty()) {
                             context = context + "\n\n Files:\n" + messageScopeContent;
                         }
-                        response = dbSpecialist(handler, modelName).assistDbMetadata(question, context, sessionRules);
+                        response = dbSpecialist(listener, modelName).assistDbMetadata(question, context, sessionRules);
                     } else if (commitMessage && commitChanges != null) {
                         String context = commitChanges;
                         String messageScopeContent = getTextFilesContext(messageContext, getProject(), excludeJavadoc, includeFiles, agentEnabled);
                         if (messageScopeContent != null && !messageScopeContent.isEmpty()) {
                             context = context + "\n\n Files:\n" + messageScopeContent;
                         }
-                        response = diffSpecialist(handler, modelName).suggestCommitMessages(context, question);
+                        response = diffSpecialist(listener, modelName).suggestCommitMessages(context, question);
                     } else if (codeReview) {
                         String context = params.get("diff");
                         if (context == null) {
@@ -673,9 +681,9 @@ public class AssistantChatManager extends JavaFix {
                         if (messageScopeContent != null && !messageScopeContent.isEmpty()) {
                             context = context + "\n\n Files:\n" + messageScopeContent;
                         }
-                        response = diffSpecialist(handler, modelName).reviewChanges(context, params.get("granularity"), params.get("feature"));
+                        response = diffSpecialist(listener, modelName).reviewChanges(context, params.get("granularity"), params.get("feature"));
                     } else if (action == Action.TEST) {
-                        final TestSpecialist pair = testSpecialist(handler, modelName);
+                        final TestSpecialist pair = testSpecialist(listener, modelName);
                         final String prompt = pm.getPrompts().get("test");
                         final String rules = pm.getSessionRules();
                         if (leaf instanceof MethodTree) {
@@ -719,9 +727,9 @@ public class AssistantChatManager extends JavaFix {
                                     + "\nSession content: " + sessionScopeContent
                                     + "\nAdditional conent: " + messageScopeContent;
 
-                            final Assistant a = projectAssistant(handler, modelName);
+                            final Assistant a = projectAssistant(listener, modelName);
                             if (pm.isStreamEnabled()) {
-                                a.chat(handler, prompt, images, projectInfo, globalRules, sessionRules);
+                                a.chat(listener, prompt, images, projectInfo, globalRules, sessionRules);
                             } else {
                                 response = a.chat(prompt, images, projectInfo, globalRules, sessionRules);
                             }
@@ -735,18 +743,18 @@ public class AssistantChatManager extends JavaFix {
                                 ac.selectProject();
                                 selectedProject = getProject();
                             }
-                            final Hacker h = hacker(handler, modelName, ac.interactiveMode());
+                            final Hacker h = hacker(listener, modelName, ac.interactiveMode());
                             if (pm.isStreamEnabled()) {
-                                h.hack(handler, question, pm.getGlobalRules(), sessionRules);
+                                h.hack(listener, question, pm.getGlobalRules(), sessionRules);
                             } else {
                                 response = h.hack(question, pm.getGlobalRules(), sessionRules);
                             }
                         }
                     } else {
-                        final Assistant a = assistant(handler, modelName);
+                        final Assistant a = assistant(listener, modelName);
                         final String projectInfo = ProjectMetadataInfo.get(getProject());
                         if (pm.isStreamEnabled()) {
-                            a.chat(handler, question, treePath, projectInfo, globalRules, sessionRules);
+                            a.chat(listener, question, treePath, projectInfo, globalRules, sessionRules);
                         } else {
                             response = a.chat(question, treePath, projectInfo, globalRules, sessionRules);
                         }
@@ -765,16 +773,18 @@ public class AssistantChatManager extends JavaFix {
                 try {
                     String response = get(); // This retrieves the return value from doInBackground
                     if (response != null && !response.isEmpty()) {
-                        handler.onCompleteResponse(ChatResponse.builder().aiMessage(new AiMessage(response)).build());
+                        listener.onChatCompleted(
+                            ChatResponse.builder().aiMessage(AiMessage.from(response)).build()
+                        );
                     }
                 } catch (InterruptedException | ExecutionException ex) {
                     // Handle exceptions from doInBackground
                     Exceptions.printStackTrace(ex);
                     Throwable cause = ex.getCause();
                     if (cause instanceof Exception) { // check if cause is an actual Exception
-                        handler.onError(cause);
+                        listener.onError(cause);
                     } else {
-                        handler.onError(ex);
+                        listener.onError(ex);
                     }
                 }
             }
@@ -799,7 +809,7 @@ public class AssistantChatManager extends JavaFix {
             },
             (mode == InteractionMode.ASK) ? null : buildToolsList(getProject(), listener, mode)
         );
-        brain.addProgressListener(listener);
+        brain.addListener(listener);
         return brain;
     }
 
@@ -936,7 +946,7 @@ public class AssistantChatManager extends JavaFix {
      */
     private List<AbstractTool> buildToolsList(
         final Project project,
-        final JeddictBrainListener handler,
+        final JeddictBrainListener listener,
         final InteractionMode mode
     ) {
         if (project == null) {
@@ -978,15 +988,14 @@ public class AssistantChatManager extends JavaFix {
         //
         // The handler wants to know about tool execution
         //
-        toolsList.forEach((tool) -> tool.addPropertyChangeListener(handler));
+        toolsList.forEach((tool) -> tool.addListener(listener));
+
+        System.out.println("tools: " + toolsList);
 
         return toolsList;
     }
 
-    //
-    // TODO: remove handler
-    //
-    private void async(Supplier<String> answer, final JeddictBrainListener handler) {
+    private void async(Supplier<String> answer, final JeddictBrainListener listener) {
         new SwingWorker<String, Object>() {
             @Override
             public String doInBackground() {
@@ -996,9 +1005,9 @@ public class AssistantChatManager extends JavaFix {
             @Override
             protected void done() {
                 try {
-                    handler.onCompleteResponse(
-                        ChatResponse.builder().aiMessage(new AiMessage(get())).build()
-                    );
+                    listener.onChatCompleted(ChatResponse.builder().aiMessage(
+                        AiMessage.from(get())
+                    ).build());
                 } catch (InterruptedException | ExecutionException x) {
                     //
                     // TODO: better error handler

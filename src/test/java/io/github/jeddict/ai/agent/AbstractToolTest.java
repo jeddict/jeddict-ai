@@ -2,12 +2,9 @@ package io.github.jeddict.ai.agent;
 
 import io.github.jeddict.ai.test.TestBase;
 import io.github.jeddict.ai.test.DummyTool;
-import static io.github.jeddict.ai.agent.AbstractTool.PROPERTY_MESSAGE;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
+import io.github.jeddict.ai.lang.DummyJeddictBrainListener;
 import java.io.File;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.function.UnaryOperator;
 import org.junit.jupiter.api.Test;
@@ -60,45 +57,38 @@ public class AbstractToolTest extends TestBase {
     }
 
     @Test
-    public void fires_property_change_event() {
+    public void fires_onProgress_events() {
         // given
         DummyTool tool = new DummyTool(projectDir);
-        final List<PropertyChangeEvent> events = new ArrayList<>();
-        PropertyChangeListener listener = new PropertyChangeListener() {
-            @Override
-            public void propertyChange(PropertyChangeEvent evt) {
-                events.add(evt);
-            }
-        };
-        tool.addPropertyChangeListener(listener);
+        final DummyJeddictBrainListener listener = new DummyJeddictBrainListener();
+        tool.addListener(listener);
 
         // when
         tool.progress("a message");
 
         // then
-        then(events).hasSize(1);
-        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(0).getNewValue()).isEqualTo("a message");
+        then(listener.collector).hasSize(1);
+        then(listener.collector.get(0)).asString().isEqualTo("a message");
     }
 
     @Test
-    public void addPropertyChangeListener_does_not_accept_null() {
+    public void addListener_does_not_accept_null() {
         // given
         DummyTool tool = new DummyTool(projectDir);
 
         // when & then
-        thenThrownBy(() -> tool.addPropertyChangeListener(null))
+        thenThrownBy(() -> tool.addListener(null))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("listener can not be null");
     }
 
     @Test
-    public void removePropertyChangeListener_does_not_accept_null() {
+    public void removeListener_does_not_accept_null() {
         // given
         DummyTool tool = new DummyTool(projectDir);
 
         // when & then
-        thenThrownBy(() -> tool.removePropertyChangeListener(null))
+        thenThrownBy(() -> tool.removeListener(null))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("listener can not be null");
     }
@@ -107,19 +97,11 @@ public class AbstractToolTest extends TestBase {
     public void progress_also_logs_the_message() {
         // given
         DummyTool tool = new DummyTool(projectDir);
-        final List<PropertyChangeEvent> events = new ArrayList<>();
-        tool.addPropertyChangeListener(new PropertyChangeListener() {
-            @Override
-            public void propertyChange(PropertyChangeEvent evt) {
-                events.add(evt);
-            }
-        });
 
         // when
         tool.progress("a message");
 
         // then
-        then(events).hasSize(1);
         then(logHandler.getMessages()).contains("a message");
     }
 

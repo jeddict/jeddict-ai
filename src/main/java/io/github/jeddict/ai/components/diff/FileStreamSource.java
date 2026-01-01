@@ -107,6 +107,7 @@ public class FileStreamSource extends StreamSource {
      */
     @Override
     public Reader createReader() throws IOException {
+        System.out.println(">> " + FileEncodingQuery.getEncoding(fileObject));
         return new InputStreamReader(fileObject.getInputStream(), FileEncodingQuery.getEncoding(fileObject));
     }
 

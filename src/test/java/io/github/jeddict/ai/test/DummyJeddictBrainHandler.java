@@ -19,7 +19,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.util.Optional;
 
-public class DummyJeddictBrainListener implements StreamingChatResponseHandler {
+public class DummyJeddictBrainHandler implements StreamingChatResponseHandler {
 
     private final StringBuilder content = new StringBuilder();
 
