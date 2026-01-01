@@ -1,5 +1,5 @@
 /**
- * Copyright 2025 the original author or authors from the Jeddict project (https://jeddict.github.io/).
+ * Copyright 2025-26 the original author or authors from the Jeddict project (https://jeddict.github.io/).
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -36,7 +36,7 @@ import org.openide.util.Lookup;
 import org.openide.util.lookup.Lookups;
 
 /**
- * Tools for code-level operations in NetBeans projects.
+ * Tools for code-level operations in NetBeans Java projects only.
  *
  * <p>
  * This class offers various methods for AI assistants to explore and analyze
@@ -77,8 +77,12 @@ public class ExplorationTools extends AbstractCodeTool {
         this.lookup = lookup;
     }
 
+    private static boolean isJavaFile(String path) {
+        return path != null && path.endsWith(".java");
+    }
+
     /**
-     * List all top-level classes in a file.
+     * List all top-level classes in a Java source file.
      *
      * <p>
      * <b>Example:</b></p>
@@ -90,16 +94,25 @@ public class ExplorationTools extends AbstractCodeTool {
      * @param path relative path to the Java file
      * @return names of all top-level classes, or a message if none found
      */
-    @Tool("List all classes declared in a given Java file by path")
+    @Tool("JAVA ONLY: List all classes declared in a given Java file by path")
     public String listClassesInFile(String path) throws Exception {
+
+        if (!isJavaFile(path)) {
+            return "This tool supports Java source files only (.java).";
+        }
+
         progress("Listing classes in " + path);
+
         return withJavaSource(path, javaSource -> {
             final StringBuilder result = new StringBuilder();
             javaSource.runUserActionTask(cc -> {
                 cc.toPhase(JavaSource.Phase.ELEMENTS_RESOLVED);
-                List<TypeElement> classes = ElementFilter.typesIn(cc.getTopLevelElements());
+                List<TypeElement> classes
+                        = ElementFilter.typesIn(cc.getTopLevelElements());
                 for (TypeElement clazz : classes) {
-                    result.append("Class: ").append(clazz.getQualifiedName()).append("\n");
+                    result.append("Class: ")
+                            .append(clazz.getQualifiedName())
+                            .append("\n");
                 }
             }, true);
             return result.toString();
@@ -107,7 +120,7 @@ public class ExplorationTools extends AbstractCodeTool {
     }
 
     /**
-     * List all methods inside a class file.
+     * List all methods and constructors in a Java class file.
      *
      * <p>
      * <b>Example:</b></p>
@@ -119,18 +132,28 @@ public class ExplorationTools extends AbstractCodeTool {
      * @param path relative path to the Java file
      * @return method signatures, or a message if none found
      */
-    @Tool("List all methods of a class in a given Java file by path")
+    @Tool("JAVA ONLY: List all methods of a class in a given Java file by path")
     public String listMethodsInFile(String path) throws Exception {
+
+        if (!isJavaFile(path)) {
+            return "This tool supports Java source files only (.java).";
+        }
+
         progress("Listing methods in " + path);
+
         return withJavaSource(path, javaSource -> {
             final StringBuilder result = new StringBuilder();
             javaSource.runUserActionTask(cc -> {
                 cc.toPhase(JavaSource.Phase.ELEMENTS_RESOLVED);
                 for (Element element : cc.getTopLevelElements()) {
-                    List<? extends Element> enclosed = element.getEnclosedElements();
-                    enclosed.stream()
-                            .filter(e -> e.getKind() == ElementKind.METHOD || e.getKind() == ElementKind.CONSTRUCTOR)
-                            .forEach(m -> result.append("Method: ").append(m.toString()).append("\n"));
+                    element.getEnclosedElements().stream()
+                            .filter(e -> e.getKind() == ElementKind.METHOD
+                            || e.getKind() == ElementKind.CONSTRUCTOR)
+                            .forEach(m
+                                    -> result.append("Method: ")
+                                    .append(m)
+                                    .append("\n")
+                            );
                 }
             }, true);
             return result.toString();
@@ -141,6 +164,38 @@ public class ExplorationTools extends AbstractCodeTool {
      * Searches the project for a Java symbol (class, method, or field).
      *
      * <p>
+     * <b>How the search works:</b></p>
+     * <ol>
+     * <li>Obtains all Java source groups from the NetBeans project.</li>
+     * <li>Builds a {@link ClassIndex} from the project's Java classpath.</li>
+     * <li>Retrieves all declared Java types (classes and interfaces) in source
+     * scope.</li>
+     * <li>For each type:
+     * <ul>
+     * <li>Resolves the type using {@link JavaSource}.</li>
+     * <li>Checks whether the type's simple name matches the requested symbol
+     * (class match).</li>
+     * <li>Iterates over the type's members to check for matching methods,
+     * constructors, or fields.</li>
+     * </ul>
+     * </li>
+     * </ol>
+     *
+     * <p>
+     * The search is performed using the symbol's <b>simple name</b> only. Fully
+     * qualified names are not required and are not matched directly.</p>
+     *
+     * <p>
+     * <b>Limitations:</b></p>
+     * <ul>
+     * <li>Only Java source files are searched (no binaries or
+     * dependencies).</li>
+     * <li>Inner and anonymous classes are not indexed.</li>
+     * <li>Overloaded methods are returned by name only, without signature
+     * differentiation.</li>
+     * </ul>
+     * 
+     * <p>
      * <b>Examples:</b></p>
      * <pre>
      * searchSymbol("UserService");   // Class: com.example.service.UserService
@@ -148,28 +203,33 @@ public class ExplorationTools extends AbstractCodeTool {
      * searchSymbol("userRepository");// Field: com.example.service.UserService.userRepository
      * </pre>
      *
-     * @param symbolName simple name of the class, method, or field to find
+     * @param symbolName simple name of the Java class, method, or field to
+     * search for
+     * @return matching symbols found in the Java source code
      */
-    @Tool("Search for a symbol (class, method, or field) in the whole project")
+    @Tool("JAVA ONLY: Search for a symbol (class, method, or field) in the whole project")
     public String searchSymbol(String symbolName) throws Exception {
 
         progress("Searching symbol " + symbolName);
 
-        StringBuilder result = new StringBuilder();
         Sources sources = lookup.lookup(Sources.class);
-
         if (sources == null) {
+            return "No Java sources found in project.";
+        }
+
+        SourceGroup[] groups
+                = sources.getSourceGroups(JavaProjectConstants.SOURCES_TYPE_JAVA);
+
+        if (groups.length == 0) {
+            progress("No sources found in project.");
             return "No sources found in project.";
         }
 
-        SourceGroup[] groups = sources.getSourceGroups(JavaProjectConstants.SOURCES_TYPE_JAVA);
-
-        if (groups.length == 0) {
-            return "No source groups found.";
-        }
-
-        ClasspathInfo cpInfo = ClasspathInfo.create(groups[0].getRootFolder());
+        ClasspathInfo cpInfo
+                = ClasspathInfo.create(groups[0].getRootFolder());
         ClassIndex index = cpInfo.getClassIndex();
+
+        StringBuilder result = new StringBuilder();
 
         Set<ElementHandle<TypeElement>> types
                 = index.getDeclaredTypes(
@@ -192,7 +252,6 @@ public class ExplorationTools extends AbstractCodeTool {
 
             js.runUserActionTask(cc -> {
                 cc.toPhase(JavaSource.Phase.ELEMENTS_RESOLVED);
-
                 TypeElement type = h.resolve(cc);
                 if (type == null) {
                     return;
@@ -227,39 +286,66 @@ public class ExplorationTools extends AbstractCodeTool {
             }, true);
         }
 
-        return result.length() == 0 ? "No matches found." : result.toString();
+        if (result.length() == 0) {
+            progress("No matches found for symbol: " + symbolName);
+            return "No matches found.";
+        }
+        return result.toString();
     }
 
-    @Tool("Find all usages of a class, method, or field")
-    public String findUsages(String path, String symbolName)
-            throws Exception {
-        String jr = withJavaSource(path, javaSource -> {
-            final StringBuilder result = new StringBuilder();
+    /**
+     * Find all usages of a Java class, method, or field.
+     *
+     * @param path relative path to a .java file
+     * @param symbolName Java symbol name
+     * @return usage locations
+     */
+    @Tool("JAVA ONLY: Find all usages of a Java class, method, or field")
+    public String findUsages(String path, String symbolName) throws Exception {
+
+        if (!isJavaFile(path)) {
+            return "This tool supports Java source files only (.java).";
+        }
+
+        return withJavaSource(path, javaSource -> {
+            StringBuilder result = new StringBuilder();
             javaSource.runUserActionTask(cc -> {
                 cc.toPhase(JavaSource.Phase.ELEMENTS_RESOLVED);
-                for (TypeElement type : ElementFilter.typesIn(cc.getTopLevelElements())) {
+                for (TypeElement type
+                        : ElementFilter.typesIn(cc.getTopLevelElements())) {
+
                     for (Element member : type.getEnclosedElements()) {
-                        if (member.getSimpleName().toString().equals(symbolName)
-                                || type.getSimpleName().toString().equals(symbolName)) {
+                        if (member.getSimpleName().contentEquals(symbolName)
+                                || type.getSimpleName().contentEquals(symbolName)) {
 
-                            ElementHandle<Element> handle = ElementHandle.create(member);
-                            org.netbeans.modules.refactoring.api.WhereUsedQuery query
-                                    = new org.netbeans.modules.refactoring.api.WhereUsedQuery(Lookups.singleton(handle));
+                            ElementHandle<Element> handle
+                                    = ElementHandle.create(member);
 
-                            RefactoringSession session = RefactoringSession.create("Find Usages");
+                            var query
+                                    = new org.netbeans.modules.refactoring.api.WhereUsedQuery(
+                                            Lookups.singleton(handle));
+
+                            RefactoringSession session
+                                    = RefactoringSession.create("Find Usages");
+
                             query.prepare(session);
                             session.doRefactoring(true);
 
-                            session.getRefactoringElements().forEach(elem
-                                    -> result.append("Usage: ").append(elem.getDisplayText()).append("\n")
-                            );
+                            session.getRefactoringElements()
+                                    .forEach(elem
+                                            -> result.append("Usage: ")
+                                            .append(elem.getDisplayText())
+                                            .append("\n")
+                                    );
                         }
                     }
                 }
             }, true);
-            return result.length() == 0 ? "No usages found." : result.toString();
+            if (result.length() == 0) {
+                progress("No usages found for symbol: " + symbolName);
+                return "No usages found.";
+            }
+            return result.toString();
         }, false).toString();
-        return jr;
     }
-
 }
