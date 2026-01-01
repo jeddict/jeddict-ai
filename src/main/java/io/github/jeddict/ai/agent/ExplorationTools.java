@@ -1,5 +1,6 @@
 /**
- * Copyright 2025-26 the original author or authors from the Jeddict project (https://jeddict.github.io/).
+ * Copyright 2025-26 the original author or authors from the Jeddict project
+ * (https://jeddict.github.io/).
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -90,6 +91,16 @@ public class ExplorationTools extends AbstractCodeTool {
      * listClassesInFile("src/main/java/com/example/MyClass.java");
      * // -> "Class: com.example.MyClass"
      * </pre>
+     * 
+     * <p><b>Output format:</b></p>
+     * <pre>
+     * Class: fully.qualified.ClassName
+     * </pre>
+     *
+     * <p>
+     * One line is returned per class. If no classes are found, an empty string
+     * is returned.
+     * </p>
      *
      * @param path relative path to the Java file
      * @return names of all top-level classes, or a message if none found
@@ -111,8 +122,8 @@ public class ExplorationTools extends AbstractCodeTool {
                         = ElementFilter.typesIn(cc.getTopLevelElements());
                 for (TypeElement clazz : classes) {
                     result.append("Class: ")
-                            .append(clazz.getQualifiedName())
-                            .append("\n");
+                          .append(clazz.getQualifiedName())
+                          .append("\n");
                 }
             }, true);
             return result.toString();
@@ -128,6 +139,16 @@ public class ExplorationTools extends AbstractCodeTool {
      * listMethodsInFile("src/main/java/com/example/MyClass.java");
      * // -> "Method: public void sayHello()"
      * </pre>
+     * 
+     * <p><b>Output format:</b></p>
+     * <pre>
+     * Method: methodSignature
+     * </pre>
+     *
+     * <p>
+     * Each method or constructor is returned on its own line using the
+     * element's default signature representation.
+     * </p>
      *
      * @param path relative path to the Java file
      * @return method signatures, or a message if none found
@@ -180,7 +201,7 @@ public class ExplorationTools extends AbstractCodeTool {
      * </ul>
      * </li>
      * </ol>
-     *
+     * 
      * <p>
      * The search is performed using the symbol's <b>simple name</b> only. Fully
      * qualified names are not required and are not matched directly.</p>
@@ -202,6 +223,22 @@ public class ExplorationTools extends AbstractCodeTool {
      * searchSymbol("findUser");      // Method: com.example.service.UserService.findUser
      * searchSymbol("userRepository");// Field: com.example.service.UserService.userRepository
      * </pre>
+     * 
+     * <p><b>Output format:</b></p>
+     * <pre>
+     * Class:  fully.qualified.ClassName
+     * Method: fully.qualified.ClassName.methodName
+     * Field:  fully.qualified.ClassName.fieldName
+     * </pre>
+     *
+     * <p>
+     * Each match is returned on a separate line, prefixed by its kind.
+     * If no matches are found, the string {@code "No matches found."} is returned.
+     * </p>
+     *
+     * <p>
+     * The search matches the symbol's <b>simple name</b> only.
+     * </p>
      *
      * @param symbolName simple name of the Java class, method, or field to
      * search for
@@ -259,8 +296,8 @@ public class ExplorationTools extends AbstractCodeTool {
 
                 if (type.getSimpleName().contentEquals(symbolName)) {
                     result.append("Class: ")
-                            .append(type.getQualifiedName())
-                            .append("\n");
+                          .append(type.getQualifiedName())
+                          .append("\n");
                 }
 
                 for (Element e : type.getEnclosedElements()) {
@@ -271,16 +308,16 @@ public class ExplorationTools extends AbstractCodeTool {
                     if (e.getKind() == ElementKind.METHOD
                             || e.getKind() == ElementKind.CONSTRUCTOR) {
                         result.append("Method: ")
-                                .append(type.getQualifiedName())
-                                .append(".")
-                                .append(e.getSimpleName())
-                                .append("\n");
+                              .append(type.getQualifiedName())
+                              .append(".")
+                              .append(e.getSimpleName())
+                              .append("\n");
                     } else if (e.getKind() == ElementKind.FIELD) {
                         result.append("Field: ")
-                                .append(type.getQualifiedName())
-                                .append(".")
-                                .append(e.getSimpleName())
-                                .append("\n");
+                              .append(type.getQualifiedName())
+                              .append(".")
+                              .append(e.getSimpleName())
+                              .append("\n");
                     }
                 }
             }, true);
@@ -296,9 +333,20 @@ public class ExplorationTools extends AbstractCodeTool {
     /**
      * Find all usages of a Java class, method, or field.
      *
+     * <p><b>Output format:</b></p>
+     * <pre>
+     * Usage: humanReadableDescription
+     * </pre>
+     *
+     * <p>
+     * Each usage corresponds to a refactoring result entry returned by the
+     * NetBeans {@code WhereUsedQuery}.
+     * If no usages are found, {@code "No usages found."} is returned.
+     * </p>
+     * 
      * @param path relative path to a .java file
      * @param symbolName Java symbol name
-     * @return usage locations
+     * @return formatted usage list
      */
     @Tool("JAVA ONLY: Find all usages of a Java class, method, or field")
     public String findUsages(String path, String symbolName) throws Exception {
