@@ -35,13 +35,13 @@ class ProjectClassScannerTest {
                 }
                 """;
 
-        CompilationUnitTree compilation_unit =
+        CompilationUnitTree compilationUnit =
                 JavaTestUtils.parse("Sample", source);
 
-        Set<String> referenced_classes =
-                ProjectClassScanner.getReferencedClasses(compilation_unit);
+        Set<String> referencedClasses =
+                ProjectClassScanner.getReferencedClasses(compilationUnit);
 
-        then(referenced_classes)
+        then(referencedClasses)
                 .contains("String", "Integer");
     }
 
@@ -53,13 +53,13 @@ class ProjectClassScannerTest {
                 }
                 """;
 
-        CompilationUnitTree compilation_unit =
+        CompilationUnitTree compilationUnit =
                 JavaTestUtils.parse("Params", source);
 
-        Set<String> referenced_classes =
-                ProjectClassScanner.getReferencedClasses(compilation_unit);
+        Set<String> referencedClasses =
+                ProjectClassScanner.getReferencedClasses(compilationUnit);
 
-        then(referenced_classes)
+        then(referencedClasses)
                 .containsExactlyInAnyOrder("String", "Integer");
     }
 
@@ -75,13 +75,13 @@ class ProjectClassScannerTest {
                 }
                 """;
 
-        CompilationUnitTree compilation_unit =
+        CompilationUnitTree compilationUnit =
                 JavaTestUtils.parse("Complex", source);
 
-        Set<String> referenced_classes =
-                ProjectClassScanner.getReferencedClasses(compilation_unit);
+        Set<String> referencedClasses =
+                ProjectClassScanner.getReferencedClasses(compilationUnit);
 
-        then(referenced_classes)
+        then(referencedClasses)
                 .contains("List", "String", "IOException");
     }
 
@@ -94,13 +94,13 @@ class ProjectClassScannerTest {
                 }
                 """;
 
-        CompilationUnitTree compilation_unit =
+        CompilationUnitTree compilationUnit =
                 JavaTestUtils.parse("Child", source);
 
-        Set<String> referenced_classes =
-                ProjectClassScanner.getReferencedClasses(compilation_unit);
+        Set<String> referencedClasses =
+                ProjectClassScanner.getReferencedClasses(compilationUnit);
 
-        then(referenced_classes)
+        then(referencedClasses)
                 .containsExactlyInAnyOrder("Base", "AutoCloseable", "Runnable");
     }
 
@@ -115,13 +115,13 @@ class ProjectClassScannerTest {
                 }
                 """;
 
-        CompilationUnitTree compilation_unit =
+        CompilationUnitTree compilationUnit =
                 JavaTestUtils.parse("ThrowsTest", source);
 
-        Set<String> referenced_classes =
-                ProjectClassScanner.getReferencedClasses(compilation_unit);
+        Set<String> referencedClasses =
+                ProjectClassScanner.getReferencedClasses(compilationUnit);
 
-        then(referenced_classes)
+        then(referencedClasses)
                 .containsExactlyInAnyOrder("IOException", "SQLException");
     }
 
@@ -135,13 +135,13 @@ class ProjectClassScannerTest {
                 }
                 """;
 
-        CompilationUnitTree compilation_unit =
+        CompilationUnitTree compilationUnit =
                 JavaTestUtils.parse("WildcardTest", source);
 
-        Set<String> referenced_classes =
-                ProjectClassScanner.getReferencedClasses(compilation_unit);
+        Set<String> referencedClasses =
+                ProjectClassScanner.getReferencedClasses(compilationUnit);
 
-        then(referenced_classes)
+        then(referencedClasses)
                 .containsExactlyInAnyOrder("List", "Number");
     }
 
@@ -156,13 +156,13 @@ class ProjectClassScannerTest {
                 }
                 """;
 
-        CompilationUnitTree compilation_unit =
+        CompilationUnitTree compilationUnit =
                 JavaTestUtils.parse("NestedGenerics", source);
 
-        Set<String> referenced_classes =
-                ProjectClassScanner.getReferencedClasses(compilation_unit);
+        Set<String> referencedClasses =
+                ProjectClassScanner.getReferencedClasses(compilationUnit);
 
-        then(referenced_classes)
+        then(referencedClasses)
                 .containsExactlyInAnyOrder("Map", "String", "List", "Integer");
     }
 
@@ -175,13 +175,13 @@ class ProjectClassScannerTest {
                 }
                 """;
 
-        CompilationUnitTree compilation_unit =
+        CompilationUnitTree compilationUnit =
                 JavaTestUtils.parse("Arrays", source);
 
-        Set<String> referenced_classes =
-                ProjectClassScanner.getReferencedClasses(compilation_unit);
+        Set<String> referencedClasses =
+                ProjectClassScanner.getReferencedClasses(compilationUnit);
 
-        then(referenced_classes)
+        then(referencedClasses)
                 .containsExactly("String");
     }
 
@@ -193,13 +193,13 @@ class ProjectClassScannerTest {
                 }
                 """;
 
-        CompilationUnitTree compilation_unit =
+        CompilationUnitTree compilationUnit =
                 JavaTestUtils.parse("MemberSelect", source);
 
-        Set<String> referenced_classes =
-                ProjectClassScanner.getReferencedClasses(compilation_unit);
+        Set<String> referencedClasses =
+                ProjectClassScanner.getReferencedClasses(compilationUnit);
 
-        then(referenced_classes)
+        then(referencedClasses)
                 .containsExactly("LocalDate");
     }
 
@@ -212,13 +212,13 @@ class ProjectClassScannerTest {
                 }
                 """;
 
-        CompilationUnitTree compilation_unit =
+        CompilationUnitTree compilationUnit =
                 JavaTestUtils.parse("PrimitiveTest", source);
 
-        Set<String> referenced_classes =
-                ProjectClassScanner.getReferencedClasses(compilation_unit);
+        Set<String> referencedClasses =
+                ProjectClassScanner.getReferencedClasses(compilationUnit);
 
-        then(referenced_classes)
+        then(referencedClasses)
                 .isEmpty();
     }
 
@@ -229,13 +229,13 @@ class ProjectClassScannerTest {
                 }
                 """;
 
-        CompilationUnitTree compilation_unit =
+        CompilationUnitTree compilationUnit =
                 JavaTestUtils.parse("Empty", source);
 
-        Set<String> referenced_classes =
-                ProjectClassScanner.getReferencedClasses(compilation_unit);
+        Set<String> referencedClasses =
+                ProjectClassScanner.getReferencedClasses(compilationUnit);
 
-        then(referenced_classes)
+        then(referencedClasses)
                 .isEmpty();
     }
 }
