@@ -22,6 +22,7 @@ import org.apache.commons.io.FileUtils;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.openide.util.Lookup;
 
 @CacioTest
 public class ExploreToolsTest extends TestBase {
@@ -110,6 +111,15 @@ public class ExploreToolsTest extends TestBase {
 
         final ExplorationTools tools = new ExplorationTools(projectDir, null);
         then(tools.listMethodsInFile(path)).contains("Method: sayHello");
+    }
+
+    @Test
+    public void searchSymbol_with_no_sources_returns_message()
+    throws Exception {
+        final ExplorationTools tools = new ExplorationTools(projectDir, Lookup.getDefault());
+
+        then(tools.searchSymbol("Anything"))
+                .isEqualTo("No Java sources found in project.");
     }
 
     @Test

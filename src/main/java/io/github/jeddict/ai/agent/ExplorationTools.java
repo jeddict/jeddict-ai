@@ -109,7 +109,7 @@ public class ExplorationTools extends AbstractCodeTool {
     public String listClassesInFile(String path) throws Exception {
 
         if (!isJavaFile(path)) {
-            return "This tool supports Java source files only (.java).";
+            return "Not a Java source file: " + path;
         }
 
         progress("Listing classes in " + path);
@@ -157,7 +157,7 @@ public class ExplorationTools extends AbstractCodeTool {
     public String listMethodsInFile(String path) throws Exception {
 
         if (!isJavaFile(path)) {
-            return "This tool supports Java source files only (.java).";
+            return "Not a Java source file: " + path;
         }
 
         progress("Listing methods in " + path);
@@ -352,7 +352,7 @@ public class ExplorationTools extends AbstractCodeTool {
     public String findUsages(String path, String symbolName) throws Exception {
 
         if (!isJavaFile(path)) {
-            return "This tool supports Java source files only (.java).";
+            return "Not a Java source file: " + path;
         }
 
         return withJavaSource(path, javaSource -> {
