@@ -32,6 +32,7 @@ import org.netbeans.api.java.source.SourceUtils;
 import org.netbeans.api.project.SourceGroup;
 import org.netbeans.api.project.Sources;
 import org.netbeans.modules.refactoring.api.RefactoringSession;
+import org.netbeans.modules.refactoring.api.WhereUsedQuery;
 import org.openide.filesystems.FileObject;
 import org.openide.util.Lookup;
 import org.openide.util.lookup.Lookups;
@@ -244,22 +245,26 @@ public class ExplorationTools extends AbstractCodeTool {
      * search for
      * @return matching symbols found in the Java source code
      */
-    @Tool("JAVA ONLY: Search for a symbol (class, method, or field) in the whole project")
+    @Tool("JAVA ONLY: Search for a symbol (class, method, or field) in the whole project " +
+      "Returns one result per line prefixed with Class:, Method:, or Field:. " +
+      "If no symbol is found, returns 'No matches found.'. " +
+      "If the project has no Java sources, returns an explanatory message.")
     public String searchSymbol(String symbolName) throws Exception {
 
         progress("Searching symbol " + symbolName);
 
         Sources sources = lookup.lookup(Sources.class);
         if (sources == null) {
-            return "No Java sources found in project.";
+            progress("No Java sources found in project (not a Java project).");
+            return "No Java sources found in project (not a Java project).";
         }
 
         SourceGroup[] groups
                 = sources.getSourceGroups(JavaProjectConstants.SOURCES_TYPE_JAVA);
 
         if (groups.length == 0) {
-            progress("No sources found in project.");
-            return "No sources found in project.";
+            progress("No Java source roots found in project.");
+            return "No Java source roots found in project.";
         }
 
         ClasspathInfo cpInfo
@@ -369,9 +374,8 @@ public class ExplorationTools extends AbstractCodeTool {
                             ElementHandle<Element> handle
                                     = ElementHandle.create(member);
 
-                            var query
-                                    = new org.netbeans.modules.refactoring.api.WhereUsedQuery(
-                                            Lookups.singleton(handle));
+                            WhereUsedQuery query = new WhereUsedQuery(
+                                    Lookups.singleton(handle));
 
                             RefactoringSession session
                                     = RefactoringSession.create("Find Usages");
