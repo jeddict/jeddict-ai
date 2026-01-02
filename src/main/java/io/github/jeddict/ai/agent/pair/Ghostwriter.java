@@ -13,6 +13,12 @@ import static io.github.jeddict.ai.util.MimeUtil.MIME_TYPE_DESCRIPTIONS;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 
+/**
+ * Interface defining the Ghostwriter agent, which acts as an AI pair programmer.
+ * It extends {@link PairProgrammer} and provides functionality for suggesting
+ * code, comments, Javadoc, annotations, and SQL queries.
+ * It is primarily used in code suggesters (i.e. code hints).
+ */
 public interface Ghostwriter extends PairProgrammer {
 
     static final String LANGUAGE_JAVA = "Java";

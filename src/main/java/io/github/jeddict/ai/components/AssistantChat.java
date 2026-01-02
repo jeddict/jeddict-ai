@@ -232,7 +232,7 @@ public abstract class AssistantChat extends TopComponent {
     }
 
     public boolean isAgentEnabled() {
-        return actionComboBox.getSelectedItem() == AssistantAction.BUILD;
+        return actionComboBox.getSelectedItem() != AssistantAction.ASK;
     }
 
     public JPanel createBottomPanel(String type, String fileName, Consumer<String> action) {
@@ -1071,7 +1071,7 @@ public abstract class AssistantChat extends TopComponent {
                 }
 
                 //
-                // For each EditoPane (i.e. code block) collect the method,
+                // For each EditorPane (i.e. code block) collect the method,
                 // class and interface signatures parsing the block first as a
                 // method, if it fails, as a class, if it fails as an interface.
                 // For each element the corresponding code is also saved in the

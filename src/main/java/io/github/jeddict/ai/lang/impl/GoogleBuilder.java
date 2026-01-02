@@ -16,9 +16,11 @@
 package io.github.jeddict.ai.lang.impl;
 
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 import io.github.jeddict.ai.lang.ChatModelBuilder;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -151,6 +153,11 @@ public class GoogleBuilder implements ChatModelBuilder {
     public ChatModelBuilder allowCodeExecution(final boolean allowCodeExecution) {
         builder.allowCodeExecution(allowCodeExecution);
         return this;
+    }
+
+    @Override
+    public ChatModelBuilder listeners(List<ChatModelListener> listeners) {
+        builder.listeners(listeners); return this;
     }
 
     @Override

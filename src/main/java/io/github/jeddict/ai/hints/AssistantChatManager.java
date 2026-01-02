@@ -33,8 +33,10 @@ import io.github.jeddict.ai.agent.FileSystemTools;
 import io.github.jeddict.ai.agent.GradleTools;
 import io.github.jeddict.ai.agent.MavenTools;
 import io.github.jeddict.ai.agent.RefactoringTools;
+import io.github.jeddict.ai.agent.pair.Assistant;
 import io.github.jeddict.ai.agent.pair.DBSpecialist;
 import io.github.jeddict.ai.agent.pair.DiffSpecialist;
+import io.github.jeddict.ai.agent.pair.Hacker;
 import io.github.jeddict.ai.agent.pair.PairProgrammer;
 import io.github.jeddict.ai.agent.pair.TechWriter;
 import io.github.jeddict.ai.agent.pair.TestSpecialist;
@@ -51,6 +53,7 @@ import io.github.jeddict.ai.response.Response;
 import io.github.jeddict.ai.review.Review;
 import static io.github.jeddict.ai.review.ReviewUtil.convertReviewsToHtml;
 import static io.github.jeddict.ai.review.ReviewUtil.parseReviewsFromYaml;
+import io.github.jeddict.ai.scanner.ProjectMetadataInfo;
 import io.github.jeddict.ai.settings.PreferencesManager;
 import io.github.jeddict.ai.util.ColorUtil;
 import static io.github.jeddict.ai.util.ContextHelper.getFilesContextList;
@@ -139,7 +142,7 @@ public class AssistantChatManager extends JavaFix {
 
     private boolean commitMessage, codeReview;
 
-    /**
+    /*
      * After a first kickoff in performRewrite the conversation can continue in
      * the chat window, handled in the handleQuestion() method. This requires
      * the history to be retained, which is done by langchain4j's agents, as
@@ -149,6 +152,14 @@ public class AssistantChatManager extends JavaFix {
     private TestSpecialist testSpecialist = null;
     private DBSpecialist dbSpecialist = null;
     private DiffSpecialist diffSpecialist = null;
+
+    /*
+     * Similarly, a conversation opened creating a new chat window or from
+     * project context, shall retain memory of the conversation
+     */
+    private Assistant assistant = null;
+    private Assistant projectAssistant = null;
+    private Hacker hacker = null;
 
     private Project getProject() {
         Project project = null;
@@ -207,9 +218,9 @@ public class AssistantChatManager extends JavaFix {
     }
 
     public AssistantChatManager(
-            final Action action,
-            final Project project,
-            final Map<String, String> params
+        final Action action,
+        final Project project,
+        final Map<String, String> params
     ) {
         super(null);
         this.action = action;
@@ -281,7 +292,8 @@ public class AssistantChatManager extends JavaFix {
                         }
                     } else {
                         final String rules = pm.getSessionRules();
-                        final TechWriter pair = newJeddictBrain(handler, modelName, getProject())
+                        final TechWriter pair =
+                            newJeddictBrain(handler, modelName, JeddictBrain.InteractionMode.QUERY)
                             .pairProgrammer(PairProgrammer.Specialist.TECHWRITER);
                         if (leaf instanceof MethodTree) {
                             async(() -> pair.describeCode(leaf.toString(), rules), handler);
@@ -551,7 +563,7 @@ public class AssistantChatManager extends JavaFix {
             fileObjects.addAll(getProjectContextList());
         }
         if (sessionContext != null) {
-            fileObjects.addAll(getFilesContextList(sessionContext));
+            fileObjects.addAll(getFilesContextList(sessionContext, pm.getFileExtensionListToInclude()));
         }
         return fileObjects;
     }
@@ -583,7 +595,7 @@ public class AssistantChatManager extends JavaFix {
                 handler = new JeddictBrainListener(tc) {
                     @Override
                     public void onCompleteResponse(ChatResponse response) {
-                        super.onCompleteResponse(response);
+                         super.onCompleteResponse(response);
 
                         final StringBuilder textResponse = new StringBuilder(StringUtils.defaultString(response.aiMessage().text()));
 
@@ -593,7 +605,8 @@ public class AssistantChatManager extends JavaFix {
                             textResponse.insert(0, "```tooling\n" + toolingResponse.toString() + "\n```\n");
                         }
                         final Response r = new Response(question, textResponse.toString(), messageContextCopy);
-                        // TODO: to be removed once all agents will use buit-in memory
+                        // TODO: this shall be used for history; it won't be used for memory,
+                        // which is instead managed by the agents and services
                         if (responseHistory.isEmpty() || !textResponse.equals(responseHistory.get(responseHistory.size() - 1))) {
                             responseHistory.add(r);
                             currentResponseIndex = responseHistory.size() - 1;
@@ -617,19 +630,25 @@ public class AssistantChatManager extends JavaFix {
                         });
                     }
                 };
-                String response;
-                boolean agentEnabled = tc.isAgentEnabled();
-                String modelName = tc.getModelName();
+
+                final boolean agentEnabled = tc.isAgentEnabled();
+                final boolean excludeJavadoc = pm.isExcludeJavadocEnabled();
+                final String globalRules = pm.getGlobalRules();
+                final String sessionRules = pm.getSessionRules();
+                final List<String> includeFiles = pm.getFileExtensionListToInclude();
+                final String modelName = tc.getModelName();
+
+                String response = null;
                 if (sqlCompletion != null) {
                     String context = sqlCompletion.getMetaData();
-                    String messageScopeContent = getTextFilesContext(messageContext, getProject(), agentEnabled);
+                    String messageScopeContent = getTextFilesContext(messageContext, getProject(), excludeJavadoc, includeFiles, agentEnabled);
                     if (messageScopeContent != null && !messageScopeContent.isEmpty()) {
                         context = context + "\n\n Files:\n" + messageScopeContent;
                     }
-                    response = dbSpecialist(handler, modelName).assistDbMetadata(question, context, pm.getSessionRules());
+                    response = dbSpecialist(handler, modelName).assistDbMetadata(question, context, sessionRules);
                 } else if (commitMessage && commitChanges != null) {
                     String context = commitChanges;
-                    String messageScopeContent = getTextFilesContext(messageContext, getProject(), agentEnabled);
+                    String messageScopeContent = getTextFilesContext(messageContext, getProject(), excludeJavadoc,includeFiles, agentEnabled);
                     if (messageScopeContent != null && !messageScopeContent.isEmpty()) {
                         context = context + "\n\n Files:\n" + messageScopeContent;
                     }
@@ -639,7 +658,7 @@ public class AssistantChatManager extends JavaFix {
                     if (context == null) {
                         context = "";
                     }
-                    final String messageScopeContent = getTextFilesContext(messageContext, projectContext, agentEnabled);
+                    final String messageScopeContent = getTextFilesContext(messageContext, projectContext, excludeJavadoc, includeFiles, agentEnabled);
                     if (messageScopeContent != null && !messageScopeContent.isEmpty()) {
                         context = context + "\n\n Files:\n" + messageScopeContent;
                     }
@@ -655,44 +674,74 @@ public class AssistantChatManager extends JavaFix {
                     }
                 } else if (projectContext != null || sessionContext != null) {
                     Project selectedProject = getProject();
-                    Set<FileObject> mainSessionContext;
-                    String sessionScopeContent;
-                    if (projectContext != null) {
-                        mainSessionContext = getProjectContextList();
-                        sessionScopeContent = getProjectContext(mainSessionContext, selectedProject, agentEnabled);
+                    //
+                    // Here we are in a generic chat created by the user
+                    //
+                    // If not agentic, provide all project context, otherwise
+                    // no project context is provided, just the global and
+                    // project rules; the agent is instructed to gather the
+                    // information it requires using tools
+                    //
+                    if (!agentEnabled) {
+                        final Set<FileObject> mainSessionContext;
+                        final String sessionScopeContent;
+
+                        if (projectContext != null) {
+                            mainSessionContext = getProjectContextList();
+                            sessionScopeContent = getProjectContext(mainSessionContext, selectedProject, excludeJavadoc, agentEnabled);
+                        } else {
+                            mainSessionContext = this.sessionContext;
+                            sessionScopeContent = getTextFilesContext(mainSessionContext, selectedProject, excludeJavadoc, includeFiles, agentEnabled);
+                        }
+                        List<String> sessionScopeImages = getImageFilesContext(mainSessionContext, includeFiles);
+
+                        Set<FileObject> fitleredMessageContext = new HashSet<>(messageContext);
+                        fitleredMessageContext.removeAll(mainSessionContext);
+                        String messageScopeContent = getTextFilesContext(fitleredMessageContext, selectedProject, excludeJavadoc, includeFiles, agentEnabled);
+                        List<String> messageScopeImages = getImageFilesContext(fitleredMessageContext, includeFiles);
+                        List<String> images = new ArrayList<>();
+                        images.addAll(sessionScopeImages);
+                        images.addAll(messageScopeImages);
+
+                        final String projectInfo = ProjectMetadataInfo.get(selectedProject);
+                        final String prompt = question
+                                            + "\nSession content: " + sessionScopeContent
+                                            + "\nAdditional conent: " + messageScopeContent
+                                            ;
+
+                        final Assistant a  = projectAssistant(handler, modelName);
+                        if (pm.isStreamEnabled()) {
+                            a.chat(handler, prompt, images, projectInfo, globalRules, sessionRules);
+                        } else {
+                            response = a.chat(prompt, images, projectInfo, globalRules, sessionRules);
+                        }
                     } else {
-                        mainSessionContext = this.sessionContext;
-                        sessionScopeContent = getTextFilesContext(mainSessionContext, selectedProject, agentEnabled);
+                        //
+                        // When agent enabled, a project is required (in the future
+                        // we may just add a tool to pick a project if none is seleted).
+                        // If no project is associated to the window, trigger
+                        // the selection of actionComboBox, which will pop up
+                        // a dialog to pick one.
+                        //
+                        if (agentEnabled && (selectedProject == null)) {
+                            tc.selectProject();
+                            selectedProject = getProject();
+                        }
+                        final Hacker h = hacker(handler, modelName);
+                        if (pm.isStreamEnabled()) {
+                            h.hack(handler, question, pm.getGlobalRules(), sessionRules);
+                        } else {
+                            response = h.hack(question, pm.getGlobalRules(), sessionRules);
+                        }
                     }
-                    List<String> sessionScopeImages = getImageFilesContext(mainSessionContext);
-
-                    Set<FileObject> fitleredMessageContext = new HashSet<>(messageContext);
-                    fitleredMessageContext.removeAll(mainSessionContext);
-                    String messageScopeContent = getTextFilesContext(fitleredMessageContext, selectedProject, agentEnabled);
-                    List<String> messageScopeImages = getImageFilesContext(fitleredMessageContext);
-                    List<String> images = new ArrayList<>();
-                    images.addAll(sessionScopeImages);
-                    images.addAll(messageScopeImages);
-
-                    //
-                    // When agent enabled, a project is required (in the future
-                    // we may just add a tool to pick a project if none is seleted).
-                    // If no project is associated to the window, trigger
-                    // the selection of actionComboBox, which will pop up
-                    // a dialog to pick one.
-                    //
-                    if (agentEnabled && (selectedProject == null)) {
-                        tc.selectProject();
-                        selectedProject = getProject();
-                    }
-                    response = newJeddictBrain(handler, modelName, selectedProject)
-                            .generateDescription(selectedProject, agentEnabled, sessionScopeContent + '\n' + messageScopeContent, null, images, prevChatResponses, question, pm.getSessionRules());
-                } else if (treePath == null) {
-                    response = newJeddictBrain(handler, modelName, getProject())
-                            .generateDescription(getProject(), null, null, null, prevChatResponses, question, pm.getSessionRules());
                 } else {
-                    response = newJeddictBrain(handler, modelName, getProject())
-                            .generateDescription(getProject(), treePath.getCompilationUnit().toString(), treePath.getLeaf() instanceof MethodTree ? treePath.getLeaf().toString() : null, null, prevChatResponses, question, pm.getSessionRules());
+                    final Assistant a = assistant(handler, modelName);
+                    final String projectInfo = ProjectMetadataInfo.get(getProject());
+                    if (pm.isStreamEnabled()) {
+                        a.chat(handler, question, treePath, projectInfo, globalRules, sessionRules);
+                    } else {
+                        response = a.chat(question, treePath, projectInfo, globalRules, sessionRules);
+                    }
                 }
 
                 //
@@ -714,11 +763,21 @@ public class AssistantChatManager extends JavaFix {
 
     private JeddictBrain newJeddictBrain(
         final JeddictBrainListener listener,
-        final String name,
-        final Project project
+        final String modelName
+    ) {
+        return newJeddictBrain(listener, modelName, JeddictBrain.InteractionMode.QUERY);
+    }
+
+    private JeddictBrain newJeddictBrain(
+        final JeddictBrainListener listener,
+        final String modelName,
+        final JeddictBrain.InteractionMode mode
     ) {
         final JeddictBrain brain = new JeddictBrain(
-                name, PreferencesManager.getInstance().isStreamEnabled(), buildToolsList(project, listener));
+            modelName, pm.isStreamEnabled(),
+            mode,
+            (mode == JeddictBrain.InteractionMode.QUERY) ? null : buildToolsList(getProject(), listener)
+        );
         brain.addProgressListener(listener);
         return brain;
     }
@@ -730,7 +789,7 @@ public class AssistantChatManager extends JavaFix {
      *
      * @return
      */
-    private TestSpecialist testSpecialist(final JeddictBrainListener listener, String modelName) {
+    private TestSpecialist testSpecialist(final JeddictBrainListener listener, final String modelName) {
 
         if (testSpecialist != null) {
             return testSpecialist;
@@ -738,7 +797,7 @@ public class AssistantChatManager extends JavaFix {
 
         int memorySize = pm.getConversationContext();
 
-        JeddictBrain brain = newJeddictBrain(listener, modelName, getProject());
+        JeddictBrain brain = newJeddictBrain(listener, modelName, JeddictBrain.InteractionMode.QUERY);
         brain.withMemory((memorySize < 0) ? Integer.MAX_VALUE : memorySize);
 
         return (testSpecialist = brain.pairProgrammer(PairProgrammer.Specialist.TEST));
@@ -751,7 +810,7 @@ public class AssistantChatManager extends JavaFix {
      *
      * @return
      */
-    private DBSpecialist dbSpecialist(final JeddictBrainListener listener, String modelName) {
+    private DBSpecialist dbSpecialist(final JeddictBrainListener listener, final String modelName) {
 
         if (dbSpecialist != null) {
             return dbSpecialist;
@@ -759,7 +818,7 @@ public class AssistantChatManager extends JavaFix {
 
         int memorySize = pm.getConversationContext();
 
-        JeddictBrain brain = newJeddictBrain(listener, modelName, getProject());
+        JeddictBrain brain = newJeddictBrain(listener, modelName, JeddictBrain.InteractionMode.QUERY);
         brain.withMemory((memorySize < 0) ? Integer.MAX_VALUE : memorySize);
 
         return (dbSpecialist = brain.pairProgrammer(PairProgrammer.Specialist.DB));
@@ -770,9 +829,9 @@ public class AssistantChatManager extends JavaFix {
      * if <code>diffSpecialist</code> is not null. If null, a new instance is
      * created.
      *
-     * @return
+     * @return a new orexisting DiffSpecialist
      */
-    private DiffSpecialist diffSpecialist(final JeddictBrainListener listener, String modelName) {
+    private DiffSpecialist diffSpecialist(final JeddictBrainListener listener, final String modelName) {
 
         if (diffSpecialist != null) {
             return diffSpecialist;
@@ -780,14 +839,79 @@ public class AssistantChatManager extends JavaFix {
 
         int memorySize = pm.getConversationContext();
 
-        JeddictBrain brain = newJeddictBrain(listener, modelName, getProject());
+        JeddictBrain brain = newJeddictBrain(listener, modelName, JeddictBrain.InteractionMode.QUERY);
         brain.withMemory((memorySize < 0) ? Integer.MAX_VALUE : memorySize);
 
         return (diffSpecialist = brain.pairProgrammer(PairProgrammer.Specialist.DIFF));
     }
 
+    /**
+     * Returns a Assistant with memory reusing a previously created agent
+     * if <code>assistant</code> is not null. If null, a new  instance is
+     * created.
+     *
+     * @return a new or existing Assistant object
+     */
+    private Assistant assistant(final JeddictBrainListener listener, final String modelName) {
+
+        if (assistant != null) return assistant;
+
+        int memorySize = pm.getConversationContext();
+
+        JeddictBrain brain = newJeddictBrain(listener, modelName, JeddictBrain.InteractionMode.QUERY);
+        brain.withMemory((memorySize < 0) ? Integer.MAX_VALUE : memorySize);
+
+        return (assistant = brain.pairProgrammer(PairProgrammer.Specialist.ASSISTANT));
+    }
+
+    /**
+     * Returns a Assistant with memory reusing a previously created agent
+     * if <code>assistant</code> is not null. If null, a new  instance is
+     * created.
+     *
+     * @return a new or existing Assistant object
+     */
+    private Assistant projectAssistant(final JeddictBrainListener listener, final String modelName) {
+
+        if (projectAssistant != null) return projectAssistant;
+
+        int memorySize = pm.getConversationContext();
+
+        JeddictBrain brain = newJeddictBrain(listener, modelName, JeddictBrain.InteractionMode.QUERY);
+        brain.withMemory((memorySize < 0) ? Integer.MAX_VALUE : memorySize);
+
+        return (projectAssistant = brain.pairProgrammer(PairProgrammer.Specialist.ASSISTANT));
+    }
+
+    /**
+     * Returns an Hacker with memory reusing a previously created agent
+     * if <code>hacker</code> is not null. If null, a new  instance is
+     * created. An Hacker is agentic and executes tools.
+     *
+     * @return a new or existing Hacker object
+     */
+    private Hacker hacker(final JeddictBrainListener listener, final String modelName) {
+
+        if (hacker != null) return hacker;
+
+        int memorySize = pm.getConversationContext();
+
+        JeddictBrain brain = newJeddictBrain(listener, modelName, JeddictBrain.InteractionMode.AGENT);
+        brain.withMemory((memorySize < 0) ? Integer.MAX_VALUE : memorySize);
+
+        return (hacker = brain.pairProgrammer(PairProgrammer.Specialist.HACKER));
+    }
+
+    /**
+     * Buildes the tool list to be given to JeddictBrain for agentic interactions
+     *
+     * @param project instance of the project attached to the chat
+     * @param handler a event listener to track events generated in the conversation
+     *
+     * @return the list of Tool objects
+     */
     private List<AbstractTool> buildToolsList(
-            final Project project, final JeddictBrainListener handler
+        final Project project, final JeddictBrainListener handler
     ) {
         if (project == null) {
             return List.of();
@@ -796,21 +920,21 @@ public class AssistantChatManager extends JavaFix {
         // TODO: make this automatic with some discoverability approach (maybe
         // NB lookup registration?)
         //
-        final String basedir
-                = FileUtil.toPath(project.getProjectDirectory())
-                        .toAbsolutePath().normalize()
-                        .toString();
+        final String basedir =
+            FileUtil.toPath(project.getProjectDirectory())
+            .toAbsolutePath().normalize()
+            .toString();
 
         final List<AbstractTool> toolsList = List.of(
-                new ExecutionTools(
-                        basedir, project.getProjectDirectory().getName(),
-                        pm.getBuildCommand(project), pm.getTestCommand(project)
-                ),
-                new ExplorationTools(basedir, project.getLookup()),
-                new FileSystemTools(basedir),
-                new GradleTools(basedir),
-                new MavenTools(basedir),
-                new RefactoringTools(basedir)
+            new ExecutionTools(
+                basedir, project.getProjectDirectory().getName(),
+                pm.getBuildCommand(project), pm.getTestCommand(project)
+            ),
+            new ExplorationTools(basedir, project.getLookup()),
+            new FileSystemTools(basedir),
+            new GradleTools(basedir),
+            new MavenTools(basedir),
+            new RefactoringTools(basedir)
         );
 
         //
@@ -832,7 +956,7 @@ public class AssistantChatManager extends JavaFix {
             protected void done() {
                 try {
                     handler.onCompleteResponse(
-                            ChatResponse.builder().aiMessage(new AiMessage(get())).build()
+                        ChatResponse.builder().aiMessage(new AiMessage(get())).build()
                     );
                 } catch (InterruptedException | ExecutionException x) {
                     //

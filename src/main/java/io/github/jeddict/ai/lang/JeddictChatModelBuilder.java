@@ -17,6 +17,7 @@ package io.github.jeddict.ai.lang;
 
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import io.github.jeddict.ai.lang.impl.AnthropicBuilder;
 import io.github.jeddict.ai.lang.impl.AnthropicStreamingBuilder;
 import io.github.jeddict.ai.lang.impl.GoogleBuilder;
@@ -46,6 +47,7 @@ import static io.github.jeddict.ai.models.registry.GenAIProvider.OPEN_AI;
 import static io.github.jeddict.ai.models.registry.GenAIProvider.PERPLEXITY;
 import io.github.jeddict.ai.settings.PreferencesManager;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -62,12 +64,21 @@ public class JeddictChatModelBuilder {
     protected static PreferencesManager pm = PreferencesManager.getInstance();
     private String modelName;
 
+    private final ChatModelListener listener;
+
     public JeddictChatModelBuilder() {
         this(null);
     }
 
-    public JeddictChatModelBuilder(String modelName) {
+    public JeddictChatModelBuilder(final String modelName) {
+        this(modelName, null); // P2 - TODO: can this be null?
+    }
+
+    public JeddictChatModelBuilder(
+        final String modelName, final ChatModelListener listener
+    ) {
         this.modelName = modelName; // P2 - TODO: can this be null?
+        this.listener = listener;
     }
 
     public ChatModel build() {
@@ -151,6 +162,7 @@ public class JeddictChatModelBuilder {
         setIfValid(builder::topK, pm.getTopK(), Integer.MIN_VALUE);
         setIfValid(builder::presencePenalty, pm.getPresencePenalty(), Double.MIN_VALUE);
         setIfValid(builder::frequencyPenalty, pm.getFrequencyPenalty(), Double.MIN_VALUE);
+        setIfValid(builder::listeners, List.of(listener), List.of());
         setIfPredicate(builder::organizationId, pm.getOrganizationId(), String::isEmpty);
 
         builder.logRequestsResponses(pm.isLogRequestsEnabled(), pm.isLogResponsesEnabled())

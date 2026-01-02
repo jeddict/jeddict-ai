@@ -62,11 +62,15 @@ public abstract class AbstractTool {
     }
 
     public void log(Supplier<String> supplier) {
-        log.info(supplier);
+        log.info(supplier.get());
     }
 
     public void progress(String message) {
         log(() -> message);
         toolListener.firePropertyChange(PROPERTY_MESSAGE, null, message);
+    }
+
+    public String basedir() {
+        return basedir;
     }
 }

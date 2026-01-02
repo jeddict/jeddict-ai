@@ -13,33 +13,31 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package io.github.jeddict.ai.test;
+package io.github.jeddict.ai.agent;
 
 import dev.langchain4j.agent.tool.Tool;
-import io.github.jeddict.ai.agent.AbstractTool;
-import java.io.File;
+import io.github.jeddict.ai.scanner.ProjectMetadataInfo;
+import org.netbeans.api.project.Project;
 
 /**
- *
+ * Tool to return information about the project: jdk version, j2ee version
  */
-public class DummyTool extends AbstractTool {
+public class ProjectTools extends AbstractTool {
 
-    protected boolean executed = false;
+    private final Project project;
 
-    public DummyTool() {
-        this(new File(".").getAbsolutePath());
+    public ProjectTools(final Project project) {
+        super(project.getProjectDirectory().getPath());
+        this.project = project;
     }
 
-    public DummyTool(String basedir) {
-        super(basedir);
-    }
-
-    public boolean executed() {
-        return executed;
-    }
-
-    @Tool
-    public String dummyTool() {
-        return String.valueOf(executed = true);
+    @Tool(
+        name = "projectInfo",
+        value = "Return information about the project: jdk version, j2ee version"
+    )
+    public String projectInfo()
+    throws Exception {
+        progress("Gathering project info: " + project);
+        return ProjectMetadataInfo.get(project);
     }
 }

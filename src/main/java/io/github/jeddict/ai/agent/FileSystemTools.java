@@ -202,7 +202,13 @@ public class FileSystemTools extends AbstractCodeTool {
      * @param path the directory path relative to the project
      * @return a list of files and directories, or an error message
      */
-    @Tool("List all files and directories inside a given directory path")
+    @Tool("""
+        List all files and directories inside a given path. If the path does not
+        exist or is not a directory, it returns a "directory not found" message.
+        If path is an existing directory, it returns a list of pathnames,
+        one on each line. If the path is a directory, the pathname will end with
+        a slash ('/').
+    """)
     public String listFilesInDirectory(String path) throws Exception {
         progress("📂 Listing contents of directory: " + path);
         Path dirPath = fullPath(path);

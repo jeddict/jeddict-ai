@@ -27,8 +27,6 @@ import io.github.jeddict.ai.response.TokenHandler;
 import io.github.jeddict.ai.util.Utilities;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -60,11 +58,11 @@ public abstract class JeddictBrainListener
     implements PropertyChangeListener
 {
 
-    private final AssistantChat topComponent;
-    private boolean init = true;
-    private JTextArea textArea;
-    private final ProgressHandle handle;
-    private boolean complete;
+    protected final AssistantChat topComponent;
+    protected boolean init = true;
+    protected JTextArea textArea;
+    protected final ProgressHandle handle;
+    protected boolean complete;
     protected final StringBuilder toolingResponse = new StringBuilder();
 
     private static final Logger LOG = Logger.getLogger(JeddictBrainListener.class.getName());
@@ -108,7 +106,6 @@ public abstract class JeddictBrainListener
     public void onPartialResponse(String partialResponse) {
         try {
             LOG.finest(() -> "partial response: " + partialResponse);
-
             SwingUtilities.invokeAndWait(() -> {
                 if (init) {
                     topComponent.clear();
