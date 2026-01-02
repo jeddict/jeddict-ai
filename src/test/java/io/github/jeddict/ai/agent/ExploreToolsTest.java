@@ -119,7 +119,7 @@ public class ExploreToolsTest extends TestBase {
         final ExplorationTools tools = new ExplorationTools(projectDir, Lookup.getDefault());
 
         then(tools.searchSymbol("Anything"))
-                .isEqualTo("No Java sources found in project.");
+                .isEqualTo("No Java sources found in project (not a Java project).");
     }
 
     @Test
