@@ -353,7 +353,12 @@ public class ExplorationTools extends AbstractCodeTool {
      * @param symbolName Java symbol name
      * @return formatted usage list
      */
-    @Tool("JAVA ONLY: Find all usages of a Java class, method, or field")
+    @Tool(
+            "JAVA ONLY: Find all usages of a Java class, method, or field. "
+            + "Output format: one usage per line prefixed with 'Usage: ', followed by a "
+            + "description of where and how the symbol is used. "
+            + "If no usages are found, returns 'No usages found.'."
+    )
     public String findUsages(String path, String symbolName) throws Exception {
 
         if (!isJavaFile(path)) {
