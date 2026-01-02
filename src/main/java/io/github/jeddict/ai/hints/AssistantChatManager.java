@@ -164,14 +164,14 @@ public class AssistantChatManager extends JavaFix {
     private Project getProject() {
         Project project = null;
 
-            if (projectContext != null) {
-                project = projectContext;
-            } else if (sessionContext != null && !sessionContext.isEmpty()) {
-                project = FileOwnerQuery.getOwner(sessionContext.toArray(FileObject[]::new)[0]);
-            } else if (fileObject != null) {
-                project = FileOwnerQuery.getOwner(fileObject);
-            } else if (messageContext != null && !messageContext.isEmpty()) {
-                project = FileOwnerQuery.getOwner(messageContext.toArray(FileObject[]::new)[0]);
+        if (projectContext != null) {
+            project = projectContext;
+        } else if (sessionContext != null && !sessionContext.isEmpty()) {
+            project = FileOwnerQuery.getOwner(sessionContext.toArray(FileObject[]::new)[0]);
+        } else if (fileObject != null) {
+            project = FileOwnerQuery.getOwner(fileObject);
+        } else if (messageContext != null && !messageContext.isEmpty()) {
+            project = FileOwnerQuery.getOwner(messageContext.toArray(FileObject[]::new)[0]);
         } else if (tc != null) {
             project = tc.getProject();
         }

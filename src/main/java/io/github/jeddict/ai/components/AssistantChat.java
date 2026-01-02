@@ -308,7 +308,7 @@ public abstract class AssistantChat extends TopComponent {
                 if (this.project == null) {
                     final Project selectedProject = selectProject();
                     if (selectedProject == null) {
-                            actionComboBox.setSelectedItem(AssistantAction.ASK);
+                        actionComboBox.setSelectedItem(AssistantAction.ASK);
                     } else {
                         this.project = selectedProject;
                     }
