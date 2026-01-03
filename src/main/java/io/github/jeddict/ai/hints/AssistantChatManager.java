@@ -136,6 +136,7 @@ public class AssistantChatManager extends JavaFix {
     private final PreferencesManager pm = PreferencesManager.getInstance();
     private Tree leaf;
     private final Map<String, String> params = new HashMap();
+    private String question;
 
     private Future result;
     private JeddictBrainListener handler;
@@ -332,7 +333,7 @@ public class AssistantChatManager extends JavaFix {
         BiConsumer<String, Set<FileObject>> queryUpdate = (newQuery, messageContext) -> {
             handleQuestion(newQuery, messageContext, false);
         };
-        return new AssistantChat(title, type, project) {
+        final AssistantChat chat = new AssistantChat(title, type, project) {
             @Override
             public void onChatReset() {
                 initialMessage();
@@ -457,6 +458,10 @@ public class AssistantChatManager extends JavaFix {
             }
 
         };
+
+        handler(chat);
+
+        return chat;
     }
 
     public void displayHtmlContent(String filename, String title) {
@@ -572,6 +577,8 @@ public class AssistantChatManager extends JavaFix {
         result = executorService.submit(() -> {
             try {
                 tc.startLoading();
+                this.question = question;
+
                 // TODO: to be removed once all agents will use buit-in memory
                 if (currentResponseIndex >= 0
                         && currentResponseIndex + 1 < responseHistory.size()) {
@@ -592,44 +599,6 @@ public class AssistantChatManager extends JavaFix {
                     prevChatResponses = responseHistory.subList(startIndex, responseHistory.size());
                 }
                 Set<FileObject> messageContextCopy = new HashSet<>(messageContext);
-                handler = new JeddictBrainListener(tc) {
-                    @Override
-                    public void onCompleteResponse(ChatResponse response) {
-                         super.onCompleteResponse(response);
-
-                        final StringBuilder textResponse = new StringBuilder(StringUtils.defaultString(response.aiMessage().text()));
-
-                        LOG.finest(() -> "response completed with\ntext\n" + textResponse + "\nand\ntooling\n" + toolingResponse);
-
-                        if (!toolingResponse.isEmpty()) {
-                            textResponse.insert(0, "```tooling\n" + toolingResponse.toString() + "\n```\n");
-                        }
-                        final Response r = new Response(question, textResponse.toString(), messageContextCopy);
-                        // TODO: this shall be used for history; it won't be used for memory,
-                        // which is instead managed by the agents and services
-                        if (responseHistory.isEmpty() || !textResponse.equals(responseHistory.get(responseHistory.size() - 1))) {
-                            responseHistory.add(r);
-                            currentResponseIndex = responseHistory.size() - 1;
-                        }
-                        SwingUtilities.invokeLater(() -> {
-                            BiConsumer<String, Set<FileObject>> queryUpdate = (newQuery, messageContext) -> {
-                                handleQuestion(newQuery, messageContext, false);
-                            };
-                            if (codeReview) {
-                                List<Review> reviews = parseReviewsFromYaml(r.getBlocks().get(0).getContent());
-                                String web = convertReviewsToHtml(reviews);
-                                tc.setReviews(reviews);
-                                r.getBlocks().clear();
-                                r.getBlocks().add(new Block("web", web));
-                            }
-                            sourceCode = EditorUtil.updateEditors(queryUpdate, getProject(), tc, r, getContextFiles());
-
-                            tc.stopLoading();
-                            tc.updateButtons(currentResponseIndex > 0, currentResponseIndex < responseHistory.size() - 1);
-                            tc.buttonPanelResized();
-                        });
-                    }
-                };
 
                 final boolean agentEnabled = tc.isAgentEnabled();
                 final boolean excludeJavadoc = pm.isExcludeJavadocEnabled();
@@ -703,17 +672,19 @@ public class AssistantChatManager extends JavaFix {
                         images.addAll(sessionScopeImages);
                         images.addAll(messageScopeImages);
 
-                        final String projectInfo = ProjectMetadataInfo.get(selectedProject);
                         final String prompt = question
                                             + "\nSession content: " + sessionScopeContent
                                             + "\nAdditional conent: " + messageScopeContent
                                             ;
 
                         final Assistant a  = projectAssistant(handler, modelName);
+                        //
+                        // In Ask mode there is no project associated to the chat
+                        //
                         if (pm.isStreamEnabled()) {
-                            a.chat(handler, prompt, images, projectInfo, globalRules, sessionRules);
+                            a.chat(handler, prompt, images, "", globalRules, sessionRules);
                         } else {
-                            response = a.chat(prompt, images, projectInfo, globalRules, sessionRules);
+                            response = a.chat(prompt, images, "", globalRules, sessionRules);
                         }
                     } else {
                         //
@@ -759,6 +730,49 @@ public class AssistantChatManager extends JavaFix {
                 tc.buttonPanelResized();
             }
         });
+    }
+
+    private void handler(final AssistantChat chat) {
+        handler = new JeddictBrainListener(chat) {
+            @Override
+            public void onCompleteResponse(ChatResponse response) {
+                super.onCompleteResponse(response);
+
+                final Set<FileObject> messageContextCopy = new HashSet<>(messageContext);
+
+                final StringBuilder textResponse = new StringBuilder(StringUtils.defaultString(response.aiMessage().text()));
+
+                LOG.finest(() -> "response completed with\ntext\n" + textResponse + "\nand\ntooling\n" + toolingResponse);
+
+                if (!toolingResponse.isEmpty()) {
+                    textResponse.insert(0, "```tooling\n" + toolingResponse.toString() + "\n```\n");
+                }
+                final Response r = new Response(question, textResponse.toString(), messageContextCopy);
+                // TODO: this shall be used for history; it won't be used for memory,
+                // which is instead managed by the agents and services
+                if (responseHistory.isEmpty() || !textResponse.equals(responseHistory.get(responseHistory.size() - 1))) {
+                    responseHistory.add(r);
+                    currentResponseIndex = responseHistory.size() - 1;
+                }
+                SwingUtilities.invokeLater(() -> {
+                    BiConsumer<String, Set<FileObject>> queryUpdate = (newQuery, messageContext) -> {
+                        handleQuestion(newQuery, messageContext, false);
+                    };
+                    if (codeReview) {
+                        List<Review> reviews = parseReviewsFromYaml(r.getBlocks().get(0).getContent());
+                        String web = convertReviewsToHtml(reviews);
+                        tc.setReviews(reviews);
+                        r.getBlocks().clear();
+                        r.getBlocks().add(new Block("web", web));
+                    }
+                    sourceCode = EditorUtil.updateEditors(queryUpdate, getProject(), tc, r, getContextFiles());
+
+                    tc.stopLoading();
+                    tc.updateButtons(currentResponseIndex > 0, currentResponseIndex < responseHistory.size() - 1);
+                    tc.buttonPanelResized();
+                });
+            }
+        };
     }
 
     private JeddictBrain newJeddictBrain(
