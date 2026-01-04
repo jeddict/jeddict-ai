@@ -37,7 +37,11 @@ public class ProjectMetadataInfo {
 
     private static final Map<Project, CachedResult> cache = new HashMap<>();
 
-    public static String get(Project project) {
+    public static String get(final Project project) {
+        if (project == null) {
+            return "";
+        }
+        
         CachedResult cachedResult = getCachedResult(project);
 
         // Check if cachedResult is null and handle accordingly

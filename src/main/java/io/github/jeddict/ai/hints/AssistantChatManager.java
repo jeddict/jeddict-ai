@@ -672,19 +672,17 @@ public class AssistantChatManager extends JavaFix {
                         images.addAll(sessionScopeImages);
                         images.addAll(messageScopeImages);
 
+                        final String projectInfo = ProjectMetadataInfo.get(selectedProject);
                         final String prompt = question
                                             + "\nSession content: " + sessionScopeContent
                                             + "\nAdditional conent: " + messageScopeContent
                                             ;
 
                         final Assistant a  = projectAssistant(handler, modelName);
-                        //
-                        // In Ask mode there is no project associated to the chat
-                        //
                         if (pm.isStreamEnabled()) {
-                            a.chat(handler, prompt, images, "", globalRules, sessionRules);
+                            a.chat(handler, prompt, images, projectInfo, globalRules, sessionRules);
                         } else {
-                            response = a.chat(prompt, images, "", globalRules, sessionRules);
+                            response = a.chat(prompt, images, projectInfo, globalRules, sessionRules);
                         }
                     } else {
                         //
