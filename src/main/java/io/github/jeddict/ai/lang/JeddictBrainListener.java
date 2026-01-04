@@ -107,11 +107,12 @@ public abstract class JeddictBrainListener
         try {
             LOG.finest(() -> "partial response: " + partialResponse);
             SwingUtilities.invokeAndWait(() -> {
-                if (init) {
+                if (init || isComplete()) {
                     topComponent.clear();
                     textArea = topComponent.createTextAreaPane();
                     textArea.setText(partialResponse);
                     init = false;
+                    complete = false;
                 } else {
                     textArea.append(partialResponse);
                 }
