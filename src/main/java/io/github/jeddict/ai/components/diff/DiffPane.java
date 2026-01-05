@@ -201,13 +201,7 @@ public class DiffPane extends JPanel {
                     mimeType,
                     new StringReader(ctrl.content)
             );
-            //final FileStreamSource right = new FileStreamSource(fo);
-            final StreamSource right = StreamSource.createSource(
-                    "Original " + ctrl.path,
-                    "Original " + ctrl.path,
-                    mimeType,
-                    new File(ctrl.fullPath)
-            );
+            final FileStreamSource right = new FileStreamSource(fo);
 
             sourcePane.addTab("Diff", diffView = new DiffView(left, right));
         } catch (IOException x) {
