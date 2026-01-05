@@ -994,8 +994,6 @@ public class AssistantChatManager extends JavaFix {
         //
         toolsList.forEach((tool) -> tool.addListener(listener));
 
-        System.out.println("tools: " + toolsList);
-
         return toolsList;
     }
 

@@ -16,6 +16,7 @@
 
 package io.github.jeddict.ai.agent;
 
+import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.Tool;
 import java.util.UUID;
 import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READONLY;
@@ -30,10 +31,10 @@ public class ToolsProbingTool {
     //
     public final String probeText = UUID.randomUUID().toString();
 
-    @Tool("""
+    @Tool(value = """
         Tool to probe if the model supports tools/functions.
         This tool does not accept any arguments and returns a random value
-    """)
+    """, returnBehavior = ReturnBehavior.IMMEDIATE)
     @ToolPolicy(READONLY)
     public String probeToolsSupport() {
         return probeText;

@@ -68,11 +68,11 @@ public class FileSystemTools extends AbstractCodeTool {
      * @return a list of matching file paths, or an empty string if none were found
      */
     @Tool("""
-    Recursively find files in a directory that match a regex pattern. The pattern
-    is matched against the full path of the file. Returns a newline-separated list"" when
-    of relative file paths, or an empty string if no matches are found.
-    It returns an error message starting with "ERR:" if the starting path does not exist.
-    If the pattern is empty, it matches all files.
+    Recursively find files in a given root folder whose file name matches a regex
+    pattern. The pattern is matched against the full pathname. It returns a
+    newline-separated list of relative pathnames, or an empty string if no matches
+    are found. It returns an error message starting with "ERR:" if the starting
+    path does not exist. If the pattern is empty, it matches all files.
     """)
     @ToolPolicy(READONLY)
     public String findFiles(String path, String regexPattern) throws Exception {

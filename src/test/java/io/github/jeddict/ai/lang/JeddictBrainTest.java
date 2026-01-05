@@ -32,6 +32,7 @@ import static io.github.jeddict.ai.agent.pair.PairProgrammer.Specialist.TEST;
 import io.github.jeddict.ai.settings.PreferencesManager;
 import io.github.jeddict.ai.test.DummyTool;
 import io.github.jeddict.ai.test.TestBase;
+import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -716,5 +717,28 @@ public class JeddictBrainTest extends TestBase {
         tool.reset();
         h.hack("execute tool dummyToolUnknown", "", "");
         then(tool.executed()).isTrue();
+    }
+
+    @Test
+    public void toolExecutionErrorHandler_provides_text_message() {
+        final JeddictBrain brain = new JeddictBrain(false);
+
+        //
+        // If a TargetExecutionException (as it usually wraps the exception
+        // thrown by the tool, get the message from the target exception.
+        //
+        final Throwable error = new InvocationTargetException(new ToolExecutionException("error"));
+        then(brain.toolExecutionErrorHandler(error, null).text()).isEqualTo("ToolExecutionException:error");
+
+        then(brain.toolExecutionErrorHandler(
+            new InvocationTargetException(new RuntimeException()), null).text()
+        ).isEqualTo("RuntimeException:");
+
+        then(brain.toolExecutionErrorHandler(new Exception(), null).text())
+            .isEqualTo("Exception:");
+
+        then(brain.toolExecutionErrorHandler(new Exception("unknown error"), null).text())
+            .isEqualTo("Exception:unknown error");
+
     }
 }

@@ -130,8 +130,8 @@ public class HumanInTheMiddleWrapperTest extends TestBase {
         DummyTool blockingWrappedTool = new HumanInTheMiddleWrapper(blockingInterceptor).wrap(originalTool);
 
         assertThatThrownBy(() -> blockingWrappedTool.dummyToolWrite())
-                .isInstanceOf(dev.langchain4j.exception.ToolExecutionException.class)
-                .hasMessageContaining("Tool execution rejected by user");
+                .isInstanceOf(ToolExecutionRejected.class)
+                .hasMessageContaining("REJECTED:user cancelled action: dummyToolWrite");
 
         then(originalTool.executed()).isFalse();
     }

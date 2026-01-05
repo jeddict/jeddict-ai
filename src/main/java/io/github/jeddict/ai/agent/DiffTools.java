@@ -40,18 +40,18 @@ public class DiffTools extends AbstractTool {
     }
 
     @Tool("""
-    Show the differences between the proposed new content of a file and its current content
-    to facilitate review and acceptance via a diff viewer interface.
+    Create or edit text content for a new or existing file provinding a visual
+    representation of the differences between the existing (or not) content
+    and the proposted content.
 
     Inputs:
-    - 'path': the filesystem path of the file to be changed; this path can point to a file that does not yet exist.
+    - 'path': the filesystem path of the file to be changed; this path may be for
+      a file that does not yet exist.
     - 'content': the proposed new content for the file.
 
-    Outputs:
-    - If the changes are accepted by the user, returns the string:
-      "ACCEPTED:\n<final content>"
-    - If the changes are rejected by the user, returns the string:
-      "REJECTED"
+    Output:
+    - The final content as accepted by the user
+    - The string 'REJECTED' if the user rejected the changes
     """
     )
     @ToolPolicy(INTERACTIVE)
@@ -83,10 +83,10 @@ public class DiffTools extends AbstractTool {
             // throw a ToolExecutionException
             //
             if (accepted.get()) {
-                return "ACCEPTED:\n"+newContent.get();
+                return newContent.get();
             }
 
-            return "REJECTED";
+            throw new ToolExecutionRejected();
         } catch (InterruptedException x) {
             throw new ToolExecutionException("error in getting the content: " + x.getMessage());
         }

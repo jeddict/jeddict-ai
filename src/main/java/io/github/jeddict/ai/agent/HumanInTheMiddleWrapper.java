@@ -160,8 +160,8 @@ public class HumanInTheMiddleWrapper {
                 if (hitm != null) {
                     String message = formatHitmMessage(method, args);
                                             if (!hitm.apply(message)) {
-                                                throw new dev.langchain4j.exception.ToolExecutionException("Tool execution rejected by user: " + method.getName());
-                                            }                }
+                            throw new ToolExecutionRejected("user cancelled action: " + method.getName());
+                        }                }
             }
             
             // Always delegate execution to the original target to preserve state

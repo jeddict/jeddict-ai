@@ -34,14 +34,12 @@ public class ToolsSupportProber {
      * @param args
      */
     public static void main(String... args) {
-        System.out.println("----------");
         on(args).loop((model) -> {
             final JeddictBrain brain = new JeddictBrain(model, false);
             PairProgrammer pair = brain.pairProgrammer(PairProgrammer.Specialist.HACKER);
 
             System.out.format("%s: %b\n", model, pair instanceof Hacker);
         });
-        System.out.println("----------");
     }
 
 }

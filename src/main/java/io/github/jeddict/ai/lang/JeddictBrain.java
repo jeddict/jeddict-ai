@@ -52,6 +52,7 @@ import io.github.jeddict.ai.agent.ToolsProbingTool;
 import io.github.jeddict.ai.agent.pair.PairProgrammer;
 import static io.github.jeddict.ai.lang.InteractionMode.INTERACTIVE;
 import io.github.jeddict.ai.util.PropertyChangeEmitter;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -60,6 +61,7 @@ import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Function;
 import java.util.logging.Logger;
+import org.apache.commons.lang3.StringUtils;
 import static ste.lloop.Loop.on;
 
 public class JeddictBrain implements PropertyChangeEmitter {
@@ -269,9 +271,24 @@ public class JeddictBrain implements PropertyChangeEmitter {
 
     // -------------------------------------------------------- ToolErrorHandler
 
-    public ToolErrorHandlerResult toolExecutionErrorHandler(Throwable error, ToolErrorContext context) {
-        LOG.finest("tool execution error: %s (%s)".formatted(error.getMessage(), String.valueOf(context)));
-        return ToolErrorHandlerResult.text(error.getMessage());
+    public ToolErrorHandlerResult toolExecutionErrorHandler(final Throwable error, final ToolErrorContext context) {
+        LOG.finest("tool execution error: %s (%s)".formatted(String.valueOf(error), String.valueOf(context)));
+
+        //
+        // Exceptions raised by a tool are usually wrapped into a InvocationTaargetException
+        //
+        Throwable target = error;
+        if (error instanceof InvocationTargetException) {
+            target = ((InvocationTargetException)error).getTargetException();
+            if (target == null) {
+                target = error;
+            }
+        }
+
+        final StringBuilder message = new StringBuilder(target.getClass().getSimpleName());
+        message.append(':').append(StringUtils.defaultString(target.getMessage()));
+
+        return ToolErrorHandlerResult.text(message.toString());
     }
 
     // -------------------------------------------------------- ToolErrorHandler
