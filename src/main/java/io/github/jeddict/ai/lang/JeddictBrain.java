@@ -257,8 +257,8 @@ public class JeddictBrain implements PropertyChangeEmitter {
         // Build normal utility agents
         //
         final AgentBuilder<T> builder
-                = AgenticServices.agentBuilder(specialist.specialistClass)
-                        .chatModel(model());
+            = AgenticServices.agentBuilder(specialist.specialistClass)
+                .chatModel(model(false));
 
         if (memorySize > 0) {
             builder.chatMemory(MessageWindowChatMemory.withMaxMessages(memorySize));
