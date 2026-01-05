@@ -673,7 +673,6 @@
             <artifactId>lambda-loop</artifactId>
             <version>0.3.0</version>
         </dependency>
-
         <dependency>
             <groupId>net.bytebuddy</groupId>
             <artifactId>byte-buddy</artifactId>
@@ -683,7 +682,6 @@
         <!--
           TEST DEPENDENCIES
         -->
-
 
         <dependency>
             <groupId>org.wiremock</groupId>
@@ -697,22 +695,6 @@
             <version>4.7.6</version>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-            <version>3.20.0</version>
-        </dependency>
-        <dependency>
-            <groupId>com.github.stefanofornari</groupId>
-            <artifactId>lambda-loop</artifactId>
-            <version>0.2.2</version>
-        </dependency>
-
-        <!--
-          TEST DEPENDENCIES
-        -->
-
-
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
