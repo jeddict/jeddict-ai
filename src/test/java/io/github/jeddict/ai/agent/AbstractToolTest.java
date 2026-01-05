@@ -5,7 +5,6 @@ import io.github.jeddict.ai.test.DummyTool;
 import io.github.jeddict.ai.lang.DummyJeddictBrainListener;
 import java.io.File;
 import java.nio.file.Paths;
-import java.util.List;
 import java.util.function.UnaryOperator;
 import org.junit.jupiter.api.Test;
 
@@ -68,7 +67,7 @@ public class AbstractToolTest extends TestBase {
 
         // then
         then(listener.collector).hasSize(1);
-        then(listener.collector.get(0)).asString().isEqualTo("a message");
+        then(listener.collector.get(0)).asString().isEqualTo("(onProgress,a message)");
     }
 
     @Test

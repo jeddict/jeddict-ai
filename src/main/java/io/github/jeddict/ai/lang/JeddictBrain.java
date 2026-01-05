@@ -27,6 +27,8 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
@@ -275,8 +277,8 @@ public class JeddictBrain implements PropertyChangeEmitter {
     // -------------------------------------------------------- ToolErrorHandler
 
     public ToolErrorHandlerResult toolArgumentsErrorHandler(Throwable error,  ToolErrorContext context) {
-        LOG.finest("tool arguments error: %s (%s)".formatted(error.getMessage(), String.valueOf(context)));
-        return ToolErrorHandlerResult.text(error.getMessage());
+        LOG.finest("tool arguments error: %s (%s)".formatted(error, String.valueOf(context)));
+        return ToolErrorHandlerResult.text(String.valueOf(error));
     }
 
 
@@ -342,9 +344,24 @@ public class JeddictBrain implements PropertyChangeEmitter {
      * @return the model
      */
     private <T> T model(final boolean useStreaming) {
+        //
+        // At the moment lanchain4j provides the chat request at an higher level
+        // with the event AiServicesResponseEvent. This is fired only once the
+        // request has been processed by the model and provides both the request
+        // and the response (see https://github.com/langchain4j/langchain4j/issues/4365)
+        // Howver, we want to know when a request starts, so have to use a ChatModelListener
+        //
+        final JeddictChatModelBuilder builder =
+            new JeddictChatModelBuilder(
+                this.modelName,
+                new ChatModelListener() {
+                    @Override
+                    public void onRequest(ChatModelRequestContext ctx) {
+                        on(listeners).loop((l) -> l.onRequest(ctx.chatRequest()));
+                    }
+                }
+            );
 
-        final JeddictChatModelBuilder builder
-                = new JeddictChatModelBuilder(this.modelName);
 
         return (useStreaming) ? (T)builder.buildStreaming() : (T)builder.build();
     }

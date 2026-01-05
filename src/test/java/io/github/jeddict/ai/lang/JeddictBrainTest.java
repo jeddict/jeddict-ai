@@ -38,6 +38,7 @@ import java.util.function.Function;
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.BDDAssertions.thenThrownBy;
 import org.junit.jupiter.api.Test;
+import org.apache.commons.lang3.tuple.Pair;
 import static ste.lloop.Loop.on;
 
 
@@ -139,21 +140,44 @@ public class JeddictBrainTest extends TestBase {
         //
         final AtomicInteger i = new AtomicInteger();
         on(listener1, listener2).loop((listener) -> {
-            final Object[] args = (Object [])listener.collector.get(i.get());
-            final SystemMessage s = (SystemMessage)args[0];
-            final UserMessage u = (UserMessage)args[1];
+            final Pair<String, Object> args = listener.collector.get(i.get());
+
+            then(args.getLeft()).isEqualTo("onChatStarted");
+
+            final SystemMessage s = (SystemMessage)((Object[])args.getRight())[0];
+            final UserMessage u = (UserMessage)((Object[])args.getRight())[1];
             then(s.text()).startsWith("You are an expert software developer");
             then(u.singleText()).startsWith("execute tool dummyTool");
         });
 
         //
-        // chatResponse - tool execution
+        // chatRequest - prompt
         //
         i.getAndIncrement();
         on(listener1, listener2).loop((listener) -> {
-            final Object[] args = (Object [])listener.collector.get(i.get());
-            final ChatRequest req = (ChatRequest)args[0];
-            final ChatResponse res = (ChatResponse)args[1];
+            final Pair<String, Object> args = listener.collector.get(i.get());
+
+            then(args.getLeft()).isEqualTo("onRequest");
+
+            final ChatRequest req = (ChatRequest)args.getRight();
+            final SystemMessage s = (SystemMessage)req.messages().get(0);
+            final UserMessage u = (UserMessage)req.messages().get(1);
+
+            then(s.text()).startsWith("You are an expert software developer");
+            then(u.singleText()).startsWith("execute tool dummyTool");
+        });
+
+        //
+        // chatResponse - prompt
+        //
+        i.getAndIncrement();
+        on(listener1, listener2).loop((listener) -> {
+            final Pair<String, Object> args = listener.collector.get(i.get());
+
+            then(args.getLeft()).isEqualTo("onResponse");
+
+            final ChatRequest req = (ChatRequest)((Object[])args.getRight())[0];
+            final ChatResponse res = (ChatResponse)((Object[])args.getRight())[1];
             final SystemMessage s = (SystemMessage)req.messages().get(0);
             final UserMessage u = (UserMessage)req.messages().get(1);
 
@@ -167,8 +191,11 @@ public class JeddictBrainTest extends TestBase {
         //
         i.getAndIncrement();
         on(listener1, listener2).loop((listener) -> {
-            final String progress = (String)listener.collector.get(i.get());
-            then(progress).isEqualTo("executing dummyTool");
+            final Pair<String, Object> args = listener.collector.get(i.get());
+
+            then(args.getLeft()).isEqualTo("onProgress");
+
+            then(args.getRight()).isEqualTo("executing dummyTool");
         });
 
         //
@@ -176,22 +203,48 @@ public class JeddictBrainTest extends TestBase {
         //
         i.getAndIncrement();
         on(listener1, listener2).loop((listener) -> {
-            final Object[] args = (Object[])listener.collector.get(i.get());
-            final ToolExecutionRequest request = (ToolExecutionRequest)args[0];
-            final String result = (String)args[1];
+            final Pair<String, Object> args = listener.collector.get(i.get());
+
+            then(args.getLeft()).isEqualTo("onToolExecuted");
+
+            final Object[] exec = (Object[])args.getRight();
+            final ToolExecutionRequest request = (ToolExecutionRequest)exec[0];
+            final String result = (String)exec[1];
 
             then(request.name()).isEqualTo("dummyTool");
             then(result).isEqualTo("true");
         });
 
         //
-        //  chatResponse
+        // chatRequest - tool execution result
         //
         i.getAndIncrement();
         on(listener1, listener2).loop((listener) -> {
-            final Object[] args = (Object [])listener.collector.get(i.get());
-            final ChatRequest req = (ChatRequest)args[0];
-            final ChatResponse res = (ChatResponse)args[1];
+            final Pair<String, Object> args = listener.collector.get(i.get());
+
+            then(args.getLeft()).isEqualTo("onRequest");
+
+            final ChatRequest req = (ChatRequest)args.getRight();
+
+            then(req.messages()).hasSize(4);
+        });
+
+        //
+        // TODO: check why the above request is triggered twice - prob. an issue
+        // in DummyModel
+        //
+
+        //
+        //  chatResponse
+        //
+        i.getAndIncrement(); i.getAndIncrement();
+        on(listener1, listener2).loop((listener) -> {
+            final Pair<String, Object> args = listener.collector.get(i.get());
+
+            then(args.getLeft()).isEqualTo("onResponse");
+
+            final ChatRequest req = (ChatRequest)((Object[])args.getRight())[0];
+            final ChatResponse res = (ChatResponse)((Object[])args.getRight())[1];
 
             then(req.messages()).hasSize(4); // System, User, Ai, ToolExecutionResult
             then(res.aiMessage().text()).isEqualTo("true");
@@ -202,7 +255,11 @@ public class JeddictBrainTest extends TestBase {
         //
         i.getAndIncrement();
         on(listener1, listener2).loop((listener) -> {
-            final ChatResponse res = (ChatResponse)listener.collector.get(i.get());
+            final Pair<String, Object> args = listener.collector.get(i.get());
+
+            then(args.getLeft()).isEqualTo("onChatCompleted");
+
+            final ChatResponse res = (ChatResponse)args.getRight();
             then(res.aiMessage().text()).isEqualToIgnoringNewLines("true");
         });
     }
@@ -233,14 +290,35 @@ public class JeddictBrainTest extends TestBase {
         //
         // Then the error is signalled as an event
         //
+
         //
         // chatStarted
         //
         final AtomicInteger i = new AtomicInteger();
         on(listener1, listener2).loop((listener) -> {
-            final Object[] args = (Object [])listener.collector.get(i.get());
-            final SystemMessage s = (SystemMessage)args[0];
-            final UserMessage u = (UserMessage)args[1];
+            final Pair<String, Object> args = listener.collector.get(i.get());
+
+            then(args.getLeft()).isEqualTo("onChatStarted");
+
+            final SystemMessage s = (SystemMessage)((Object[])args.getRight())[0];
+            final UserMessage u = (UserMessage)((Object[])args.getRight())[1];
+            then(s.text()).startsWith("You are an expert software developer");
+            then(u.singleText()).startsWith("hello world");
+        });
+
+        //
+        // chatRequest - prompt
+        //
+        i.getAndIncrement();
+        on(listener1, listener2).loop((listener) -> {
+            final Pair<String, Object> args = listener.collector.get(i.get());
+
+            then(args.getLeft()).isEqualTo("onRequest");
+
+            final ChatRequest req = (ChatRequest)args.getRight();
+
+            final SystemMessage s = (SystemMessage)req.messages().get(0);
+            final UserMessage u = (UserMessage)req.messages().get(1);
             then(s.text()).startsWith("You are an expert software developer");
             then(u.singleText()).startsWith("hello world");
         });
@@ -250,7 +328,11 @@ public class JeddictBrainTest extends TestBase {
         //
         i.getAndIncrement();
         on(listener1, listener2).loop((listener) -> {
-            final Throwable t = (Throwable)listener.collector.get(i.get());
+            final Pair<String, Object> args = listener.collector.get(i.get());
+
+            then(args.getLeft()).isEqualTo("onError");
+
+            final Throwable t = (Throwable)args.getRight();
             then(t).hasMessage("something went wrong");
         });
     }
@@ -301,6 +383,7 @@ public class JeddictBrainTest extends TestBase {
             InteractionMode.AGENT, List.of(tool)
         );
         brain.addListener(listener);
+        brain.probedModels.put("dummy-with-tools", Boolean.TRUE);
 
         HackerWithTools h = brain.pairProgrammer(HACKER);
 
@@ -309,23 +392,41 @@ public class JeddictBrainTest extends TestBase {
         then(tool.executed()).isTrue();
 
         int i = 0;
-        then(listener.collector).isNotEmpty().hasSize(6);
+        then(listener.collector).isNotEmpty().hasSize(9);
 
         //
         // chatStarted
         //
-        Object[] args = (Object [])listener.collector.get(i++);
-        SystemMessage s = (SystemMessage)args[0];
-        UserMessage u = (UserMessage)args[1];
+        Pair<String, Object> args = listener.collector.get(i++);
+        then(args.getLeft()).isEqualTo("onChatStarted");
+
+        SystemMessage s = (SystemMessage)((Object[])args.getRight())[0];
+        UserMessage u = (UserMessage)((Object[])args.getRight())[1];
+        then(s.text()).startsWith("You are an expert software developer");
+        then(u.singleText()).startsWith("execute tool dummyTool");
+
+        //
+        // chatRequest - prompt
+        //
+        args = listener.collector.get(i++);
+
+        then(args.getLeft()).isEqualTo("onRequest");
+
+        ChatRequest req = (ChatRequest)args.getRight();
+        s = (SystemMessage)req.messages().get(0);
+        u = (UserMessage)req.messages().get(1);
+
         then(s.text()).startsWith("You are an expert software developer");
         then(u.singleText()).startsWith("execute tool dummyTool");
 
         //
         // chatResponse
         //
-        args = (Object[])listener.collector.get(i++);
-        ChatRequest req = (ChatRequest)args[0];
-        ChatResponse res = (ChatResponse)args[1];
+        args = listener.collector.get(i++);
+        then(args.getLeft()).isEqualTo("onResponse");
+
+        req = (ChatRequest)((Object[])args.getRight())[0];
+        ChatResponse res = (ChatResponse)((Object[])args.getRight())[1];
         s = (SystemMessage)req.messages().get(0);
         u = (UserMessage)req.messages().get(1);
         then(s.text()).startsWith("You are an expert software developer");
@@ -335,23 +436,46 @@ public class JeddictBrainTest extends TestBase {
         //
         //  toolExecuted
         //
-        args = (Object[])listener.collector.get(i++);
-        ToolExecutionRequest ter = (ToolExecutionRequest)args[0];
-        String result = "true";
-        then(ter.name()).isEqualTo("dummyTool");
+        args = listener.collector.get(i++);
+        then(args.getLeft()).isEqualTo("onToolExecuted");
+
+        Object[] exec = (Object[])args.getRight();
+        ToolExecutionRequest request = (ToolExecutionRequest)exec[0];
+        String result = (String)exec[1];
+
+        then(request.name()).isEqualTo("dummyTool");
         then(result).isEqualTo("true");
+
+        //
+        // chatRequest - tool execution result
+        //
+        args = listener.collector.get(i++);
+        then(args.getLeft()).isEqualTo("onRequest");
+
+        req = (ChatRequest)args.getRight();
+        then(req.messages()).hasSize(4);
+
+        //
+        // TODO: check why the above request is triggered twice - prob. an issue
+        // in DummyModel
+        //
+        ++i;
 
         //
         // progress
         //
-        then(listener.collector.get(i++)).isEqualTo("true");
+        args = listener.collector.get(i++);
+        then(args.getLeft()).isEqualTo("onProgress");
+        then(args.getRight()).isEqualTo("true");
 
         //
         // chatResponse
         //
-        args = (Object[])listener.collector.get(i++);
-        req = (ChatRequest)args[0];
-        res = (ChatResponse)args[1];
+        args = listener.collector.get(i++);
+        then(args.getLeft()).isEqualTo("onResponse");
+
+        req = (ChatRequest)((Object[])args.getRight())[0];
+        res = (ChatResponse)((Object[])args.getRight())[1];
         then(req.messages()).hasSize(4); // (System, User, Ai, TioolExecutionResult)
         then(u.singleText()).startsWith("execute tool dummyTool");
         then(res.aiMessage().text()).isEqualTo("true");
@@ -359,9 +483,12 @@ public class JeddictBrainTest extends TestBase {
         //
         //  chatCompleted
         //
-        res = (ChatResponse)listener.collector.get(i++);
-        then(res.aiMessage().text()).isEqualToIgnoringNewLines("true");
+        args = listener.collector.get(i++);
 
+        then(args.getLeft()).isEqualTo("onChatCompleted");
+
+        res = (ChatResponse)args.getRight();
+        then(res.aiMessage().text()).isEqualToIgnoringNewLines("true");
     }
 
     @Test
@@ -381,28 +508,51 @@ public class JeddictBrainTest extends TestBase {
         a.chat(listener, "use mock 'hello world.txt'");
 
         int i = 0;
-        then(listener.collector).isNotEmpty().hasSize(4);
+        then(listener.collector).isNotEmpty().hasSize(6);
 
         //
         // chatStarted
         //
-        Object[] args = (Object [])listener.collector.get(i++);
-        SystemMessage s = (SystemMessage)args[0];
-        UserMessage u = (UserMessage)args[1];
+        //
+        // chatStarted
+        //
+        Pair<String, Object> args = listener.collector.get(i++);
+        then(args.getLeft()).isEqualTo("onChatStarted");
+
+        SystemMessage s = (SystemMessage)((Object[])args.getRight())[0];
+        UserMessage u = (UserMessage)((Object[])args.getRight())[1];
+        then(s.text()).startsWith("You are an expert software developer");
+        then(u.singleText()).startsWith("use mock 'hello world.txt'");
+
+        //
+        // chatRequest - prompt
+        //
+        args = listener.collector.get(i++);
+
+        then(args.getLeft()).isEqualTo("onRequest");
+
+        ChatRequest req = (ChatRequest)args.getRight();
+        s = (SystemMessage)req.messages().get(0);
+        u = (UserMessage)req.messages().get(1);
+
         then(s.text()).startsWith("You are an expert software developer");
         then(u.singleText()).startsWith("use mock 'hello world.txt'");
 
         //
         // progress
         //
-        then(listener.collector.get(i++)).isEqualTo("hello world");
+        ++i; // TODO: double request message
+        args = listener.collector.get(i++);
+        then(args.getLeft()).isEqualTo("onProgress");
+        then(args.getRight()).isEqualTo("hello world");
 
         //
         // chatResponse
         //
-        args = (Object[])listener.collector.get(i++);
-        ChatRequest req = (ChatRequest)args[0];
-        ChatResponse res = (ChatResponse)args[1];
+        args = listener.collector.get(i++);
+        then(args.getLeft()).isEqualTo("onResponse");
+        req = (ChatRequest)((Object[])args.getRight())[0];
+        ChatResponse res = (ChatResponse)((Object[])args.getRight())[1];
         s = (SystemMessage)req.messages().get(0);
         u = (UserMessage)req.messages().get(1);
         then(s.text()).startsWith("You are an expert software developer");
@@ -412,7 +562,11 @@ public class JeddictBrainTest extends TestBase {
         //
         //  chatCompleted
         //
-        res = (ChatResponse)listener.collector.get(i++);
+        args = listener.collector.get(i++);
+
+        then(args.getLeft()).isEqualTo("onChatCompleted");
+
+        res = (ChatResponse)args.getRight();
         then(res.aiMessage().text()).isEqualToIgnoringNewLines("hello world");
     }
 

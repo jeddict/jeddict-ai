@@ -21,6 +21,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.assertj.core.api.BDDAssertions;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.AfterEach;
@@ -43,7 +44,7 @@ public class FileSystemToolsTest extends TestBase {
 
         then(tools.searchInFile(path, pattern)).contains("Match at").contains("test file");
         then(listener.collector).hasSize(1);
-        then(listener.collector.get(0)).asString().isEqualTo("🔎 Looking for '" + pattern + "' inside '" + path + "'");
+        then(listener.collector.get(0)).asString().isEqualTo("(onProgress,🔎 Looking for '" + pattern + "' inside '" + path + "')");
     }
 
     @Test
@@ -57,7 +58,7 @@ public class FileSystemToolsTest extends TestBase {
 
         then(tools.searchInFile(path, pattern)).isEqualTo("No matches found");
         then(listener.collector).hasSize(1);
-        then(listener.collector.get(0)).asString().isEqualTo("🔎 Looking for '" + pattern + "' inside '" + path + "'");
+        then(listener.collector.get(0)).asString().isEqualTo("(onProgress,🔎 Looking for '" + pattern + "' inside '" + path + "')");
     }
 
     @Test
@@ -75,10 +76,10 @@ public class FileSystemToolsTest extends TestBase {
         // Logging assertions for progress messages
         int i = 0;
         then(listener.collector).hasSize(4);
-        then(listener.collector.get(i++)).asString().isEqualTo("📄 Creating new file: " + path);
-        then(listener.collector.get(i++)).asString().isEqualTo("✅ File created successfully: " + path);
-        then(listener.collector.get(i++)).asString().isEqualTo("📄 Creating new file: " + path);
-        then(listener.collector.get(i++)).asString().isEqualTo("⚠ File already exists: " + path);
+        then(listener.collector.get(i++)).asString().isEqualTo("(onProgress,📄 Creating new file: " + path + ')');
+        then(listener.collector.get(i++)).asString().isEqualTo("(onProgress,✅ File created successfully: " + path + ')');
+        then(listener.collector.get(i++)).asString().isEqualTo("(onProgress,📄 Creating new file: " + path + ')');
+        then(listener.collector.get(i++)).asString().isEqualTo("(onProgress,⚠ File already exists: " + path + ')');
     }
 
     @Test
@@ -99,9 +100,9 @@ public class FileSystemToolsTest extends TestBase {
 
         // Logging assertions for progress messages
         then(listener.collector).contains(
-                "🗑 Attempting to delete file: " + path,
-                "✅ File deleted successfully: " + path,
-                "⚠ File not found: " + path
+            Pair.of("onProgress", "🗑 Attempting to delete file: " + path),
+            Pair.of("onProgress", "✅ File deleted successfully: " + path),
+            Pair.of("onProgress", "⚠ File not found: " + path)
         );
     }
 
@@ -121,8 +122,8 @@ public class FileSystemToolsTest extends TestBase {
 
         // Logging assertions for progress messages
         then(listener.collector).contains(
-                "📂 Listing content of directory: " + existingDir,
-                "❌ invalid directory: " + nonExistingDir
+            Pair.of("onProgress", "📂 Listing content of directory: " + existingDir),
+            Pair.of("onProgress", "❌ invalid directory: " + nonExistingDir)
         );
     }
 
@@ -141,7 +142,7 @@ public class FileSystemToolsTest extends TestBase {
         //
         then(tools.readFile(pathOK)).isEqualTo(expectedContent);
         then(listener.collector).hasSize(1);
-        then(listener.collector.get(0)).asString().isEqualTo("📖 Reading file " + pathOK);
+        then(listener.collector.get(0)).asString().isEqualTo("(onProgress,📖 Reading file " + pathOK + ')');
 
         //
         // failure
@@ -154,8 +155,8 @@ public class FileSystemToolsTest extends TestBase {
             tools.readFile(pathKO)
         );
         then(listener.collector).hasSize(2);
-        then(listener.collector.get(0)).asString().isEqualTo("📖 Reading file " + pathKO);
-        then(listener.collector.get(1)).asString().isEqualTo("❌ Failed to read file: " + fullPathKO);
+        then(listener.collector.get(0)).asString().isEqualTo("(onProgress,📖 Reading file " + pathKO + ')');
+        then(listener.collector.get(1)).asString().isEqualTo("(onProgress,❌ Failed to read file: " + fullPathKO + ')');
     }
 
     @Test
@@ -171,8 +172,8 @@ public class FileSystemToolsTest extends TestBase {
 
         // Logging assertions for progress messages
         then(listener.collector).contains(
-                "📂 Creating new directory: " + path,
-                "⚠ Directory already exists: " + path
+            Pair.of("onProgress", "📂 Creating new directory: " + path),
+            Pair.of("onProgress", "⚠ Directory already exists: " + path)
         );
     }
 
@@ -193,10 +194,10 @@ public class FileSystemToolsTest extends TestBase {
 
         // Logging assertions for progress messages
         then(listener.collector).contains(
-                "🗑 Attempting to delete directory: " + path,
-                "✅ Directory deleted successfully: " + path,
-                "🗑 Attempting to delete directory: " + path,
-                "⚠ Directory not found: " + path
+            Pair.of("onProgress", "🗑 Attempting to delete directory: " + path),
+            Pair.of("onProgress", "✅ Directory deleted successfully: " + path),
+            Pair.of("onProgress", "🗑 Attempting to delete directory: " + path),
+            Pair.of("onProgress", "⚠ Directory not found: " + path)
         );
     }
 
@@ -295,6 +296,8 @@ public void findFiles_no_matches() throws Exception {
         String result = tools.findFiles(directory, pattern).replace('\\', '/');
 
         then(result).isEqualTo("ERR: invalid directory " + directory);
-        then(listener.collector).contains("❌ invalid directory: " + directory);
+        then(listener.collector).contains(
+            Pair.of("onProgress", "❌ invalid directory: " + directory)
+        );
     }
 }

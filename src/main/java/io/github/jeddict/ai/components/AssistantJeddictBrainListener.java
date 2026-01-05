@@ -59,7 +59,6 @@ public class AssistantJeddictBrainListener
 {
 
     protected final AssistantChat assistantChat;
-    protected boolean init = true;
     protected JTextArea textArea;
     protected ProgressHandle handle;
 
@@ -77,7 +76,19 @@ public class AssistantJeddictBrainListener
 
     @Override
     public void onChatStarted(final SystemMessage system, final UserMessage user) {
-
+        LOG.finest(() ->
+            "+++ starting a new chat\n-----------------------\nsystem message:\n" +
+            system +
+            "\nuser message:\n" +
+            user +
+            "\n----------");
+        SwingUtilities.invokeLater(() -> {
+            final String prompt = assistantChat.getQuestionPane().getText();
+            assistantChat.clear();
+            assistantChat.createUserQueryPane(System.out::println, prompt, Set.of());
+            textArea = assistantChat.createTextAreaPane();
+            assistantChat.getQuestionPane().setText("");
+        });
     }
 
     @Override
@@ -149,14 +160,6 @@ public class AssistantJeddictBrainListener
             partialResponse +
             "\n----------");
         SwingUtilities.invokeLater(() -> {
-            if (init) {
-                final String prompt = assistantChat.getQuestionPane().getText();
-                assistantChat.clear();
-                assistantChat.createUserQueryPane(System.out::println, prompt, Set.of());
-                textArea = assistantChat.createTextAreaPane();
-                assistantChat.getQuestionPane().setText("");
-                init = false;
-            }
             textArea.append(partialResponse);
         });
     }
@@ -169,11 +172,12 @@ public class AssistantJeddictBrainListener
             "\n----------"
         );
 
-        assistantChat.getQuestionPane().setText("");
-        assistantChat.updateHeight();
-        assistantChat.clearFileTab();
-
-        init = true;
+        //
+        // just in case...
+        //
+        SwingUtilities.invokeLater(() -> {
+            handle.finish();
+        });
     }
 
     @Override
@@ -199,7 +203,7 @@ public class AssistantJeddictBrainListener
         } else if (throwable instanceof ModelNotFoundException) {
             showError("Invalid model, check assistant settings.");
         } else {
-            showError(throwable.getMessage());
+            showError(String.valueOf(throwable.getMessage()));
         }
     }
 

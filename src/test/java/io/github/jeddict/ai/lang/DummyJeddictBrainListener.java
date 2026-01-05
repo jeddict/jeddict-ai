@@ -23,46 +23,47 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.commons.lang3.tuple.Pair;
 
 /**
  *
  */
 public class DummyJeddictBrainListener implements JeddictBrainListener {
 
-    public final List collector = new ArrayList();
+    public final List<Pair<String, Object>> collector = new ArrayList();
 
     @Override
     public void onChatStarted(final SystemMessage system, final UserMessage user) {
-        collector.add(new Object[] { system, user });
+        collector.add(Pair.of("onChatStarted", new Object[] { system, user }));
     }
 
     @Override
     public void onRequest(final ChatRequest request) {
-        collector.add(request);
+        collector.add(Pair.of("onRequest", request));
     }
 
     @Override
     public void onResponse(final ChatRequest request, final ChatResponse response) {
-        collector.add(new Object[] {request, response});
+        collector.add(Pair.of("onResponse", new Object[] {request, response}));
     }
 
     @Override
     public void onChatCompleted(final ChatResponse result) {
-        collector.add(result);
+        collector.add(Pair.of("onChatCompleted", result));
     }
 
     @Override
     public void onToolExecuted(final ToolExecutionRequest request, final String result) {
-        collector.add(new Object[] {request, result});
+        collector.add(Pair.of("onToolExecuted", new Object[] {request, result}));
     }
 
     @Override
     public void onError(final Throwable error) {
-        collector.add(error);
+        collector.add(Pair.of("onError", error));
     }
 
     @Override
     public void onProgress(final String progress) {
-        collector.add(progress);
+        collector.add(Pair.of("onProgress", progress));
     }
 }
