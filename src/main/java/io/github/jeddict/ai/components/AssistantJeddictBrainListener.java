@@ -111,6 +111,13 @@ public class AssistantJeddictBrainListener
         //
         // TODO: use reponse.tokenUsage()
         //
+        LOG.finest(() ->
+            ">>> request\n-----------\n" +
+            request +
+            "\n<<< response\n-------------\n" +
+            response +
+            "\n----------"
+        );
         final String result = response.aiMessage().text();
         CompletableFuture.runAsync(() -> TokenHandler.saveOutputToken(result));
         SwingUtilities.invokeLater(() -> {
@@ -126,11 +133,21 @@ public class AssistantJeddictBrainListener
      */
     @Override
     public void onToolExecuted(final ToolExecutionRequest request, final String result) {
+        LOG.finest(() ->
+            ">>> request\n-----------\n" +
+            request +
+            "\n<<< result\n-------------\n" +
+            result +
+            "\n----------"
+        );
     }
 
     @Override
     public void onProgress(String partialResponse) {
-        LOG.finest(() -> "partial response: " + partialResponse);
+        LOG.finest(() ->
+            "<<< partial response\n--------------------\n" +
+            partialResponse +
+            "\n----------");
         SwingUtilities.invokeLater(() -> {
             if (init) {
                 final String prompt = assistantChat.getQuestionPane().getText();
@@ -145,8 +162,12 @@ public class AssistantJeddictBrainListener
     }
 
     @Override
-    public void onChatCompleted(final ChatResponse result) {
-        LOG.finest(() -> "complete response received: " + result);
+    public void onChatCompleted(final ChatResponse response) {
+        LOG.finest(() ->
+            "<<< completed response\n----------------------\n" +
+            response +
+            "\n----------"
+        );
 
         assistantChat.getQuestionPane().setText("");
         assistantChat.updateHeight();
@@ -157,7 +178,11 @@ public class AssistantJeddictBrainListener
 
     @Override
     public void onError(final Throwable throwable) {
-        LOG.finest(() -> "error received: " + throwable);
+        LOG.finest(() ->
+            "<<< error received\n------------------\n" +
+            throwable +
+            "\n----------"
+        );
 
         // Log the error with timestamp and thread info
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
