@@ -163,7 +163,7 @@ public class AssistantJeddictBrainListener
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
         String threadName = Thread.currentThread().getName();
         LOG.log(Level.SEVERE, "Error occurred at {0} on thread [{1}]", new Object[] { timestamp, threadName });
-        LOG.log(Level.SEVERE, "Exception in JeddictStreamHandler", throwable);
+        LOG.log(Level.SEVERE, "Details:", throwable);
 
         onChatCompleted(ChatResponse.builder().aiMessage(
             AiMessage.from(Utilities.errorHTMLBlock(throwable))

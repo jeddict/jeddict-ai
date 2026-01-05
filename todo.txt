@@ -1,0 +1,50 @@
+
+INFO [org.netbeans.ui.indexing]: Indexing finished, indexing took 136 ms.
+SEVERE [org.openide.util.Exceptions]
+dev.langchain4j.exception.HttpException: {
+  "error": {
+    "message": "tools is not supported in this model. For a list of supported models, refer to https://platform.openai.com/docs/guides/function-calling#models-supporting-function-calling.",
+    "type": "invalid_request_error",
+    "param": null,
+    "code": null
+  }
+}
+	at dev.langchain4j.http.client.jdk.JdkHttpClient.execute(JdkHttpClient.java:53)
+	at dev.langchain4j.model.openai.internal.SyncRequestExecutor.execute(SyncRequestExecutor.java:20)
+	at dev.langchain4j.model.openai.internal.RequestExecutor.executeRaw(RequestExecutor.java:44)
+	at dev.langchain4j.model.openai.OpenAiChatModel.lambda$doChat$0(OpenAiChatModel.java:150)
+	at dev.langchain4j.internal.ExceptionMapper.withExceptionMapper(ExceptionMapper.java:29)
+Caused: dev.langchain4j.exception.ModelNotFoundException: {
+  "error": {
+    "message": "tools is not supported in this model. For a list of supported models, refer to https://platform.openai.com/docs/guides/function-calling#models-supporting-function-calling.",
+    "type": "invalid_request_error",
+    "param": null,
+    "code": null
+  }
+}
+	at dev.langchain4j.internal.ExceptionMapper$DefaultExceptionMapper.mapHttpStatusCode(ExceptionMapper.java:62)
+	at dev.langchain4j.internal.ExceptionMapper$DefaultExceptionMapper.mapException(ExceptionMapper.java:44)
+	at dev.langchain4j.internal.ExceptionMapper.withExceptionMapper(ExceptionMapper.java:31)
+	at dev.langchain4j.internal.RetryUtils.lambda$withRetryMappingExceptions$1(RetryUtils.java:322)
+	at dev.langchain4j.internal.RetryUtils$RetryPolicy.withRetry(RetryUtils.java:204)
+	at dev.langchain4j.internal.RetryUtils.withRetry(RetryUtils.java:259)
+	at dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions(RetryUtils.java:322)
+	at dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions(RetryUtils.java:305)
+	at dev.langchain4j.model.openai.OpenAiChatModel.doChat(OpenAiChatModel.java:149)
+	at dev.langchain4j.model.chat.ChatModel.chat(ChatModel.java:46)
+	at dev.langchain4j.guardrail.SynchronousChatExecutor.execute(SynchronousChatExecutor.java:32)
+	at dev.langchain4j.guardrail.AbstractChatExecutor.execute(AbstractChatExecutor.java:45)
+	at dev.langchain4j.service.DefaultAiServices$1.invoke(DefaultAiServices.java:381)
+	at dev.langchain4j.service.DefaultAiServices$1.invoke(DefaultAiServices.java:236)
+	at jdk.proxy27/jdk.proxy27.$Proxy76._hack_(Unknown Source)
+	at io.github.jeddict.ai.agent.pair.Hacker.hack(Hacker.java:102)
+	at java.base/java.lang.reflect.Proxy.invokeDefault(Proxy.java:1345)
+	at java.base/java.lang.reflect.InvocationHandler.invokeDefault(InvocationHandler.java:264)
+	at dev.langchain4j.service.DefaultAiServices$1.invoke(DefaultAiServices.java:198)
+	at jdk.proxy27/jdk.proxy27.$Proxy76.hack(Unknown Source)
+[catch] at io.github.jeddict.ai.hints.AssistantChatManager.lambda$handleQuestion$17(AssistantChatManager.java:734)
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
+	at java.base/java.lang.Thread.run(Thread.java:1583)

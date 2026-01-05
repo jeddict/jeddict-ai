@@ -135,6 +135,7 @@ public class AssistantChatManager extends JavaFix {
     private final PreferencesManager pm = PreferencesManager.getInstance();
     private Tree leaf;
     private final Map<String, String> params = new HashMap();
+    private String question;
 
     private String question;
     private SwingWorker result;
@@ -454,56 +455,9 @@ public class AssistantChatManager extends JavaFix {
 
         };
 
-        //
-        // TODO: can't we merge this in the base AssistantJeddictBrainListener ?
-        listener = new AssistantJeddictBrainListener(assistant) {
-            private final StringBuilder toolingResponse = new StringBuilder();
+        handler(chat);
 
-            @Override
-            public void onChatCompleted(final ChatResponse response) {
-                 super.onChatCompleted(response);
-
-                final StringBuilder textResponse = new StringBuilder(response.aiMessage().text());
-
-                LOG.finest(() -> "response completed with\ntext\n" + textResponse + "\nand\ntooling\n" + toolingResponse);
-
-                if (!toolingResponse.isEmpty()) {
-                    textResponse.insert(0, "```tooling\n" + toolingResponse.toString() + "\n```\n");
-                }
-                final Response r = new Response(question, textResponse.toString(), new HashSet<>(messageContext));
-                // TODO: this shall be used for history; it won't be used for memory,
-                // which is instead managed by the agents and services
-                if (responseHistory.isEmpty() || !textResponse.equals(responseHistory.get(responseHistory.size() - 1))) {
-                    responseHistory.add(r);
-                    currentResponseIndex = responseHistory.size() - 1;
-                }
-                SwingUtilities.invokeLater(() -> {
-                    Consumer<String> queryUpdate = (newQuery) -> {
-                        handlePrompt(newQuery, false);
-                    };
-                    if (codeReview) {
-                        List<Review> reviews = parseReviewsFromYaml(r.getBlocks().get(0).getContent());
-                        String web = convertReviewsToHtml(reviews);
-                        ac.setReviews(reviews);
-                        r.getBlocks().clear();
-                        r.getBlocks().add(new Block("web", web));
-                    }
-                    sourceCode = EditorUtil.updateEditors(queryUpdate, ac, r, getContextFiles());
-
-                    ac.stopLoading();
-                    ac.updateButtons(currentResponseIndex > 0, currentResponseIndex < responseHistory.size() - 1);
-                    ac.buttonPanelResized();
-                });
-            }
-
-            @Override
-            public void onToolExecuted(final ToolExecutionRequest request, final String result) {
-                toolingResponse.append(request.name()).append(' ').append(request.arguments());
-                toolingResponse.append("\n  >").append(result.replaceAll("\n", "\n  "));
-            }
-       };
-
-        return assistant;
+        return chat;
     }
 
     public void displayHtmlContent(String filename, String title) {
@@ -790,6 +744,58 @@ public class AssistantChatManager extends JavaFix {
             }
         };
         result.execute();
+    }
+
+    private void handler(final AssistantChat chat) {
+        //
+        // TODO: can't we merge this in the base AssistantJeddictBrainListener ?
+		//
+        return new AssistantJeddictBrainListener(chat) {
+            private final StringBuilder toolingResponse = new StringBuilder();
+
+            @Override
+            public void onChatCompleted(final ChatResponse response) {
+                 super.onChatCompleted(response);
+
+                final StringBuilder textResponse = new StringBuilder(response.aiMessage().text());
+
+                LOG.finest(() -> "response completed with\ntext\n" + textResponse + "\nand\ntooling\n" + toolingResponse);
+
+                if (!toolingResponse.isEmpty()) {
+                    textResponse.insert(0, "```tooling\n" + toolingResponse.toString() + "\n```\n");
+                }
+                final Response r = new Response(question, textResponse.toString(), new HashSet<>(messageContext));
+                // TODO: this shall be used for history; it won't be used for memory,
+                // which is instead managed by the agents and services
+                if (responseHistory.isEmpty() || !textResponse.equals(responseHistory.get(responseHistory.size() - 1))) {
+                    responseHistory.add(r);
+                    currentResponseIndex = responseHistory.size() - 1;
+                }
+                SwingUtilities.invokeLater(() -> {
+                    Consumer<String> queryUpdate = (newQuery) -> {
+                        handlePrompt(newQuery, false);
+                    };
+                    if (codeReview) {
+                        List<Review> reviews = parseReviewsFromYaml(r.getBlocks().get(0).getContent());
+                        String web = convertReviewsToHtml(reviews);
+                        ac.setReviews(reviews);
+                        r.getBlocks().clear();
+                        r.getBlocks().add(new Block("web", web));
+                    }
+                    sourceCode = EditorUtil.updateEditors(queryUpdate, ac, r, getContextFiles());
+
+                    ac.stopLoading();
+                    ac.updateButtons(currentResponseIndex > 0, currentResponseIndex < responseHistory.size() - 1);
+                    ac.buttonPanelResized();
+                });
+            }
+
+            @Override
+            public void onToolExecuted(final ToolExecutionRequest request, final String result) {
+                toolingResponse.append(request.name()).append(' ').append(request.arguments());
+                toolingResponse.append("\n  >").append(result.replaceAll("\n", "\n  "));
+            }
+        }
     }
 
     private JeddictBrain newJeddictBrain(

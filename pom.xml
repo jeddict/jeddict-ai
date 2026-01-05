@@ -671,7 +671,7 @@
         <dependency>
             <groupId>com.github.stefanofornari</groupId>
             <artifactId>lambda-loop</artifactId>
-            <version>0.2.2</version>
+            <version>0.3.0</version>
         </dependency>
 
         <dependency>
@@ -698,6 +698,22 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.20.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.stefanofornari</groupId>
+            <artifactId>lambda-loop</artifactId>
+            <version>0.2.2</version>
+        </dependency>
+
+        <!--
+          TEST DEPENDENCIES
+        -->
+
+
+        <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
             <version>5.13.4</version>
@@ -721,12 +737,6 @@
             <version>3.27.4</version>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.assertj</groupId>
-            <artifactId>assertj-swing-testng</artifactId>
-            <version>3.9.2</version>
-            <scope>test</scope>
-      </dependency>
         <dependency>
             <groupId>jakarta.ws.rs</groupId>
             <artifactId>jakarta.ws.rs-api</artifactId>
