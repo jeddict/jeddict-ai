@@ -94,8 +94,4 @@ public abstract class AbstractTool {
     public void withHumanInTheMiddle(final UnaryOperator<String> hitm) {
         humanInTheMiddle = (hitm == null) ? Optional.empty() : Optional.of(hitm);
     }
-
-    public String basedir() {
-        return basedir;
-    }
 }

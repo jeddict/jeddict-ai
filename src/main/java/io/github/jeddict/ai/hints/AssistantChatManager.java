@@ -136,8 +136,6 @@ public class AssistantChatManager extends JavaFix {
     private Tree leaf;
     private final Map<String, String> params = new HashMap();
     private String question;
-
-    private String question;
     private SwingWorker result;
     private AssistantJeddictBrainListener listener;
 
@@ -455,9 +453,9 @@ public class AssistantChatManager extends JavaFix {
 
         };
 
-        handler(chat);
+        handler(assistant);
 
-        return chat;
+        return assistant;
     }
 
     public void displayHtmlContent(String filename, String title) {
@@ -749,8 +747,8 @@ public class AssistantChatManager extends JavaFix {
     private void handler(final AssistantChat chat) {
         //
         // TODO: can't we merge this in the base AssistantJeddictBrainListener ?
-		//
-        return new AssistantJeddictBrainListener(chat) {
+        //
+        listener = new AssistantJeddictBrainListener(chat) {
             private final StringBuilder toolingResponse = new StringBuilder();
 
             @Override
@@ -795,7 +793,7 @@ public class AssistantChatManager extends JavaFix {
                 toolingResponse.append(request.name()).append(' ').append(request.arguments());
                 toolingResponse.append("\n  >").append(result.replaceAll("\n", "\n  "));
             }
-        }
+        };
     }
 
     private JeddictBrain newJeddictBrain(
