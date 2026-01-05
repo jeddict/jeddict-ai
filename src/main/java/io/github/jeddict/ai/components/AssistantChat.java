@@ -1254,13 +1254,13 @@ public abstract class AssistantChat extends TopComponent {
 
                                 createEditorPaneMenus(fileObject, fileObject.getName(), -1, editorPane, cachedMethodSignatures);
                             } catch (Exception e) {
-                                System.out.println("Error parsing single method declaration from editor content: " + e.getMessage());
+                                LOG.finest(() -> "Error parsing single method declaration from editor content: " + e.getMessage());
                             }
                         }
                     }
                 }
             } catch (Exception e) {
-                System.out.println("Error parsing file: " + fileObject.getName() + " - " + e.getMessage());
+                LOG.finest(() -> "Error parsing file: " + fileObject.getName() + " - " + e.getMessage());
             }
         }
     }
