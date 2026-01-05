@@ -162,7 +162,7 @@ public class JeddictChatModelBuilder {
         setIfValid(builder::topK, pm.getTopK(), Integer.MIN_VALUE);
         setIfValid(builder::presencePenalty, pm.getPresencePenalty(), Double.MIN_VALUE);
         setIfValid(builder::frequencyPenalty, pm.getFrequencyPenalty(), Double.MIN_VALUE);
-        setIfValid(builder::listeners, List.of(listener), List.of());
+        setIfValid(builder::listeners, (listener != null) ? List.of(listener) : null, List.of());
         setIfPredicate(builder::organizationId, pm.getOrganizationId(), String::isEmpty);
 
         builder.logRequestsResponses(pm.isLogRequestsEnabled(), pm.isLogResponsesEnabled())
