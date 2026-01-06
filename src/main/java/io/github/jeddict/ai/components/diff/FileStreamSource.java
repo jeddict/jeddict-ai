@@ -84,6 +84,7 @@ public class FileStreamSource extends StreamSource {
      * @return the title of the stream source.
      */
     @Override
+
     public String getTitle() {
         // TODO: Update to include relative file path.
         return fileObject.getNameExt();
