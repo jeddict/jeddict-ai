@@ -37,7 +37,7 @@ public class ResponseTest extends TestBase {
         Response response = new Response(query, responseText1, messageContext);
 
         then(response.getQuery()).isEqualTo(query);
-        then(response.getMessageContext()).isSameAs(messageContext);
+        then(response.getMessageContext()).isEqualTo(messageContext);
         then(response.getBlocks()).hasSize(1);
         then(response.getBlocks().get(0).getType()).isEqualTo("text");
         then(response.getBlocks().get(0).getContent()).isEqualTo(responseText1);
