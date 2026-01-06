@@ -60,6 +60,11 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
     private static final Pattern MOCK_INSTRUCTION_PATTERN =
         Pattern.compile("use mock\\s+(?:'([^']+)'|(\\S+))", Pattern.CASE_INSENSITIVE);
 
+    /**
+     * Not that these ChatModelListener are not meant to be called by the model
+     * code itself. Langchain4j will use them as needed to trigger request/response
+     * related events.
+     */
     private final List<ChatModelListener> listeners;
 
     public ToolChoice toolChoice = ToolChoice.AUTO;

@@ -95,29 +95,6 @@ public class DummyChatModelTest extends TestBase {
     }
 
     @Test
-    public void listeners_are_invoked_during_chat_operation() {
-        // Given
-        final DummyChatModel chat = new DummyChatModel();
-
-        DummyChatModelListener testListener1 = new DummyChatModelListener();
-        DummyChatModelListener testListener2 = new DummyChatModelListener();
-        chat.addListener(testListener1);
-        chat.addListener(testListener2);
-
-        UserMessage userMessage = new UserMessage("use mock 'hello world.txt'");
-        ChatRequest chatRequest = ChatRequest.builder().messages(userMessage).build();
-
-        // When
-        chat.doChat(chatRequest);
-
-        // Then for listener 1
-        thenReceivedMessageIs(testListener1, userMessage);
-
-        // Then for listener 2
-        thenReceivedMessageIs(testListener2, userMessage);
-    }
-
-    @Test
     public void chat_string_invokes_listeners() {
         // Given
         final DummyChatModel chat = new DummyChatModel();
