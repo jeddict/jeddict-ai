@@ -450,14 +450,6 @@ public class AssistantChatManager extends JavaFix {
                 messageContext.clear();
                 ac.clearFiles();
             }
-
-            @Override
-            public void onInteractionModeChange(final InteractionMode oldMode, final InteractionMode newMode) {
-                if ((brain != null) && (oldMode != newMode)) {
-
-                }
-            }
-
         };
 
         handler(assistant);

@@ -211,8 +211,6 @@ public abstract class AssistantChat extends TopComponent {
 
     public abstract void clearFileTab();
 
-    public abstract void onInteractionModeChange(InteractionMode oldMode, InteractionMode newMode);
-
 
     public JEditorPane getQuestionPane() {
         return questionPane;
