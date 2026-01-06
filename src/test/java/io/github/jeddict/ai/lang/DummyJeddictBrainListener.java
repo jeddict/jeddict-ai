@@ -64,6 +64,6 @@ public class DummyJeddictBrainListener implements JeddictBrainListener {
 
     @Override
     public void onProgress(final String progress) {
-        collector.add(Pair.of("onProgress", progress));
+        collector.add(Pair.of("onProgress", progress.trim()));
     }
 }
