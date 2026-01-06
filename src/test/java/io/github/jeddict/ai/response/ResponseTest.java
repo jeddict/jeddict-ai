@@ -6,7 +6,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openide.filesystems.FileObject;
 
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -18,10 +17,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.openide.filesystems.FileUtil;
 
 
-//
-// TODO: remove setBlocks
-// TODO: make it a record
-//
 public class ResponseTest extends TestBase {
 
     private final String query = "What is Java?";
@@ -58,7 +53,7 @@ public class ResponseTest extends TestBase {
     @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = {"   ", "\t", "\n"})
-    void null_or_empty_response_produce_no_blocks(final String invalidResponse) {
+    void null_or_empty_response_produces_no_blocks(final String invalidResponse) {
         final Response response = new Response(query, invalidResponse, messageContext);
 
         then(response.getBlocks()).isEmpty();
@@ -77,26 +72,6 @@ public class ResponseTest extends TestBase {
             new Response(query, "Some text.", messageContext).getBlocks()
         ).usingRecursiveComparison().isEqualTo(List.of(new Block("text", "Some text.")));
     }
-
-    /**
-    @Test
-    void set_blocks_updates_blocks() {
-        String responseText = "Initial text.";
-        Response response = new Response(query, responseText, messageContext);
-        List<Block> newBlocks = Arrays.asList(new Block("text", "New content."));
-        response.setBlocks(newBlocks);
-        then(response.getBlocks())
-                .usingRecursiveComparison()
-                .isEqualTo(newBlocks);
-    }
-
-    @Test
-    void get_message_context_returns_correct_context() {
-        String responseText = "Context test.";
-        Response response = new Response(query, responseText, messageContext);
-        then(response.getMessageContext()).isEqualTo(messageContext);
-    }
-    */
 
     @Test
     void parse_markdown_with_single_text_block() {
@@ -268,8 +243,7 @@ public class ResponseTest extends TestBase {
 
     @Test
     void to_string_handles_empty_blocks() {
-        final Response response = new Response(query, "", messageContext);
-        response.setBlocks(Collections.emptyList());
+        final Response response = new Response(query);
         then(response.toString()).isEmpty();
     }
 
@@ -344,6 +318,57 @@ public class ResponseTest extends TestBase {
         then(response.getBlocks().get(1).getContent()).isEqualTo("  code\n"); // Content inside code block should not be trimmed
         then(response.getBlocks().get(2).getType()).isEqualTo("text");
         then(response.getBlocks().get(2).getContent()).isEqualTo("More text");
+    }
+
+    @Test
+    void add_block_adds_a_new_block_to_the_response() {
+        final String initialResponse = "Initial text.";
+        final Response response = new Response(query, initialResponse, messageContext);
+
+        Block newBlock = new Block("code", "System.out.println(\"Hello\");");
+
+        response.addBlock(newBlock);
+
+        then(response.getBlocks()).hasSize(2);
+        then(response.getBlocks().get(0).getType()).isEqualTo("text");
+        then(response.getBlocks().get(0).getContent()).isEqualTo(initialResponse);
+        then(response.getBlocks().get(1).getType()).isEqualTo("code");
+        then(response.getBlocks().get(1).getContent()).isEqualTo("System.out.println(\"Hello\");");
+    }
+
+    @Test
+    void add_markdown_adds_parsed_blocks_to_the_response() {
+        final String initialResponse = "Initial text.";
+        final Response response = new Response(query, initialResponse, messageContext);
+
+        String newMarkdown =
+            "```java\n" +
+            "System.out.println(\"Hello\");\n" +
+            "```\n" +
+            "More text.";
+
+        response.addMarkdown(newMarkdown);
+
+        then(response.getBlocks()).hasSize(3);
+        then(response.getBlocks().get(0).getType()).isEqualTo("text");
+        then(response.getBlocks().get(0).getContent()).isEqualTo(initialResponse);
+        then(response.getBlocks().get(1).getType()).isEqualTo("java");
+        then(response.getBlocks().get(1).getContent()).isEqualTo("System.out.println(\"Hello\");\n");
+        then(response.getBlocks().get(2).getType()).isEqualTo("text");
+        then(response.getBlocks().get(2).getContent()).isEqualTo("More text.");
+    }
+
+    @Test
+    void add_context_adds_provided_context_to_message_context() {
+        final Response response = new Response(query, "Initial text.", messageContext);
+
+        FileObject newContextFile = FileUtil.toFileObject(new File(projectDir, "folder/newfile.txt"));
+        Set<FileObject> newContext = new HashSet<>();
+        newContext.add(newContextFile);
+
+        response.addContext(newContext);
+
+        then(response.getMessageContext()).contains(newContextFile);
     }
 
 }

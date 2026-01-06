@@ -29,6 +29,7 @@ import io.github.jeddict.ai.components.diff.DiffPane;
 import io.github.jeddict.ai.components.mermaid.MermaidPane;
 import static io.github.jeddict.ai.models.registry.GenAIProvider.getModelsByProvider;
 import io.github.jeddict.ai.response.Block;
+import io.github.jeddict.ai.response.Response;
 import io.github.jeddict.ai.review.Review;
 import io.github.jeddict.ai.settings.PreferencesManager;
 import io.github.jeddict.ai.util.ColorUtil;
@@ -176,6 +177,11 @@ public abstract class AssistantChat extends TopComponent {
 
     // confirmation pane
     private ToolExecutionConfirmationPane confirmationPane;
+
+    //
+    // Kind of model for this window
+    //
+    private Response response;
 
     private final Timer timer = new Timer(200, e -> {
         int index = SPINNER_FRAMES.indexOf(submitButton.getText().charAt(0));
@@ -1517,4 +1523,12 @@ public abstract class AssistantChat extends TopComponent {
         return sb.toString();
     }
 
+
+    public void response(final Response response) {
+        this.response = response;
+    }
+
+    public Response response() {
+        return response;
+    }
 }

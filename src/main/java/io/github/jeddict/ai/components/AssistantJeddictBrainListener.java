@@ -25,6 +25,7 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import io.github.jeddict.ai.JeddictUpdateManager;
 import io.github.jeddict.ai.lang.JeddictBrainListener;
+import io.github.jeddict.ai.response.Response;
 import io.github.jeddict.ai.response.TokenHandler;
 import io.github.jeddict.ai.settings.PreferencesManager;
 import io.github.jeddict.ai.util.Utilities;
@@ -82,13 +83,15 @@ public class AssistantJeddictBrainListener
             "\nuser message:\n" +
             user +
             "\n----------");
+        final String prompt = assistantChat.getQuestionPane().getText();
         SwingUtilities.invokeLater(() -> {
-            final String prompt = assistantChat.getQuestionPane().getText();
             assistantChat.clear();
             assistantChat.createUserQueryPane(System.out::println, prompt, Set.of());
             textArea = assistantChat.createTextAreaPane();
             assistantChat.getQuestionPane().setText("");
         });
+
+        assistantChat.response(new Response(prompt));
     }
 
     @Override
@@ -171,6 +174,8 @@ public class AssistantJeddictBrainListener
             response +
             "\n----------"
         );
+
+        assistantChat.response().addMarkdown(response.aiMessage().text());
 
         //
         // just in case...

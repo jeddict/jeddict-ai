@@ -329,7 +329,7 @@ public class AssistantChatManager extends JavaFix {
             handlePrompt(newQuery, false);
         };
 
-        final AssistantChat assistant = new AssistantChat(title, type, project) {
+        final AssistantChat chat = new AssistantChat(title, type, project) {
             @Override
             public void onChatReset() {
                 initialMessage();
@@ -452,9 +452,9 @@ public class AssistantChatManager extends JavaFix {
             }
         };
 
-        handler(assistant);
+        handler(chat);
 
-        return assistant;
+        return chat;
     }
 
     public void displayHtmlContent(String filename, String title) {
@@ -718,27 +718,6 @@ public class AssistantChatManager extends JavaFix {
                     throw e; // Re-throwing will cause done() to be called with an exception
                 }
             }
-
-            @Override
-            protected void done() {
-                try {
-                    String response = get(); // This retrieves the return value from doInBackground
-                    if (response != null && !response.isEmpty()) {
-                        listener.onChatCompleted(
-                            ChatResponse.builder().aiMessage(AiMessage.from(response)).build()
-                        );
-                    }
-                } catch (InterruptedException | ExecutionException ex) {
-                    // Handle exceptions from doInBackground
-                    Exceptions.printStackTrace(ex);
-                    Throwable cause = ex.getCause();
-                    if (cause instanceof Exception) { // check if cause is an actual Exception
-                        listener.onError(cause);
-                    } else {
-                        listener.onError(ex);
-                    }
-                }
-            }
         };
         result.execute();
     }
@@ -748,24 +727,19 @@ public class AssistantChatManager extends JavaFix {
         // TODO: can't we merge this in the base AssistantJeddictBrainListener ?
         //
         listener = new AssistantJeddictBrainListener(chat) {
-            private final StringBuilder toolingResponse = new StringBuilder();
 
             @Override
             public void onChatCompleted(final ChatResponse response) {
-                 super.onChatCompleted(response);
+                super.onChatCompleted(response);
 
                 final StringBuilder textResponse = new StringBuilder(response.aiMessage().text());
 
-                LOG.finest(() -> "response completed with\ntext\n" + textResponse + "\nand\ntooling\n" + toolingResponse);
-
-                if (!toolingResponse.isEmpty()) {
-                    textResponse.insert(0, "```tooling\n" + toolingResponse.toString() + "\n```\n");
-                }
-                final Response r = new Response(question, textResponse.toString(), new HashSet<>(messageContext));
+                final Response res = chat.response();
+                res.getMessageContext().clear(); res.addContext(messageContext);
                 // TODO: this shall be used for history; it won't be used for memory,
                 // which is instead managed by the agents and services
                 if (responseHistory.isEmpty() || !textResponse.equals(responseHistory.get(responseHistory.size() - 1))) {
-                    responseHistory.add(r);
+                    responseHistory.add(res);
                     currentResponseIndex = responseHistory.size() - 1;
                 }
                 SwingUtilities.invokeLater(() -> {
@@ -773,13 +747,13 @@ public class AssistantChatManager extends JavaFix {
                         handlePrompt(newQuery, false);
                     };
                     if (codeReview) {
-                        List<Review> reviews = parseReviewsFromYaml(r.getBlocks().get(0).getContent());
+                        List<Review> reviews = parseReviewsFromYaml(res.getBlocks().get(0).getContent());
                         String web = convertReviewsToHtml(reviews);
                         ac.setReviews(reviews);
-                        r.getBlocks().clear();
-                        r.getBlocks().add(new Block("web", web));
+                        res.getBlocks().clear();
+                        res.getBlocks().add(new Block("web", web));
                     }
-                    sourceCode = EditorUtil.updateEditors(queryUpdate, ac, r, getContextFiles());
+                    sourceCode = EditorUtil.updateEditors(queryUpdate, ac, res, getContextFiles());
 
                     ac.stopLoading();
                     ac.updateButtons(currentResponseIndex > 0, currentResponseIndex < responseHistory.size() - 1);
@@ -789,8 +763,13 @@ public class AssistantChatManager extends JavaFix {
 
             @Override
             public void onToolExecuted(final ToolExecutionRequest request, final String result) {
-                toolingResponse.append(request.name()).append(' ').append(request.arguments());
-                toolingResponse.append("\n  >").append(result.replaceAll("\n", "\n  "));
+                final StringBuilder sb = new StringBuilder("```toolig\n");
+
+                sb.append(request.name()).append(' ').append(request.arguments());
+                sb.append("\n>  ").append(result.replaceAll("\n", "\n>  "));
+                sb.append("\n```");
+
+                chat.response().addMarkdown(sb.toString());
             }
         };
     }

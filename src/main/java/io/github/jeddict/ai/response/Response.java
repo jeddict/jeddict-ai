@@ -15,6 +15,7 @@
  */
 package io.github.jeddict.ai.response;
 
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Scanner;
@@ -30,20 +31,20 @@ import org.openide.filesystems.FileObject;
 public class Response {
 
     private final String query;
-    private List<Block> blocks;
+    private final List<Block> blocks = new LinkedList();
     private final Set<FileObject> messageContext;
 
-    public Response(String query, String response,  Set<FileObject> messageContext) {
-        this.query = query;
-        if (response == null || response.isBlank()) {
-            response = "";
-        }
-        if (messageContext == null) {
-            messageContext = Set.of();
-        }
-        this.messageContext = messageContext;
+    public Response(String query) {
+        this(query, null, Set.of());
+    }
 
-        this.blocks = parseMarkdown(response);
+    public Response(final String query, final String response,  final Set<FileObject> messageContext) {
+        this.query = query;
+        this.messageContext = new HashSet(); this.messageContext.addAll(messageContext);
+
+        if (response != null) {
+            addMarkdown(response);
+        }
     }
 
     public String getQuery() {
@@ -54,16 +55,29 @@ public class Response {
         return blocks;
     }
 
-    public void setBlocks(List<Block> blocks) {
-        this.blocks = blocks;
-    }
-
     public Set<FileObject> getMessageContext() {
         return messageContext;
     }
 
+    public void addBlock(Block block) {
+        blocks.add(block);
+    }
+
+    public void addMarkdown(String md) {
+        blocks.addAll(parseMarkdown(md));
+    }
+
+    public void addContext(Set<FileObject> context) {
+        messageContext.addAll(context);
+    }
+
     private List<Block> parseMarkdown(String text) {
         List<Block> result = new LinkedList<>();
+
+        if (text.isBlank()) {
+            return List.of();
+        }
+
         StringBuilder buffer = new StringBuilder();
         boolean insideCodeBlock = false;
         String currentFence = null;
