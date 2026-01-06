@@ -23,6 +23,7 @@ import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import static ste.lloop.Loop.on;
 
@@ -53,7 +54,7 @@ public abstract class AbstractTool {
         }
         this.basedir = basedir;
         this.basepath = Paths.get(basedir);
-        this.log = Logger.getLogger(this.getClass().getCanonicalName()); // this will be the concrete class name
+        this.log = Logger.getLogger(this.getClass().getName()); // this will be the concrete class name
     }
 
     public void addListener(final JeddictBrainListener listener) {
@@ -75,12 +76,12 @@ public abstract class AbstractTool {
     }
 
     public void log(Supplier<String> supplier) {
-        log.info(supplier.get());
+        log.logp(Level.INFO, log.getName(), "progress", supplier);
     }
 
     public void progress(final String message) {
         log(() -> message);
-        on(listeners).loop((l) -> l.onProgress(message));
+        on(listeners).loop((l) -> l.onProgress(message+"\n"));
     }
 
     public String basedir() {
