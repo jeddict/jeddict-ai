@@ -175,7 +175,7 @@ public abstract class AssistantChat extends TopComponent {
     private JScrollPane questionScrollPane;
 
     // confirmation pane
-    private JOptionPane confirmationPane;
+    private ToolExecutionConfirmationPane confirmationPane;
 
     private final Timer timer = new Timer(200, e -> {
         int index = SPINNER_FRAMES.indexOf(submitButton.getText().charAt(0));
@@ -210,6 +210,8 @@ public abstract class AssistantChat extends TopComponent {
     public abstract void addFileTab(FileObject file);
 
     public abstract void clearFileTab();
+
+    public abstract void onInteractionModeChange(InteractionMode oldMode, InteractionMode newMode);
 
 
     public JEditorPane getQuestionPane() {
@@ -530,23 +532,8 @@ public abstract class AssistantChat extends TopComponent {
         actionMap.put(actionKey, submitButton.getAction());
 
         // ---
-        confirmationPane = new JOptionPane("", JOptionPane.QUESTION_MESSAGE, JOptionPane.YES_NO_OPTION) {
-            @Override
-            public Dimension getMaximumSize() {
-                return new Dimension(Integer.MAX_VALUE, getPreferredSize().height);
-            }
-        };
-        confirmationPane.setVisible(false);
-        confirmationPane.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(92, 159, 194), 3),
-            BorderFactory.createEmptyBorder(5, 5, 5, 5)
-        ));
-        confirmationPane.setBackground(backgroundColor);
-        confirmationPane.setForeground(getTextColorFromMimeType(MIME_PLAIN_TEXT));
-        confirmationPane.setOpaque(true);
-        confirmationPane.setFont(getFontFromMimeType(MIME_PLAIN_TEXT));
-        confirmationPane.setAlignmentX(Component.CENTER_ALIGNMENT);
 
+        confirmationPane = new ToolExecutionConfirmationPane();
         bottomPanel.setLayout(new BoxLayout(bottomPanel, BoxLayout.Y_AXIS));
         bottomPanel.add(filePanel);
         bottomPanel.add(Box.createVerticalStrut(0));
@@ -558,39 +545,65 @@ public abstract class AssistantChat extends TopComponent {
         return bottomPanel;
     }
 
+    /**
+     * Acquire confirmation from the user, if needed by the current interaction
+     * mode, to proceed with the execution of a tool. The confirmation message
+     * is provided in {@code message} and returns a future boolean that shall
+     * resolve to true if the tool can be executed, false otherwise.
+     *
+     * @param message the confirmation message
+     *
+     * @return future boolean that shall resolve to true if the tool can be
+     *         executed, false otherwise
+     */
     public Future<Boolean> promptConfirmation(final String message) {
-        CompletableFuture<Boolean> future = new CompletableFuture<>();
-        SwingUtilities.invokeLater(() -> {
-            confirmationPane.setMessage(message);
-            confirmationPane.setValue(JOptionPane.UNINITIALIZED_VALUE);
-            confirmationPane.setVisible(true);
+        //
+        // We check here again the interaction mode because the user may have
+        // changed through the UI. However, this does not change the JeddictBrain's
+        // interaction mode or how the PairProgrammer agents have been setup.
+        // Note that to keep status informatin in the agents (i.e. memory) the
+        // agents instances are created at AssistantChat creation, not per use.
+        //
+        // Ideally, if the user changes the interaction mode, we should recreate
+        // a new JeddictBrain and the Assistant/Hacker. But this would make
+        // the agent loose the memory.
+        //
+        // So for now we just enable/disable tool execution and confirmation.
+        //
+        if (isInteractiveMode()) {
+            CompletableFuture<Boolean> future = new CompletableFuture<>();
+            SwingUtilities.invokeLater(() -> {
+                confirmationPane.showMessage(message);
 
-            // remove existing listeners if any
-            for (PropertyChangeListener pcl : confirmationPane.getPropertyChangeListeners(JOptionPane.VALUE_PROPERTY)) {
-                confirmationPane.removePropertyChangeListener(JOptionPane.VALUE_PROPERTY, pcl);
-            }
-
-            confirmationPane.addPropertyChangeListener(JOptionPane.VALUE_PROPERTY, new PropertyChangeListener() {
-                @Override
-                public void propertyChange(PropertyChangeEvent evt) {
-                    if (confirmationPane.isVisible() && evt.getNewValue() != null && evt.getNewValue() != JOptionPane.UNINITIALIZED_VALUE) {
-                        Object value = evt.getNewValue();
-                        confirmationPane.setVisible(false);
-
-                        boolean confirmed = (value instanceof Integer && ((Integer) value) == JOptionPane.YES_OPTION);
-                        future.complete(confirmed);
-
-                        // cleanup
-                        confirmationPane.removePropertyChangeListener(JOptionPane.VALUE_PROPERTY, this);
-                    }
+                // remove existing listeners if any
+                for (PropertyChangeListener pcl : confirmationPane.getPropertyChangeListeners(JOptionPane.VALUE_PROPERTY)) {
+                    confirmationPane.removePropertyChangeListener(JOptionPane.VALUE_PROPERTY, pcl);
                 }
-            });
 
-            // Revalidate to show
-            confirmationPane.getParent().revalidate();
-            confirmationPane.getParent().repaint();
-        });
-        return future;
+                confirmationPane.addPropertyChangeListener(JOptionPane.VALUE_PROPERTY, new PropertyChangeListener() {
+                    @Override
+                    public void propertyChange(PropertyChangeEvent evt) {
+                        if (confirmationPane.isVisible() && evt.getNewValue() != null && evt.getNewValue() != JOptionPane.UNINITIALIZED_VALUE) {
+                            Object value = evt.getNewValue();
+                            confirmationPane.setVisible(false);
+
+                            boolean confirmed = (value instanceof Integer && ((Integer) value) == JOptionPane.YES_OPTION);
+                            future.complete(confirmed);
+
+                            // cleanup
+                            confirmationPane.removePropertyChangeListener(JOptionPane.VALUE_PROPERTY, this);
+                        }
+                    }
+                });
+
+                // Revalidate to show
+                confirmationPane.getParent().revalidate();
+                confirmationPane.getParent().repaint();
+            });
+            return future;
+        }
+
+        return CompletableFuture.completedFuture(isAgentEnabled());
     }
 
     public void updateHeight() {
