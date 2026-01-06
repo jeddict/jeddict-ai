@@ -40,7 +40,10 @@ public class Response {
 
     public Response(final String query, final String response,  final Set<FileObject> messageContext) {
         this.query = query;
-        this.messageContext = new HashSet(); this.messageContext.addAll(messageContext);
+        this.messageContext = new HashSet();
+        if (messageContext != null)  {
+            this.messageContext.addAll(messageContext);
+        }
 
         if (response != null) {
             addMarkdown(response);
