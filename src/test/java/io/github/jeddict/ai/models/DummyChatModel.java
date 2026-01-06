@@ -42,12 +42,10 @@ import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import static ste.lloop.Loop._break_;
 import static ste.lloop.Loop.on;
@@ -196,13 +194,6 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
             }
         }
 
-        if (!toolExecuted) {
-            ChatModelRequestContext requestContext = new ChatModelRequestContext(chatRequest, provider(), Collections.emptyMap());
-            for (ChatModelListener listener : listeners) {
-                listener.onRequest(requestContext);
-            }
-        }
-
         //
         // If responseMessage is still null, either tool execution was not
         // required or no tool has been found in the prompt
@@ -244,11 +235,6 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
 
         ChatResponse chatResponse =
             ChatResponse.builder().aiMessage(responseMessage).build();
-
-        ChatModelResponseContext responseContext = new ChatModelResponseContext(chatResponse, chatRequest, provider(), Collections.emptyMap());
-        for (ChatModelListener listener : listeners) {
-            listener.onResponse(responseContext);
-        }
 
         LOG.info(() -> "< " + String.valueOf(chatResponse));
 

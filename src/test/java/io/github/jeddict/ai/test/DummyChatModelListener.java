@@ -12,11 +12,13 @@ public class DummyChatModelListener implements ChatModelListener {
 
     @Override
     public void onRequest(ChatModelRequestContext requestContext) {
+        Thread.dumpStack();
         this.lastRequestContext = Optional.of(requestContext);
     }
 
     @Override
     public void onResponse(ChatModelResponseContext responseContext) {
+        Thread.dumpStack();
         this.lastResponseContext = Optional.of(responseContext);
     }
 }

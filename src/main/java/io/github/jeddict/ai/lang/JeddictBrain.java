@@ -29,17 +29,15 @@ import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
-import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
 import dev.langchain4j.observability.api.event.ToolExecutedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceCompletedListener;
 import dev.langchain4j.observability.api.listener.AiServiceErrorListener;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
-import dev.langchain4j.observability.api.listener.AiServiceResponseReceivedListener;
 import dev.langchain4j.observability.api.listener.AiServiceStartedListener;
 import dev.langchain4j.observability.api.listener.ToolExecutedEventListener;
 import dev.langchain4j.service.AiServices;
@@ -376,6 +374,11 @@ public class JeddictBrain implements PropertyChangeEmitter {
                     public void onRequest(ChatModelRequestContext ctx) {
                         on(listeners).loop((l) -> l.onRequest(ctx.chatRequest()));
                     }
+
+                    @Override
+                    public void onResponse(ChatModelResponseContext ctx) {
+                        on(listeners).loop((l) -> l.onResponse(ctx.chatRequest(), ctx.chatResponse()));
+                    }
                 }
             );
 
@@ -411,17 +414,6 @@ public class JeddictBrain implements PropertyChangeEmitter {
                     final Throwable t = e.error();
                     LOG.finest(() -> e.eventClass() + "\n" + t);
                     on(listeners).loop((l) -> l.onError(t));
-                }
-            },
-            new AiServiceResponseReceivedListener() {
-                @Override
-                public void onEvent(final AiServiceResponseReceivedEvent e) {
-                    final ChatRequest request = e.request();
-                    final ChatResponse response = e.response();
-                    LOG.finest(() ->
-                        "%s\n>>> %s\n<<< %s".formatted(String.valueOf(e.eventClass()), String.valueOf(request), String.valueOf(response))
-                    );
-                    on(listeners).loop((l) -> l.onResponse(request, response));
                 }
             },
             new AiServiceStartedListener() {

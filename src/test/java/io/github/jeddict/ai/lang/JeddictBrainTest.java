@@ -29,6 +29,7 @@ import io.github.jeddict.ai.agent.pair.PairProgrammer;
 import static io.github.jeddict.ai.agent.pair.PairProgrammer.Specialist.ASSISTANT;
 import static io.github.jeddict.ai.agent.pair.PairProgrammer.Specialist.HACKER;
 import static io.github.jeddict.ai.agent.pair.PairProgrammer.Specialist.TEST;
+import io.github.jeddict.ai.agent.pair.Shakespeare;
 import io.github.jeddict.ai.settings.PreferencesManager;
 import io.github.jeddict.ai.test.DummyTool;
 import io.github.jeddict.ai.test.TestBase;
@@ -231,14 +232,9 @@ public class JeddictBrainTest extends TestBase {
         });
 
         //
-        // TODO: check why the above request is triggered twice - prob. an issue
-        // in DummyModel
-        //
-
-        //
         //  chatResponse
         //
-        i.getAndIncrement(); i.getAndIncrement();
+        i.getAndIncrement();
         on(listener1, listener2).loop((listener) -> {
             final Pair<String, Object> args = listener.collector.get(i.get());
 
@@ -338,7 +334,6 @@ public class JeddictBrainTest extends TestBase {
         });
     }
 
-
     @Test
     public void get_new_pair_programmer() {
         final JeddictBrain brain = new JeddictBrain("dummy-with-tools", false);
@@ -357,6 +352,38 @@ public class JeddictBrainTest extends TestBase {
             }
             then(pair2).isNotSameAs(pair1);  // create a new pair every call
         }
+    }
+
+    /**
+     * There are two types of agents, created with two builders: interactive and
+     * non interactive. Both must receive events.
+     */
+    @Test
+    public void interactive_and_not_interactove_agents_receive_events() {
+        final DummyJeddictBrainListener listener = new DummyJeddictBrainListener();
+        final JeddictBrain brain = new JeddictBrain(false);
+
+        brain.addListener(listener); then(listener.collector).isEmpty();
+
+        //
+        // 1. Non interactive
+        //
+        final Shakespeare pair = brain.pairProgrammer(PairProgrammer.Specialist.SHAKESPEARE);
+
+        pair.review("a message", "the text", "the code");
+
+        then(listener.collector).hasSize(2);
+
+        //
+        // 2. Interactive
+        //
+        listener.collector.clear();
+
+        final Assistant assistant = brain.pairProgrammer(PairProgrammer.Specialist.ASSISTANT);
+
+        assistant.chat("hello");
+
+        then(listener.collector).hasSize(4);
     }
 
     @Test
@@ -393,7 +420,7 @@ public class JeddictBrainTest extends TestBase {
         then(tool.executed()).isTrue();
 
         int i = 0;
-        then(listener.collector).isNotEmpty().hasSize(9);
+        then(listener.collector).isNotEmpty().hasSize(8);
 
         //
         // chatStarted
@@ -457,12 +484,6 @@ public class JeddictBrainTest extends TestBase {
         then(req.messages()).hasSize(4);
 
         //
-        // TODO: check why the above request is triggered twice - prob. an issue
-        // in DummyModel
-        //
-        ++i;
-
-        //
         // progress
         //
         args = listener.collector.get(i++);
@@ -509,7 +530,7 @@ public class JeddictBrainTest extends TestBase {
         a.chat(listener, "use mock 'hello world.txt'");
 
         int i = 0;
-        then(listener.collector).isNotEmpty().hasSize(6);
+        then(listener.collector).isNotEmpty().hasSize(5);
 
         //
         // chatStarted
@@ -542,7 +563,6 @@ public class JeddictBrainTest extends TestBase {
         //
         // progress
         //
-        ++i; // TODO: double request message
         args = listener.collector.get(i++);
         then(args.getLeft()).isEqualTo("onProgress");
         then(args.getRight()).isEqualTo("hello world");
