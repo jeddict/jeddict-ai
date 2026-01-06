@@ -135,7 +135,7 @@ public class JeddictBrain implements PropertyChangeEmitter {
 
         //
         // if interaction mode is INTERACTIVE, wrap the tools to make sure
-        // human in the middle is pplied (See HumanInTheMiddleWrapper)
+        // human in the middle is applied (See HumanInTheMiddleWrapper)
         //
         if ((tools != null) && !tools.isEmpty()) {
             switch (this.mode) {
