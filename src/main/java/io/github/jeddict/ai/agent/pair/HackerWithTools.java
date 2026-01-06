@@ -54,6 +54,9 @@ complex programming tasks, design robust solutions, and implement or correct cod
 
 1. Global rules:
 - All code must be in fenced ```<language> blocks; never output unfenced code.
+- File Changes: whenever you want to create or update a file, you must use a tool
+  that shows the user a diff of the changes. The user shall review and approve.
+
 {{globalRules}}
 
 2. Project rules:
