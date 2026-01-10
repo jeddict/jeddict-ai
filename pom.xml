@@ -671,7 +671,7 @@
         <dependency>
             <groupId>com.github.stefanofornari</groupId>
             <artifactId>lambda-loop</artifactId>
-            <version>0.3.0</version>
+            <version>0.5.0</version>
         </dependency>
         <dependency>
             <groupId>net.bytebuddy</groupId>
