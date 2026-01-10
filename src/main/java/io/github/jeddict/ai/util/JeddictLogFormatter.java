@@ -22,27 +22,34 @@ import java.time.format.DateTimeFormatter;
 import java.util.logging.Formatter;
 import java.util.logging.LogRecord;
 import org.apache.commons.lang3.StringUtils;
+import static ste.lloop.Loop._break_;
+import static ste.lloop.Loop.on;
 
 public class JeddictLogFormatter extends Formatter {
     private static final DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("yyyyMMdd HH:mm:ss.SSS");
 
     @Override
     public String format(LogRecord record) {
-        final String threadName = Thread.currentThread().getName();
-        final String loggerName = record.getLoggerName();
-        final String level = record.getLevel().toString();
-        final String message = record.getMessage();
         final String timestamp = dateFormat.format(
             Instant.ofEpochMilli(record.getMillis()).atZone(ZoneId.of("UTC"))
         );
 
         return String.format(
-            "%s %s %s %s %s%n",
+            "%s %s %s %s %s %s%n",
             StringUtils.defaultIfBlank(timestamp, "-"),
-            StringUtils.defaultIfBlank(level, "-"),
-            StringUtils.defaultIfBlank(threadName, "-"),
-            StringUtils.defaultIfBlank(loggerName, "-"),
-            StringUtils.defaultIfBlank(message, "-")
+            StringUtils.defaultIfBlank(String.valueOf(record.getLevel()), "-"),
+            StringUtils.defaultIfBlank(threadName(record.getLongThreadID()), "-"),
+            StringUtils.defaultIfBlank(record.getLoggerName(), "-"),
+            StringUtils.defaultIfBlank(record.getSourceMethodName(), "-"),
+            StringUtils.defaultIfBlank(record.getMessage(), "-")
         );
+    }
+
+    protected String threadName(final long id) {
+        return on(Thread.getAllStackTraces()).loop((thread, stack) -> {
+            if (thread.getId() == id) {
+               _break_(((Thread)thread).getName());
+            }
+        });
     }
 }

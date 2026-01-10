@@ -37,18 +37,19 @@ public class JeddictLogFormatterTest {
         LogRecord record = new LogRecord(Level.INFO, "Test message");
         record.setLoggerName("TestLogger");
         record.setInstant(Instant.parse("2023-01-02T01:02:03Z"));
-        String result = formatter.format(record);
+        record.setSourceMethodName("format_should_include_all_elements");
 
-        then(result).isEqualToIgnoringNewLines(
-            "20230102 01:02:03.000 INFO %s TestLogger Test message".formatted(Thread.currentThread().getName())
+        then(formatter.format(record)).isEqualToIgnoringNewLines(
+            "20230102 01:02:03.000 INFO %s TestLogger format_should_include_all_elements Test message".formatted(Thread.currentThread().getName())
         );
 
         record = new LogRecord(Level.FINE, "Test message two");
         record.setLoggerName("TestLogger2");
         record.setInstant(Instant.parse("2023-02-02T01:02:03Z"));
+        record.setSourceMethodName("format_should_include_all_elements2");
 
         then(formatter.format(record)).isEqualToIgnoringNewLines(
-            "20230202 01:02:03.000 FINE %s TestLogger2 Test message two".formatted(Thread.currentThread().getName())
+            "20230202 01:02:03.000 FINE %s TestLogger2 format_should_include_all_elements2 Test message two".formatted(Thread.currentThread().getName())
         );
     }
 
@@ -59,7 +60,7 @@ public class JeddictLogFormatterTest {
         record.setInstant(Instant.parse("2023-01-02T01:02:03Z"));
 
         then(formatter.format(record)).isEqualToIgnoringNewLines(
-            "20230102 01:02:03.000 INFO %s - -".formatted(Thread.currentThread().getName())
+            "20230102 01:02:03.000 INFO %s - - -".formatted(Thread.currentThread().getName())
         );
     }
 
@@ -70,7 +71,7 @@ public class JeddictLogFormatterTest {
         record.setInstant(Instant.parse("2023-01-02T01:02:03Z"));
 
         then(formatter.format(record)).isEqualToIgnoringNewLines(
-            "20230102 01:02:03.000 INFO %s - -".formatted(Thread.currentThread().getName())
+            "20230102 01:02:03.000 INFO %s - - -".formatted(Thread.currentThread().getName())
         );
     }
 }
