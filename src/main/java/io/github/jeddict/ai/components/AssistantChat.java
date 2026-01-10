@@ -21,6 +21,7 @@ import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.expr.ObjectCreationExpr;
+import io.github.jeddict.ai.JeddictUpdateManager;
 import io.github.jeddict.ai.lang.InteractionMode;
 import static io.github.jeddict.ai.classpath.JeddictQueryCompletionQuery.JEDDICT_EDITOR_CALLBACK;
 import static io.github.jeddict.ai.components.QueryPane.createIconButton;
@@ -235,23 +236,37 @@ public abstract class AssistantChat extends TopComponent {
         openInBrowserButton.setVisible(getAllEditorCount() > 0);
     }
 
-    public void startLoading(final String taskName) {
+    public void startLoading() {
         timer.restart();
+        LOG.finest(() -> "startLoading with handle %s and taskName %s".formatted(handle));
         SwingUtilities.invokeLater(() -> {
+            LOG.finest(() -> ("updpating task loader with handle " + handle));
             if (handle != null) {
-                handle.setDisplayName(taskName);
+                handle.finish();
             } else {
-                handle = ProgressHandle.createHandle(taskName);
-                handle.setDisplayName(taskName);
+                handle = ProgressHandle.createHandle(NbBundle.getMessage(JeddictUpdateManager.class, "PROGRESS_TASK_1"));
+                //handle.setDisplayName(taskName);
                 handle.start();
+                LOG.finest(() -> ("new task loader with handle %s created and started ".formatted(handle)));
             }
         });
     }
 
+    public void updateLoading(final String progress) {
+        if (handle == null) {
+            return;
+        }
+
+        SwingUtilities.invokeLater(() -> {
+            LOG.finest(() -> "updpating task loader with handle %s and progress %s".formatted(handle, progress));
+            handle.setDisplayName(progress);
+        });
+    }
+
     public void stopLoading() {
+        LOG.finest(() -> ("stopping task loader with handle " + handle));
         timer.stop();
         SwingUtilities.invokeLater(() -> {
-            LOG.info("stop loading");
             if (handle != null) {
                 handle.finish();
                 handle = null;

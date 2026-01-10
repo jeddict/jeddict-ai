@@ -83,9 +83,6 @@ public class AssistantJeddictBrainListener
             assistantChat.createUserQueryPane(System.out::println, prompt, Set.of());
             textArea = assistantChat.createTextAreaPane();
             assistantChat.getQuestionPane().setText("");
-            assistantChat.startLoading(
-                NbBundle.getMessage(JeddictUpdateManager.class, "PROGRESS_TASK_1")
-            );
         });
 
         assistantChat.response(new Response(prompt));
@@ -110,7 +107,7 @@ public class AssistantJeddictBrainListener
             // onResponse where we can use the real counts returned by the model
             //
             final int n = TokenHandler.saveInputToken(String.valueOf(request));
-            assistantChat.startLoading(
+            assistantChat.updateLoading(
                 NbBundle.getMessage(JeddictUpdateManager.class, "PROGRESS_TASK_2", n)
             );
         });

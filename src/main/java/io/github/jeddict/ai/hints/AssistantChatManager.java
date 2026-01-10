@@ -568,7 +568,7 @@ public class AssistantChatManager extends JavaFix {
 
     private void handlePrompt(String question, boolean newQuery) {
         this.question = question;
-        ac.startLoading(NbBundle.getMessage(JeddictUpdateManager.class, "PROGRESS_TASK_1"));
+        ac.startLoading();
         result = executorService.submit(() -> {
             //
             // Note thay history is not the same think as memory. The former
