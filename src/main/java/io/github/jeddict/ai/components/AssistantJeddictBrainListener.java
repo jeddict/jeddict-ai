@@ -43,7 +43,6 @@ import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
-import org.netbeans.api.progress.ProgressHandle;
 import org.openide.util.NbBundle;
 
 /**
@@ -61,7 +60,6 @@ public class AssistantJeddictBrainListener
 
     protected final AssistantChat assistantChat;
     protected JTextArea textArea;
-    protected ProgressHandle handle;
 
     private final Logger LOG = Logger.getLogger(AssistantJeddictBrainListener.class.getName());
 
@@ -69,10 +67,6 @@ public class AssistantJeddictBrainListener
 
     public AssistantJeddictBrainListener(AssistantChat assistantChat) {
         this.assistantChat = assistantChat;
-    }
-
-    public ProgressHandle getProgressHandle() {
-        return handle;
     }
 
     @Override
@@ -89,6 +83,9 @@ public class AssistantJeddictBrainListener
             assistantChat.createUserQueryPane(System.out::println, prompt, Set.of());
             textArea = assistantChat.createTextAreaPane();
             assistantChat.getQuestionPane().setText("");
+            assistantChat.startLoading(
+                NbBundle.getMessage(JeddictUpdateManager.class, "PROGRESS_TASK_1")
+            );
         });
 
         assistantChat.response(new Response(prompt));
@@ -113,10 +110,9 @@ public class AssistantJeddictBrainListener
             // onResponse where we can use the real counts returned by the model
             //
             final int n = TokenHandler.saveInputToken(String.valueOf(request));
-            final String progress = NbBundle.getMessage(JeddictUpdateManager.class, "ProgressHandle", n);
-            handle = ProgressHandle.createHandle(progress);
-            handle.setDisplayName(progress);
-            handle.start();
+            assistantChat.startLoading(
+                NbBundle.getMessage(JeddictUpdateManager.class, "PROGRESS_TASK_2", n)
+            );
         });
     }
 
@@ -134,9 +130,6 @@ public class AssistantJeddictBrainListener
         );
         final String result = response.aiMessage().text();
         CompletableFuture.runAsync(() -> TokenHandler.saveOutputToken(result));
-        SwingUtilities.invokeLater(() -> {
-            handle.finish();
-        });
     }
 
     /**
@@ -180,9 +173,10 @@ public class AssistantJeddictBrainListener
         //
         // just in case...
         //
-        SwingUtilities.invokeLater(() -> {
-            handle.finish();
-        });
+        assistantChat.stopLoading();
+        assistantChat.getQuestionPane().setText("");
+        assistantChat.updateHeight();
+        assistantChat.clearFileTab();
     }
 
     @Override

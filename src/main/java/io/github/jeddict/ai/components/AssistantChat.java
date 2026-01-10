@@ -125,6 +125,7 @@ import javax.swing.text.JTextComponent;
 import javax.swing.text.StyledDocument;
 import org.netbeans.api.editor.EditorRegistry;
 import org.netbeans.api.options.OptionsDisplayer;
+import org.netbeans.api.progress.ProgressHandle;
 import org.netbeans.api.project.Project;
 import org.netbeans.api.project.ProjectUtils;
 import org.netbeans.modules.editor.NbEditorUtilities;
@@ -174,6 +175,8 @@ public abstract class AssistantChat extends TopComponent {
     private JButton prevButton, nextButton, openInBrowserButton, submitButton;
     private JEditorPane questionPane;
     private JScrollPane questionScrollPane;
+
+    protected ProgressHandle handle;
 
     // confirmation pane
     private ToolExecutionConfirmationPane confirmationPane;
@@ -232,13 +235,33 @@ public abstract class AssistantChat extends TopComponent {
         openInBrowserButton.setVisible(getAllEditorCount() > 0);
     }
 
-    public void startLoading() {
+    public void startLoading(final String taskName) {
         timer.restart();
+        SwingUtilities.invokeLater(() -> {
+            if (handle != null) {
+                handle.setDisplayName(taskName);
+            } else {
+                handle = ProgressHandle.createHandle(taskName);
+                handle.setDisplayName(taskName);
+                handle.start();
+            }
+        });
     }
 
     public void stopLoading() {
         timer.stop();
+        SwingUtilities.invokeLater(() -> {
+            LOG.info("stop loading");
+            if (handle != null) {
+                handle.finish();
+                handle = null;
+            }
+        });
         buttonPanelResized();
+    }
+
+    public boolean isLoading() {
+        return (handle != null);
     }
 
    public String getModelName() {

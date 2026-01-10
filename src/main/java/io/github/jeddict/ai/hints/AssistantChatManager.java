@@ -84,6 +84,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.logging.Logger;
@@ -136,10 +139,11 @@ public class AssistantChatManager extends JavaFix {
     private Tree leaf;
     private final Map<String, String> params = new HashMap();
     private String question;
-    private SwingWorker result;
+    private Future result;
     private AssistantJeddictBrainListener listener;
 
     private boolean commitMessage, codeReview;
+    private final ExecutorService executorService = Executors.newSingleThreadExecutor();
 
     /*
      * After a first kickoff in performRewrite the conversation can continue in
@@ -335,12 +339,12 @@ public class AssistantChatManager extends JavaFix {
                 initialMessage();
                 responseHistory.clear();
                 currentResponseIndex = -1;
-                ac.updateButtons(currentResponseIndex > 0, currentResponseIndex < responseHistory.size() - 1);
+                updateButtons(currentResponseIndex > 0, currentResponseIndex < responseHistory.size() - 1);
             }
 
             @Override
             public void onSubmit() {
-                if (result != null && !result.isDone()) {
+                if (isLoading()) {
                     NotifyDescriptor.Confirmation confirmDialog = new NotifyDescriptor.Confirmation(
                             "The AI Assistant is still processing the request. Do you want to cancel it?",
                             "Interrupt AI Assistant",
@@ -348,16 +352,12 @@ public class AssistantChatManager extends JavaFix {
                     );
                     Object answer = DialogDisplayer.getDefault().notify(confirmDialog);
                     if (NotifyDescriptor.YES_OPTION.equals(answer)) {
-                        result.cancel(true);
-                        if (listener != null && listener.getProgressHandle() != null) {
-                            listener.getProgressHandle().finish();
-                        }
-                        result = null;
+                        result.cancel(true); result = null;
                         stopLoading();
                     }
                 } else {
                     result = null;
-                    String question = ac.getQuestionPane().getText();
+                    String question = getQuestionPane().getText();
                     Map<String, String> prompts = PreferencesManager.getInstance().getPrompts();
 
                     //
@@ -448,7 +448,7 @@ public class AssistantChatManager extends JavaFix {
             @Override
             public void clearFileTab() {
                 messageContext.clear();
-                ac.clearFiles();
+                clearFiles();
             }
         };
 
@@ -568,158 +568,153 @@ public class AssistantChatManager extends JavaFix {
 
     private void handlePrompt(String question, boolean newQuery) {
         this.question = question;
-        ac.startLoading();
-        result = new SwingWorker<String, Object>() {
-            @Override
-            protected String doInBackground() throws Exception {
+        ac.startLoading(NbBundle.getMessage(JeddictUpdateManager.class, "PROGRESS_TASK_1"));
+        result = executorService.submit(() -> {
+            //
+            // Note thay history is not the same think as memory. The former
+            // is applicaiton specific and has the purpose of reconstruct
+            // exactly the history of a chat from a user perspective. The
+            // lateter is model specific and may be different from the history
+            // (for example if the model - or the app, decides to remove
+            // or summarize past messages to improve the efficiency of the
+            // response)
+            if (currentResponseIndex >= 0
+                    && currentResponseIndex + 1 < responseHistory.size()) {
+                responseHistory.subList(currentResponseIndex + 1, responseHistory.size()).clear();
+            }
+            if (!newQuery && !responseHistory.isEmpty()) {
+                responseHistory.remove(responseHistory.size() - 1);
+                currentResponseIndex = currentResponseIndex - 1;
+            }
 
-                //
-                // Note thay history is not the same think as memory. The former
-                // is applicaiton specific and has the purpose of reconstruct
-                // exactly the history of a chat from a user perspective. The
-                // lateter is model specific and may be different from the history
-                // (for example if the model - or the app, decides to remove
-                // or summarize past messages to improve the efficiency of the
-                // response)
-                if (currentResponseIndex >= 0
-                        && currentResponseIndex + 1 < responseHistory.size()) {
-                    responseHistory.subList(currentResponseIndex + 1, responseHistory.size()).clear();
-                }
-                if (!newQuery && !responseHistory.isEmpty()) {
-                    responseHistory.remove(responseHistory.size() - 1);
-                    currentResponseIndex = currentResponseIndex - 1;
-                }
+            final int historySize = pm.getConversationContext();
+            List<Response> prevChatResponses;
+            if (historySize == -1) {
+                // Entire conversation
+                prevChatResponses = new ArrayList<>(responseHistory);
+            } else {
+                int startIndex = Math.max(0, responseHistory.size() - historySize);
+                prevChatResponses = responseHistory.subList(startIndex, responseHistory.size());
+            }
 
-                final int historySize = pm.getConversationContext();
-                List<Response> prevChatResponses;
-                if (historySize == -1) {
-                    // Entire conversation
-                    prevChatResponses = new ArrayList<>(responseHistory);
-                } else {
-                    int startIndex = Math.max(0, responseHistory.size() - historySize);
-                    prevChatResponses = responseHistory.subList(startIndex, responseHistory.size());
-                }
+            final boolean agentEnabled = ac.isAgentEnabled();
+            final boolean excludeJavadoc = pm.isExcludeJavadocEnabled();
+            final String globalRules = pm.getGlobalRules();
+            final String sessionRules = pm.getSessionRules();
+            final List<String> includeFiles = pm.getFileExtensionListToInclude();
+            final String modelName = ac.getModelName();
 
-                final boolean agentEnabled = ac.isAgentEnabled();
-                final boolean excludeJavadoc = pm.isExcludeJavadocEnabled();
-                final String globalRules = pm.getGlobalRules();
-                final String sessionRules = pm.getSessionRules();
-                final List<String> includeFiles = pm.getFileExtensionListToInclude();
-                final String modelName = ac.getModelName();
+            String response = null; // This will hold the response for non-streaming cases
+            try {
+                if (sqlCompletion != null) {
+                    String context = sqlCompletion.getMetaData();
+                    String messageScopeContent = getTextFilesContext(messageContext, getProject(), excludeJavadoc, includeFiles, agentEnabled);
+                    if (messageScopeContent != null && !messageScopeContent.isEmpty()) {
+                        context = context + "\n\n Files:\n" + messageScopeContent;
+                    }
+                    response = dbSpecialist(listener, modelName).assistDbMetadata(question, context, sessionRules);
+                } else if (commitMessage && commitChanges != null) {
+                    String context = commitChanges;
+                    String messageScopeContent = getTextFilesContext(messageContext, getProject(), excludeJavadoc, includeFiles, agentEnabled);
+                    if (messageScopeContent != null && !messageScopeContent.isEmpty()) {
+                        context = context + "\n\n Files:\n" + messageScopeContent;
+                    }
+                    response = diffSpecialist(listener, modelName).suggestCommitMessages(context, question);
+                } else if (codeReview) {
+                    String context = params.get("diff");
+                    if (context == null) {
+                        context = "";
+                    }
+                    final String messageScopeContent = getTextFilesContext(messageContext, projectContext, excludeJavadoc, includeFiles, agentEnabled);
+                    if (messageScopeContent != null && !messageScopeContent.isEmpty()) {
+                        context = context + "\n\n Files:\n" + messageScopeContent;
+                    }
+                    response = diffSpecialist(listener, modelName).reviewChanges(context, params.get("granularity"), params.get("feature"));
+                } else if (action == Action.TEST) {
+                    final TestSpecialist pair = testSpecialist(listener, modelName);
+                    final String prompt = pm.getPrompts().get("test");
+                    final String rules = pm.getSessionRules();
+                    if (leaf instanceof MethodTree) {
+                        response = pair.generateTestCase(question, null, null, leaf.toString(), prompt, rules, prevChatResponses);
+                    } else {
+                        response = pair.generateTestCase(question, null, treePath.getCompilationUnit().toString(), null, prompt, rules, prevChatResponses);
+                    }
+                } else if (projectContext != null || sessionContext != null) {
+                    Project selectedProject = getProject();
+                    //
+                    // Here we are in a generic chat created by the user
+                    //
+                    // If not agentic, provide all project context, otherwise
+                    // no project context is provided, just the global and
+                    // project rules; the agent is instructed to gather the
+                    // information it requires using tools
+                    //
+                    if (!agentEnabled) {
+                        final Set<FileObject> mainSessionContext;
+                        final String sessionScopeContent;
 
-                String response = null; // This will hold the response for non-streaming cases
-                try {
-                    if (sqlCompletion != null) {
-                        String context = sqlCompletion.getMetaData();
-                        String messageScopeContent = getTextFilesContext(messageContext, getProject(), excludeJavadoc, includeFiles, agentEnabled);
-                        if (messageScopeContent != null && !messageScopeContent.isEmpty()) {
-                            context = context + "\n\n Files:\n" + messageScopeContent;
-                        }
-                        response = dbSpecialist(listener, modelName).assistDbMetadata(question, context, sessionRules);
-                    } else if (commitMessage && commitChanges != null) {
-                        String context = commitChanges;
-                        String messageScopeContent = getTextFilesContext(messageContext, getProject(), excludeJavadoc, includeFiles, agentEnabled);
-                        if (messageScopeContent != null && !messageScopeContent.isEmpty()) {
-                            context = context + "\n\n Files:\n" + messageScopeContent;
-                        }
-                        response = diffSpecialist(listener, modelName).suggestCommitMessages(context, question);
-                    } else if (codeReview) {
-                        String context = params.get("diff");
-                        if (context == null) {
-                            context = "";
-                        }
-                        final String messageScopeContent = getTextFilesContext(messageContext, projectContext, excludeJavadoc, includeFiles, agentEnabled);
-                        if (messageScopeContent != null && !messageScopeContent.isEmpty()) {
-                            context = context + "\n\n Files:\n" + messageScopeContent;
-                        }
-                        response = diffSpecialist(listener, modelName).reviewChanges(context, params.get("granularity"), params.get("feature"));
-                    } else if (action == Action.TEST) {
-                        final TestSpecialist pair = testSpecialist(listener, modelName);
-                        final String prompt = pm.getPrompts().get("test");
-                        final String rules = pm.getSessionRules();
-                        if (leaf instanceof MethodTree) {
-                            response = pair.generateTestCase(question, null, null, leaf.toString(), prompt, rules, prevChatResponses);
+                        if (projectContext != null) {
+                            mainSessionContext = getProjectContextList();
+                            sessionScopeContent = getProjectContext(mainSessionContext, selectedProject, excludeJavadoc, agentEnabled);
                         } else {
-                            response = pair.generateTestCase(question, null, treePath.getCompilationUnit().toString(), null, prompt, rules, prevChatResponses);
+                            mainSessionContext = new HashSet(sessionContext);
+                            sessionScopeContent = getTextFilesContext(mainSessionContext, selectedProject, excludeJavadoc, includeFiles, agentEnabled);
                         }
-                    } else if (projectContext != null || sessionContext != null) {
-                        Project selectedProject = getProject();
-                        //
-                        // Here we are in a generic chat created by the user
-                        //
-                        // If not agentic, provide all project context, otherwise
-                        // no project context is provided, just the global and
-                        // project rules; the agent is instructed to gather the
-                        // information it requires using tools
-                        //
-                        if (!agentEnabled) {
-                            final Set<FileObject> mainSessionContext;
-                            final String sessionScopeContent;
+                        List<String> sessionScopeImages = getImageFilesContext(mainSessionContext, includeFiles);
 
-                            if (projectContext != null) {
-                                mainSessionContext = getProjectContextList();
-                                sessionScopeContent = getProjectContext(mainSessionContext, selectedProject, excludeJavadoc, agentEnabled);
-                            } else {
-                                mainSessionContext = new HashSet(sessionContext);
-                                sessionScopeContent = getTextFilesContext(mainSessionContext, selectedProject, excludeJavadoc, includeFiles, agentEnabled);
-                            }
-                            List<String> sessionScopeImages = getImageFilesContext(mainSessionContext, includeFiles);
+                        Set<FileObject> fitleredMessageContext = new HashSet(messageContext);
+                        fitleredMessageContext.removeAll(mainSessionContext);
+                        String messageScopeContent = getTextFilesContext(fitleredMessageContext, selectedProject, excludeJavadoc, includeFiles, agentEnabled);
+                        List<String> messageScopeImages = getImageFilesContext(fitleredMessageContext, includeFiles);
+                        List<String> images = new ArrayList<>();
+                        images.addAll(sessionScopeImages);
+                        images.addAll(messageScopeImages);
 
-                            Set<FileObject> fitleredMessageContext = new HashSet(messageContext);
-                            fitleredMessageContext.removeAll(mainSessionContext);
-                            String messageScopeContent = getTextFilesContext(fitleredMessageContext, selectedProject, excludeJavadoc, includeFiles, agentEnabled);
-                            List<String> messageScopeImages = getImageFilesContext(fitleredMessageContext, includeFiles);
-                            List<String> images = new ArrayList<>();
-                            images.addAll(sessionScopeImages);
-                            images.addAll(messageScopeImages);
+                        final String projectInfo = ProjectMetadataInfo.get(selectedProject);
+                        final String prompt = question
+                                + "\nSession content: " + sessionScopeContent
+                                + "\nAdditional conent: " + messageScopeContent;
 
-                            final String projectInfo = ProjectMetadataInfo.get(selectedProject);
-                            final String prompt = question
-                                    + "\nSession content: " + sessionScopeContent
-                                    + "\nAdditional conent: " + messageScopeContent;
-
-                            final Assistant a = projectAssistant(listener, modelName);
-                            if (pm.isStreamEnabled()) {
-                                a.chat(listener, prompt, images, projectInfo, globalRules, sessionRules);
-                            } else {
-                                response = a.chat(prompt, images, projectInfo, globalRules, sessionRules);
-                            }
+                        final Assistant a = projectAssistant(listener, modelName);
+                        if (pm.isStreamEnabled()) {
+                            a.chat(listener, prompt, images, projectInfo, globalRules, sessionRules);
                         } else {
-                            //
-                            // When agentic mode is enabled, a project is required
-                            // (in the future we may just add a tool to pick a
-                            // project if none is seleted).
-                            //
-                            if (agentEnabled && (selectedProject == null)) {
-                                ac.selectProject();
-                                selectedProject = getProject();
-                            }
-                            final Hacker h = hacker(listener, modelName, ac.interactiveMode());
-                            if (pm.isStreamEnabled()) {
-                                h.hack(listener, question, pm.getGlobalRules(), sessionRules);
-                            } else {
-                                response = h.hack(question, pm.getGlobalRules(), sessionRules);
-                            }
+                            response = a.chat(prompt, images, projectInfo, globalRules, sessionRules);
                         }
                     } else {
-                        final Assistant a = assistant(listener, modelName);
-                        final String projectInfo = ProjectMetadataInfo.get(getProject());
+                        //
+                        // When agentic mode is enabled, a project is required
+                        // (in the future we may just add a tool to pick a
+                        // project if none is seleted).
+                        //
+                        if (agentEnabled && (selectedProject == null)) {
+                            ac.selectProject();
+                            selectedProject = getProject();
+                        }
+                        final Hacker h = hacker(listener, modelName, ac.interactiveMode());
                         if (pm.isStreamEnabled()) {
-                            a.chat(listener, question, treePath, projectInfo, globalRules, sessionRules);
+                            h.hack(listener, question, pm.getGlobalRules(), sessionRules);
                         } else {
-                            response = a.chat(question, treePath, projectInfo, globalRules, sessionRules);
+                            response = h.hack(question, pm.getGlobalRules(), sessionRules);
                         }
                     }
-                    return response;
-                } catch (Exception e) {
-                    Exceptions.printStackTrace(e);
-                    // The error handling needs to be done on the EDT, so re-throw
-                    // or pass the exception to the done() method.
-                    throw e; // Re-throwing will cause done() to be called with an exception
+                } else {
+                    final Assistant a = assistant(listener, modelName);
+                    final String projectInfo = ProjectMetadataInfo.get(getProject());
+                    if (pm.isStreamEnabled()) {
+                        a.chat(listener, question, treePath, projectInfo, globalRules, sessionRules);
+                    } else {
+                        response = a.chat(question, treePath, projectInfo, globalRules, sessionRules);
+                    }
                 }
+                if (response != null) {
+                    listener.onChatCompleted(ChatResponse.builder().aiMessage(new AiMessage(response)).build());
+                }
+            } catch (Exception e) {
+                Exceptions.printStackTrace(e);
+                ac.buttonPanelResized();
             }
-        };
-        result.execute();
+        });
     }
 
     private void handler(final AssistantChat chat) {
@@ -755,7 +750,6 @@ public class AssistantChatManager extends JavaFix {
                     }
                     sourceCode = EditorUtil.updateEditors(queryUpdate, ac, res, getContextFiles());
 
-                    ac.stopLoading();
                     ac.updateButtons(currentResponseIndex > 0, currentResponseIndex < responseHistory.size() - 1);
                     ac.buttonPanelResized();
                 });
