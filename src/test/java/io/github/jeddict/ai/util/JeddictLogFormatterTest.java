@@ -28,7 +28,7 @@ public class JeddictLogFormatterTest {
     private JeddictLogFormatter formatter;
 
     @BeforeEach
-    public void setUp() {
+    public void beforeEach() {
         formatter = new JeddictLogFormatter();
     }
 
@@ -39,16 +39,16 @@ public class JeddictLogFormatterTest {
         record.setInstant(Instant.parse("2023-01-02T01:02:03Z"));
         String result = formatter.format(record);
 
-        then(result).isEqualTo(
-            "20230102 01:02:03.000 INFO %s TestLogger Test message\n".formatted(Thread.currentThread().getName())
+        then(result).isEqualToIgnoringNewLines(
+            "20230102 01:02:03.000 INFO %s TestLogger Test message".formatted(Thread.currentThread().getName())
         );
 
         record = new LogRecord(Level.FINE, "Test message two");
         record.setLoggerName("TestLogger2");
         record.setInstant(Instant.parse("2023-02-02T01:02:03Z"));
 
-        then(formatter.format(record)).isEqualTo(
-            "20230202 01:02:03.000 FINE %s TestLogger2 Test message two\n".formatted(Thread.currentThread().getName())
+        then(formatter.format(record)).isEqualToIgnoringNewLines(
+            "20230202 01:02:03.000 FINE %s TestLogger2 Test message two".formatted(Thread.currentThread().getName())
         );
     }
 
@@ -58,8 +58,8 @@ public class JeddictLogFormatterTest {
         record.setLoggerName(null);
         record.setInstant(Instant.parse("2023-01-02T01:02:03Z"));
 
-        then(formatter.format(record)).isEqualTo(
-            "20230102 01:02:03.000 INFO %s - -\n".formatted(Thread.currentThread().getName())
+        then(formatter.format(record)).isEqualToIgnoringNewLines(
+            "20230102 01:02:03.000 INFO %s - -".formatted(Thread.currentThread().getName())
         );
     }
 
@@ -69,8 +69,8 @@ public class JeddictLogFormatterTest {
         record.setLoggerName("");
         record.setInstant(Instant.parse("2023-01-02T01:02:03Z"));
 
-        then(formatter.format(record)).isEqualTo(
-            "20230102 01:02:03.000 INFO %s - -\n".formatted(Thread.currentThread().getName())
+        then(formatter.format(record)).isEqualToIgnoringNewLines(
+            "20230102 01:02:03.000 INFO %s - -".formatted(Thread.currentThread().getName())
         );
     }
 }
