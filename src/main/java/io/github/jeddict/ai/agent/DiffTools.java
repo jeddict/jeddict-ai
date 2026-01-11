@@ -40,9 +40,8 @@ public class DiffTools extends AbstractTool {
     }
 
     @Tool("""
-    Create or edit text content for a new or existing file provinding a visual
-    representation of the differences between the existing (or not) content
-    and the proposted content.
+    This is a user friendly editor to create or edit text content. Use it to
+    create new files or update existing files.
 
     Inputs:
     - 'path': the filesystem path of the file to be changed; this path may be for
