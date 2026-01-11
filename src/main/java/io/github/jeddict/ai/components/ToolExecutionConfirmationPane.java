@@ -32,6 +32,8 @@ import javax.swing.JTextArea;
  */
 public class ToolExecutionConfirmationPane extends JOptionPane {
 
+    protected static final Dimension MAX_SIZE = new Dimension(Integer.MAX_VALUE, 150);
+
     public ToolExecutionConfirmationPane() {
         super("", JOptionPane.QUESTION_MESSAGE, JOptionPane.YES_NO_OPTION);
 
@@ -56,6 +58,7 @@ public class ToolExecutionConfirmationPane extends JOptionPane {
 
         final JScrollPane scrollPane = new JScrollPane(textArea);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.setPreferredSize(MAX_SIZE); scrollPane.setMaximumSize(MAX_SIZE);
 
         setMessage(scrollPane);
         setValue(JOptionPane.UNINITIALIZED_VALUE);
