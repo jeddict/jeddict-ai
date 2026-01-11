@@ -651,6 +651,7 @@ public class AssistantChatManager extends JavaFix {
                     // project rules; the agent is instructed to gather the
                     // information it requires using tools
                     //
+                    final String projectInfo = ProjectMetadataInfo.get(selectedProject);
                     if (!agentEnabled) {
                         final Set<FileObject> mainSessionContext;
                         final String sessionScopeContent;
@@ -672,7 +673,6 @@ public class AssistantChatManager extends JavaFix {
                         images.addAll(sessionScopeImages);
                         images.addAll(messageScopeImages);
 
-                        final String projectInfo = ProjectMetadataInfo.get(selectedProject);
                         final String prompt = question
                                             + "\nSession content: " + sessionScopeContent
                                             + "\nAdditional conent: " + messageScopeContent
@@ -698,9 +698,9 @@ public class AssistantChatManager extends JavaFix {
                         }
                         final Hacker h = hacker(handler, modelName);
                         if (pm.isStreamEnabled()) {
-                            h.hack(handler, question, pm.getGlobalRules(), sessionRules);
+                            h.hack(handler, question, pm.getGlobalRules(), sessionRules, projectInfo);
                         } else {
-                            response = h.hack(question, pm.getGlobalRules(), sessionRules);
+                            response = h.hack(question, pm.getGlobalRules(), sessionRules, projectInfo);
                         }
                     }
                 } else {

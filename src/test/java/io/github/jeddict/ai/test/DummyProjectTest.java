@@ -16,9 +16,9 @@
 package io.github.jeddict.ai.test;
 
 import java.io.IOException;
-import org.junit.Test;
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.Test;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileSystem;
 import org.openide.filesystems.FileUtil;
@@ -56,5 +56,35 @@ public class DummyProjectTest {
         final DummyProject project = new DummyProject((FileObject) projectDir);
 
         then(project.instances).isInstanceOf(InstanceContent.class).isNotNull();
+    }
+
+    @Test
+    public void name() throws IOException {
+        final FileSystem fs = FileUtil.createMemoryFileSystem();
+        final FileObject projectDir = fs.getRoot().createFolder("test-project");
+
+        final DummyProject project = new DummyProject(projectDir);
+
+        project.name("hello world");
+        then(project.name()).isEqualTo("hello world");
+
+        project.name("test project");
+        then(project.name()).isEqualTo("test project");
+    }
+
+    @Test
+    public void type() throws IOException {
+        final FileSystem fs = FileUtil.createMemoryFileSystem();
+        final FileObject projectDir = fs.getRoot().createFolder("test-project");
+
+        final DummyProject project = new DummyProject(projectDir);
+
+        project.type("ant");
+        then(project.type()).isEqualTo("ant");
+
+        /*
+        project.name("test project");
+        then(project.name()).isEqualTo("test project");
+*/
     }
 }

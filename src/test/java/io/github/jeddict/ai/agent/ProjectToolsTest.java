@@ -17,50 +17,56 @@ package io.github.jeddict.ai.agent;
 
 import com.github.caciocavallosilano.cacio.ctc.junit.CacioTest;
 import io.github.jeddict.ai.test.TestBase;
-import java.io.File;
-import java.io.IOException;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.Test;
-import org.netbeans.modules.maven.NbMavenProjectFactory;
-import org.netbeans.api.project.Project;
-import org.netbeans.spi.project.ProjectState;
-import org.openide.filesystems.FileObject;
-import org.openide.filesystems.FileUtil;
 
 @CacioTest
 public class ProjectToolsTest extends TestBase {
 
-    final NbMavenProjectFactory projectFactory = new NbMavenProjectFactory();
-
     @Test
     public void projectInfo_returns_project_metadata_as_text()
     throws Exception {
-        ProjectTools tools = new ProjectTools(project("src/test/resources/projects/minimal"));
-        then(tools.projectInfo()).isEmpty();
+        ProjectTools tools = new ProjectTools(project("src/test/projects/minimal"));
+        then(tools.projectInfo()).isEqualToIgnoringNewLines(
+            """
+            - name: name
+            - folder: /home/ste/Projects/jeddict-ai/src/test/projects/minimal
+            - type: maven
+            """
+        );
 
-        tools = new ProjectTools(project("src/test/resources/projects/jdk"));
-        then(tools.projectInfo()).isEqualTo("Java Version: 11");
+        tools = new ProjectTools(project("src/test/projects/jdk"));
+        then(tools.projectInfo()).isEqualToIgnoringNewLines(
+            """
+            - name: jdk
+            - folder: /home/ste/Projects/jeddict-ai/src/test/projects/jdk
+            - type: maven
+            - Java Version: 11
+            """
+        );
 
-        tools = new ProjectTools(project("src/test/resources/projects/jakarta"));
-        then(tools.projectInfo()).isEqualTo("EE Version: jakarta\nEE Import Prefix: jakarta\nJava Version: 21");
+        tools = new ProjectTools(project("src/test/projects/jakarta"));
+        then(tools.projectInfo()).isEqualToIgnoringNewLines(
+            """
+            - name: jakarta
+            - folder: /home/ste/Projects/jeddict-ai/src/test/projects/jakarta
+            - type: maven
+            - EE Version: jakarta
+            - EE Import Prefix: jakarta
+            - Java Version: 21
+            """
+        );
 
-        tools = new ProjectTools(project("src/test/resources/projects/javax"));
-        then(tools.projectInfo()).isEqualTo("EE Version: javax\nEE Import Prefix: javax\nJava Version: 11");
-    }
-
-    // --------------------------------------------------------- private methods
-
-    private Project project(final String pom) throws IOException {
-        final FileObject fo = FileUtil.toFileObject(FileUtil.normalizeFile(new File(pom)));
-        return projectFactory.loadProject(
-            fo,
-            new ProjectState() {
-                @Override
-                public void markModified() {}
-
-                @Override
-                public void notifyDeleted() throws IllegalStateException {}
-            }
+        tools = new ProjectTools(project("src/test/projects/javax"));
+        then(tools.projectInfo()).isEqualToIgnoringNewLines(
+            """
+            - name: javax
+            - folder: /home/ste/Projects/jeddict-ai/src/test/projects/javax
+            - type: maven
+            - EE Version: javax
+            - EE Import Prefix: javax
+            - Java Version: 11
+            """
         );
     }
 

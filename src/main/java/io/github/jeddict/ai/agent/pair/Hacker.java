@@ -32,7 +32,7 @@ public interface Hacker extends PairProgrammer {
 **You are an expert software developer and problem solver.** Your role is to analyze
 complex programming tasks, design robust solutions, and implement or correct code as needed.
 
-### Responsibilities
+## Responsibilities
 1. Understand the task
   - Carefully analyze the problem statement and constraints.
   - Identify ambiguities, missing requirements, or assumptions.
@@ -52,12 +52,10 @@ complex programming tasks, design robust solutions, and implement or correct cod
   - Follow all global and project-specific rules.
   - If there is a conflict between rules, explicitly highlight it and request clarification.
 
-### Rules
-
+## Rules
 1. Global rules:
 - All code must be in fenced ```<language> blocks; never output unfenced code.
 {{globalRules}}
-
 2. Project rules:
 {{projectRules}}
 
@@ -65,47 +63,56 @@ complex programming tasks, design robust solutions, and implement or correct cod
 1. Clearly separate analysis, plan, and final solution.
 2. Be concise but thorough.
 3. Prefer correctness and clarity over brevity.
-    """
+
+## Project information
+{{projectInfo}}
+"""
     ;
 
     @SystemMessage(SYSTEM_MESSAGE)
     String _hack_(
         @UserMessage String prompt,
         @V("globalRules") final String globalRules,
-        @V("projectRules") final String projectRules
+        @V("projectRules") final String projectRules,
+        @V("projectInfo") final String projectInfo
     );
 
     @SystemMessage(SYSTEM_MESSAGE)
     TokenStream _hackstream_(
         @UserMessage String prompt,
         @V("globalRules") final String globalRules,
-        @V("projectRules") final String projectRules
+        @V("projectRules") final String projectRules,
+        @V("projectInfo") final String projectInfo
     );
 
     default String hack(final String prompt) {
-        return hack(prompt, "none", "none");
+        return hack(prompt, "none", "none", "");
     }
 
     // ----------------------------------------------------- streaming interface
 
     default void hack(final PropertyChangeListener listener, final String prompt) {
-        hack(listener, prompt, "none", "none");
+        hack(listener, prompt, "none", "none", "");
     }
 
-    default String hack(final String prompt, final String globalRules, final String projectRules) {
-        LOG.finest(() -> "\nprompt: %s\nglobal rules: %s\nprojectRules: %s".formatted(
+    default String hack(
+        final String prompt, final String globalRules, final String projectRules, final String projectInfo
+    ) {
+        LOG.finest(() -> "\nprompt: %s\nglobal rules: %s\nprojectRules: %s\nprojectInfo: %s\n".formatted(
             StringUtils.abbreviate(prompt, 80),
             StringUtils.abbreviate(globalRules, 80),
-            StringUtils.abbreviate(projectRules, 80)
+            StringUtils.abbreviate(projectRules, 80),
+            StringUtils.abbreviate(projectInfo, 80)
         ));
 
-        return _hack_(prompt, globalRules, projectRules);
+        return _hack_(prompt, globalRules, projectRules, projectInfo);
     }
 
     default void hack(
         final PropertyChangeListener listener,
         final String prompt,
-        final String globalRules, final String projectRules
+        final String globalRules, final String projectRules,
+        final String projectInfo
     ) {
         LOG.finest(() -> "\nprompt: %s\nglobal rules: %s\nprojectRules: %s".formatted(
             StringUtils.abbreviate(prompt, 80),
@@ -116,7 +123,8 @@ complex programming tasks, design robust solutions, and implement or correct cod
         _hackstream_(
             prompt,
             StringUtils.defaultIfBlank(globalRules, "none"),
-            StringUtils.defaultIfBlank(projectRules, "none")
+            StringUtils.defaultIfBlank(projectRules, "none"),
+            StringUtils.defaultIfBlank(projectRules, "")
         ).onCompleteResponse(complete -> {
             listener.propertyChange(new PropertyChangeEvent(this, JeddictBrain.EventProperty.CHAT_COMPLETED.name, null, complete));
         })

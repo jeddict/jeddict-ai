@@ -3,7 +3,7 @@
     <groupId>groupid</groupId>
     <artifactId>artifactid</artifactId>
     <version>0.0.0</version>
-    <name>name</name>
+    <name>javax</name>
     <description>description</description>
     <url>https://somewhere.com/</url>
 
