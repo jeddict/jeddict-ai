@@ -15,7 +15,8 @@
  */
 package io.github.jeddict.ai.scanner;
 
-import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
@@ -87,8 +88,8 @@ public class ProjectMetadataInfo {
             }
 
             // Get the pom.xml FileObject
-            final File pomFile = nbMavenProject.getMavenProject().getFile();
-            final long lastModified = pomFile.lastModified();
+            final Path pomFile = nbMavenProject.getMavenProject().getFile().toPath().toRealPath();
+            final long lastModified = Files.getLastModifiedTime(pomFile).toMillis();
 
             // Invalidate cache if timestamp has changed
             if (cachedResult == null || cachedResult.timestamp < lastModified) {

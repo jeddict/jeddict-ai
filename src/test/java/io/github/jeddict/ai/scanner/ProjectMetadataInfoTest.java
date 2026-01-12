@@ -33,7 +33,7 @@ public class ProjectMetadataInfoTest extends TestBase {
 
         then(info)
             .contains("- name: name")
-            .contains("- folder: " + projectFolderFile().getAbsolutePath())
+            .contains("- folder: " + projectFolderPath().toRealPath())
             .contains("- type: maven");
     }
 
