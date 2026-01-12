@@ -17,6 +17,7 @@ package io.github.jeddict.ai.agent;
 
 import com.github.caciocavallosilano.cacio.ctc.junit.CacioTest;
 import io.github.jeddict.ai.test.TestBase;
+import java.io.File;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.Test;
 
@@ -26,47 +27,49 @@ public class ProjectToolsTest extends TestBase {
     @Test
     public void projectInfo_returns_project_metadata_as_text()
     throws Exception {
+        final String home = new File(".").getAbsoluteFile().getCanonicalPath();
+
         ProjectTools tools = new ProjectTools(project("src/test/projects/minimal"));
         then(tools.projectInfo()).isEqualToIgnoringNewLines(
             """
             - name: name
-            - folder: /home/ste/Projects/jeddict-ai/src/test/projects/minimal
+            - folder: %s/src/test/projects/minimal
             - type: maven
-            """
+            """.formatted(home)
         );
 
         tools = new ProjectTools(project("src/test/projects/jdk"));
         then(tools.projectInfo()).isEqualToIgnoringNewLines(
             """
             - name: jdk
-            - folder: /home/ste/Projects/jeddict-ai/src/test/projects/jdk
+            - folder: %s/src/test/projects/jdk
             - type: maven
             - Java Version: 11
-            """
+            """.formatted(home)
         );
 
         tools = new ProjectTools(project("src/test/projects/jakarta"));
         then(tools.projectInfo()).isEqualToIgnoringNewLines(
             """
             - name: jakarta
-            - folder: /home/ste/Projects/jeddict-ai/src/test/projects/jakarta
+            - folder: %s/src/test/projects/jakarta
             - type: maven
             - EE Version: jakarta
             - EE Import Prefix: jakarta
             - Java Version: 21
-            """
+            """.formatted(home)
         );
 
         tools = new ProjectTools(project("src/test/projects/javax"));
         then(tools.projectInfo()).isEqualToIgnoringNewLines(
             """
             - name: javax
-            - folder: /home/ste/Projects/jeddict-ai/src/test/projects/javax
+            - folder: %s/src/test/projects/javax
             - type: maven
             - EE Version: javax
             - EE Import Prefix: javax
             - Java Version: 11
-            """
+            """.formatted(home)
         );
     }
 
