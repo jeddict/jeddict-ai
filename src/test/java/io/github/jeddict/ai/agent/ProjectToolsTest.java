@@ -27,13 +27,13 @@ public class ProjectToolsTest extends TestBase {
     @Test
     public void projectInfo_returns_project_metadata_as_text()
     throws Exception {
-        final String home = new File(".").getAbsoluteFile().getCanonicalPath();
+        final String home = new File("src/test/projects").getAbsoluteFile() + File.separator;
 
         ProjectTools tools = new ProjectTools(project("src/test/projects/minimal"));
         then(tools.projectInfo()).isEqualToIgnoringNewLines(
             """
             - name: name
-            - folder: %s/src/test/projects/minimal
+            - folder: %sminimal
             - type: maven
             """.formatted(home)
         );
@@ -42,7 +42,7 @@ public class ProjectToolsTest extends TestBase {
         then(tools.projectInfo()).isEqualToIgnoringNewLines(
             """
             - name: jdk
-            - folder: %s/src/test/projects/jdk
+            - folder: %sjdk
             - type: maven
             - Java Version: 11
             """.formatted(home)
@@ -52,7 +52,7 @@ public class ProjectToolsTest extends TestBase {
         then(tools.projectInfo()).isEqualToIgnoringNewLines(
             """
             - name: jakarta
-            - folder: %s/src/test/projects/jakarta
+            - folder: %sjakarta
             - type: maven
             - EE Version: jakarta
             - EE Import Prefix: jakarta
@@ -64,7 +64,7 @@ public class ProjectToolsTest extends TestBase {
         then(tools.projectInfo()).isEqualToIgnoringNewLines(
             """
             - name: javax
-            - folder: %s/src/test/projects/javax
+            - folder: %sjavax
             - type: maven
             - EE Version: javax
             - EE Import Prefix: javax
