@@ -28,7 +28,7 @@ public class ProjectToolsTest extends TestBase {
     @Test
     public void projectInfo_returns_project_metadata_as_text()
     throws Exception {
-        final String home = Paths.get("src/test/projects").toAbsolutePath().normalize().toString() + File.separator;
+        final String home = Paths.get("src/test/projects").toAbsolutePath().toRealPath().toString() + File.separator;
 
         ProjectTools tools = new ProjectTools(project("src/test/projects/minimal"));
         then(tools.projectInfo()).isEqualToIgnoringNewLines(
