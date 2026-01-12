@@ -22,14 +22,15 @@ public interface Hacker extends PairProgrammer {
 
     String hack(
         final String prompt,
-        final String globalRules,
-        final String projectRules
+        final String globalRules, final String projectRules,
+        final String projectInfo
     );
 
     void hack(
         final JeddictBrainListener listener,
         final String prompt,
-        final String globalRules, final String projectRules
+        final String globalRules, final String projectRules,
+        final String projectInfo
     );
 
 }

@@ -77,11 +77,11 @@ public class AssistantTest extends PairProgrammerTestBase {
 
         final String expectedSystem = Assistant.SYSTEM_MESSAGE
                 .replace("{{globalRules}}", GLOBAL_RULES)
-                .replace("{{projectRules}}", PROJECT_RULES);
+                .replace("{{projectRules}}", PROJECT_RULES)
+                .replace("{{projectInfo}}", PROJECT);
         final String expectedUser = Assistant.USER_MESSAGE
                 .replace("{{prompt}}", PROMPT)
-                .replace("{{code}}", tree.getCompilationUnit().toString())
-                .replace("{{project}}", PROJECT);
+                .replace("{{code}}", tree.getCompilationUnit().toString());
 
         final String answer =
                 pair.chat(PROMPT, tree, PROJECT, GLOBAL_RULES, PROJECT_RULES);
@@ -125,11 +125,11 @@ public class AssistantTest extends PairProgrammerTestBase {
     public void chat_with_images_returns_AI_provided_response() {
         final String expectedSystem = Assistant.SYSTEM_MESSAGE
             .replace("{{globalRules}}", GLOBAL_RULES)
-            .replace("{{projectRules}}", PROJECT_RULES);
+            .replace("{{projectRules}}", PROJECT_RULES)
+            .replace("{{projectInfo}}", PROJECT);
         final String expectedUser = Assistant.USER_MESSAGE
                 .replace("{{prompt}}", PROMPT)
-                .replace("{{code}}", "")
-                .replace("{{project}}", PROJECT);
+                .replace("{{code}}", "");
 
 
         final FileObject imgFO = FileUtil.toFileObject(

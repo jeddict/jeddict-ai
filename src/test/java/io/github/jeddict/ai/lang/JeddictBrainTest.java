@@ -135,7 +135,7 @@ public class JeddictBrainTest extends TestBase {
         tool.addListener(listener2);
 
         final Hacker a = brain.pairProgrammer(HACKER);
-        a.hack("execute tool dummyTool", "", "");
+        a.hack("execute tool dummyTool", "", "", "");
 
         //
         // chatStarted
@@ -659,35 +659,35 @@ public class JeddictBrainTest extends TestBase {
         //
         // No policy tool
         //
-        h.hack("execute tool dummyTool", "", "");
+        h.hack("execute tool dummyTool", "", "", "");
         then(tool.executed()).isFalse();
 
         //
         // Read policy tool
         //
         tool.reset();
-        h.hack("execute tool dummyToolRead", "", "");
+        h.hack("execute tool dummyToolRead", "", "", "");
         then(tool.executed()).isTrue();
 
         //
         // Write policy tool
         //
         tool.reset();
-        h.hack("execute tool dummyToolWrite", "", "");
+        h.hack("execute tool dummyToolWrite", "", "", "");
         then(tool.executed()).isFalse();
 
         //
         // Interactive policy tool
         //
         tool.reset();
-        h.hack("execute tool dummyToolInteractive", "", "");
+        h.hack("execute tool dummyToolInteractive", "", "", "");
         then(tool.executed()).isTrue();
 
         //
         // Unknown policy tool
         //
         tool.reset();
-        h.hack("execute tool dummyToolUnkown", "", "");
+        h.hack("execute tool dummyToolUnkown", "", "", "");
         then(tool.executed()).isFalse();
     }
 
@@ -707,35 +707,35 @@ public class JeddictBrainTest extends TestBase {
         //
         // No policy tool
         //
-        h.hack("execute tool dummyTool", "", "");
+        h.hack("execute tool dummyTool", "", "", "");
         then(tool.executed()).isTrue();
 
         //
         // Read policy tool
         //
         tool.reset();
-        h.hack("execute tool dummyToolRead", "", "");
+        h.hack("execute tool dummyToolRead", "", "", "");
         then(tool.executed()).isTrue();
 
         //
         // Write policy tool
         //
         tool.reset();
-        h.hack("execute tool dummyToolWrite", "", "");
+        h.hack("execute tool dummyToolWrite", "", "", "");
         then(tool.executed()).isTrue();
 
         //
         // Interactive policy tool
         //
         tool.reset();
-        h.hack("execute tool dummyToolInteractive", "", "");
+        h.hack("execute tool dummyToolInteractive", "", "", "");
         then(tool.executed()).isTrue();
 
         //
         // Unknown policy tool
         //
         tool.reset();
-        h.hack("execute tool dummyToolUnknown", "", "");
+        h.hack("execute tool dummyToolUnknown", "", "", "");
         then(tool.executed()).isTrue();
     }
 

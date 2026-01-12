@@ -35,6 +35,7 @@ public class HackerWithToolsTest extends PairProgrammerTestBase {
 
     private static final String GLOBAL_RULES = "globale rules";
     private static final String PROJECT_RULES = "project rules";
+    private static final String PROJECT_INFO = "some project info";
 
     private HackerWithTools pair;
 
@@ -56,8 +57,9 @@ public class HackerWithToolsTest extends PairProgrammerTestBase {
     @Test
     public void hack_returns_AI_provided_response() {
         final String expectedSystem = HackerWithTools.SYSTEM_MESSAGE
-            .replace("{{globalRules}}", "none")
-            .replace("{{projectRules}}", "none");
+            .replace("{{globalRules}}", "")
+            .replace("{{projectRules}}", "")
+            .replace("{{projectInfo}}", "");
         final String expectedUser = "use mock 'hello world.txt'";
 
         final String answer = pair.hack(expectedUser);
@@ -74,10 +76,11 @@ public class HackerWithToolsTest extends PairProgrammerTestBase {
     public void hack_with_rules_returns_AI_provided_response() {
         final String expectedSystem = HackerWithTools.SYSTEM_MESSAGE
             .replace("{{globalRules}}", GLOBAL_RULES)
-            .replace("{{projectRules}}", PROJECT_RULES);
+            .replace("{{projectRules}}", PROJECT_RULES)
+            .replace("{{projectInfo}}", PROJECT_INFO);
         final String expectedUser = "use mock 'hello world.txt'";
 
-        final String answer = pair.hack(expectedUser, GLOBAL_RULES, PROJECT_RULES);
+        final String answer = pair.hack(expectedUser, PROJECT_INFO, GLOBAL_RULES, PROJECT_RULES);
 
         final ChatModelRequestContext request = listener.lastRequestContext.get();
         thenMessagesMatch(
@@ -113,7 +116,7 @@ public class HackerWithToolsTest extends PairProgrammerTestBase {
             })
             .build();
 
-        pair.hack(null, "execute tool dummyTool", "", "");
+        pair.hack(null, "execute tool dummyTool", "", "", "");
 
         then(tool.executed()).isTrue();
         then(result.toString()).isEqualTo("dummyTool=true");

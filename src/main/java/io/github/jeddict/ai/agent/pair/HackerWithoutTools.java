@@ -27,7 +27,7 @@ import org.apache.commons.lang3.StringUtils;
 
 public interface HackerWithoutTools extends Hacker {
     public static final String SYSTEM_MESSAGE = """
-    You are an expert developer that can address complex tasks by resolving problems,
+    You are an expert software developer that can address complex tasks by resolving problems,
     proposing solutions, writing and correcting code.
     """
     ;
@@ -46,7 +46,9 @@ public interface HackerWithoutTools extends Hacker {
     );
 
     @Override
-    default String hack(final String prompt, final String globalRules, final String projectRules) {
+    default String hack(
+        final String prompt, final String projectInfo,
+        final String globalRules, final String projectRules) {
         LOG.finest(() -> "\nprompt: %s\nglobal rules: %s\nprojectRules: %s".formatted(
             StringUtils.abbreviate(prompt, 80),
             StringUtils.abbreviate(globalRules, 80),
@@ -59,7 +61,7 @@ public interface HackerWithoutTools extends Hacker {
     @Override
     default void hack(
         final JeddictBrainListener listener,
-        final String prompt,
+        final String prompt, final String projectInfo,
         final String globalRules, final String projectRules
     ) {
         LOG.finest(() -> "\nprompt (streming): %s\nglobal rules: %s\nprojectRules: %s".formatted(

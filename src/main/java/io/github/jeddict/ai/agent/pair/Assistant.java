@@ -34,21 +34,25 @@ import org.apache.commons.lang3.StringUtils;
  */
 public interface Assistant extends PairProgrammer {
 
-    public static final String SYSTEM_MESSAGE = """
-You are an expert software developer that can address complex questions and resolve
-problems, proposing solutions, writing and correcting code.
-Take into account the following rules, if any:
-global rules:
-- All code must be in fenced ```<language> blocks; never output unfenced code.
-{{globalRules}}
-
-project rules:
-{{projectRules}}
+    public static final String SYSTEM_MESSAGE =
     """
-    ;
+    You are an expert software developer that can address complex questions and resolve
+    problems, proposing solutions, writing and correcting code.
+    Take into account the following rules and project information.
+
+    ## global rules:
+    - All code must be in fenced ```<language> blocks; never output unfenced code.
+    {{globalRules}}
+
+    ## project rules:
+    {{projectRules}}
+
+    ## project info
+    {{projectInfo}}
+    """;
 
     public static final String USER_MESSAGE
-        = "{{prompt}}\ncode: {{code}}\nproject info: {{project}}";
+        = "{{prompt}}\ncode: {{code}}";
 
     @SystemMessage(SYSTEM_MESSAGE)
     @UserMessage(USER_MESSAGE)
@@ -56,7 +60,7 @@ project rules:
         @V("prompt")       final String prompt,
         @V("code")         final String code,
         @UserMessage       List<ImageContent> images,
-        @V("project")      final String projectInfo,
+        @V("projectInfo")      final String projectInfo,
         @V("globalRules")  final String globalRules,
         @V("projectRules") final String projectRules
     );
@@ -67,7 +71,7 @@ project rules:
         @V("prompt")       final String prompt,
         @V("code")         final String code,
         @UserMessage       List<ImageContent> images,
-        @V("project")      final String projectInfo,
+        @V("projectInfo")      final String projectInfo,
         @V("globalRules")  final String globalRules,
         @V("projectRules") final String projectRules
     );

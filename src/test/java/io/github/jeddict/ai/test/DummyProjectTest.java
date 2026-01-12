@@ -17,10 +17,10 @@ package io.github.jeddict.ai.test;
 
 import java.io.File;
 import java.io.IOException;
-import org.junit.Test;
 import static org.assertj.core.api.BDDAssertions.then;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import org.assertj.core.api.BDDAssertions;
+import static org.assertj.core.api.BDDAssertions.thenThrownBy;
+
+import org.junit.jupiter.api.Test;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileSystem;
 import org.openide.filesystems.FileUtil;
@@ -39,7 +39,7 @@ public class DummyProjectTest extends TestBase {
         p = new DummyProject(new File(projectDir).toPath());
         then(new File(p.getProjectDirectory().getPath())).exists().isDirectory();
 
-        BDDAssertions.thenThrownBy(() -> {
+        thenThrownBy(() -> {
             new DummyProject((File)null);
         }).isInstanceOf(IllegalArgumentException.class)
         .hasMessage("projectDir can not be null");
@@ -55,17 +55,17 @@ public class DummyProjectTest extends TestBase {
 
     @Test
     public void constructor_throws_exception_for_null_directory() {
-        assertThatThrownBy(() -> new DummyProject((FileObject) null))
+        thenThrownBy(() -> new DummyProject((FileObject) null))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("projectDir cannot be null");
+                .hasMessage("projectDir can not be null");
     }
 
     @Test
     public void constructor_throws_exception_for_non_existent_file() {
         java.io.File nonExistentFile = new java.io.File("nonexistent-project-dir");
-        assertThatThrownBy(() -> new DummyProject(nonExistentFile))
+        thenThrownBy(() -> new DummyProject(nonExistentFile))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("project directory cannot be null or invalid");
+                .hasMessage("project directory can not be null or invalid");
     }
 
     @Test
@@ -75,5 +75,35 @@ public class DummyProjectTest extends TestBase {
         final DummyProject project = new DummyProject((FileObject) projectDir);
 
         then(project.instances).isInstanceOf(InstanceContent.class).isNotNull();
+    }
+
+    @Test
+    public void name() throws IOException {
+        final FileSystem fs = FileUtil.createMemoryFileSystem();
+        final FileObject folder = fs.getRoot().createFolder("test-project");
+
+        final DummyProject project = new DummyProject(folder);
+
+        project.name("hello world");
+        then(project.name()).isEqualTo("hello world");
+
+        project.name("test project");
+        then(project.name()).isEqualTo("test project");
+    }
+
+    @Test
+    public void type() throws IOException {
+        final FileSystem fs = FileUtil.createMemoryFileSystem();
+        final FileObject folder = fs.getRoot().createFolder("test-project");
+
+        final DummyProject project = new DummyProject(folder);
+
+        project.type("ant");
+        then(project.type()).isEqualTo("ant");
+
+        /*
+        project.name("test project");
+        then(project.name()).isEqualTo("test project");
+*/
     }
 }

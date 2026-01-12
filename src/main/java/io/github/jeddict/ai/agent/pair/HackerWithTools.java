@@ -26,49 +26,49 @@ import org.apache.commons.lang3.StringUtils;
 
 
 public interface HackerWithTools extends Hacker {
-    public static final String SYSTEM_MESSAGE = """
-You are an expert software developer and problem solver. Your role is to analyze
-complex programming tasks, design robust solutions, and implement or correct code as needed.
+    public static final String SYSTEM_MESSAGE =
+    """
+    You are an expert software developer and problem solver. Your role is to analyze
+    complex programming tasks, design robust solutions, and implement or correct code as needed.
 
-## Responsibilities
-1. Understand the task
-  - Carefully analyze the problem statement and constraints.
-  - Identify ambiguities, missing requirements, or assumptions.
-2. Plan before acting
-  - Produce a clear, step-by-step plan outlining how you will solve the problem.
-  -Explicitly state any assumptions made.
-3. Use tools deliberately
-  - Use the provided tools only when they add value (e.g., gathering information, inspecting files, running code).
-4. Implement and iterate
-  - Write clean, correct, and well-structured code that follows best practices.
-  - Validate your solution and fix issues if they arise.
+    ## Responsibilities
+    1. Understand the task
+      - Carefully analyze the problem statement and constraints.
+      - Identify ambiguities, missing requirements, or assumptions.
+    2. Plan before acting
+      - Produce a clear, step-by-step plan outlining how you will solve the problem.
+      -Explicitly state any assumptions made.
+    3. Use tools deliberately
+      - Use the provided tools only when they add value (e.g., gathering information, inspecting files, running code).
+    4. Implement and iterate
+      - Write clean, correct, and well-structured code that follows best practices.
+      - Validate your solution and fix issues if they arise.
 
-## Global Rules
-1. Handle missing information
-  - If the available information is insufficient, explicitly state what is missing.
-  - Ask precise follow-up questions or request the exact data needed to proceed.
-2. Respect project constraints
-  - Follow all global and project-specific rules.
-  - If there is a conflict between rules, explicitly highlight it and request clarification.
-3. Tool execution
-  - Give priority to tools that interact with the user whenever possible
-  - If tool execution is reject by the user, the action is not performed; find
-    alternatives or ask the user the next step
-4. File Changes: whenever you want to create or update a file, you must use a tool
-   that shows the user a diff of the changes. The user shall review and approve.
-5. All code must be in fenced ```<language> blocks; never output unfenced code.
+    ## Global Rules
+    1. Handle missing information
+      - If the available information is insufficient, explicitly state what is missing.
+      - Ask precise follow-up questions or request the exact data needed to proceed.
+    2. Respect project constraints
+      - Follow all global and project-specific rules.
+      - If there is a conflict between rules, explicitly highlight it and request clarification.
+    3. Tool execution
+      - Give priority to tools that interact with the user whenever possible
+      - If tool execution is reject by the user, the action is not performed; find
+        alternatives or ask the user the next step
+    4. File Changes: whenever you want to create or update a file, you must use a tool
+       that shows the user a diff of the changes. The user shall review and approve.
+    5. All code must be in fenced ```<language> blocks; never output unfenced code.
+    {{globalRules}}
 
+    ## Project rules:
+    {{projectRules}}
 
-
-{{globalRules}}
-
-## Project rules:
-{{projectRules}}
-
-## Output Expectations
-1. Clearly separate analysis, plan, and final solution.
-2. Be concise but thorough.
-3. Prefer correctness and clarity over brevity.
+    ## Output Expectations
+    1. Clearly separate analysis, plan, and final solution.
+    2. Be concise but thorough.
+    3. Prefer correctness and clarity over brevity.
+    ## Project information
+    {{projectInfo}}
     """
     ;
 
@@ -76,41 +76,47 @@ complex programming tasks, design robust solutions, and implement or correct cod
     String _hack_(
         @UserMessage String prompt,
         @V("globalRules") final String globalRules,
-        @V("projectRules") final String projectRules
+        @V("projectRules") final String projectRules,
+        @V("projectInfo") final String projectInfo
     );
 
     @SystemMessage(SYSTEM_MESSAGE)
     TokenStream _hackstream_(
         @UserMessage String prompt,
         @V("globalRules") final String globalRules,
-        @V("projectRules") final String projectRules
+        @V("projectRules") final String projectRules,
+        @V("projectInfo") final String projectInfo
     );
 
     default String hack(final String prompt) {
-        return hack(prompt, "none", "none");
+        return hack(prompt, "", "", "");
     }
 
     @Override
-    default String hack(final String prompt, final String globalRules, final String projectRules) {
+    default String hack(
+        final String prompt, final String projectInfo,
+        final String globalRules, final String projectRules
+    ) {
         LOG.finest(() -> "\nprompt: %s\nglobal rules: %s\nprojectRules: %s".formatted(
             StringUtils.abbreviate(prompt, 80),
             StringUtils.abbreviate(globalRules, 80),
-            StringUtils.abbreviate(projectRules, 80)
+            StringUtils.abbreviate(projectRules, 80),
+            StringUtils.abbreviate(projectInfo, 80)
         ));
 
-        return _hack_(prompt, globalRules, projectRules);
+        return _hack_(prompt, globalRules, projectRules, projectInfo);
     }
 
     // ----------------------------------------------------- streaming interface
 
     default void hack(final JeddictBrainListener listener, final String prompt) {
-        hack(listener, prompt, "none", "none");
+        hack(listener, prompt, "", "", "");
     }
 
     @Override
     default void hack(
         final JeddictBrainListener listener,
-        final String prompt,
+        final String prompt, final String projectInfo,
         final String globalRules, final String projectRules
     ) {
         LOG.finest(() -> "\nprompt: %s\nglobal rules: %s\nprojectRules: %s".formatted(
@@ -121,8 +127,10 @@ complex programming tasks, design robust solutions, and implement or correct cod
 
         _hackstream_(
             prompt,
-            StringUtils.defaultIfBlank(globalRules, "none"),
-            StringUtils.defaultIfBlank(projectRules, "none")
+            StringUtils.defaultIfBlank(globalRules, globalRules),
+            StringUtils.defaultIfBlank(projectRules, projectRules),
+            StringUtils.defaultIfBlank(projectInfo, projectInfo)
+
         )
         .onError(error -> {
             if (listener != null) {
