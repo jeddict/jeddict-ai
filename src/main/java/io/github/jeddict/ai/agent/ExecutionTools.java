@@ -18,6 +18,7 @@ package io.github.jeddict.ai.agent;
 import dev.langchain4j.agent.tool.Tool;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStreamReader;
 
 /**
@@ -43,7 +44,7 @@ public class ExecutionTools extends AbstractTool {
     public ExecutionTools(
         final String basedir, final String projectName,
         final String buildCommand, final String testCommand
-    ) {
+    ) throws IOException {
         super(basedir);
 
         this.projectName = projectName;

@@ -30,6 +30,7 @@ import io.github.jeddict.ai.test.DummyTool;
 import io.github.jeddict.ai.test.TestBase;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import static org.assertj.core.api.BDDAssertions.then;
@@ -134,7 +135,7 @@ public class JeddictBrainTest extends TestBase {
     }
 
     @Test
-    public void get_agentic_Hacker() {
+    public void get_agentic_Hacker() throws IOException {
         final DummyTool tool = new DummyTool();
         final JeddictBrain brain = new JeddictBrain(
             "dummy-with-tools", false,
@@ -149,7 +150,7 @@ public class JeddictBrainTest extends TestBase {
     }
 
     @Test
-    public void get_agentic_Hacker_streaming() {
+    public void get_agentic_Hacker_streaming() throws IOException {
         final DummyPropertyChangeListener streamListener = new DummyPropertyChangeListener();
         final DummyTool tool = new DummyTool();
         final String[] msg = new String[2];

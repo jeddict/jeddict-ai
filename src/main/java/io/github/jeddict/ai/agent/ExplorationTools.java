@@ -16,6 +16,7 @@
 package io.github.jeddict.ai.agent;
 
 import dev.langchain4j.agent.tool.Tool;
+import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 import javax.lang.model.element.Element;
@@ -63,7 +64,8 @@ public class ExplorationTools extends AbstractCodeTool {
 
     private final Lookup lookup;
 
-    public ExplorationTools(final String basedir, Lookup lookup) {
+    public ExplorationTools(final String basedir, Lookup lookup)
+    throws IOException {
         super(basedir);
         this.lookup = lookup;
     }

@@ -17,6 +17,7 @@ package io.github.jeddict.ai.agent;
 
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.function.Supplier;
@@ -34,12 +35,12 @@ public abstract class AbstractTool {
     protected final Logger log;
     private final PropertyChangeSupport toolListener = new PropertyChangeSupport(this);
 
-    public AbstractTool(final String basedir) {
+    public AbstractTool(final String basedir) throws IOException {
         if (basedir == null) {
             throw new IllegalArgumentException("basedir can not be null or blank");
         }
         this.basedir = basedir;
-        this.basepath = Paths.get(basedir);
+        this.basepath = Paths.get(basedir).toAbsolutePath().toRealPath();
         this.log = Logger.getLogger(this.getClass().getCanonicalName()); // this will be the concrete class name
     }
 

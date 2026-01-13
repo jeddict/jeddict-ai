@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
  */
 public class FileSystemTools extends AbstractCodeTool {
 
-    public FileSystemTools(final String basedir) {
+    public FileSystemTools(final String basedir) throws IOException {
         super(basedir);
     }
 
@@ -53,6 +53,8 @@ public class FileSystemTools extends AbstractCodeTool {
         //
         if (path.startsWith(File.separator)) {
             Path absolutePath = Paths.get(path).toAbsolutePath().normalize();
+            System.out.println("absolutePath: " + absolutePath);
+            System.out.println("basepath: " + basepath);
             if (!absolutePath.startsWith(basepath)) {
                 progress("❌ Trying to read a file outside the base path");
                 throw new ToolExecutionException("trying to read a file outside the base path");

@@ -27,6 +27,7 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import io.github.jeddict.ai.test.DummyChatModelListener;
 import io.github.jeddict.ai.test.DummyTool;
 import io.github.jeddict.ai.test.TestBase;
+import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
@@ -152,7 +153,7 @@ public class DummyChatModelTest extends TestBase {
     }
 
     @Test
-    public void tools_support() {
+    public void tools_support() throws IOException {
         DummyChatModel chat = new DummyChatModel();
 
         //
@@ -221,7 +222,7 @@ public class DummyChatModelTest extends TestBase {
     }
 
     @Test
-    public void no_tools_support() {
+    public void no_tools_support() throws IOException {
         final DummyChatModel chat = new DummyChatModel();
 
         // Given

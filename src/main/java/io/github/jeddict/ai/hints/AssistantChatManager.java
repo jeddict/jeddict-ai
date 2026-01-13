@@ -70,6 +70,7 @@ import io.github.jeddict.ai.util.StringUtil;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.EventQueue;
+import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -937,24 +938,29 @@ public class AssistantChatManager extends JavaFix {
             .toAbsolutePath().normalize()
             .toString();
 
-        final List<AbstractTool> toolsList = List.of(
-            new ExecutionTools(
-                basedir, project.getProjectDirectory().getName(),
-                pm.getBuildCommand(project), pm.getTestCommand(project)
-            ),
-            new ExplorationTools(basedir, project.getLookup()),
-            new FileSystemTools(basedir),
-            new GradleTools(basedir),
-            new MavenTools(basedir),
-            new RefactoringTools(basedir)
-        );
+        try {
+            final List<AbstractTool> toolsList = List.of(
+                new ExecutionTools(
+                    basedir, project.getProjectDirectory().getName(),
+                    pm.getBuildCommand(project), pm.getTestCommand(project)
+                ),
+                new ExplorationTools(basedir, project.getLookup()),
+                new FileSystemTools(basedir),
+                new GradleTools(basedir),
+                new MavenTools(basedir),
+                new RefactoringTools(basedir)
+            );
 
-        //
-        // The handler wants to know about tool execution
-        //
-        toolsList.forEach((tool) -> tool.addPropertyChangeListener(handler));
+            //
+            // The handler wants to know about tool execution
+            //
+            toolsList.forEach((tool) -> tool.addPropertyChangeListener(handler));
 
-        return toolsList;
+            return toolsList;
+        } catch (IOException x) {
+            Exceptions.printStackTrace(x);
+            return List.of();
+        }
     }
 
     private void async(Supplier<String> answer, final JeddictBrainListener handler) {

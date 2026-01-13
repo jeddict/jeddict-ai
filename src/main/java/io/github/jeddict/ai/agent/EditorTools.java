@@ -16,6 +16,7 @@
 package io.github.jeddict.ai.agent;
 
 import dev.langchain4j.agent.tool.Tool;
+import java.io.IOException;
 import java.util.regex.Pattern;
 import javax.swing.text.Element;
 
@@ -25,7 +26,7 @@ import javax.swing.text.Element;
  */
 public class EditorTools extends AbstractCodeTool {
 
-    public EditorTools(final String basedir) {
+    public EditorTools(final String basedir) throws IOException {
         super(basedir);
     }
 

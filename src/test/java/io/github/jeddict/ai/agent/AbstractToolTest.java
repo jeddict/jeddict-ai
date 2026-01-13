@@ -5,6 +5,7 @@ import io.github.jeddict.ai.test.DummyTool;
 import static io.github.jeddict.ai.agent.AbstractTool.PROPERTY_MESSAGE;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,7 +17,7 @@ import static org.assertj.core.api.BDDAssertions.thenThrownBy;
 public class AbstractToolTest extends TestBase {
 
     @Test
-    public void constructor_sets_instance_variables() {
+    public void constructor_sets_instance_variables() throws IOException {
         DummyTool tool = new DummyTool(projectDir);
 
         then(tool.basedir).isSameAs(projectDir);
@@ -24,7 +25,7 @@ public class AbstractToolTest extends TestBase {
     }
 
     @Test
-    public void basedir_can_not_be_null_or_blank() {
+    public void basedir_can_not_be_null_or_blank() throws IOException {
         for (String S: new String[] {null, "  ", "", "\n", " \t"})
        thenThrownBy(() -> { new DummyTool(null); })
             .isInstanceOf(IllegalArgumentException.class)
@@ -39,7 +40,7 @@ public class AbstractToolTest extends TestBase {
     }
 
     @Test
-    public void fires_property_change_event() {
+    public void fires_property_change_event() throws IOException {
         // given
         DummyTool tool = new DummyTool(projectDir);
         final List<PropertyChangeEvent> events = new ArrayList<>();
@@ -61,7 +62,7 @@ public class AbstractToolTest extends TestBase {
     }
 
     @Test
-    public void addPropertyChangeListener_does_not_accept_null() {
+    public void addPropertyChangeListener_does_not_accept_null() throws IOException {
         // given
         DummyTool tool = new DummyTool(projectDir);
 
@@ -72,7 +73,7 @@ public class AbstractToolTest extends TestBase {
     }
 
     @Test
-    public void removePropertyChangeListener_does_not_accept_null() {
+    public void removePropertyChangeListener_does_not_accept_null() throws IOException {
         // given
         DummyTool tool = new DummyTool(projectDir);
 
@@ -83,7 +84,7 @@ public class AbstractToolTest extends TestBase {
     }
 
     @Test
-    public void progress_also_logs_the_message() {
+    public void progress_also_logs_the_message() throws IOException {
         // given
         DummyTool tool = new DummyTool(projectDir);
         final List<PropertyChangeEvent> events = new ArrayList<>();

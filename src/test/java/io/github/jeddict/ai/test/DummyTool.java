@@ -18,6 +18,7 @@ package io.github.jeddict.ai.test;
 import dev.langchain4j.agent.tool.Tool;
 import io.github.jeddict.ai.agent.AbstractTool;
 import java.io.File;
+import java.io.IOException;
 
 /**
  *
@@ -26,11 +27,11 @@ public class DummyTool extends AbstractTool {
 
     protected boolean executed = false;
 
-    public DummyTool() {
+    public DummyTool() throws IOException {
         this(new File(".").getAbsolutePath());
     }
 
-    public DummyTool(String basedir) {
+    public DummyTool(String basedir) throws IOException {
         super(basedir);
     }
 
