@@ -32,7 +32,7 @@ public class AbstractToolTest extends TestBase {
     }
 
     @Test
-    public void fullPath_returns_the_full_path_of_given_relative_path() {
+    public void fullPath_returns_the_full_path_of_given_relative_path() throws Exception {
         DummyTool tool = new DummyTool(projectDir);
 
         then(tool.fullPath("relative")).isEqualTo(Paths.get(projectDir, "relative"));

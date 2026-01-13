@@ -58,7 +58,7 @@ public abstract class AbstractTool {
     }
 
     public Path fullPath(final String path) {
-        return basepath.resolve(path);
+        return basepath.resolve(path).normalize();
     }
 
     public void log(Supplier<String> supplier) {

@@ -16,6 +16,8 @@
 package io.github.jeddict.ai.agent;
 
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.exception.ToolExecutionException;
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.*;
@@ -43,14 +45,26 @@ public class FileSystemTools extends AbstractCodeTool {
      * @return the file content, or an error message if it could not be read
      */
     @Tool("Read the content of a file by path")
-    public String readFile(String path) throws Exception {
+    public String readFile(final String path) throws Exception {
         progress("📖 Reading file " + path);
+
+        //
+        // If a path is absolute it must be within the project folder
+        //
+        if (path.startsWith(File.separator)) {
+            Path absolutePath = Paths.get(path).toAbsolutePath().normalize();
+            if (!absolutePath.startsWith(basepath)) {
+                progress("❌ Trying to read a file outside the base path");
+                throw new ToolExecutionException("trying to read a file outside the base path");
+            }
+
+        }
         try {
-            String content = Files.readString(fullPath(path), Charset.defaultCharset());
-            return content;
+            final Path fullPath = fullPath(path);
+            return Files.readString(fullPath, Charset.defaultCharset());
         } catch (IOException e) {
-            progress("❌ Failed to read file: " + e.getMessage());
-            throw e;
+            progress("❌ Failed to read file " + e.getMessage());
+            throw new ToolExecutionException("failed to read file " + e.getMessage());
         }
     }
 

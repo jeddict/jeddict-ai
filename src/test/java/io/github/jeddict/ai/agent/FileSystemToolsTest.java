@@ -15,22 +15,26 @@
  */
 package io.github.jeddict.ai.agent;
 
+import dev.langchain4j.exception.ToolExecutionException;
 import io.github.jeddict.ai.test.TestBase;
 import static io.github.jeddict.ai.agent.AbstractTool.PROPERTY_MESSAGE;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.io.FileUtils;
-import org.assertj.core.api.BDDAssertions;
 import static org.assertj.core.api.BDDAssertions.then;
+import static org.assertj.core.api.BDDAssertions.thenThrownBy;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 public class FileSystemToolsTest extends TestBase {
+
+    private final static String TESTFILE = "folder/testfile.txt";
 
     @AfterEach
     public void afterEach() {
@@ -38,7 +42,7 @@ public class FileSystemToolsTest extends TestBase {
 
     @Test
     public void searchInFile_with_matches() throws Exception {
-        final String path = "folder/testfile.txt";
+        final String path = TESTFILE;
         final String pattern = "test file";
 
         final FileSystemTools tools = new FileSystemTools(projectDir);
@@ -58,7 +62,7 @@ public class FileSystemToolsTest extends TestBase {
 
     @Test
     public void testSearchInFile_NoMatches() throws Exception {
-        final String path = "folder/testfile.txt";
+        final String path = TESTFILE;
         final String pattern = "abc";
 
         final FileSystemTools tools = new FileSystemTools(projectDir);
@@ -93,7 +97,7 @@ public class FileSystemToolsTest extends TestBase {
     @Test
     public void deleteFile_success_and_not_found() throws Exception {
         final FileSystemTools tools = new FileSystemTools(projectDir);
-        final String path = "folder/testfile.txt";
+        final String path = TESTFILE;
 
         final Path fileToDelete = Paths.get(projectDir, path);
         then(fileToDelete).exists(); // just to make sure...
@@ -124,8 +128,8 @@ public class FileSystemToolsTest extends TestBase {
 
     @Test
     public void readFile_success_and_failure() throws Exception {
-        final String pathOK = "folder/testfile.txt";
-        final Path fullPathOK = Paths.get(projectDir, pathOK);
+        final String pathOK = TESTFILE;
+        final Path fullPathOK = Paths.get(projectDir, pathOK).toAbsolutePath().toRealPath();
         final String expectedContent = FileUtils.readFileToString(fullPathOK.toFile(), "UTF8");
 
         final FileSystemTools tools = new FileSystemTools(projectDir);
@@ -138,7 +142,7 @@ public class FileSystemToolsTest extends TestBase {
         });
 
         //
-        // success
+        // success relative path (note we log in progress the relative path, which is user friendly)
         //
         then(tools.readFile(pathOK)).isEqualTo(expectedContent);
         then(events).hasSize(1);
@@ -146,20 +150,56 @@ public class FileSystemToolsTest extends TestBase {
         then(events.get(0).getNewValue()).isEqualTo("📖 Reading file " + pathOK);
 
         //
-        // failure
+        // success absolute path inside folder
+        //
+        events.clear();
+        then(tools.readFile(fullPathOK.toString())).isEqualTo(expectedContent);
+        then(events).hasSize(1);
+        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
+        then(events.get(0).getNewValue()).isEqualTo("📖 Reading file " + fullPathOK);
+
+        //
+        // failure (not we log absolute path to make troubleshooting easier)
         //
         final String pathKO = "nowhere.txt";
         final Path fullPathKO = Paths.get(projectDir, pathKO);
         events.clear();
 
-        BDDAssertions.thenThrownBy( () ->
+        thenThrownBy( () ->
             tools.readFile(pathKO)
-        );
+        ).isInstanceOf(ToolExecutionException.class)
+        .hasMessage("failed to read file %s%s%s".formatted(projectDir, File.separator, pathKO));
+
         then(events).hasSize(2);
         then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
         then(events.get(0).getNewValue()).isEqualTo("📖 Reading file " + pathKO);
         then(events.get(1).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(1).getNewValue()).isEqualTo("❌ Failed to read file: " + fullPathKO);
+        then(events.get(1).getNewValue()).isEqualTo("❌ Failed to read file " + fullPathKO);
+    }
+
+    @Test
+    public void readFile_fails_on_paths_outside_project_folder() throws Exception {
+        final Path fullPath = HOME.resolve("jeddict.json").toAbsolutePath().normalize();
+
+        final FileSystemTools tools = new FileSystemTools(projectDir);
+        final List<PropertyChangeEvent> events = new ArrayList<>();
+        tools.addPropertyChangeListener(new PropertyChangeListener() {
+            @Override
+            public void propertyChange(PropertyChangeEvent evt) {
+                events.add(evt);
+            }
+        });
+
+        thenThrownBy( () ->
+            tools.readFile(fullPath.toString())
+        ).isInstanceOf(ToolExecutionException.class)
+        .hasMessage("trying to read a file outside the base path");
+
+        then(events).hasSize(2);
+        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
+        then(events.get(0).getNewValue()).isEqualTo("📖 Reading file " + fullPath);
+        then(events.get(1).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
+        then(events.get(1).getNewValue()).isEqualTo("❌ Trying to read a file outside the base path");
     }
 
     @Test
