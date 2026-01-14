@@ -64,23 +64,27 @@ public class TestBase {
 
     @BeforeEach
     public void beforeEach() throws Exception {
-        projectDir = HOME.resolve("dummy-project").toString();
-
         Logger logger = Logger.getLogger("io.github.jeddict.ai");
         logger.setLevel(Level.ALL);
         logger.addHandler(logHandler = new DummyLogHandler());
 
-        FileUtils.copyDirectory(new File("src/test/projects/minimal"), new File(projectDir));
+        final Path projectPath = HOME.resolve("dummy-project");
+        Files.createDirectories(projectPath);
+        FileUtils.copyDirectory(new File("src/test/projects/minimal"), projectPath.toFile());
 
-        Path folder = Files.createDirectories(Paths.get(projectDir, "folder"));
+        projectDir = projectPath.toAbsolutePath().toRealPath().toString();
+
+        final Path folder = Files.createDirectories(projectPath.resolve("folder"));
         try (Writer w = new FileWriter(folder.resolve("testfile.txt").toFile())) {
             w.append("This is a test file content for real file testing.");
         }
 
-        Files.copy(Paths.get(
-        "src/test/resources/settings/jeddict.json"),
-        HOME.resolve("jeddict.json"),
-        StandardCopyOption.REPLACE_EXISTING
+        Files.copy(
+            Paths.get(
+                "src/test/resources/settings/jeddict.json"),
+                HOME.resolve("jeddict.json"
+            ),
+            StandardCopyOption.REPLACE_EXISTING
         );
 
         //
