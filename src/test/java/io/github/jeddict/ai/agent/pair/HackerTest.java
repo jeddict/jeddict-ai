@@ -57,7 +57,8 @@ public class HackerTest extends PairProgrammerTestBase {
     public void hack_returns_AI_provided_response() {
         final String expectedSystem = Hacker.SYSTEM_MESSAGE
             .replace("{{globalRules}}", "none")
-            .replace("{{projectRules}}", "none");
+            .replace("{{projectRules}}", "none")
+            .replace("{{projectInfo}}", "");
         final String expectedUser = "use mock 'hello world.txt'";
 
         final String answer = pair.hack(expectedUser);
@@ -74,10 +75,11 @@ public class HackerTest extends PairProgrammerTestBase {
     public void hack_with_rules_returns_AI_provided_response() {
         final String expectedSystem = Hacker.SYSTEM_MESSAGE
             .replace("{{globalRules}}", GLOBAL_RULES)
-            .replace("{{projectRules}}", PROJECT_RULES);
+            .replace("{{projectRules}}", PROJECT_RULES)
+            .replace("{{projectInfo}}", "project info");
         final String expectedUser = "use mock 'hello world.txt'";
 
-        final String answer = pair.hack(expectedUser, GLOBAL_RULES, PROJECT_RULES);
+        final String answer = pair.hack(expectedUser, GLOBAL_RULES, PROJECT_RULES, "project info");
 
         final ChatModelRequestContext request = listener.lastRequestContext.get();
         thenMessagesMatch(
@@ -98,7 +100,7 @@ public class HackerTest extends PairProgrammerTestBase {
             .tools(List.of(tool))
             .build();
 
-        pair.hack(streamListener, "execute mock dummyTool", "", "");
+        pair.hack(streamListener, "execute mock dummyTool", "", "", "project info");
         then(tool.executed()).isTrue();
 
         int i = 0;

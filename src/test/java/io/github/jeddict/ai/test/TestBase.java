@@ -17,7 +17,9 @@ package io.github.jeddict.ai.test;
 
 import static com.github.stefanbirkner.systemlambda.SystemLambda.restoreSystemProperties;
 import io.github.jeddict.ai.settings.PreferencesManager;
+import java.io.File;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -25,10 +27,16 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.apache.commons.io.FileUtils;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
+import org.netbeans.api.project.Project;
+import org.netbeans.modules.maven.NbMavenProjectFactory;
+import org.netbeans.spi.project.ProjectState;
+import org.openide.filesystems.FileObject;
+import org.openide.filesystems.FileUtil;
 
 /**
  *
@@ -62,6 +70,8 @@ public class TestBase {
         logger.setLevel(Level.ALL);
         logger.addHandler(logHandler = new DummyLogHandler());
 
+        FileUtils.copyDirectory(new File("src/test/projects/minimal"), new File(projectDir));
+
         Path folder = Files.createDirectories(Paths.get(projectDir, "folder"));
         try (Writer w = new FileWriter(folder.resolve("testfile.txt").toFile())) {
             w.append("This is a test file content for real file testing.");
@@ -91,5 +101,44 @@ public class TestBase {
 
     protected void thenPathsAreEqual(final Path p1, final Path p2) {
         then(p1.toUri().getPath()).isEqualTo(p2.toUri().getPath());
+    }
+
+    protected File projectFolderFile() {
+        if (projectDir == null) {
+            return null;
+        }
+        return new File(projectDir).getAbsoluteFile();
+    }
+
+    protected Path projectFolderPath() {
+        if (projectDir == null) {
+            return null;
+        }
+
+        return Paths.get(projectDir).toAbsolutePath();
+    }
+
+    protected FileObject projectFolderFileObject() {
+        if (projectDir == null) {
+            return null;
+        }
+
+        return FileUtil.toFileObject(projectFolderPath());
+    }
+
+    protected Project project(final String projectFile) throws IOException {
+        final NbMavenProjectFactory projectFactory = new NbMavenProjectFactory();
+
+        final FileObject fo = FileUtil.toFileObject(FileUtil.normalizeFile(new File(projectFile)));
+        return projectFactory.loadProject(
+            fo,
+            new ProjectState() {
+                @Override
+                public void markModified() {}
+
+                @Override
+                public void notifyDeleted() throws IllegalStateException {}
+            }
+        );
     }
 }

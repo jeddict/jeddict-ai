@@ -31,6 +31,8 @@ public class DummyProject implements Project {
     private final FileObject projectDir;
     private final Lookup lookup;
 
+    private String name, type;
+
     public final InstanceContent instances;
 
     public DummyProject(final File projectDir) {
@@ -63,5 +65,21 @@ public class DummyProject implements Project {
     @Override
     public Lookup getLookup() {
         return lookup;
+    }
+
+    public void name(final String name) {
+        this.name = name;
+    }
+
+    public String name() {
+        return name;
+    }
+
+    public void type(final String type) {
+        this.type = type;
+    }
+
+    public String type() {
+        return type;
     }
 }
