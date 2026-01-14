@@ -163,14 +163,17 @@ public class FileSystemTools extends AbstractCodeTool {
      * @return a status message
      */
     @Tool("Create a new file at the given path with optional content")
-    public String createFile(String path, String content) throws Exception {
+    public String createFile(String path, String content) throws ToolExecutionException {
         progress("📄 Creating new file: " + path);
+
+        checkPath(path);
+
         try {
             Path filePath = fullPath(path);
 
             if (Files.exists(filePath)) {
-                progress("⚠️ File already exists: " + path);
-                return "File already exists: " + path;
+                progress("❌ " + path + " already exists");
+                throw new ToolExecutionException("❌ " + path + " already exists");
             }
 
             Files.createDirectories(filePath.getParent());
@@ -180,7 +183,7 @@ public class FileSystemTools extends AbstractCodeTool {
             return "File created";
         } catch (IOException e) {
             progress("❌ File creation failed: " + e.getMessage() + " in file: " + path);
-            throw e;
+            throw new ToolExecutionException(e);
         }
     }
 

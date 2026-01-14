@@ -75,7 +75,7 @@ public class FileSystemToolsTest extends TestBase {
     }
 
     @Test
-    public void testSearchInFile_outside_project_dir() {
+    public void searchInFile_outside_project_dir() {
         //
         // absolute path
         //
@@ -106,11 +106,45 @@ public class FileSystemToolsTest extends TestBase {
         final String content = "Sample content.";
 
         then(tools.createFile(path, content)).isEqualTo("File created");
-        then(tools.createFile(path, content)).isEqualTo("File already exists: " + path);
+
+        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
+        then(events.get(0).getNewValue()).isEqualTo("📄 Creating new file: " + path);
+
+        events.clear();
+        thenThrownBy(() -> tools.createFile(path, content))
+            .isInstanceOf(ToolExecutionException.class)
+            .hasMessage("❌ " + path + " already exists");
+
+        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
+        then(events.get(0).getNewValue()).isEqualTo("📄 Creating new file: " + path);
+        then(events.get(1).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
+        then(events.get(1).getNewValue()).isEqualTo("❌ " + path + " already exists");
+    }
+
+    @Test
+    public void createFile_outside_project_dir() {
+        //
+        // absolute path
+        //
+        final String abs = HOME.resolve("jeddict-config.json").toAbsolutePath().toString();
+        final String content = "Sample content.";
+
+        thenTriedFileOutsideProjectFolder(() -> tools.createFile(abs, content));
+
+        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
+        then(events.get(0).getNewValue()).isEqualTo("📄 Creating new file: " + abs);
 
         //
-        // TODO: logging
+        // relative path
         //
+        events.clear();
+
+        final String rel = projectDir + File.separator + "../outside.txt";
+
+        thenTriedFileOutsideProjectFolder(() -> tools.createFile(rel, content));
+
+        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
+        then(events.get(0).getNewValue()).isEqualTo("📄 Creating new file: " + rel);
     }
 
     @Test
