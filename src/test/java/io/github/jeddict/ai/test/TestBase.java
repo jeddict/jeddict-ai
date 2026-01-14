@@ -51,6 +51,7 @@ public class TestBase {
     public final static String USER = "user";
 
     protected String projectDir;
+    protected Path projectPath;
     protected DummyLogHandler logHandler;
     //
     // Settings are currently saved in a file in the user home (see
@@ -68,11 +69,12 @@ public class TestBase {
         logger.setLevel(Level.ALL);
         logger.addHandler(logHandler = new DummyLogHandler());
 
-        final Path projectPath = HOME.resolve("dummy-project");
+        projectPath = HOME.resolve("dummy-project");
         Files.createDirectories(projectPath);
         FileUtils.copyDirectory(new File("src/test/projects/minimal"), projectPath.toFile());
 
-        projectDir = projectPath.toAbsolutePath().toRealPath().toString();
+        projectPath = projectPath.toAbsolutePath().toRealPath();
+        projectDir = projectPath.toString();
 
         final Path folder = Files.createDirectories(projectPath.resolve("folder"));
         try (Writer w = new FileWriter(folder.resolve("testfile.txt").toFile())) {

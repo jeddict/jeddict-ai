@@ -15,8 +15,10 @@
  */
 package io.github.jeddict.ai.agent;
 
+import dev.langchain4j.exception.ToolExecutionException;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -49,6 +51,18 @@ public abstract class AbstractTool {
             throw new IllegalArgumentException("listener can not be null");
         }
         toolListener.addPropertyChangeListener(listener);
+    }
+
+    public void checkPath(final String path) throws ToolExecutionException {
+        if (path.startsWith(File.separator)) {
+            Path absolutePath = Paths.get(path).toAbsolutePath().normalize();
+            System.out.println("absolutePath: " + absolutePath);
+            System.out.println("basepath: " + basepath);
+            if (!absolutePath.startsWith(basepath)) {
+                progress("❌ Trying to reach a file outside the project folder");
+                throw new ToolExecutionException("trying to reach a file outside the project folder");
+            }
+        }
     }
 
     public void removePropertyChangeListener(PropertyChangeListener listener) {

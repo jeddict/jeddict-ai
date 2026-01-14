@@ -52,7 +52,6 @@ public class FileSystemToolsTest extends TestBase {
         });
     }
 
-
     @Test
     public void searchInFile_with_matches() throws Exception {
         final String path = TESTFILE;
@@ -65,7 +64,7 @@ public class FileSystemToolsTest extends TestBase {
     }
 
     @Test
-    public void testSearchInFile_NoMatches() throws Exception {
+    public void searchInFile_with_no_matches() throws Exception {
         final String path = TESTFILE;
         final String pattern = "abc";
 
@@ -73,6 +72,32 @@ public class FileSystemToolsTest extends TestBase {
         then(events).hasSize(1);
         then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
         then(events.get(0).getNewValue()).isEqualTo("🔎 Looking for '" + pattern + "' inside '" + path + "'");
+    }
+
+    @Test
+    public void testSearchInFile_outside_project_dir() {
+        //
+        // absolute path
+        //
+        final String abs = HOME.resolve("jeddict-config.json").toAbsolutePath().toString();
+        final String pattern = "abc";
+
+        thenTriedFileOutsideProjectFolder(() -> tools.searchInFile(abs, pattern));
+
+        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
+        then(events.get(0).getNewValue()).isEqualTo("🔎 Looking for '" + pattern + "' inside '" + abs + "'");
+
+        //
+        // relative path
+        //
+        events.clear();
+
+        final String rel = projectDir + File.separator + "../outside.txt";
+
+        thenTriedFileOutsideProjectFolder(() -> tools.searchInFile(rel, pattern));
+
+        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
+        then(events.get(0).getNewValue()).isEqualTo("🔎 Looking for '" + pattern + "' inside '" + rel + "'");
     }
 
     @Test
@@ -165,18 +190,31 @@ public class FileSystemToolsTest extends TestBase {
 
     @Test
     public void readFile_fails_on_paths_outside_project_folder() throws Exception {
-        final Path fullPath = HOME.resolve("jeddict.json").toAbsolutePath().normalize();
+        final Path abs = HOME.resolve("jeddict.json").toAbsolutePath().normalize();
 
-        thenThrownBy( () ->
-            tools.readFile(fullPath.toString())
-        ).isInstanceOf(ToolExecutionException.class)
-        .hasMessage("trying to read a file outside the base path");
+        //
+        // absolute path
+        //
+        thenTriedFileOutsideProjectFolder(() ->
+            tools.readFile(abs.toString())
+        );
 
-        then(events).hasSize(2);
         then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(0).getNewValue()).isEqualTo("📖 Reading file " + fullPath);
-        then(events.get(1).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(1).getNewValue()).isEqualTo("❌ Trying to read a file outside the base path");
+        then(events.get(0).getNewValue()).isEqualTo("📖 Reading file " + abs);
+
+        //
+        // relative path
+        //
+        events.clear();
+
+        final String rel = projectDir + File.separator + "../outside.txt";
+
+        thenTriedFileOutsideProjectFolder(() ->
+            tools.readFile(rel)
+        );
+
+        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
+        then(events.get(0).getNewValue()).isEqualTo("📖 Reading file " + rel);
     }
 
     @Test
@@ -204,5 +242,21 @@ public class FileSystemToolsTest extends TestBase {
         //
         // TODO: logging
         //
+    }
+
+    // --------------------------------------------------------- private methods
+
+    private void thenTriedFileOutsideProjectFolder(final Runnable exec) {
+
+        thenThrownBy(() -> exec.run())
+        .isInstanceOf(ToolExecutionException.class)
+        .hasMessage("trying to reach a file outside the project folder");
+        then(events).anyMatch((e) -> {
+            return (
+                e.getPropertyName().equals(PROPERTY_MESSAGE) &&
+                e.getNewValue().equals("❌ Trying to reach a file outside the project folder")
+           );
+        });
+
     }
 }
