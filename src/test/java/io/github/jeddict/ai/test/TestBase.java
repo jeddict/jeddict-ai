@@ -77,6 +77,7 @@ public class TestBase {
         projectDir = projectPath.toString();
 
         final Path folder = Files.createDirectories(projectPath.resolve("folder"));
+      
         try (Writer w = new FileWriter(folder.resolve("testfile.txt").toFile())) {
             w.append("This is a test file content for real file testing.");
         }
