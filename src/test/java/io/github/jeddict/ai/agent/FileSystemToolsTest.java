@@ -57,8 +57,37 @@ public class FileSystemToolsTest extends TestBase {
         tools.addListener(listener);
 
         then(tools.searchInFile(path, pattern)).isEqualTo("No matches found");
-        then(listener.collector).hasSize(1);
-        then(listener.collector.get(0)).asString().isEqualTo("(onProgress,🔎 Looking for '" + pattern + "' inside '" + path + "')");
+        then(events).hasSize(1);
+        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
+        then(events.get(0).getNewValue()).isEqualTo("🔎 Looking for '" + pattern + "' inside '" + path + "'");
+    }
+
+    @Test
+    public void searchInFile_outside_project_dir() {
+        //
+        // absolute path
+        //
+        final String abs = HOME.resolve("jeddict-config.json").toAbsolutePath().toString();
+        final String pattern = "abc";
+
+        thenTriedFileOutsideProjectFolder(() -> tools.searchInFile(abs, pattern));
+
+        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
+        then(events.get(0).getNewValue()).isEqualTo("🔎 Looking for '" + pattern + "' inside '" + abs + "'");
+
+        //
+        // relative path
+        //
+        events.clear();
+
+        final String rel = projectDir + File.separator + "../outside.txt";
+
+        thenTriedFileOutsideProjectFolder(() -> tools.searchInFile(rel, pattern));
+
+        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
+        then(events.get(0).getNewValue()).isEqualTo("🔎 Looking for '" + pattern + "' inside '" + rel + "'");
+
+		then(listener.collector.get(0)).asString().isEqualTo("(onProgress,🔎 Looking for '" + pattern + "' inside '" + path + "')");
     }
 
     @Test
@@ -71,7 +100,45 @@ public class FileSystemToolsTest extends TestBase {
         tools.addListener(listener);
 
         then(tools.createFile(path, content)).isEqualTo("File created");
-        then(tools.createFile(path, content)).isEqualTo("File already exists: " + path);
+
+        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
+        then(events.get(0).getNewValue()).isEqualTo("📄 Creating new file: " + path);
+
+        events.clear();
+        thenThrownBy(() -> tools.createFile(path, content))
+            .isInstanceOf(ToolExecutionException.class)
+            .hasMessage("❌ " + path + " already exists");
+
+        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
+        then(events.get(0).getNewValue()).isEqualTo("📄 Creating new file: " + path);
+        then(events.get(1).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
+        then(events.get(1).getNewValue()).isEqualTo("❌ " + path + " already exists");
+    }
+
+    @Test
+    public void createFile_outside_project_dir() {
+        //
+        // absolute path
+        //
+        final String abs = HOME.resolve("jeddict-config.json").toAbsolutePath().toString();
+        final String content = "Sample content.";
+
+        thenTriedFileOutsideProjectFolder(() -> tools.createFile(abs, content));
+
+        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
+        then(events.get(0).getNewValue()).isEqualTo("📄 Creating new file: " + abs);
+
+        //
+        // relative path
+        //
+        events.clear();
+
+        final String rel = projectDir + File.separator + "../outside.txt";
+
+        thenTriedFileOutsideProjectFolder(() -> tools.createFile(rel, content));
+
+        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
+        then(events.get(0).getNewValue()).isEqualTo("📄 Creating new file: " + rel);
 
         // Logging assertions for progress messages
         int i = 0;
