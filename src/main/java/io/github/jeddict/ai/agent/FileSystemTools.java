@@ -207,7 +207,7 @@ public class FileSystemTools extends AbstractCodeTool {
             }
 
             Files.delete(filePath);
-            progress("✅ File deleted successfully: " + path);
+            progress("✅ " + path + " deleted successfully");
             return "File deleted";
         } catch (IOException e) {
             progress("❌ File deletion failed: " + e.getMessage() + " in file: " + path);
@@ -257,26 +257,33 @@ public class FileSystemTools extends AbstractCodeTool {
      * Creates a new directory.
      *
      * @param path the directory path relative to the project
+     *
      * @return a status message
      */
     @Tool("Create a new directory at the given path")
-    public String createDirectory(String path) throws Exception {
-        progress("📂 Creating new directory: " + path);
+    public String createDirectory(String path) throws ToolExecutionException {
+        progress("📂 Creating new directory " + path);
+
+        checkPath(path);
+
         try {
             Path dirPath = fullPath(path);
             if (Files.exists(dirPath)) {
-                progress("⚠️ Directory already exists: " + path);
-                return "Directory already exists: " + path;
+                progress("❌ " + path + " already exists");
+                throw new ToolExecutionException("❌ " + path + " already exists");
             }
 
             Files.createDirectories(dirPath);
-            progress("✅ Directory created successfully: " + path);
+
+            progress("✅ Directory created successfully");
             return "Directory created";
         } catch (IOException e) {
             progress("❌ Directory creation failed: " + e.getMessage() + " in " + path);
-            throw e;
+            throw new ToolExecutionException(e);
         }
     }
+
+
 
     /**
      * Deletes a directory (must be empty).
@@ -285,25 +292,29 @@ public class FileSystemTools extends AbstractCodeTool {
      * @return a status message
      */
     @Tool("Delete a directory at the given path (must be empty)")
-    public String deleteDirectory(String path) throws Exception {
-        progress("🗑️ Attempting to delete directory: " + path);
+    public String deleteDirectory(final String path) throws ToolExecutionException {
+        progress("🗑️ Deleting directory " + path);
+
+        checkPath(path);
+
         try {
             Path dirPath = fullPath(path);
             if (!Files.exists(dirPath)) {
-                progress("⚠️ Directory not found: " + path);
-                return "Directory not found: " + path;
+                progress("❌ " + path + " not found");
+                throw new ToolExecutionException("❌ " + path + " not found");
             }
             if (!Files.isDirectory(dirPath)) {
-                progress("⚠️ Not a directory: " + path);
-                return "Not a directory: " + path;
+                progress("❌ " + path + " not a directory");
+                throw new ToolExecutionException("❌ " + path + " not a directory");
             }
 
             Files.delete(dirPath);
-            progress("✅ Directory deleted successfully: " + path);
+            progress("✅ " + path + " deleted successfully");
+
             return "Directory deleted";
         } catch (IOException e) {
             progress("❌ Directory deletion failed: " + e.getMessage() + " in " + path);
-            throw e;
+            throw new ToolExecutionException(e);
         }
     }
 }

@@ -290,11 +290,44 @@ public class FileSystemToolsTest extends TestBase {
         final String path = "newdir";
 
         then(tools.createDirectory(path)).isEqualTo("Directory created");
-        then(tools.createDirectory(path)).isEqualTo("Directory already exists: " + path);
+        thenProgressIs(events.get(0), "📂 Creating new directory " + path);
+        thenProgressIs(events.get(1), "✅ Directory created successfully");
+
+        events.clear();
+        thenThrownBy( () ->
+            tools.createDirectory(path)
+        ).isInstanceOf(ToolExecutionException.class)
+        .hasMessage("❌ " + path + " already exists");
+
+        thenProgressIs(events.get(0), "📂 Creating new directory " + path);
+        thenProgressIs(events.get(1), "❌ " + path + " already exists");
+    }
+
+    @Test
+    public void createDirectory_fails_on_paths_outside_project_folder() throws Exception {
+        final Path abs = HOME.resolve("newfolder").toAbsolutePath().normalize();
 
         //
-        // TODO: logging
+        // absolute path
         //
+        thenTriedFileOutsideProjectFolder(() ->
+            tools.createDirectory(abs.toString())
+        );
+
+        thenProgressIs(events.get(0), "📂 Creating new directory " + abs);
+
+        //
+        // relative path
+        //
+        events.clear();
+
+        final String rel = projectDir + File.separator + "../outsidedir";
+
+        thenTriedFileOutsideProjectFolder(() ->
+            tools.createDirectory(rel)
+        );
+
+        thenProgressIs(events.get(0), "📂 Creating new directory " + rel);
     }
 
     @Test
@@ -305,11 +338,51 @@ public class FileSystemToolsTest extends TestBase {
         Files.createDirectories(fullPath);
 
         then(tools.deleteDirectory(path)).isEqualTo("Directory deleted");
-        then(tools.deleteDirectory(path)).isEqualTo("Directory not found: " + path);
+        thenProgressIs(events.get(0), "🗑️ Deleting directory " + path);
+        thenProgressIs(events.get(1), "✅ " + path + " deleted successfully");
+
+        events.clear();
+        thenThrownBy( () ->
+            tools.deleteDirectory(path)
+        ).isInstanceOf(ToolExecutionException.class)
+        .hasMessage("❌ " + path + " not found");
+        thenProgressIs(events.get(0), "🗑️ Deleting directory " + path);
+        thenProgressIs(events.get(1), "❌ " + path + " not found");
+
+        final String notdir = projectPath.resolve(TESTFILE).toString();
+        events.clear();
+        thenThrownBy( () -> tools.deleteDirectory(notdir))
+            .isInstanceOf(ToolExecutionException.class)
+            .hasMessage("❌ " + notdir + " not a directory");
+        thenProgressIs(events.get(0), "🗑️ Deleting directory " + notdir);
+        thenProgressIs(events.get(1), "❌ " + notdir + " not a directory");
+    }
+
+    @Test
+    public void deleteDirectory_fails_on_paths_outside_project_folder() throws Exception {
+        final Path abs = HOME.resolve("newfolder").toAbsolutePath().normalize();
 
         //
-        // TODO: logging
+        // absolute path
         //
+        thenTriedFileOutsideProjectFolder(() ->
+            tools.deleteDirectory(abs.toString())
+        );
+
+        thenProgressIs(events.get(0), "🗑️ Deleting directory " + abs);
+
+        //
+        // relative path
+        //
+        events.clear();
+
+        final String rel = projectDir + File.separator + "../outsidedir";
+
+        thenTriedFileOutsideProjectFolder(() ->
+            tools.deleteDirectory(rel)
+        );
+
+        thenProgressIs(events.get(0), "🗑️ Deleting directory " + rel);
     }
 
     // --------------------------------------------------------- private methods
