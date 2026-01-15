@@ -164,7 +164,7 @@ public class FileSystemTools extends AbstractCodeTool {
      */
     @Tool("Create a new file at the given path with optional content")
     public String createFile(String path, String content) throws ToolExecutionException {
-        progress("📄 Creating new file: " + path);
+        progress("📄 Creating file " + path);
 
         checkPath(path);
 
@@ -194,13 +194,16 @@ public class FileSystemTools extends AbstractCodeTool {
      * @return a status message
      */
     @Tool("Delete a file at the given path")
-    public String deleteFile(String path) throws Exception {
-        progress("🗑️ Attempting to delete file: " + path);
+    public String deleteFile(String path) throws ToolExecutionException {
+        progress("🗑️ Deleting file " + path);
+
+        checkPath(path);
+
         try {
             Path filePath = fullPath(path);
             if (!Files.exists(filePath)) {
-                progress("⚠️ File not found: " + path);
-                return "File not found: " + path;
+                progress("❌ " + path + " does not exist");
+                throw new ToolExecutionException(path + " does not exist");
             }
 
             Files.delete(filePath);
@@ -208,7 +211,7 @@ public class FileSystemTools extends AbstractCodeTool {
             return "File deleted";
         } catch (IOException e) {
             progress("❌ File deletion failed: " + e.getMessage() + " in file: " + path);
-            throw e;
+            throw new ToolExecutionException(e);
         }
     }
 

@@ -108,7 +108,7 @@ public class FileSystemToolsTest extends TestBase {
         then(tools.createFile(path, content)).isEqualTo("File created");
 
         then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(0).getNewValue()).isEqualTo("📄 Creating new file: " + path);
+        then(events.get(0).getNewValue()).isEqualTo("📄 Creating file " + path);
 
         events.clear();
         thenThrownBy(() -> tools.createFile(path, content))
@@ -116,7 +116,7 @@ public class FileSystemToolsTest extends TestBase {
             .hasMessage("❌ " + path + " already exists");
 
         then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(0).getNewValue()).isEqualTo("📄 Creating new file: " + path);
+        then(events.get(0).getNewValue()).isEqualTo("📄 Creating file " + path);
         then(events.get(1).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
         then(events.get(1).getNewValue()).isEqualTo("❌ " + path + " already exists");
     }
@@ -132,7 +132,7 @@ public class FileSystemToolsTest extends TestBase {
         thenTriedFileOutsideProjectFolder(() -> tools.createFile(abs, content));
 
         then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(0).getNewValue()).isEqualTo("📄 Creating new file: " + abs);
+        then(events.get(0).getNewValue()).isEqualTo("📄 Creating file " + abs);
 
         //
         // relative path
@@ -144,7 +144,7 @@ public class FileSystemToolsTest extends TestBase {
         thenTriedFileOutsideProjectFolder(() -> tools.createFile(rel, content));
 
         then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(0).getNewValue()).isEqualTo("📄 Creating new file: " + rel);
+        then(events.get(0).getNewValue()).isEqualTo("📄 Creating file " + rel);
     }
 
     @Test
@@ -159,11 +159,44 @@ public class FileSystemToolsTest extends TestBase {
         then(tools.deleteFile(path)).isEqualTo("File deleted");
         then(fileToDelete).doesNotExist();
 
-        then(tools.deleteFile(path)).isEqualTo("File not found: " + path);
+        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
+        then(events.get(0).getNewValue()).isEqualTo("🗑️ Deleting file " + path);
+
+        events.clear();
+        thenThrownBy(() -> tools.deleteFile(path))
+            .isInstanceOf(ToolExecutionException.class)
+            .hasMessage(path + " does not exist");
+
+        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
+        then(events.get(0).getNewValue()).isEqualTo("🗑️ Deleting file " + path);
+        then(events.get(1).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
+        then(events.get(1).getNewValue()).isEqualTo("❌ " + path + " does not exist");
+    }
+
+    @Test
+    public void deleteFile_outside_project_dir() {
+        //
+        // absolute path
+        //
+        final String abs = HOME.resolve("jeddict-config.json").toAbsolutePath().toString();
+        final String content = "Sample content.";
+
+        thenTriedFileOutsideProjectFolder(() -> tools.deleteFile(abs));
+
+        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
+        then(events.get(0).getNewValue()).isEqualTo("🗑️ Deleting file " + abs);
 
         //
-        // TODO: logging
+        // relative path
         //
+        events.clear();
+
+        final String rel = projectDir + File.separator + "../outside.txt";
+
+        thenTriedFileOutsideProjectFolder(() -> tools.deleteFile(rel));
+
+        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
+        then(events.get(0).getNewValue()).isEqualTo("🗑️ Deleting file " + rel);
     }
 
     @Test
