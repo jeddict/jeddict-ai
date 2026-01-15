@@ -59,8 +59,7 @@ public class FileSystemToolsTest extends TestBase {
 
         then(tools.searchInFile(path, pattern)).contains("Match at").contains("test file");
         then(events).hasSize(1);
-        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(0).getNewValue()).isEqualTo("🔎 Looking for '" + pattern + "' inside '" + path + "'");
+        thenProgressIs(events.get(0), "🔎 Looking for '" + pattern + "' inside '" + path + "'");
     }
 
     @Test
@@ -70,8 +69,7 @@ public class FileSystemToolsTest extends TestBase {
 
         then(tools.searchInFile(path, pattern)).isEqualTo("No matches found");
         then(events).hasSize(1);
-        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(0).getNewValue()).isEqualTo("🔎 Looking for '" + pattern + "' inside '" + path + "'");
+        thenProgressIs(events.get(0), "🔎 Looking for '" + pattern + "' inside '" + path + "'");
     }
 
     @Test
@@ -84,8 +82,7 @@ public class FileSystemToolsTest extends TestBase {
 
         thenTriedFileOutsideProjectFolder(() -> tools.searchInFile(abs, pattern));
 
-        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(0).getNewValue()).isEqualTo("🔎 Looking for '" + pattern + "' inside '" + abs + "'");
+        thenProgressIs(events.get(0), "🔎 Looking for '" + pattern + "' inside '" + abs + "'");
 
         //
         // relative path
@@ -96,8 +93,7 @@ public class FileSystemToolsTest extends TestBase {
 
         thenTriedFileOutsideProjectFolder(() -> tools.searchInFile(rel, pattern));
 
-        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(0).getNewValue()).isEqualTo("🔎 Looking for '" + pattern + "' inside '" + rel + "'");
+        thenProgressIs(events.get(0), "🔎 Looking for '" + pattern + "' inside '" + rel + "'");
     }
 
     @Test
@@ -107,18 +103,15 @@ public class FileSystemToolsTest extends TestBase {
 
         then(tools.createFile(path, content)).isEqualTo("File created");
 
-        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(0).getNewValue()).isEqualTo("📄 Creating file " + path);
+        thenProgressIs(events.get(0), "📄 Creating file " + path);
 
         events.clear();
         thenThrownBy(() -> tools.createFile(path, content))
             .isInstanceOf(ToolExecutionException.class)
             .hasMessage("❌ " + path + " already exists");
 
-        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(0).getNewValue()).isEqualTo("📄 Creating file " + path);
-        then(events.get(1).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(1).getNewValue()).isEqualTo("❌ " + path + " already exists");
+        thenProgressIs(events.get(0), "📄 Creating file " + path);
+        thenProgressIs(events.get(1), "❌ " + path + " already exists");
     }
 
     @Test
@@ -131,8 +124,7 @@ public class FileSystemToolsTest extends TestBase {
 
         thenTriedFileOutsideProjectFolder(() -> tools.createFile(abs, content));
 
-        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(0).getNewValue()).isEqualTo("📄 Creating file " + abs);
+        thenProgressIs(events.get(0), "📄 Creating file " + abs);
 
         //
         // relative path
@@ -143,8 +135,7 @@ public class FileSystemToolsTest extends TestBase {
 
         thenTriedFileOutsideProjectFolder(() -> tools.createFile(rel, content));
 
-        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(0).getNewValue()).isEqualTo("📄 Creating file " + rel);
+        thenProgressIs(events.get(0), "📄 Creating file " + rel);
     }
 
     @Test
@@ -159,18 +150,15 @@ public class FileSystemToolsTest extends TestBase {
         then(tools.deleteFile(path)).isEqualTo("File deleted");
         then(fileToDelete).doesNotExist();
 
-        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(0).getNewValue()).isEqualTo("🗑️ Deleting file " + path);
+        thenProgressIs(events.get(0), "🗑️ Deleting file " + path);
 
         events.clear();
         thenThrownBy(() -> tools.deleteFile(path))
             .isInstanceOf(ToolExecutionException.class)
             .hasMessage(path + " does not exist");
 
-        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(0).getNewValue()).isEqualTo("🗑️ Deleting file " + path);
-        then(events.get(1).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(1).getNewValue()).isEqualTo("❌ " + path + " does not exist");
+        thenProgressIs(events.get(0), "🗑️ Deleting file " + path);
+        thenProgressIs(events.get(1), "❌ " + path + " does not exist");
     }
 
     @Test
@@ -179,12 +167,10 @@ public class FileSystemToolsTest extends TestBase {
         // absolute path
         //
         final String abs = HOME.resolve("jeddict-config.json").toAbsolutePath().toString();
-        final String content = "Sample content.";
 
         thenTriedFileOutsideProjectFolder(() -> tools.deleteFile(abs));
 
-        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(0).getNewValue()).isEqualTo("🗑️ Deleting file " + abs);
+        thenProgressIs(events.get(0), "🗑️ Deleting file " + abs);
 
         //
         // relative path
@@ -194,9 +180,7 @@ public class FileSystemToolsTest extends TestBase {
         final String rel = projectDir + File.separator + "../outside.txt";
 
         thenTriedFileOutsideProjectFolder(() -> tools.deleteFile(rel));
-
-        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(0).getNewValue()).isEqualTo("🗑️ Deleting file " + rel);
+        thenProgressIs(events.get(0), "🗑️ Deleting file " + rel);
     }
 
     @Test
@@ -205,12 +189,35 @@ public class FileSystemToolsTest extends TestBase {
         final String nonExistingDir = "nonexistingdir";
 
         then(tools.listFilesInDirectory(existingDir)).contains("testfile.txt");
+        thenProgressIs(events.get(0), "📂 Listing contents of directory " + existingDir);
 
-        then(tools.listFilesInDirectory(nonExistingDir)).isEqualTo("Directory not found: " + nonExistingDir);
+        events.clear();
+        thenThrownBy(() -> tools.listFilesInDirectory(nonExistingDir))
+            .isInstanceOf(ToolExecutionException.class)
+            .hasMessage(nonExistingDir + " does not exist");
+        thenProgressIs(events.get(0), "📂 Listing contents of directory " + nonExistingDir);
+        thenProgressIs(events.get(1), "❌ " + nonExistingDir + " does not exist");
+    }
+
+    @Test
+    public void listFilesInDirectory_outside_project_dir() {
+        //
+        // absolute path
+        //
+        final String abs = HOME.resolve("folder").toAbsolutePath().toString();
+
+        thenTriedFileOutsideProjectFolder(() -> tools.listFilesInDirectory(abs));
+        thenProgressIs(events.get(0), "📂 Listing contents of directory " + abs);
 
         //
-        // TODO: logging
+        // relative path
         //
+        events.clear();
+
+        final String rel = projectDir + File.separator + "../outside";
+
+        thenTriedFileOutsideProjectFolder(() -> tools.listFilesInDirectory(rel));
+        thenProgressIs(events.get(0), "📂 Listing contents of directory " + rel);
     }
 
     @Test
@@ -224,8 +231,7 @@ public class FileSystemToolsTest extends TestBase {
         //
         then(tools.readFile(pathOK)).isEqualTo(expectedContent);
         then(events).hasSize(1);
-        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(0).getNewValue()).isEqualTo("📖 Reading file " + pathOK);
+        thenProgressIs(events.get(0), "📖 Reading file " + pathOK);
 
         //
         // success absolute path inside folder
@@ -233,8 +239,7 @@ public class FileSystemToolsTest extends TestBase {
         events.clear();
         then(tools.readFile(fullPathOK.toString())).isEqualTo(expectedContent);
         then(events).hasSize(1);
-        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(0).getNewValue()).isEqualTo("📖 Reading file " + fullPathOK);
+        thenProgressIs(events.get(0), "📖 Reading file " + fullPathOK);
 
         //
         // failure (not we log absolute path to make troubleshooting easier)
@@ -249,10 +254,8 @@ public class FileSystemToolsTest extends TestBase {
         .hasMessage("failed to read file %s%s%s".formatted(projectDir, File.separator, pathKO));
 
         then(events).hasSize(2);
-        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(0).getNewValue()).isEqualTo("📖 Reading file " + pathKO);
-        then(events.get(1).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(1).getNewValue()).isEqualTo("❌ Failed to read file " + fullPathKO);
+        thenProgressIs(events.get(0), "📖 Reading file " + pathKO);
+        thenProgressIs(events.get(1), "❌ Failed to read file " + fullPathKO);
     }
 
     @Test
@@ -266,8 +269,7 @@ public class FileSystemToolsTest extends TestBase {
             tools.readFile(abs.toString())
         );
 
-        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(0).getNewValue()).isEqualTo("📖 Reading file " + abs);
+        thenProgressIs(events.get(0), "📖 Reading file " + abs);
 
         //
         // relative path
@@ -280,8 +282,7 @@ public class FileSystemToolsTest extends TestBase {
             tools.readFile(rel)
         );
 
-        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(0).getNewValue()).isEqualTo("📖 Reading file " + rel);
+        thenProgressIs(events.get(0), "📖 Reading file " + rel);
     }
 
     @Test
@@ -324,6 +325,10 @@ public class FileSystemToolsTest extends TestBase {
                 e.getNewValue().equals("❌ Trying to reach a file outside the project folder")
            );
         });
+    }
 
+    private void thenProgressIs(final PropertyChangeEvent e, final String progress) {
+        then(e.getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
+        then(e.getNewValue()).isEqualTo(progress);
     }
 }
