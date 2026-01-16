@@ -55,8 +55,8 @@ public class FileSystemTools extends AbstractCodeTool {
             final Path fullPath = fullPath(path);
             return Files.readString(fullPath, Charset.defaultCharset());
         } catch (IOException e) {
-            progress("❌ Failed to read file " + e.getMessage());
-            throw new ToolExecutionException("failed to read file " + e.getMessage());
+            progress("❌ Failed to read file: " + e);
+            throw new ToolExecutionException("failed to read file: " + e);
         }
     }
 
@@ -113,25 +113,31 @@ public class FileSystemTools extends AbstractCodeTool {
      * @return a status message
      */
     @Tool("Replace parts of a file content matching a regex pattern with replacement text")
-    public String replaceSnippetByRegex(String path, String regexPattern, String replacement)
-            throws Exception {
-        progress("🔄 Replacing text matching regex '" + regexPattern + "' in file: " + path);
+    public String replaceSnippetByRegex(
+        final String path, final String regexPattern, final String replacement
+    )
+    throws ToolExecutionException {
+        progress("🔄 Replacing text matching regex '" + regexPattern + "' in file " + path);
+
+        checkPath(path);
+
         try {
-            Path filePath = fullPath(path);
+            final Path filePath = fullPath(path).toRealPath();
+
             String original = Files.readString(filePath);
             String modified = original.replaceAll(regexPattern, replacement);
 
             if (original.equals(modified)) {
-                progress("⚠️ No matches found for regex '" + regexPattern + "' in file: " + path);
-                return "No matches found for pattern.";
+                progress("❌ No matches found for regex '" + regexPattern + "' in file " + path);
+                return "No matches found for pattern";
             }
 
             Files.writeString(filePath, modified, StandardOpenOption.TRUNCATE_EXISTING);
-            progress("✅ Replacement completed in file: " + path);
-            return "File snippet replaced successfully.";
-        } catch (Exception e) {
-            progress("❌ Replacement failed " + e.getMessage() + " in file: " + path);
-            throw e;
+            progress("✅ Snippet replaced successfully");
+            return "Snippet replaced successfully";
+        } catch (IOException e) {
+            progress("❌ Replacement failed: " + e);
+            throw new ToolExecutionException("Replacement failed: " + e);
         }
     }
 
@@ -149,8 +155,8 @@ public class FileSystemTools extends AbstractCodeTool {
             Files.writeString(fullPath(path), newContent, StandardOpenOption.TRUNCATE_EXISTING);
             progress("✅ File content replaced successfully: " + path);
             return "File updated";
-        } catch (Exception e) {
-            progress("❌ Failed to replace content " + e.getMessage() + " in file: " + path);
+        } catch (IOException e) {
+            progress("❌ Failed to replace content " + e);
             throw e;
         }
     }
@@ -169,7 +175,7 @@ public class FileSystemTools extends AbstractCodeTool {
         checkPath(path);
 
         try {
-            Path filePath = fullPath(path);
+            final Path filePath = fullPath(path);
 
             if (Files.exists(filePath)) {
                 progress("❌ " + path + " already exists");
@@ -200,7 +206,7 @@ public class FileSystemTools extends AbstractCodeTool {
         checkPath(path);
 
         try {
-            Path filePath = fullPath(path);
+            final Path filePath = fullPath(path);
             if (!Files.exists(filePath)) {
                 progress("❌ " + path + " does not exist");
                 throw new ToolExecutionException(path + " does not exist");
@@ -235,7 +241,7 @@ public class FileSystemTools extends AbstractCodeTool {
 
         checkPath(path);
 
-        Path dirPath = fullPath(path);
+        final Path dirPath = fullPath(path);
 
         if (!Files.isDirectory(dirPath)) {
             progress("❌ " + path + " does not exist");
@@ -267,7 +273,7 @@ public class FileSystemTools extends AbstractCodeTool {
         checkPath(path);
 
         try {
-            Path dirPath = fullPath(path);
+            final Path dirPath = fullPath(path);
             if (Files.exists(dirPath)) {
                 progress("❌ " + path + " already exists");
                 throw new ToolExecutionException("❌ " + path + " already exists");
@@ -283,8 +289,6 @@ public class FileSystemTools extends AbstractCodeTool {
         }
     }
 
-
-
     /**
      * Deletes a directory (must be empty).
      *
@@ -298,7 +302,7 @@ public class FileSystemTools extends AbstractCodeTool {
         checkPath(path);
 
         try {
-            Path dirPath = fullPath(path);
+            final Path dirPath = fullPath(path);
             if (!Files.exists(dirPath)) {
                 progress("❌ " + path + " not found");
                 throw new ToolExecutionException("❌ " + path + " not found");
