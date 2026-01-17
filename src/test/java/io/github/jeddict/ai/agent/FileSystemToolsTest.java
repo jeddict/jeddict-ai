@@ -291,7 +291,7 @@ public class FileSystemToolsTest extends TestBase {
 
         then(tools.createDirectory(path)).isEqualTo("Directory created");
         thenProgressMatches(events.get(0), "📂 Creating new directory " + path);
-        thenProgressMatches(events.get(1), "✅ Directory created successfully");
+        thenProgressMatches(events.get(1), "✅ Directory created");
 
         events.clear();
         thenThrownBy( () ->
@@ -339,7 +339,7 @@ public class FileSystemToolsTest extends TestBase {
 
         then(tools.deleteDirectory(path)).isEqualTo("Directory deleted");
         thenProgressMatches(events.get(0), "🗑️ Deleting directory " + path);
-        thenProgressMatches(events.get(1), "✅ " + path + " deleted successfully");
+        thenProgressMatches(events.get(1), "✅ " + path + " deleted");
 
         events.clear();
         thenThrownBy( () ->
@@ -390,25 +390,25 @@ public class FileSystemToolsTest extends TestBase {
         final Path fullPath = projectPath.resolve(TESTFILE).normalize().toRealPath();
 
         then(tools.replaceSnippetByRegex(TESTFILE, "for.*ing", "for testing"))
-            .isEqualTo("Snippet replaced successfully");
+            .isEqualTo("Snippet replaced");
         then(fullPath).content().isEqualTo("This is a test file content for testing.");
-        thenProgressMatches(events.get(0), "🔄 Replacing text matching regex 'for.*ing' in file " + TESTFILE);
-        thenProgressMatches(events.get(1), "✅ Snippet replaced successfully");
+        thenProgressMatches(events.get(0), "🔄 Replacing text matching regex 'for.*ing' in " + TESTFILE);
+        thenProgressMatches(events.get(1), "✅ Snippet replaced");
 
         events.clear();
         then(
             tools.replaceSnippetByRegex(TESTFILE, "none", "do not change me")
         ).isEqualTo("No matches found for pattern");
-        thenProgressMatches(events.get(0), "🔄 Replacing text matching regex 'none' in file " + TESTFILE);
-        thenProgressMatches(events.get(1), "❌ No matches found for regex 'none' in file " + TESTFILE);
+        thenProgressMatches(events.get(0), "🔄 Replacing text matching regex 'none' in " + TESTFILE);
+        thenProgressMatches(events.get(1), "❌ No matches found for regex 'none' in " + TESTFILE);
 
         events.clear();
         Path notExistingPath =  projectPath.resolve("notexisting.txt");
         thenThrownBy( () -> tools.replaceSnippetByRegex(
             notExistingPath.toString(), "text", "nothing"
         )).isInstanceOf(ToolExecutionException.class)
-        .hasMessage("Replacement failed: java.nio.file.NoSuchFileException: " + notExistingPath);
-        thenProgressMatches(events.get(0), "🔄 Replacing text matching regex 'text' in file " + projectPath.resolve("notexisting.txt"));
+        .hasMessage("replacement failed: java.nio.file.NoSuchFileException: " + notExistingPath);
+        thenProgressMatches(events.get(0), "🔄 Replacing text matching regex 'text' in " + projectPath.resolve("notexisting.txt"));
         thenProgressMatches(events.get(1), "❌ Replacement failed: java.nio.file.NoSuchFileException: " + notExistingPath);
     }
 
@@ -423,7 +423,7 @@ public class FileSystemToolsTest extends TestBase {
             tools.replaceSnippetByRegex(abs.toString(), ".*", "nothing")
         );
 
-        thenProgressMatches(events.get(0), "🔄 Replacing text matching regex '.*' in file " + abs);
+        thenProgressMatches(events.get(0), "🔄 Replacing text matching regex '.*' in " + abs);
 
         //
         // relative path
@@ -436,7 +436,53 @@ public class FileSystemToolsTest extends TestBase {
             tools.replaceSnippetByRegex(rel, ".*", "nothing")
         );
 
-        thenProgressMatches(events.get(0), "🔄 Replacing text matching regex '.*' in file " + rel);
+        thenProgressMatches(events.get(0), "🔄 Replacing text matching regex '.*' in " + rel);
+    }
+
+    @Test
+    public void replaceFileContent_success_and_not_found() throws Exception {
+        final Path fullPath = projectPath.resolve(TESTFILE).normalize().toRealPath();
+
+        then(tools.replaceFileContent(TESTFILE, "new text"))
+            .isEqualTo("File updated");
+        then(fullPath).content().isEqualTo("new text");
+        thenProgressMatches(events.get(0), "🔄 Replacing content in " + TESTFILE);
+        thenProgressMatches(events.get(1), "✅ File content replaced");
+
+        events.clear();
+        Path notExistingPath =  projectPath.resolve("notexisting.txt");
+        thenThrownBy( () -> tools.replaceFileContent(notExistingPath.toString(), "new text"))
+            .isInstanceOf(ToolExecutionException.class)
+            .hasMessage("replacement failed: java.nio.file.NoSuchFileException: " + notExistingPath);
+        thenProgressMatches(events.get(0), "🔄 Replacing content in " + projectPath.resolve("notexisting.txt"));
+        thenProgressMatches(events.get(1), "❌ Replacement failed: java.nio.file.NoSuchFileException: " + notExistingPath);
+    }
+
+    @Test
+    public void replaceFileContent_fails_on_paths_outside_project_folder() throws Exception {
+        final Path abs = HOME.resolve("newfolder").toAbsolutePath().normalize();
+
+        //
+        // absolute path
+        //
+        thenTriedFileOutsideProjectFolder(() ->
+            tools.replaceFileContent(abs.toString(), "nothing")
+        );
+
+        thenProgressMatches(events.get(0), "🔄 Replacing content in " + abs);
+
+        //
+        // relative path
+        //
+        events.clear();
+
+        final String rel = projectDir + File.separator + "../outsidedir";
+
+        thenTriedFileOutsideProjectFolder(() ->
+            tools.replaceFileContent(rel, "nothing")
+        );
+
+        thenProgressMatches(events.get(0), "🔄 Replacing content in " + rel);
     }
 
     // --------------------------------------------------------- private methods
@@ -456,6 +502,6 @@ public class FileSystemToolsTest extends TestBase {
 
     private void thenProgressMatches(final PropertyChangeEvent e, final String progressRegex) {
         then(e.getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(e.getNewValue()).matches((s) -> ((String)s).matches(progressRegex));
+        then(e.getNewValue()).matches((s) -> ((String)s).matches(progressRegex), progressRegex);
     }
 }
