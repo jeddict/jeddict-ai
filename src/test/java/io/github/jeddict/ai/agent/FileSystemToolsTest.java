@@ -489,8 +489,7 @@ public class FileSystemToolsTest extends TestBase {
     private void thenTriedFileOutsideProjectFolder(final Runnable exec) {
         thenThrownBy(() -> exec.run())
         .isInstanceOf(ToolExecutionException.class)
-        //.hasMessage("trying to reach a file outside the project folder");
-        .hasMessageStartingWith("trying to reach a file");
+        .hasMessage("trying to reach a file outside the project folder");
         then(events).anyMatch((e) -> {
             return (
                 e.getPropertyName().equals(PROPERTY_MESSAGE) &&
