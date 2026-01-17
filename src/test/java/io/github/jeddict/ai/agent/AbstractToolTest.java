@@ -1,5 +1,6 @@
 package io.github.jeddict.ai.agent;
 
+import dev.langchain4j.exception.ToolExecutionException;
 import io.github.jeddict.ai.test.TestBase;
 import io.github.jeddict.ai.test.DummyTool;
 import static io.github.jeddict.ai.agent.AbstractTool.PROPERTY_MESSAGE;
@@ -16,9 +17,11 @@ import static org.assertj.core.api.BDDAssertions.thenThrownBy;
 
 public class AbstractToolTest extends TestBase {
 
+    public final static String TESTFILE = "folder/testfile.txt";
+
     @Test
     public void constructor_sets_instance_variables() throws IOException {
-        DummyTool tool = new DummyTool(projectDir);
+        final DummyTool tool = new DummyTool(projectDir);
 
         then(tool.basedir).isSameAs(projectDir);
         then(tool.basepath.toString()).isEqualTo(projectDir);
@@ -34,7 +37,7 @@ public class AbstractToolTest extends TestBase {
 
     @Test
     public void fullPath_returns_the_full_path_of_given_relative_path() throws Exception {
-        DummyTool tool = new DummyTool(projectDir);
+        final DummyTool tool = new DummyTool(projectDir);
 
         then(tool.fullPath("relative")).isEqualTo(Paths.get(projectDir, "relative"));
     }
@@ -42,7 +45,7 @@ public class AbstractToolTest extends TestBase {
     @Test
     public void fires_property_change_event() throws IOException {
         // given
-        DummyTool tool = new DummyTool(projectDir);
+        final DummyTool tool = new DummyTool(projectDir);
         final List<PropertyChangeEvent> events = new ArrayList<>();
         PropertyChangeListener listener = new PropertyChangeListener() {
             @Override
@@ -75,7 +78,7 @@ public class AbstractToolTest extends TestBase {
     @Test
     public void removePropertyChangeListener_does_not_accept_null() throws IOException {
         // given
-        DummyTool tool = new DummyTool(projectDir);
+        final DummyTool tool = new DummyTool(projectDir);
 
         // when & then
         thenThrownBy(() -> tool.removePropertyChangeListener(null))
@@ -86,7 +89,7 @@ public class AbstractToolTest extends TestBase {
     @Test
     public void progress_also_logs_the_message() throws IOException {
         // given
-        DummyTool tool = new DummyTool(projectDir);
+        final DummyTool tool = new DummyTool(projectDir);
         final List<PropertyChangeEvent> events = new ArrayList<>();
         tool.addPropertyChangeListener(new PropertyChangeListener() {
             @Override
@@ -101,6 +104,28 @@ public class AbstractToolTest extends TestBase {
         // then
         then(events).hasSize(1);
         then(logHandler.getMessages()).contains("a message");
+    }
+
+    @Test
+    public void checkPath_completes_with_child() throws IOException {
+        final DummyTool tool = new DummyTool(projectDir);
+        tool.checkPath(projectDir);
+        tool.checkPath(TESTFILE);
+        tool.checkPath("folder/");
+        tool.checkPath(projectPath.resolve(TESTFILE).toAbsolutePath().toString());
+    }
+
+    @Test
+    public void checkPath_raises_exception_with_not_child_path() throws IOException {
+        final DummyTool tool = new DummyTool(projectDir);
+
+        thenThrownBy(() -> tool.checkPath("/nowhere"))
+            .isInstanceOf(ToolExecutionException.class)
+            .hasMessage("trying to reach a file outside the project folder");
+
+        thenThrownBy(() -> tool.checkPath(projectDir + "/../outside"))
+            .isInstanceOf(ToolExecutionException.class)
+            .hasMessage("trying to reach a file outside the project folder");
     }
 
 }

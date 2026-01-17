@@ -18,6 +18,7 @@ package io.github.jeddict.ai.agent;
 import dev.langchain4j.exception.ToolExecutionException;
 import io.github.jeddict.ai.test.TestBase;
 import static io.github.jeddict.ai.agent.AbstractTool.PROPERTY_MESSAGE;
+import static io.github.jeddict.ai.agent.AbstractToolTest.TESTFILE;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
@@ -34,8 +35,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public class FileSystemToolsTest extends TestBase {
-
-    private final static String TESTFILE = "folder/testfile.txt";
 
     protected FileSystemTools tools = null;
     protected List<PropertyChangeEvent> events = null;
