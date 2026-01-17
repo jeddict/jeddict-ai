@@ -62,6 +62,8 @@ public abstract class AbstractTool {
         if (path.startsWith(File.separator)) {
             final Path absolutePath = Paths.get(path).toAbsolutePath().normalize();
             final Path absoluteBasePath = Paths.get(basedir).toAbsolutePath().normalize();
+            log.info("absolutePath: " + absoluteBasePath);
+            log.info("absoluteBasePath: " + absoluteBasePath);
             if (!absolutePath.startsWith(absoluteBasePath)) {
                 progress("❌ Trying to reach a file outside the project folder");
                 throw new ToolExecutionException("trying to reach a file outside the project folder");
