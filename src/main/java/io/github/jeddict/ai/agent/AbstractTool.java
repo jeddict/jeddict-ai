@@ -54,11 +54,17 @@ public abstract class AbstractTool {
     }
 
     public void checkPath(final String path) throws ToolExecutionException {
+        //
+        // NOTE: we can not use toRealPath here because we want to check even
+        // if a path does not exists yet (toRealPath throws an exceptin if the
+        // path is not valid
+        //
         if (path.startsWith(File.separator)) {
-            Path absolutePath = Paths.get(path).toAbsolutePath().normalize();
+            final Path absolutePath = Paths.get(path).toAbsolutePath().normalize();
+            final Path absoluteBasePath = Paths.get(basedir).toAbsolutePath().normalize();
             System.out.println("absolutePath: " + absolutePath);
             System.out.println("basepath: " + basepath);
-            if (!absolutePath.startsWith(basepath)) {
+            if (!absolutePath.startsWith(absoluteBasePath)) {
                 progress("❌ Trying to reach a file outside the project folder");
                 throw new ToolExecutionException("trying to reach a file outside the project folder");
             }
