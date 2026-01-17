@@ -43,7 +43,7 @@ public abstract class AbstractTool {
         }
         this.basedir = basedir;
         this.basepath = Paths.get(basedir).toAbsolutePath().toRealPath();
-        this.log = Logger.getLogger(this.getClass().getCanonicalName()); // this will be the concrete class name
+        this.log = Logger.getLogger(this.getClass().getName()); // this will be the concrete class name
     }
 
     public void addPropertyChangeListener(PropertyChangeListener listener) {
@@ -62,11 +62,12 @@ public abstract class AbstractTool {
         if (path.startsWith(File.separator)) {
             final Path absolutePath = Paths.get(path).toAbsolutePath().normalize();
             final Path absoluteBasePath = Paths.get(basedir).toAbsolutePath().normalize();
-            log.info("absolutePath: " + absoluteBasePath);
-            log.info("absoluteBasePath: " + absoluteBasePath);
+            log(() -> "absolutePath: " + absoluteBasePath);
+            log(()-> "absoluteBasePath: " + absoluteBasePath);
             if (!absolutePath.startsWith(absoluteBasePath)) {
                 progress("❌ Trying to reach a file outside the project folder");
-                throw new ToolExecutionException("trying to reach a file outside the project folder");
+                throw new ToolExecutionException(
+                    "trying to reach a file (%s) outside the project folder (%s)".formatted(absolutePath, absoluteBasePath));
             }
         }
     }

@@ -121,11 +121,11 @@ public class AbstractToolTest extends TestBase {
 
         thenThrownBy(() -> tool.checkPath("/nowhere"))
             .isInstanceOf(ToolExecutionException.class)
-            .hasMessage("trying to reach a file outside the project folder");
+            .hasMessageStartingWith("trying to reach a file");
 
         thenThrownBy(() -> tool.checkPath(projectDir + "/../outside"))
             .isInstanceOf(ToolExecutionException.class)
-            .hasMessage("trying to reach a file outside the project folder");
+            .hasMessageStartingWith("trying to reach a file");;
     }
 
 }
