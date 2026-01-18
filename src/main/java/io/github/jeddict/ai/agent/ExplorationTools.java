@@ -31,6 +31,7 @@ import org.netbeans.modules.refactoring.api.RefactoringSession;
 import org.openide.util.Lookup;
 import org.openide.util.lookup.Lookups;
 import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READONLY;
+import java.io.IOException;
 
 /**
  * Tools for code-level operations in NetBeans projects.
@@ -64,7 +65,7 @@ public class ExplorationTools extends AbstractCodeTool {
 
     private final Lookup lookup;
 
-    public ExplorationTools(final String basedir, Lookup lookup) {
+    public ExplorationTools(final String basedir, Lookup lookup) throws IOException {
         super(basedir);
         this.lookup = lookup;
     }

@@ -44,7 +44,7 @@ import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READWRITE;
  */
 public class MavenTools extends AbstractBuildTool {
 
-    public MavenTools(final String basedir) {
+    public MavenTools(final String basedir) throws IOException {
         super(basedir, "pom.xml");
     }
 

@@ -15,7 +15,10 @@
  */
 package io.github.jeddict.ai.agent;
 
+import dev.langchain4j.exception.ToolExecutionException;
 import io.github.jeddict.ai.lang.JeddictBrainListener;
+import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -38,9 +41,6 @@ public abstract class AbstractTool {
     protected final Path basepath;
     protected final Logger log;
 
-    //
-    // TODO: extend it to multiple listeners
-    //
     protected Optional<JeddictBrainListener> listener = Optional.empty();
 
     private final List<JeddictBrainListener> listeners = new CopyOnWriteArrayList<>();
@@ -48,12 +48,12 @@ public abstract class AbstractTool {
     // TODO: add comment
     private Optional<UnaryOperator<String>> humanInTheMiddle = Optional.empty();
 
-    public AbstractTool(final String basedir) {
+    public AbstractTool(final String basedir) throws IOException {
         if (basedir == null) {
             throw new IllegalArgumentException("basedir can not be null or blank");
         }
         this.basedir = basedir;
-        this.basepath = Paths.get(basedir);
+        this.basepath = Paths.get(basedir).toAbsolutePath().toRealPath();
         this.log = Logger.getLogger(this.getClass().getName()); // this will be the concrete class name
     }
 
@@ -64,6 +64,23 @@ public abstract class AbstractTool {
         listeners.add(listener);
     }
 
+    public void checkPath(final String path) throws ToolExecutionException {
+        //
+        // NOTE: we can not use toRealPath here because we want to check even
+        // if a path does not exists yet (toRealPath throws an exceptin if the
+        // path is not valid
+        //
+        final Path absolutePath = (path.startsWith(File.separator)
+                                ? Paths.get(path).normalize()
+                                : basepath.resolve(path).toAbsolutePath().normalize());
+
+        if (!absolutePath.startsWith(basepath)) {
+            progress("❌ Trying to reach a file outside the project folder");
+            throw new ToolExecutionException(
+                "trying to reach a file outside the project folder");
+        }
+    }
+
     public void removeListener(final JeddictBrainListener listener) {
         if (listener == null) {
             throw new IllegalArgumentException("listener can not be null");
@@ -72,7 +89,7 @@ public abstract class AbstractTool {
     }
 
     public Path fullPath(final String path) {
-        return basepath.resolve(path);
+        return basepath.resolve(path).normalize();
     }
 
     public void log(Supplier<String> supplier) {

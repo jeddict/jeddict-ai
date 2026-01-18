@@ -1,9 +1,10 @@
 package io.github.jeddict.ai.agent;
 
+import dev.langchain4j.exception.ToolExecutionException;
 import io.github.jeddict.ai.test.TestBase;
 import io.github.jeddict.ai.test.DummyTool;
 import io.github.jeddict.ai.lang.DummyJeddictBrainListener;
-import java.io.File;
+import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.function.UnaryOperator;
 import org.junit.jupiter.api.Test;
@@ -13,22 +14,18 @@ import static org.assertj.core.api.BDDAssertions.thenThrownBy;
 
 public class AbstractToolTest extends TestBase {
 
+    public final static String TESTFILE = "folder/testfile.txt";
+
     @Test
-    public void constructor_sets_instance_variables() {
-        DummyTool tool = new DummyTool(projectDir);
+    public void constructor_sets_instance_variables() throws IOException {
+        final DummyTool tool = new DummyTool(projectDir);
 
         then(tool.basedir).isSameAs(projectDir);
         then(tool.basepath.toString()).isEqualTo(projectDir);
-
-        tool = new DummyTool();
-        then(tool.basedir).isEqualTo(new File(".").getAbsolutePath());
-        then(tool.basepath.toString()).isEqualTo(new File(".").getAbsolutePath());
-        then(tool.humanInTheMiddle()).isEmpty();
-
     }
 
     @Test
-    public void basedir_can_not_be_null_or_blank() {
+    public void basedir_can_not_be_null_or_blank() throws IOException {
         for (String S: new String[] {null, "  ", "", "\n", " \t"})
        thenThrownBy(() -> { new DummyTool(null); })
             .isInstanceOf(IllegalArgumentException.class)
@@ -36,15 +33,15 @@ public class AbstractToolTest extends TestBase {
     }
 
     @Test
-    public void fullPath_returns_the_full_path_of_given_relative_path() {
-        DummyTool tool = new DummyTool(projectDir);
+    public void fullPath_returns_the_full_path_of_given_relative_path() throws Exception {
+        final DummyTool tool = new DummyTool(projectDir);
 
         then(tool.fullPath("relative")).isEqualTo(Paths.get(projectDir, "relative"));
     }
 
     @Test
-    public void set_and_get_humanInTheMiddle() {
-        DummyTool tool = new DummyTool();
+    public void set_and_get_humanInTheMiddle() throws IOException  {
+        final DummyTool tool = new DummyTool();
 
         final UnaryOperator<String> hitm = (s) -> {return s;};
 
@@ -56,9 +53,9 @@ public class AbstractToolTest extends TestBase {
     }
 
     @Test
-    public void fires_onProgress_events() {
+    public void fires_onProgress_events() throws IOException {
         // given
-        DummyTool tool = new DummyTool(projectDir);
+        final DummyTool tool = new DummyTool(projectDir);
         final DummyJeddictBrainListener listener = new DummyJeddictBrainListener();
         tool.addListener(listener);
 
@@ -71,9 +68,9 @@ public class AbstractToolTest extends TestBase {
     }
 
     @Test
-    public void addListener_does_not_accept_null() {
+    public void addListener_does_not_accept_null() throws IOException {
         // given
-        DummyTool tool = new DummyTool(projectDir);
+        final DummyTool tool = new DummyTool(projectDir);
 
         // when & then
         thenThrownBy(() -> tool.addListener(null))
@@ -82,9 +79,9 @@ public class AbstractToolTest extends TestBase {
     }
 
     @Test
-    public void removeListener_does_not_accept_null() {
+    public void removeListener_does_not_accept_null() throws IOException {
         // given
-        DummyTool tool = new DummyTool(projectDir);
+        final DummyTool tool = new DummyTool(projectDir);
 
         // when & then
         thenThrownBy(() -> tool.removeListener(null))
@@ -93,15 +90,37 @@ public class AbstractToolTest extends TestBase {
     }
 
     @Test
-    public void progress_also_logs_the_message() {
+    public void progress_also_logs_the_message() throws IOException {
         // given
-        DummyTool tool = new DummyTool(projectDir);
+        final DummyTool tool = new DummyTool(projectDir);
 
         // when
         tool.progress("a message");
 
         // then
         then(logHandler.getMessages()).contains("a message");
+    }
+
+    @Test
+    public void checkPath_completes_with_child() throws IOException {
+        final DummyTool tool = new DummyTool(projectDir);
+        tool.checkPath(projectDir);
+        tool.checkPath(TESTFILE);
+        tool.checkPath("folder/");
+        tool.checkPath(projectPath.resolve(TESTFILE).toAbsolutePath().toString());
+}
+
+    @Test
+    public void checkPath_raises_exception_with_not_child_path() throws IOException {
+        final DummyTool tool = new DummyTool(projectDir);
+
+        thenThrownBy(() -> tool.checkPath("/nowhere"))
+            .isInstanceOf(ToolExecutionException.class)
+            .hasMessageStartingWith("trying to reach a file");
+
+        thenThrownBy(() -> tool.checkPath(projectDir + "/../outside"))
+            .isInstanceOf(ToolExecutionException.class)
+            .hasMessageStartingWith("trying to reach a file");;
     }
 
 }

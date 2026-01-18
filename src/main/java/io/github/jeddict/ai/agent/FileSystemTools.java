@@ -16,6 +16,7 @@
 package io.github.jeddict.ai.agent;
 
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.exception.ToolExecutionException;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.*;
@@ -36,7 +37,7 @@ import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READWRITE;
  */
 public class FileSystemTools extends AbstractCodeTool {
 
-    public FileSystemTools(final String basedir) {
+    public FileSystemTools(final String basedir) throws IOException {
         super(basedir);
     }
 
@@ -48,14 +49,17 @@ public class FileSystemTools extends AbstractCodeTool {
      */
     @Tool("Read the content of a file by path")
     @ToolPolicy(READONLY)
-    public String readFile(String path) throws Exception {
+    public String readFile(final String path) throws ToolExecutionException {
         progress("📖 Reading file " + path);
+
+        checkPath(path);
+
         try {
-            String content = Files.readString(fullPath(path), Charset.defaultCharset());
-            return content;
+            final Path fullPath = fullPath(path);
+            return Files.readString(fullPath, Charset.defaultCharset());
         } catch (IOException e) {
-            progress("❌ Failed to read file: " + e.getMessage());
-            throw e;
+            progress("❌ Failed to read file: " + e);
+            throw new ToolExecutionException("failed to read file: " + e);
         }
     }
 
@@ -126,8 +130,12 @@ public class FileSystemTools extends AbstractCodeTool {
      */
     @Tool("Search for a regex pattern in a file by path")
     @ToolPolicy(READONLY)
-    public String searchInFile(String path, String pattern) throws Exception {
+    public String searchInFile(String path, String pattern) throws ToolExecutionException {
         progress("🔎 Looking for '" + pattern + "' inside '" + path + "'");
+
+        checkPath(path);
+
+        try {
         String content = Files.readString(fullPath(path), Charset.defaultCharset());
         Matcher m = Pattern.compile(pattern).matcher(content);
         StringBuilder result = new StringBuilder();
@@ -136,6 +144,9 @@ public class FileSystemTools extends AbstractCodeTool {
                   .append(": ").append(m.group()).append("\n");
         }
         return result.length() > 0 ? result.toString() : "No matches found";
+        } catch (IOException x) {
+            throw new ToolExecutionException(x);
+        }
     }
 
     /**
@@ -151,8 +162,7 @@ public class FileSystemTools extends AbstractCodeTool {
     @ToolPolicy(READWRITE)
     public String replaceSnippetByLiteral(String path, String literalText, String replacement)
             throws Exception {
-        String escapedPattern = Pattern.quote(literalText);
-        return replaceSnippetByRegex(path, escapedPattern, replacement);
+        return replaceSnippetByRegex(path, Pattern.quote(literalText), replacement);
     }
 
     /**
@@ -166,25 +176,31 @@ public class FileSystemTools extends AbstractCodeTool {
      */
     @Tool("Replace parts of a file content matching a regex pattern with replacement text")
     @ToolPolicy(READWRITE)
-    public String replaceSnippetByRegex(String path, String regexPattern, String replacement)
-            throws Exception {
-        progress("🔄 Replacing text matching regex '" + regexPattern + "' in file: " + path);
+    public String replaceSnippetByRegex(
+        final String path, final String regexPattern, final String replacement
+    )
+    throws ToolExecutionException {
+        progress("🔄 Replacing text matching regex '" + regexPattern + "' in " + path);
+
+        checkPath(path);
+
         try {
-            Path filePath = fullPath(path);
+            final Path filePath = fullPath(path).toRealPath();
+
             String original = Files.readString(filePath);
             String modified = original.replaceAll(regexPattern, replacement);
 
             if (original.equals(modified)) {
-                progress("⚠️ No matches found for regex '" + regexPattern + "' in file: " + path);
-                return "No matches found for pattern.";
+                progress("❌ No matches found for regex '" + regexPattern + "' in " + path);
+                return "No matches found for pattern";
             }
 
             Files.writeString(filePath, modified, StandardOpenOption.TRUNCATE_EXISTING);
-            progress("✅ Replacement completed in file: " + path);
-            return "File snippet replaced successfully.";
-        } catch (Exception e) {
-            progress("❌ Replacement failed " + e.getMessage() + " in file: " + path);
-            throw e;
+            progress("✅ Snippet replaced");
+            return "Snippet replaced";
+        } catch (IOException e) {
+            progress("❌ Replacement failed: " + e);
+            throw new ToolExecutionException("replacement failed: " + e);
         }
     }
 
@@ -197,15 +213,19 @@ public class FileSystemTools extends AbstractCodeTool {
      */
     @Tool("Replace the full content of a file by path with new text")
     @ToolPolicy(READWRITE)
-    public String replaceFileContent(String path, String newContent) throws Exception {
-        progress("📝 Replacing entire content of file: " + path);
+    public String replaceFileContent(final String path, final String newContent)
+    throws ToolExecutionException {
+        progress("🔄 Replacing content in " + path);
+
+        checkPath(path);
+
         try {
             Files.writeString(fullPath(path), newContent, StandardOpenOption.TRUNCATE_EXISTING);
-            progress("✅ File content replaced successfully: " + path);
+            progress("✅ File content replaced");
             return "File updated";
-        } catch (Exception e) {
-            progress("❌ Failed to replace content " + e.getMessage() + " in file: " + path);
-            throw e;
+        } catch (IOException e) {
+            progress("❌ Replacement failed: " + e);
+            throw new ToolExecutionException("replacement failed: " + e);
         }
     }
 
@@ -219,12 +239,12 @@ public class FileSystemTools extends AbstractCodeTool {
     @Tool("Create a new file at the given path with optional content")
     @ToolPolicy(READWRITE)
     public String createFile(String path, String content) throws ToolExecutionException {
-        progress("📄 Creating new file: " + path);
+        progress("📄 Creating file " + path);
 
         checkPath(path);
 
         try {
-            Path filePath = fullPath(path);
+            final Path filePath = fullPath(path);
 
             if (Files.exists(filePath)) {
                 progress("❌ " + path + " already exists");
@@ -234,10 +254,10 @@ public class FileSystemTools extends AbstractCodeTool {
             Files.createDirectories(filePath.getParent());
             Files.writeString(filePath, content != null ? content : "");
 
-            progress("✅ File created successfully: " + path);
+            progress("✅ File created: " + path);
             return "File created";
         } catch (IOException e) {
-            progress("❌ File creation failed: " + e.getMessage() + " in file: " + path);
+            progress("❌ File creation failed: " + e.getMessage() + " in " + path);
             throw new ToolExecutionException(e);
         }
     }
@@ -250,21 +270,24 @@ public class FileSystemTools extends AbstractCodeTool {
      */
     @Tool("Delete a file at the given path")
     @ToolPolicy(READWRITE)
-    public String deleteFile(String path) throws Exception {
-        progress("🗑 Attempting to delete file: " + path);
+    public String deleteFile(String path) throws ToolExecutionException {
+        progress("🗑️ Deleting file " + path);
+
+        checkPath(path);
+
         try {
-            Path filePath = fullPath(path);
+            final Path filePath = fullPath(path);
             if (!Files.exists(filePath)) {
-                progress("⚠ File not found: " + path);
-                return "File not found: " + path;
+                progress("❌ " + path + " does not exist");
+                throw new ToolExecutionException(path + " does not exist");
             }
 
             Files.delete(filePath);
-            progress("✅ File deleted successfully: " + path);
+            progress("✅ " + path + " deleted");
             return "File deleted";
         } catch (IOException e) {
-            progress("❌ File deletion failed: " + e.getMessage() + " in file: " + path);
-            throw e;
+            progress("❌ File deletion failed: " + e.getMessage() + " in " + path);
+            throw new ToolExecutionException(e);
         }
     }
 
@@ -274,52 +297,67 @@ public class FileSystemTools extends AbstractCodeTool {
      * @param path the directory path relative to the project
      * @return a list of files and directories, or an error message
      */
-    @Tool("""
-        List all files and directories inside a given path. If the path does not
-        exist or is not a directory, it returns a "directory not found" message.
-        If path is an existing directory, it returns a list of pathnames,
-        one on each line. If the path is a directory, the pathname will end with
-        a slash ('/').
-    """)
+    @Tool(
+        """
+        List all files and directories inside a given path one on each line.
+        If an element of the list is a directory, the pathname will end with
+        a slash ('/')
+        If the path does not exist or is not a directory, it returns
+        "<directory> does not exist".
+        """
+    )
     @ToolPolicy(READONLY)
-    public String listFilesInDirectory(String path) throws Exception {
-        progress("📂 Listing content of directory: " + path);
-        Path dirPath = fullPath(path);
+    public String listFilesInDirectory(final String path) throws ToolExecutionException {
+        progress("📂 Listing contents of directory " + path);
+
+        checkPath(path);
+
+        final Path dirPath = fullPath(path);
 
         if (!Files.isDirectory(dirPath)) {
-            progress("❌ invalid directory: " + path);
-            return "Directory not found: " + path;
+            progress("❌ " + path + " does not exist");
+            throw new ToolExecutionException(path + " does not exist");
         }
 
-        String result = Files.list(dirPath)
+        try {
+            return Files.list(dirPath)
                 .map(p -> " - " + p.getFileName() + (Files.isDirectory(p) ? "/" : ""))
                 .collect(Collectors.joining("\n"));
 
-        return dirPath.getFileName() + ":\n" + result;
+        } catch (IOException e) {
+            progress("❌ error listing " + path);
+            throw new ToolExecutionException(e);
+        }
     }
 
     /**
      * Creates a new directory.
      *
      * @param path the directory path relative to the project
+     *
      * @return a status message
      */
     @Tool("Create a new directory at the given path")
-    public String createDirectory(String path) throws Exception {
-        progress("📂 Creating new directory: " + path);
+    @ToolPolicy(READWRITE)
+    public String createDirectory(String path) throws ToolExecutionException {
+        progress("📂 Creating new directory " + path);
+
+        checkPath(path);
+
         try {
-            Path dirPath = fullPath(path);
+            final Path dirPath = fullPath(path);
             if (Files.exists(dirPath)) {
-                progress("⚠ Directory already exists: " + path);
-                return "Directory already exists: " + path;
+                progress("❌ " + path + " already exists");
+                throw new ToolExecutionException("❌ " + path + " already exists");
             }
 
             Files.createDirectories(dirPath);
-            progress("✅ Directory created successfully: " + path);
+
+            progress("✅ Directory created");
             return "Directory created";
         } catch (IOException e) {
             progress("❌ Directory creation failed: " + e.getMessage() + " in " + path);
-            throw e;
+            throw new ToolExecutionException(e);
         }
     }
 
@@ -330,25 +368,30 @@ public class FileSystemTools extends AbstractCodeTool {
      * @return a status message
      */
     @Tool("Delete a directory at the given path (must be empty)")
-    public String deleteDirectory(String path) throws Exception {
-        progress("🗑 Attempting to delete directory: " + path);
+    @ToolPolicy(READWRITE)
+    public String deleteDirectory(final String path) throws ToolExecutionException {
+        progress("🗑️ Deleting directory " + path);
+
+        checkPath(path);
+
         try {
-            Path dirPath = fullPath(path);
+            final Path dirPath = fullPath(path);
             if (!Files.exists(dirPath)) {
-                progress("⚠ Directory not found: " + path);
-                return "Directory not found: " + path;
+                progress("❌ " + path + " not found");
+                throw new ToolExecutionException("❌ " + path + " not found");
             }
             if (!Files.isDirectory(dirPath)) {
-                progress("⚠ Not a directory: " + path);
-                return "Not a directory: " + path;
+                progress("❌ " + path + " not a directory");
+                throw new ToolExecutionException("❌ " + path + " not a directory");
             }
 
             Files.delete(dirPath);
-            progress("✅ Directory deleted successfully: " + path);
+            progress("✅ " + path + " deleted");
+
             return "Directory deleted";
         } catch (IOException e) {
             progress("❌ Directory deletion failed: " + e.getMessage() + " in " + path);
-            throw e;
+            throw new ToolExecutionException(e);
         }
     }
 }

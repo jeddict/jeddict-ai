@@ -75,6 +75,7 @@ import io.github.jeddict.ai.util.StringUtil;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.EventQueue;
+import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -937,36 +938,41 @@ public class AssistantChatManager extends JavaFix {
             .toAbsolutePath().normalize()
             .toString();
 
-        final List<AbstractTool> toolsList = new ArrayList();
+        try {
+            final List<AbstractTool> toolsList = new ArrayList();
 
-        //
-        // Tools for interactive mode
-        //
-        if (mode == INTERACTIVE) {
-            toolsList.add(new DiffTools(basedir, ac));
+            //
+            // Tools for interactive mode
+            //
+            if (mode == INTERACTIVE) {
+                toolsList.add(new DiffTools(basedir, ac));
+            }
+
+            //
+            // Tools commmon to both AGENT and INTERACTIVE mode
+            //
+            toolsList.add(new FileSystemTools(basedir));
+            toolsList.add(
+                new ExecutionTools(
+                    basedir, project.getProjectDirectory().getName(),
+                    pm.getBuildCommand(project), pm.getTestCommand(project)
+                )
+            );
+            toolsList.add(new ExplorationTools(basedir, project.getLookup()));
+            toolsList.add(new GradleTools(basedir));
+            toolsList.add(new MavenTools(basedir));
+            toolsList.add(new RefactoringTools(basedir));
+
+            //
+            // The handler wants to know about tool execution
+            //
+            toolsList.forEach((tool) -> tool.addListener(listener));
+
+            return toolsList;
+        } catch (IOException x) {
+            Exceptions.printStackTrace(x);
+            return List.of();
         }
-
-        //
-        // Tools commmon to both AGENT and INTERACTIVE mode
-        //
-        toolsList.add(new FileSystemTools(basedir));
-        toolsList.add(
-            new ExecutionTools(
-                basedir, project.getProjectDirectory().getName(),
-                pm.getBuildCommand(project), pm.getTestCommand(project)
-            )
-        );
-        toolsList.add(new ExplorationTools(basedir, project.getLookup()));
-        toolsList.add(new GradleTools(basedir));
-        toolsList.add(new MavenTools(basedir));
-        toolsList.add(new RefactoringTools(basedir));
-
-        //
-        // The handler wants to know about tool execution
-        //
-        toolsList.forEach((tool) -> tool.addListener(listener));
-
-        return toolsList;
     }
 
     private void async(Supplier<String> answer, final JeddictBrainListener listener) {

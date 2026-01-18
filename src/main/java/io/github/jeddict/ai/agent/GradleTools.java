@@ -18,6 +18,7 @@ package io.github.jeddict.ai.agent;
 import dev.langchain4j.agent.tool.Tool;
 import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READONLY;
 import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READWRITE;
+import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,7 +32,7 @@ import org.openide.filesystems.FileObject;
  */
 public class GradleTools extends AbstractBuildTool {
 
-    public GradleTools(final String basedir) {
+    public GradleTools(final String basedir) throws IOException {
         super(basedir, "build.gradle");
     }
 

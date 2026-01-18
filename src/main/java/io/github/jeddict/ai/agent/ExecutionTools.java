@@ -20,6 +20,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
 import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READWRITE;
+import java.io.IOException;
 
 /**
  * This class provides tools to execute build and test commands in a project,
@@ -44,7 +45,7 @@ public class ExecutionTools extends AbstractTool {
     public ExecutionTools(
         final String basedir, final String projectName,
         final String buildCommand, final String testCommand
-    ) {
+    ) throws IOException {
         super(basedir);
 
         this.projectName = projectName;

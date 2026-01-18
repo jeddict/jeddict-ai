@@ -21,6 +21,7 @@ import static io.github.jeddict.ai.agent.ToolPolicy.Policy.INTERACTIVE;
 import io.github.jeddict.ai.components.AssistantChat;
 import io.github.jeddict.ai.components.diff.DiffPane;
 import io.github.jeddict.ai.components.diff.DiffPaneController;
+import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -34,7 +35,7 @@ public class DiffTools extends AbstractTool {
 
     private final AssistantChat assistantChat;
 
-    public DiffTools(String basedir, AssistantChat assistantChat) {
+    public DiffTools(String basedir, AssistantChat assistantChat) throws IOException {
         super(basedir);
         this.assistantChat = assistantChat;
     }

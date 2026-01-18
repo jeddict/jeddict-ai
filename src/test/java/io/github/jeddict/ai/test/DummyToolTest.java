@@ -1,5 +1,6 @@
 /**
- * Copyright 2025 the original author or authors from the Jeddict project (https://jeddict.github.io/).
+ * Copyright 2025-2026 the original author or authors from the Jeddict project
+ * (https://jeddict.github.io/).
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -17,6 +18,7 @@
 package io.github.jeddict.ai.test;
 
 import java.io.File;
+import java.io.IOException;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.Test;
 
@@ -26,12 +28,12 @@ import org.junit.jupiter.api.Test;
 public class DummyToolTest {
 
     @Test
-    public void initialization_with_basedir() {
+    public void initialization_with_basedir() throws IOException {
         then(new DummyTool().basedir()).isEqualTo(new File(".").getAbsolutePath());
     }
 
     @Test
-    public void track_executions() {
+    public void track_executions() throws IOException {
         final DummyTool t = new DummyTool();
 
         then(t.executed).isFalse(); then(t.executed()).isFalse();

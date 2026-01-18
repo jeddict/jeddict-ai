@@ -36,6 +36,7 @@ import org.netbeans.modules.refactoring.api.RenameRefactoring;
 import org.openide.util.lookup.Lookups;
 import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READONLY;
 import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READWRITE;
+import java.io.IOException;
 
 /**
  * Tools for code-level operations in NetBeans projects.
@@ -47,7 +48,7 @@ import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READWRITE;
  */
 public class RefactoringTools extends AbstractCodeTool {
 
-    public RefactoringTools(final String basedir) {
+    public RefactoringTools(final String basedir) throws IOException {
         super(basedir);
     }
 

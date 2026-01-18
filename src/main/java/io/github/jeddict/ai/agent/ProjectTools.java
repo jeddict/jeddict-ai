@@ -19,6 +19,7 @@ import dev.langchain4j.agent.tool.Tool;
 import io.github.jeddict.ai.scanner.ProjectMetadataInfo;
 import org.netbeans.api.project.Project;
 import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READONLY;
+import java.io.IOException;
 
 /**
  * Tool to return information about the project: jdk version, j2ee version
@@ -27,7 +28,7 @@ public class ProjectTools extends AbstractTool {
 
     private final Project project;
 
-    public ProjectTools(final Project project) {
+    public ProjectTools(final Project project) throws IOException  {
         super(project.getProjectDirectory().getPath());
         this.project = project;
     }

@@ -33,6 +33,7 @@ import io.github.jeddict.ai.agent.pair.Shakespeare;
 import io.github.jeddict.ai.settings.PreferencesManager;
 import io.github.jeddict.ai.test.DummyTool;
 import io.github.jeddict.ai.test.TestBase;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -121,7 +122,7 @@ public class JeddictBrainTest extends TestBase {
     }
 
     @Test
-    public void all_listeners_receive_receive_all_events_ok() {
+    public void all_listeners_receive_receive_all_events_ok() throws IOException {
         final DummyTool tool = new DummyTool();
         final JeddictBrain brain = new JeddictBrain("dummy-with-tools", false, InteractionMode.AGENT, List.of(tool));
 
@@ -387,7 +388,7 @@ public class JeddictBrainTest extends TestBase {
     }
 
     @Test
-    public void get_agentic_haker_with_tools() {
+    public void get_agentic_haker_with_tools() throws IOException {
         final DummyTool tool = new DummyTool();
         final JeddictBrain brain = new JeddictBrain(
             "dummy-with-tools", false,
@@ -402,7 +403,7 @@ public class JeddictBrainTest extends TestBase {
     }
 
     @Test
-    public void get_agentic_Hacker_streaming() {
+    public void get_agentic_Hacker_streaming() throws IOException {
         final DummyJeddictBrainListener listener = new DummyJeddictBrainListener();
         final DummyTool tool = new DummyTool();
         final String[] msg = new String[2];
@@ -609,7 +610,7 @@ public class JeddictBrainTest extends TestBase {
     }
 
     @Test
-    public void wrap_tools_if_interactive() {
+    public void wrap_tools_if_interactive() throws IOException {
         final StringBuilder sb = new StringBuilder();
         final DummyTool tools = new DummyTool();
         final Function<String, Boolean> defaultInteraction = (s) -> {
@@ -644,7 +645,7 @@ public class JeddictBrainTest extends TestBase {
     }
 
     @Test
-    public void in_interactive_mode_use_default_hitm_if_not_provided() {
+    public void in_interactive_mode_use_default_hitm_if_not_provided() throws IOException {
         final JeddictBrain brain = new JeddictBrain(
             "dummy-with-tools", false,
             InteractionMode.INTERACTIVE,
@@ -692,7 +693,7 @@ public class JeddictBrainTest extends TestBase {
     }
 
     @Test
-    public void in_agent_mode_do_not_use_any_hitm() {
+    public void in_agent_mode_do_not_use_any_hitm() throws IOException {
         final JeddictBrain brain = new JeddictBrain(
             "dummy-with-tools", false,
             InteractionMode.AGENT,

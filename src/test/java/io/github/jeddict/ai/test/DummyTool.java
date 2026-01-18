@@ -20,6 +20,7 @@ import io.github.jeddict.ai.agent.AbstractTool;
 import io.github.jeddict.ai.agent.ToolPolicy;
 import static io.github.jeddict.ai.agent.ToolPolicy.Policy.*;
 import java.io.File;
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -29,11 +30,11 @@ public class DummyTool extends AbstractTool {
 
     protected boolean executed = false;
 
-    public DummyTool() {
+    public DummyTool() throws IOException {
         this(new File(".").getAbsolutePath());
     }
 
-    public DummyTool(String basedir) {
+    public DummyTool(String basedir) throws IOException {
         super(basedir);
     }
 

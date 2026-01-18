@@ -23,6 +23,7 @@ import dev.langchain4j.observability.api.listener.AiServiceCompletedListener;
 import dev.langchain4j.observability.api.listener.AiServiceResponseReceivedListener;
 import dev.langchain4j.service.AiServices;
 import io.github.jeddict.ai.test.DummyTool;
+import java.io.IOException;
 import java.util.List;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.BeforeEach;
@@ -91,7 +92,7 @@ public class HackerWithToolsTest extends PairProgrammerTestBase {
     }
 
     @Test
-    public void hack_with_streaming() {
+    public void hack_with_streaming() throws IOException {
         final DummyTool tool = new DummyTool();
         final String[] msg = new String[2];
 
