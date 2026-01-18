@@ -49,10 +49,8 @@ import org.openide.loaders.DataObjectNotFoundException;
 import org.openide.util.Exceptions;
 
 /**
- * {@code ActionPane} is a Swing component that extends {@code JTabbedPane} and
- * provides a user interface for displaying file-related actions (create, delete, update)
- * within the Jeddict AI Assistant. It shows source code, diffs, and confirmation
- * prompts to the user.
+ * {@code DiffPane} is a Swing component that extends {@code JPanel} and
+ * provides a user interface for displaying diffs and accepting/rejecting changes.
  */
 public class DiffPane extends JPanel {
 
@@ -63,18 +61,21 @@ public class DiffPane extends JPanel {
     private final JTabbedPane sourcePane;
     private DiffView diffView;
     private JEditorPane sourceView;
+    private JButton btnAccept, btnReject;
 
     /**
-     * Constructs a new {@code ActionPane}.
+     * Constructs a new {@code DiffPane}.
      *
      * @param project The NetBeans project associated with the action.
-     * @param path The {@code FileAction} to be performed.
-     * @param content The proposed content
-     *
-     *
+     * @param path The path of the file.
+     * @param content The proposed content.
      */
     public DiffPane(final Project project, final String path, final String content) {
         this.ctrl = new DiffPaneController(project, path, content);
+
+        btnAccept = new JButton("Accept");
+        btnReject = new JButton("Reject");
+
         setPreferredSize(new Dimension(600, 600));
         setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(new Color(92, 159, 194), 3),
@@ -88,10 +89,13 @@ public class DiffPane extends JPanel {
         // Accept/Reject button panel
         //
         final JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        final JButton btnAccept = new JButton("Accept");
-        final JButton btnReject = new JButton("Reject");
 
         btnAccept.addActionListener((ActionEvent event) -> {
+            //
+            // Disable the interface to prevent additional interactions
+            //
+            setEnabled(false);;
+
             //
             // Save the content (if diffView is null, there is no diff and a new
             // file is created saving the proposed wource
@@ -111,6 +115,20 @@ public class DiffPane extends JPanel {
             ctrl.onDone.accept(ACCEPT);
         });
 
+        btnReject.addActionListener((ActionEvent event) -> {
+            //
+            // Disable the interface to prevent additional interactions
+            //
+            setEnabled(false);
+
+            LOG.finest("changes rejected");
+            ctrl.onDone.accept(REJECT);
+        });
+
+        //
+        // To make the OK button look like the default button of a standard
+        // JOptiopnPane...
+        //
         btnAccept.addAncestorListener(new AncestorListener() {
             @Override
             public void ancestorAdded(AncestorEvent event) {
@@ -123,11 +141,6 @@ public class DiffPane extends JPanel {
             @Override public void ancestorMoved(AncestorEvent event) {}
         });
 
-        btnReject.addActionListener((ActionEvent event) -> {
-            LOG.finest("changes rejected");
-            ctrl.onDone.accept(REJECT);
-        });
-
         buttonPanel.add(btnAccept);
         buttonPanel.add(btnReject);
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(3, 0, 0, 10));
@@ -136,11 +149,7 @@ public class DiffPane extends JPanel {
     }
 
     /**
-     * Creates and returns a {@code JEditorPane} displaying the content of the file
-     * associated with the {@code FileAction}. This method also sets up tabs for
-     * displaying diffs or confirmation prompts based on the action type.
-     *
-     * @return A {@code JEditorPane} displaying the file content.
+     * Creates and returns a {@code JEditorPane} displaying the content of the file.
      */
     public void createPane() {
         //
@@ -179,9 +188,16 @@ public class DiffPane extends JPanel {
         addSourceTab(ctrl.content, mimeType);
     }
 
-
     public void onDone(final Consumer<UserAction> action) {
         this.ctrl.onDone = action;
+    }
+
+    @Override
+    public void setEnabled(final boolean enabled) {
+        super.setEnabled(enabled);
+
+        btnAccept.setEnabled(enabled);
+        btnReject.setEnabled(enabled);
     }
 
     // --------------------------------------------------------- private methods
@@ -219,5 +235,4 @@ public class DiffPane extends JPanel {
         sourceView.setEditable(true);
         sourcePane.addTab("Source", new JScrollPane(sourceView));
     }
-
 }
