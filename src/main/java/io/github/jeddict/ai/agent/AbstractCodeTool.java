@@ -17,6 +17,7 @@ package io.github.jeddict.ai.agent;
 
 import io.github.jeddict.ai.util.DocAction;
 import io.github.jeddict.ai.util.ThrowingFunction;
+import java.io.IOException;
 import java.nio.file.Path;
 import javax.swing.text.Document;
 import org.netbeans.api.java.source.JavaSource;
@@ -26,7 +27,7 @@ import org.openide.loaders.DataObject;
 
 public abstract class AbstractCodeTool extends AbstractTool {
 
-    public AbstractCodeTool(final String basedir) {
+    public AbstractCodeTool(final String basedir) throws IOException {
         super(basedir);
     }
 

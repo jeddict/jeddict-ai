@@ -17,6 +17,7 @@
 package io.github.jeddict.ai.test;
 
 import java.io.File;
+import java.io.IOException;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.Test;
 
@@ -26,12 +27,12 @@ import org.junit.jupiter.api.Test;
 public class DummyToolTest {
 
     @Test
-    public void initialization_with_basedir() {
+    public void initialization_with_basedir() throws IOException{
         then(new DummyTool().basedir()).isEqualTo(new File(".").getAbsolutePath());
     }
 
     @Test
-    public void track_executions() {
+    public void track_executions() throws IOException {
         final DummyTool t = new DummyTool();
 
         then(t.executed).isFalse(); then(t.executed()).isFalse();

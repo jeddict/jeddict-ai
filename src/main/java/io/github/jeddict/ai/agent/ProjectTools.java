@@ -17,6 +17,7 @@ package io.github.jeddict.ai.agent;
 
 import dev.langchain4j.agent.tool.Tool;
 import io.github.jeddict.ai.scanner.ProjectMetadataInfo;
+import java.io.IOException;
 import org.netbeans.api.project.Project;
 
 /**
@@ -26,7 +27,7 @@ public class ProjectTools extends AbstractTool {
 
     private final Project project;
 
-    public ProjectTools(final Project project) {
+    public ProjectTools(final Project project) throws IOException {
         super(project.getProjectDirectory().getPath());
         this.project = project;
     }

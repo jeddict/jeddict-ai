@@ -51,6 +51,7 @@ public class TestBase {
     public final static String USER = "user";
 
     protected String projectDir;
+    protected Path projectPath;
     protected DummyLogHandler logHandler;
     //
     // Settings are currently saved in a file in the user home (see
@@ -64,23 +65,29 @@ public class TestBase {
 
     @BeforeEach
     public void beforeEach() throws Exception {
-        projectDir = HOME.resolve("dummy-project").toString();
-
         Logger logger = Logger.getLogger("io.github.jeddict.ai");
         logger.setLevel(Level.ALL);
         logger.addHandler(logHandler = new DummyLogHandler());
 
-        FileUtils.copyDirectory(new File("src/test/projects/minimal"), new File(projectDir));
+        projectPath = HOME.resolve("dummy-project");
+        Files.createDirectories(projectPath);
+        FileUtils.copyDirectory(new File("src/test/projects/minimal"), projectPath.toFile());
 
-        Path folder = Files.createDirectories(Paths.get(projectDir, "folder"));
+        projectPath = projectPath.toAbsolutePath().toRealPath();
+        projectDir = projectPath.toString();
+
+        final Path folder = Files.createDirectories(projectPath.resolve("folder"));
+      
         try (Writer w = new FileWriter(folder.resolve("testfile.txt").toFile())) {
             w.append("This is a test file content for real file testing.");
         }
 
-        Files.copy(Paths.get(
-        "src/test/resources/settings/jeddict.json"),
-        HOME.resolve("jeddict.json"),
-        StandardCopyOption.REPLACE_EXISTING
+        Files.copy(
+            Paths.get(
+                "src/test/resources/settings/jeddict.json"),
+                HOME.resolve("jeddict.json"
+            ),
+            StandardCopyOption.REPLACE_EXISTING
         );
 
         //

@@ -22,6 +22,7 @@ import com.sun.source.tree.Tree;
 import com.sun.source.tree.VariableTree;
 import com.sun.source.util.TreePath;
 import dev.langchain4j.agent.tool.Tool;
+import java.io.IOException;
 import java.util.Set;
 import java.util.stream.Collectors;
 import javax.lang.model.element.Element;
@@ -45,7 +46,7 @@ import org.openide.util.lookup.Lookups;
  */
 public class RefactoringTools extends AbstractCodeTool {
 
-    public RefactoringTools(final String basedir) {
+    public RefactoringTools(final String basedir) throws IOException {
         super(basedir);
     }
 

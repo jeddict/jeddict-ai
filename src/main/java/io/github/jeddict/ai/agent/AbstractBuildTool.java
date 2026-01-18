@@ -15,6 +15,7 @@
  */
 package io.github.jeddict.ai.agent;
 
+import java.io.IOException;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
 
@@ -22,7 +23,7 @@ public abstract class AbstractBuildTool extends AbstractTool {
 
     private final String buildFile;
 
-    public AbstractBuildTool(final String basedir, final String buildFile) {
+    public AbstractBuildTool(final String basedir, final String buildFile) throws IOException {
         super(basedir);
         this.buildFile = buildFile;
     }

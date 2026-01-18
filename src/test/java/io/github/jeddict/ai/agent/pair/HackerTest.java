@@ -23,6 +23,7 @@ import static io.github.jeddict.ai.lang.JeddictBrain.EventProperty.CHAT_COMPLETE
 import io.github.jeddict.ai.test.DummyPropertyChangeListener;
 import io.github.jeddict.ai.test.DummyTool;
 import java.beans.PropertyChangeEvent;
+import java.io.IOException;
 import java.util.List;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.BeforeEach;
@@ -90,7 +91,7 @@ public class HackerTest extends PairProgrammerTestBase {
     }
 
     @Test
-    public void hack_with_streaming() {
+    public void hack_with_streaming() throws IOException {
         final DummyPropertyChangeListener streamListener = new DummyPropertyChangeListener();
         final DummyTool tool = new DummyTool();
         final String[] msg = new String[2];
