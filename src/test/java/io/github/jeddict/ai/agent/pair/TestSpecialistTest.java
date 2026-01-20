@@ -15,13 +15,13 @@
  */
 package io.github.jeddict.ai.agent.pair;
 
-import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import dev.langchain4j.service.AiServices;
 import java.util.List;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.Test;
@@ -163,7 +163,7 @@ public class TestSpecialistTest extends PairProgrammerTestBase {
     // --------------------------------------------------------- private methods
 
     private TestSpecialist pair() {
-        return AgenticServices.agentBuilder(TestSpecialist.class)
+        return AiServices.builder(TestSpecialist.class)
             .chatModel(model)
             .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(2))
             .build();

@@ -4,6 +4,7 @@ import java.io.File;
 import org.netbeans.api.project.Project;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.function.Consumer;
 import org.apache.commons.io.FileUtils;
@@ -120,21 +121,17 @@ public class DiffPaneController {
         // mind not use use the File object directly. They may not be the same
         // as the files in the project, depending on the FileSystem used
         //
-        try {
-            final String projectFile = new File(project.getProjectDirectory().toURI().getPath()).getCanonicalPath();
-            final String fullPath = new File(projectFile, path).getCanonicalPath();
-            if (!fullPath.startsWith(projectFile)) {
-                throw new IllegalArgumentException(
-                    "file path '" + fullPath + "' must be within the project directory"
-                );
-            }
-            return fullPath;
-        } catch (IOException x) {
-            throw new IllegalArgumentException("invalid path '" +
-                path + "' in '" +
-                project.getProjectDirectory().toURI() + ": " +
-                x.getMessage()
+
+        final Path projectPath = FileUtil.toPath(project.getProjectDirectory()).toAbsolutePath().normalize();
+        final Path filePath = Paths.get(path);
+        final Path absolutePath = filePath.isAbsolute()
+                            ? filePath.normalize()
+                            : projectPath.resolve(filePath).normalize();
+        if (!absolutePath.startsWith(projectPath)) {
+            throw new IllegalArgumentException(
+                "file path '" + absolutePath + "' must be within the project directory"
             );
         }
+        return absolutePath.toString();
     }
 }

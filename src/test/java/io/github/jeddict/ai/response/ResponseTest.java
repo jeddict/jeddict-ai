@@ -39,14 +39,14 @@ public class ResponseTest extends TestBase {
         then(response.getQuery()).isEqualTo(query);
         then(response.getMessageContext()).isEqualTo(messageContext);
         then(response.getBlocks()).hasSize(1);
-        then(response.getBlocks().get(0).getType()).isEqualTo("text");
+        then(response.getBlocks().get(0).type).isEqualTo("text");
         then(response.getBlocks().get(0).getContent()).isEqualTo(responseText1);
 
         response = new Response(null, responseText2, null);
         then(response.getQuery()).isNull();
         then(response.getMessageContext()).isEmpty();
         then(response.getBlocks()).hasSize(1);
-        then(response.getBlocks().get(0).getType()).isEqualTo("text");
+        then(response.getBlocks().get(0).type).isEqualTo("text");
         then(response.getBlocks().get(0).getContent()).isEqualTo(responseText2);
     }
 
@@ -70,7 +70,7 @@ public class ResponseTest extends TestBase {
     void get_blocks_returns_correct_blocks() {
         then(
             new Response(query, "Some text.", messageContext).getBlocks()
-        ).usingRecursiveComparison().isEqualTo(List.of(new Block("text", "Some text.")));
+        ).usingRecursiveComparison().isEqualTo(List.of(new TextBlock("text", "Some text.")));
     }
 
     @Test
@@ -80,7 +80,7 @@ public class ResponseTest extends TestBase {
         final Response response = new Response(query, TEXT, messageContext);
 
         then(response.getBlocks()).hasSize(1);
-        then(response.getBlocks().get(0).getType()).isEqualTo("text");
+        then(response.getBlocks().get(0).type).isEqualTo("text");
         then(response.getBlocks().get(0).getContent()).isEqualTo(TEXT);
     }
 
@@ -94,7 +94,7 @@ public class ResponseTest extends TestBase {
         final Response response = new Response(query, MARKDOWN, messageContext);
 
         then(response.getBlocks()).hasSize(1);
-        then(response.getBlocks().get(0).getType()).isEqualTo("code");
+        then(response.getBlocks().get(0).type).isEqualTo("code");
         then(response.getBlocks().get(0).getContent()).isEqualTo("System.out.println(\"Hello\");\n");
     }
 
@@ -108,7 +108,7 @@ public class ResponseTest extends TestBase {
         final Response response = new Response(query, MARKDOWN, messageContext);
 
         then(response.getBlocks()).hasSize(1);
-        then(response.getBlocks().get(0).getType()).isEqualTo("java");
+        then(response.getBlocks().get(0).type).isEqualTo("java");
         then(response.getBlocks().get(0).getContent()).isEqualTo("    public class MyClass {}\n");
     }
 
@@ -124,11 +124,11 @@ public class ResponseTest extends TestBase {
         final Response response = new Response(query, MARKDOWN, messageContext);
 
         then(response.getBlocks()).hasSize(3);
-        then(response.getBlocks().get(0).getType()).isEqualTo("text");
+        then(response.getBlocks().get(0).type).isEqualTo("text");
         then(response.getBlocks().get(0).getContent()).isEqualTo("First paragraph.");
-        then(response.getBlocks().get(1).getType()).isEqualTo("java");
+        then(response.getBlocks().get(1).type).isEqualTo("java");
         then(response.getBlocks().get(1).getContent()).isEqualTo("    int x = 10;\n");
-        then(response.getBlocks().get(2).getType()).isEqualTo("text");
+        then(response.getBlocks().get(2).type).isEqualTo("text");
         then(response.getBlocks().get(2).getContent()).isEqualTo("Second paragraph.");
     }
 
@@ -146,11 +146,11 @@ public class ResponseTest extends TestBase {
         final Response response = new Response(query, MARKDOWN, messageContext);
 
         then(response.getBlocks()).hasSize(3);
-        then(response.getBlocks().get(0).getType()).isEqualTo("java");
+        then(response.getBlocks().get(0).type).isEqualTo("java");
         then(response.getBlocks().get(0).getContent()).isEqualTo("// Java code\n");
-        then(response.getBlocks().get(1).getType()).isEqualTo("text");
+        then(response.getBlocks().get(1).type).isEqualTo("text");
         then(response.getBlocks().get(1).getContent()).isEqualTo("Some text.");
-        then(response.getBlocks().get(2).getType()).isEqualTo("python");
+        then(response.getBlocks().get(2).type).isEqualTo("python");
         then(response.getBlocks().get(2).getContent()).isEqualTo("# Python code\n");
     }
 
@@ -168,11 +168,11 @@ public class ResponseTest extends TestBase {
         final Response response = new Response(query, MARKDOWN, messageContext);
 
         then(response.getBlocks()).hasSize(3);
-        then(response.getBlocks().get(0).getType()).isEqualTo("bash");
+        then(response.getBlocks().get(0).type).isEqualTo("bash");
         then(response.getBlocks().get(0).getContent()).isEqualTo("echo hello\n");
-        then(response.getBlocks().get(1).getType()).isEqualTo("text");
+        then(response.getBlocks().get(1).type).isEqualTo("text");
         then(response.getBlocks().get(1).getContent()).isEqualTo("Middle text.");
-        then(response.getBlocks().get(2).getType()).isEqualTo("code");
+        then(response.getBlocks().get(2).type).isEqualTo("code");
         then(response.getBlocks().get(2).getContent()).isEqualTo("final code\n");
     }
 
@@ -188,7 +188,7 @@ public class ResponseTest extends TestBase {
         final Response response = new Response(query, MARKDOWN, messageContext);
 
         then(response.getBlocks()).hasSize(1);
-        then(response.getBlocks().get(0).getType()).isEqualTo("code");
+        then(response.getBlocks().get(0).type).isEqualTo("code");
         then(response.getBlocks().get(0).getContent()).isEqualTo("Line 1\n\nLine 3\n");
     }
 
@@ -202,7 +202,7 @@ public class ResponseTest extends TestBase {
         final Response response = new Response(query, MARKDOWN, messageContext);
 
         then(response.getBlocks()).hasSize(1);
-        then(response.getBlocks().get(0).getType()).isEqualTo("java");
+        then(response.getBlocks().get(0).type).isEqualTo("java");
         then(response.getBlocks().get(0).getContent()).isEqualTo("// Four backticks\n");
     }
 
@@ -257,7 +257,7 @@ public class ResponseTest extends TestBase {
         final Response response = new Response(query, MARKDOWN, messageContext);
 
         then(response.getBlocks()).hasSize(1);
-        then(response.getBlocks().get(0).getType()).isEqualTo("code");
+        then(response.getBlocks().get(0).type).isEqualTo("code");
         then(response.getBlocks().get(0).getContent()).isEqualTo("Code with ``` inside\n");
     }
 
@@ -271,9 +271,9 @@ public class ResponseTest extends TestBase {
         final Response response = new Response(query, MARKDOWN, messageContext);
 
         then(response.getBlocks()).hasSize(2);
-        then(response.getBlocks().get(0).getType()).isEqualTo("text");
+        then(response.getBlocks().get(0).type).isEqualTo("text");
         then(response.getBlocks().get(0).getContent()).isEqualTo("Text before.");
-        then(response.getBlocks().get(1).getType()).isEqualTo("java");
+        then(response.getBlocks().get(1).type).isEqualTo("java");
         then(response.getBlocks().get(1).getContent()).isEqualTo("Unclosed code block");
     }
 
@@ -292,11 +292,11 @@ public class ResponseTest extends TestBase {
         final Response response = new Response(query, MARKDOWN, messageContext);
 
         then(response.getBlocks()).hasSize(3);
-        then(response.getBlocks().get(0).getType()).isEqualTo("text");
+        then(response.getBlocks().get(0).type).isEqualTo("text");
         then(response.getBlocks().get(0).getContent()).isEqualTo("Text 1"); // normal text is trimmed
-        then(response.getBlocks().get(1).getType()).isEqualTo("html");
+        then(response.getBlocks().get(1).type).isEqualTo("html");
         then(response.getBlocks().get(1).getContent()).isEqualTo("<html>html</html>\n");
-        then(response.getBlocks().get(2).getType()).isEqualTo("text");
+        then(response.getBlocks().get(2).type).isEqualTo("text");
         then(response.getBlocks().get(2).getContent()).isEqualTo("Text 2");
     }
 
@@ -312,11 +312,11 @@ public class ResponseTest extends TestBase {
         final Response response = new Response(query, MARKDOWN, messageContext);
 
         then(response.getBlocks()).hasSize(3);
-        then(response.getBlocks().get(0).getType()).isEqualTo("text");
+        then(response.getBlocks().get(0).type).isEqualTo("text");
         then(response.getBlocks().get(0).getContent()).isEqualTo("Leading and trailing"); // trim() should remove leading/trailing whitespace
-        then(response.getBlocks().get(1).getType()).isEqualTo("code");
+        then(response.getBlocks().get(1).type).isEqualTo("code");
         then(response.getBlocks().get(1).getContent()).isEqualTo("  code\n"); // Content inside code block should not be trimmed
-        then(response.getBlocks().get(2).getType()).isEqualTo("text");
+        then(response.getBlocks().get(2).type).isEqualTo("text");
         then(response.getBlocks().get(2).getContent()).isEqualTo("More text");
     }
 
@@ -325,14 +325,14 @@ public class ResponseTest extends TestBase {
         final String initialResponse = "Initial text.";
         final Response response = new Response(query, initialResponse, messageContext);
 
-        Block newBlock = new Block("code", "System.out.println(\"Hello\");");
+        TextBlock newBlock = new TextBlock("code", "System.out.println(\"Hello\");");
 
         response.addBlock(newBlock);
 
         then(response.getBlocks()).hasSize(2);
-        then(response.getBlocks().get(0).getType()).isEqualTo("text");
+        then(response.getBlocks().get(0).type).isEqualTo("text");
         then(response.getBlocks().get(0).getContent()).isEqualTo(initialResponse);
-        then(response.getBlocks().get(1).getType()).isEqualTo("code");
+        then(response.getBlocks().get(1).type).isEqualTo("code");
         then(response.getBlocks().get(1).getContent()).isEqualTo("System.out.println(\"Hello\");");
     }
 
@@ -350,11 +350,11 @@ public class ResponseTest extends TestBase {
         response.addMarkdown(newMarkdown);
 
         then(response.getBlocks()).hasSize(3);
-        then(response.getBlocks().get(0).getType()).isEqualTo("text");
+        then(response.getBlocks().get(0).type).isEqualTo("text");
         then(response.getBlocks().get(0).getContent()).isEqualTo(initialResponse);
-        then(response.getBlocks().get(1).getType()).isEqualTo("java");
+        then(response.getBlocks().get(1).type).isEqualTo("java");
         then(response.getBlocks().get(1).getContent()).isEqualTo("System.out.println(\"Hello\");\n");
-        then(response.getBlocks().get(2).getType()).isEqualTo("text");
+        then(response.getBlocks().get(2).type).isEqualTo("text");
         then(response.getBlocks().get(2).getContent()).isEqualTo("More text.");
     }
 

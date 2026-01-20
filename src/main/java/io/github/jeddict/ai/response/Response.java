@@ -31,7 +31,7 @@ import org.openide.filesystems.FileObject;
 public class Response {
 
     private final String query;
-    private final List<Block> blocks = new LinkedList();
+    private final List<TextBlock> blocks = new LinkedList();
     private final Set<FileObject> messageContext;
 
     public Response(String query) {
@@ -54,7 +54,7 @@ public class Response {
         return query;
     }
 
-    public List<Block> getBlocks() {
+    public List<TextBlock> getBlocks() {
         return blocks;
     }
 
@@ -62,7 +62,7 @@ public class Response {
         return messageContext;
     }
 
-    public void addBlock(Block block) {
+    public void addBlock(TextBlock block) {
         blocks.add(block);
     }
 
@@ -74,8 +74,8 @@ public class Response {
         messageContext.addAll(context);
     }
 
-    private List<Block> parseMarkdown(String text) {
-        List<Block> result = new LinkedList<>();
+    private List<TextBlock> parseMarkdown(String text) {
+        List<TextBlock> result = new LinkedList<>();
 
         if (text.isBlank()) {
             return List.of();
@@ -102,7 +102,7 @@ public class Response {
                         //
                         // NOTE: text outside block shall be trimmed
                         //
-                        result.add(new Block(blockType, buffer.toString().trim()));
+                        result.add(new TextBlock(blockType, buffer.toString().trim()));
                         buffer.setLength(0);
                     }
                     insideCodeBlock = true;
@@ -114,7 +114,7 @@ public class Response {
                     //
                     // NOTE: content outside blocks should not be trimmed
                     //
-                    result.add(new Block(blockType, buffer.toString()));
+                    result.add(new TextBlock(blockType, buffer.toString()));
                     buffer.setLength(0);
                     blockType = "text";
                 }
@@ -125,7 +125,7 @@ public class Response {
         }
 
         if (buffer.length() > 0) {
-            result.add(new Block(blockType, buffer.toString().trim()));
+            result.add(new TextBlock(blockType, buffer.toString().trim()));
         }
 
         return result;
@@ -134,10 +134,10 @@ public class Response {
     @Override
     public String toString() {
         StringBuilder responseBuilder = new StringBuilder();
-        for (Block block : blocks) {
-            switch (block.getType()) {
+        for (TextBlock block : blocks) {
+            switch (block.type) {
                 case "text" -> responseBuilder.append(block.getContent()).append("\n");
-                default -> responseBuilder.append("```").append(block.getType()).append("\n")
+                default -> responseBuilder.append("```").append(block.type).append("\n")
                             .append(block.getContent())
                             .append("```\n");
             }

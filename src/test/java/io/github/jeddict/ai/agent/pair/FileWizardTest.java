@@ -15,10 +15,10 @@
  */
 package io.github.jeddict.ai.agent.pair;
 
-import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import dev.langchain4j.service.AiServices;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,7 +35,7 @@ public class FileWizardTest extends PairProgrammerTestBase {
     public void beforeEach() throws Exception {
         super.beforeEach();
 
-        pair = AgenticServices.agentBuilder(FileWizard.class)
+        pair = AiServices.builder(FileWizard.class)
             .chatModel(model)
             .build();
     }

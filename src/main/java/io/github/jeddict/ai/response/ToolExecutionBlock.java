@@ -1,5 +1,6 @@
 /**
- * Copyright 2025-2026 the original author or authors from the Jeddict project (https://jeddict.github.io/).
+ * Copyright 2025-2026 the original author or authors from the Jeddict project
+ * (https://jeddict.github.io/).
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -15,14 +16,24 @@
  */
 package io.github.jeddict.ai.response;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+
 /**
  *
  */
-public abstract class Block {
+public class ToolExecutionBlock extends TextBlock {
 
-    public final String type; // "text" or a language like "java", "bash", etc.
+    public static final String BLOCK_TYPE = "tooling";
 
-    public Block(final String type) {
-        this.type = type;
+    public final ToolExecutionRequest execution;
+
+    public ToolExecutionBlock(final ToolExecutionRequest execution, final String result) {
+        super(BLOCK_TYPE, result);
+        this.execution = execution;
+    }
+
+    @Override
+    public String toString() {
+        return "Type: " + type + "\nExecution:\n" + execution + "\n";
     }
 }

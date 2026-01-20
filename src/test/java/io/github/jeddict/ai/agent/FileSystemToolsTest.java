@@ -175,9 +175,15 @@ public class FileSystemToolsTest extends TestBase {
     public void listFilesInDirectory_success_and_not_found() throws Exception {
         final String existingDir = "folder";
         final String nonExistingDir = "nonexistingdir";
+        final String emptyDir = "newfolder";
 
         then(tools.listFilesInDirectory(existingDir)).contains("testfile.txt");
         thenProgressContains(listener.collector.get(0), "📂 Listing contents of directory " + existingDir);
+
+        listener.collector.clear();
+        Files.createDirectory(projectPath.resolve(emptyDir));
+        then(tools.listFilesInDirectory(emptyDir)).isEmpty();
+        thenProgressContains(listener.collector.get(0), "📂 Listing contents of directory " + emptyDir);
 
         listener.collector.clear();
         thenThrownBy(() -> tools.listFilesInDirectory(nonExistingDir))

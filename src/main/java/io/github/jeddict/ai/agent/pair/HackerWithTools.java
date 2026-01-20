@@ -37,7 +37,7 @@ public interface HackerWithTools extends Hacker {
       - Identify ambiguities, missing requirements, or assumptions.
     2. Plan before acting
       - Produce a clear, step-by-step plan outlining how you will solve the problem.
-      -Explicitly state any assumptions made.
+      - Explicitly state any assumptions made.
     3. Use tools deliberately
       - Use the provided tools only when they add value (e.g., gathering information, inspecting files, running code).
     4. Implement and iterate

@@ -373,7 +373,7 @@ public class JeddictBrainTest extends TestBase {
 
         pair.review("a message", "the text", "the code");
 
-        then(listener.collector).hasSize(2);
+        then(listener.collector).hasSize(4);
 
         //
         // 2. Interactive

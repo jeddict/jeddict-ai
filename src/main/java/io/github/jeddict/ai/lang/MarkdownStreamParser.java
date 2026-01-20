@@ -16,7 +16,7 @@
 package io.github.jeddict.ai.lang;
 
 import io.github.jeddict.ai.components.AssistantChat;
-import io.github.jeddict.ai.response.Block;
+import io.github.jeddict.ai.response.TextBlock;
 import static io.github.jeddict.ai.util.EditorUtil.printBlock;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
@@ -39,15 +39,15 @@ public class MarkdownStreamParser {
     private static final Pattern FENCE_PATTERN = Pattern.compile("^(```+)(\\s*\\w+)?\\s*$");
 
     // Thread-safe queues for blocks
-    private final ConcurrentLinkedQueue<Block> pendingBlocks = new ConcurrentLinkedQueue<>();
-    private final ConcurrentLinkedQueue<Block> doneBlocks = new ConcurrentLinkedQueue<>();
+    private final ConcurrentLinkedQueue<TextBlock> pendingBlocks = new ConcurrentLinkedQueue<>();
+    private final ConcurrentLinkedQueue<TextBlock> doneBlocks = new ConcurrentLinkedQueue<>();
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
     // Listener interface to notify UI about new done blocks
     public interface BlockListener {
 
-        void onBlockDone(Block block);
+        void onBlockDone(TextBlock block);
     }
 
     private final BlockListener blockListener;
@@ -69,7 +69,7 @@ public class MarkdownStreamParser {
             int removeLength = line.endsWith("\r") ? newlineIndex + 2 : newlineIndex + 1;
             lineBuffer.delete(0, removeLength);
 
-            Block completedBlock = processLine(line);
+            TextBlock completedBlock = processLine(line);
             if (completedBlock != null) {
                 pendingBlocks.offer(completedBlock);
             }
@@ -85,7 +85,7 @@ public class MarkdownStreamParser {
         return -1;
     }
 
-    private Block processLine(String line) {
+    private TextBlock processLine(String line) {
         Matcher fenceMatcher = FENCE_PATTERN.matcher(line);
 
         if (fenceMatcher.matches()) {
@@ -94,7 +94,7 @@ public class MarkdownStreamParser {
 
             if (!insideCodeBlock) {
                 if (blockBuffer.length() > 0) {
-                    Block textBlock = new Block("text", blockBuffer.toString().trim());
+                    TextBlock textBlock = new TextBlock("text", blockBuffer.toString().trim());
                     blockBuffer.setLength(0);
                     insideCodeBlock = true;
                     currentFence = fence;
@@ -106,7 +106,7 @@ public class MarkdownStreamParser {
                     codeType = lang.isEmpty() ? "code" : lang;
                 }
             } else if (line.startsWith(currentFence)) {
-                Block codeBlock = new Block(codeType, blockBuffer.toString().trim());
+                TextBlock codeBlock = new TextBlock(codeType, blockBuffer.toString().trim());
                 blockBuffer.setLength(0);
                 insideCodeBlock = false;
                 currentFence = null;
@@ -122,7 +122,7 @@ public class MarkdownStreamParser {
 
     public void flush() {
         if (blockBuffer.length() > 0) {
-            Block block = new Block(insideCodeBlock ? codeType : "text", blockBuffer.toString().trim());
+            TextBlock block = new TextBlock(insideCodeBlock ? codeType : "text", blockBuffer.toString().trim());
             blockBuffer.setLength(0);
             pendingBlocks.offer(block);
         }
@@ -133,7 +133,7 @@ public class MarkdownStreamParser {
         executor.submit(() -> {
             try {
                 while (!Thread.currentThread().isInterrupted()) {
-                    Block block = pendingBlocks.poll();
+                    TextBlock block = pendingBlocks.poll();
                     if (block != null) {
                         // Here you can add processing logic if needed
                         SwingUtilities.invokeLater(() -> {
@@ -169,7 +169,7 @@ public class MarkdownStreamParser {
     }
 
     // Optional getters if needed
-    public ConcurrentLinkedQueue<Block> getDoneBlocks() {
+    public ConcurrentLinkedQueue<TextBlock> getDoneBlocks() {
         return doneBlocks;
     }
 }

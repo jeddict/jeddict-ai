@@ -28,7 +28,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import io.github.jeddict.ai.JeddictUpdateManager;
 import io.github.jeddict.ai.agent.AbstractTool;
-import io.github.jeddict.ai.agent.DiffTools;
+import io.github.jeddict.ai.agent.InteractiveFileEditor;
 import io.github.jeddict.ai.agent.ExecutionTools;
 import io.github.jeddict.ai.agent.ExplorationTools;
 import io.github.jeddict.ai.agent.FileSystemTools;
@@ -53,8 +53,9 @@ import io.github.jeddict.ai.lang.InteractionMode;
 import static io.github.jeddict.ai.lang.InteractionMode.INTERACTIVE;
 import io.github.jeddict.ai.lang.JeddictBrain;
 import io.github.jeddict.ai.lang.JeddictBrainListener;
-import io.github.jeddict.ai.response.Block;
+import io.github.jeddict.ai.response.TextBlock;
 import io.github.jeddict.ai.response.Response;
+import io.github.jeddict.ai.response.ToolExecutionBlock;
 import io.github.jeddict.ai.review.Review;
 import static io.github.jeddict.ai.review.ReviewUtil.convertReviewsToHtml;
 import static io.github.jeddict.ai.review.ReviewUtil.parseReviewsFromYaml;
@@ -708,9 +709,6 @@ public class AssistantChatManager extends JavaFix {
                         response = a.chat(question, treePath, projectInfo, globalRules, sessionRules);
                     }
                 }
-                if (response != null) {
-                    listener.onChatCompleted(ChatResponse.builder().aiMessage(new AiMessage(response)).build());
-                }
             } catch (Exception e) {
                 Exceptions.printStackTrace(e);
                 ac.buttonPanelResized();
@@ -747,7 +745,7 @@ public class AssistantChatManager extends JavaFix {
                         String web = convertReviewsToHtml(reviews);
                         ac.setReviews(reviews);
                         res.getBlocks().clear();
-                        res.getBlocks().add(new Block("web", web));
+                        res.getBlocks().add(new TextBlock("web", web));
                     }
                     sourceCode = EditorUtil.updateEditors(queryUpdate, ac, res, getContextFiles());
 
@@ -758,13 +756,7 @@ public class AssistantChatManager extends JavaFix {
 
             @Override
             public void onToolExecuted(final ToolExecutionRequest request, final String result) {
-                final StringBuilder sb = new StringBuilder("```toolig\n");
-
-                sb.append(request.name()).append(' ').append(request.arguments());
-                sb.append("\n>  ").append(result.replaceAll("\n", "\n>  "));
-                sb.append("\n```");
-
-                chat.response().addMarkdown(sb.toString());
+                chat.response().addBlock(new ToolExecutionBlock(request, result));
             }
         };
     }
@@ -945,7 +937,7 @@ public class AssistantChatManager extends JavaFix {
             // Tools for interactive mode
             //
             if (mode == INTERACTIVE) {
-                toolsList.add(new DiffTools(basedir, ac));
+                toolsList.add(new InteractiveFileEditor(basedir, ac));
             }
 
             //

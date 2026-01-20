@@ -29,6 +29,7 @@ import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.netbeans.api.project.Project;
+import org.openide.filesystems.FileUtil;
 
 /**
  *
@@ -48,8 +49,7 @@ public class DiffPaneControllerTest extends TestBase {
 
     @Test
     public void creation() {
-
-        DiffPaneController ctrl = new DiffPaneController(P, F, C);
+        final DiffPaneController ctrl = new DiffPaneController(P, F, C);
         then(ctrl.project).isSameAs(P);
         then(ctrl.path).isSameAs(F);
         then(ctrl.fullPath).isEqualTo(new File(P.getProjectDirectory().getPath(), F).getAbsolutePath());
@@ -63,6 +63,16 @@ public class DiffPaneControllerTest extends TestBase {
         assertThatThrownBy(() -> new DiffPaneController(P, PATH, C))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("file path '" + new File(projectDir, PATH).getCanonicalPath() + "' must be within the project directory");
+    }
+
+    @Test
+    public void creation_with_absolute_path_resolves_into_a_path_inside_project() throws Exception {
+        final Path abs = FileUtil.toPath(P.getProjectDirectory()).resolve(F).toAbsolutePath();
+
+        final DiffPaneController ctrl = new DiffPaneController(P, abs.toString(), C);
+
+        then(ctrl.fullPath).isEqualTo(abs.toString());
+
     }
 
     @Test

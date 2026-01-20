@@ -15,7 +15,6 @@
  */
 package io.github.jeddict.ai.agent.pair;
 
-import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
@@ -66,7 +65,6 @@ Project info: {{project}}
     //
     @SystemMessage(SYSTEM_MESSAGE)
     @UserMessage(USER_MESSAGE)
-    @Agent("Suggest up to 3 names for a variable, method or other elements")
     List<String> suggest(
         @V("element") final String element,    // variable, method, method invocation
         @V("classes") final String classes,    // related classes and method signatures

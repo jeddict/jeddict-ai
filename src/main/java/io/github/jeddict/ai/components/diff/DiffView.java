@@ -209,8 +209,6 @@ public class DiffView extends JPanel implements PropertyChangeListener {
         UndoRedo undoRedo =
             (UndoRedo) ctrl.getJComponent().getClientProperty(UndoRedo.class);
 
-        LOG.finest(() -> "(un/re)do: " + undoRedo);
-
         if (undoRedo != null) {
             undoRedo.addChangeListener((event) -> {
                 LOG.finest(() -> String.valueOf(event));

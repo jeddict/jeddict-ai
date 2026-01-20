@@ -16,8 +16,9 @@
 package io.github.jeddict.ai.util;
 
 import io.github.jeddict.ai.components.AssistantChat;
-import io.github.jeddict.ai.response.Block;
+import io.github.jeddict.ai.response.TextBlock;
 import io.github.jeddict.ai.response.Response;
+import io.github.jeddict.ai.response.ToolExecutionBlock;
 import static io.github.jeddict.ai.util.MimeUtil.JAVA_MIME;
 import static io.github.jeddict.ai.util.MimeUtil.MIME_MARKDOWN;
 import static io.github.jeddict.ai.util.MimeUtil.MIME_MERMAID;
@@ -100,10 +101,10 @@ public class EditorUtil {
 
         JComponent firstPane = null;
 
-        Block actionBlock = null;
-        for (Block block : response.getBlocks()) {
+        TextBlock actionBlock = null;
+        for (TextBlock block : response.getBlocks()) {
             LOG.finest(() -> ("block:\n" + block));
-            if ("action".equals(block.getType())) {  // TODO: maybe we do not need it?
+            if ("action".equals(block.type)) {  // TODO: maybe we do not need it?
                 actionBlock = block;
                 continue;
             }
@@ -135,8 +136,8 @@ public class EditorUtil {
 
     public static JComponent printBlock(
         final StringBuilder code,
-        final Block actionBlock,
-        final Block contentBlock,
+        final TextBlock actionBlock,
+        final TextBlock contentBlock,
         final AssistantChat assistantChat
     ) {
         final Project project = assistantChat.getProject();
@@ -148,89 +149,87 @@ public class EditorUtil {
                 + project + "\n"
                 + assistantChat
         );
-        JComponent pane;
-        if (contentBlock != null && (contentBlock.getType().equals("text") || contentBlock.getType().equals("web"))) {
-            LOG.finest(() -> "Creating a text/web pane");
-            String html;
-            if (contentBlock.getType().equals("text")) {
-                html = renderer.render(parser.parse(contentBlock.getContent()));
-                html = wrapClassNamesWithAnchor(html);
-            } else {
-                html = contentBlock.getContent();
-            }
-            JEditorPane htmlPane = assistantChat.createHtmlPane(html);
-            pane = htmlPane;
-            htmlPane.addHyperlinkListener(e -> {
-                if (HyperlinkEvent.EventType.ACTIVATED.equals(e.getEventType())) {
-                    String fileName = e.getDescription();
-                    if (fileName.endsWith(".java")) {
-                        String javaClass = fileName.substring(0, fileName.length() - 5);
-                        FileObject path = findClassInSourcePath(javaClass, true);
-                        if (path != null) {
-                            openFileInEditor(path);
-                        }
-                    }
-                    if (fileName.startsWith("#")) {
-                        int lineNumber = -1;
-                        String javaClass = fileName.substring(1);
-                        if (javaClass.contains("@")) {
-                            String[] javaClassLoc = javaClass.split("@");
-                            javaClass = javaClassLoc[0];
-                            lineNumber = Integer.parseInt(javaClassLoc[1]);
-                        }
-                        FileObject path = findFileInProjects(javaClass);
-                        if (path == null) {
-                            path = findClassInSourcePath(javaClass, true);
-                        }
-                        if (path != null) {
-                            if (lineNumber < 0) {
+        JComponent pane = null;
+
+        if (contentBlock == null) {
+            return pane;
+        }
+
+        final String type = contentBlock.type;
+        switch (type) {
+            case "text", "web" -> {
+                LOG.finest(() -> "Creating a text/web pane");
+                String html;
+                if (contentBlock.type.equals("text")) {
+                    html = renderer.render(parser.parse(contentBlock.getContent()));
+                    html = wrapClassNamesWithAnchor(html);
+                } else {
+                    html = contentBlock.getContent();
+                }
+                JEditorPane htmlPane = assistantChat.createHtmlPane(html);
+                pane = htmlPane;
+                htmlPane.addHyperlinkListener(e -> {
+                    if (HyperlinkEvent.EventType.ACTIVATED.equals(e.getEventType())) {
+                        String fileName = e.getDescription();
+                        if (fileName.endsWith(".java")) {
+                            String javaClass = fileName.substring(0, fileName.length() - 5);
+                            FileObject path = findClassInSourcePath(javaClass, true);
+                            if (path != null) {
                                 openFileInEditor(path);
-                            } else {
-                                openFileInEditorAtLine(path, lineNumber);
+                            }
+                        }
+                        if (fileName.startsWith("#")) {
+                            int lineNumber = -1;
+                            String javaClass = fileName.substring(1);
+                            if (javaClass.contains("@")) {
+                                String[] javaClassLoc = javaClass.split("@");
+                                javaClass = javaClassLoc[0];
+                                lineNumber = Integer.parseInt(javaClassLoc[1]);
+                            }
+                            FileObject path = findFileInProjects(javaClass);
+                            if (path == null) {
+                                path = findClassInSourcePath(javaClass, true);
+                            }
+                            if (path != null) {
+                                if (lineNumber < 0) {
+                                    openFileInEditor(path);
+                                } else {
+                                    openFileInEditorAtLine(path, lineNumber);
+                                }
                             }
                         }
                     }
-                }
-            });
-        } else if (
-            actionBlock != null &&
-            contentBlock != null &&
-            project != null
-        ) {
-            LOG.finest(() -> "Creating an interaction pane");
+                });
+            }
 
-            //
-            // Put here interaction UI!!!
-            //
-            //
-            // This is text for which we have an action and the chat is attached
-            // to a project. In the case the project is null the block can be
-            // handled as a normal block.
-            //
-            /*
-            FileAction action = FileActionParser.parse(actionBlock.getContent(), contentBlock.getContent());
-            code.append('\n').append(contentBlock.getContent()).append('\n');
-            pane = assistantChat.createActionPane(action);
-            */
-            pane = null;
-        } else {
-            LOG.finest(() -> "Creating specialized pane");
-            code.append('\n').append(contentBlock.getContent()).append('\n');
-            String mimeType = getMimeType(contentBlock.getType());
-            if (MIME_PUML.equals(mimeType)) {
-                LOG.finest(() -> "Creating an SVG pane");
-                pane = assistantChat.createSVGPane(contentBlock);
-            } else if (MIME_MARKDOWN.equals(mimeType)) {
-                LOG.finest(() -> "Creating a Markdown pane");
-                pane = assistantChat.createMarkdownPane(contentBlock);
-            } else if (MIME_MERMAID.equals(mimeType)) {
-                LOG.finest(() -> "Creating an Mermaid pane");
-                pane = assistantChat.createMermaidPane(contentBlock);
-            } else {
-                LOG.finest(() -> "Creating an generic code pane");
-                pane = assistantChat.createCodePane(mimeType, contentBlock);
+            case "tooling" ->  {
+                LOG.finest(() -> "Creating a tool execution pane");
+                pane = assistantChat.createToolExecutionPane(
+                    ((ToolExecutionBlock)contentBlock).execution,
+                    contentBlock.getContent()
+                );
+            }
+
+            default -> {
+                LOG.finest(() -> "Creating specialized pane");
+                code.append('\n').append((contentBlock).getContent()).append('\n');
+                String mimeType = getMimeType(contentBlock.type);
+                if (MIME_PUML.equals(mimeType)) {
+                    LOG.finest(() -> "Creating an SVG pane");
+                    pane = assistantChat.createSVGPane(contentBlock);
+                } else if (MIME_MARKDOWN.equals(mimeType)) {
+                    LOG.finest(() -> "Creating a Markdown pane");
+                    pane = assistantChat.createMarkdownPane(contentBlock);
+                } else if (MIME_MERMAID.equals(mimeType)) {
+                    LOG.finest(() -> "Creating an Mermaid pane");
+                    pane = assistantChat.createMermaidPane(contentBlock);
+                } else {
+                    LOG.finest(() -> "Creating an generic code pane");
+                    pane = assistantChat.createCodePane(mimeType, contentBlock);
+                }
             }
         }
+
         return pane;
     }
 

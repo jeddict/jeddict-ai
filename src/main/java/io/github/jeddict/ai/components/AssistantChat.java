@@ -21,6 +21,7 @@ import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.expr.ObjectCreationExpr;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import io.github.jeddict.ai.JeddictUpdateManager;
 import io.github.jeddict.ai.lang.InteractionMode;
 import static io.github.jeddict.ai.classpath.JeddictQueryCompletionQuery.JEDDICT_EDITOR_CALLBACK;
@@ -29,7 +30,7 @@ import static io.github.jeddict.ai.components.QueryPane.createStyledComboBox;
 import io.github.jeddict.ai.components.diff.DiffPane;
 import io.github.jeddict.ai.components.mermaid.MermaidPane;
 import static io.github.jeddict.ai.models.registry.GenAIProvider.getModelsByProvider;
-import io.github.jeddict.ai.response.Block;
+import io.github.jeddict.ai.response.TextBlock;
 import io.github.jeddict.ai.response.Response;
 import io.github.jeddict.ai.review.Review;
 import io.github.jeddict.ai.settings.PreferencesManager;
@@ -238,7 +239,7 @@ public abstract class AssistantChat extends TopComponent {
 
     public void startLoading() {
         timer.restart();
-        LOG.finest(() -> "startLoading with handle %s and taskName %s".formatted(handle));
+        LOG.finest(() -> "startLoading with handle %s".formatted(handle));
         SwingUtilities.invokeLater(() -> {
             LOG.finest(() -> ("updpating task loader with handle " + handle));
             if (handle != null) {
@@ -879,7 +880,7 @@ public abstract class AssistantChat extends TopComponent {
         return editorPane;
     }
 
-    public JEditorPane createCodePane(String mimeType, Block content) {
+    public JEditorPane createCodePane(String mimeType, TextBlock content) {
         if (mimeType == null || mimeType.isBlank()) {
             mimeType = MIME_PLAIN_TEXT;
         }
@@ -917,7 +918,7 @@ public abstract class AssistantChat extends TopComponent {
         return editorPane;
     }
 
-    public SVGPane createSVGPane(Block content) {
+    public SVGPane createSVGPane(TextBlock content) {
         SVGPane svgPane = new SVGPane();
         JEditorPane sourcePane = svgPane.createPane(content);
         addContextMenu(sourcePane);
@@ -925,7 +926,7 @@ public abstract class AssistantChat extends TopComponent {
         return svgPane;
     }
 
-    public MermaidPane createMermaidPane(Block content) {
+    public MermaidPane createMermaidPane(TextBlock content) {
         MermaidPane pane = new MermaidPane();
         JEditorPane sourcePane = pane.createPane(content);
         addContextMenu(sourcePane);
@@ -933,7 +934,7 @@ public abstract class AssistantChat extends TopComponent {
         return pane;
     }
 
-    public MarkdownPane createMarkdownPane(Block content) {
+    public MarkdownPane createMarkdownPane(TextBlock content) {
         MarkdownPane pane = new MarkdownPane();
         JEditorPane sourcePane = pane.createPane(content, this);
         addContextMenu(sourcePane);
@@ -948,6 +949,17 @@ public abstract class AssistantChat extends TopComponent {
         addEditorPaneRespectingTextArea(diffPane);
 
         return diffPane;
+    }
+
+    public ToolExecutionPane createToolExecutionPane(
+        final ToolExecutionRequest execution, final String result
+    ) {
+        LOG.finest(() -> "createToolExecutionPane for execution " + execution);
+
+        final ToolExecutionPane toolPane = new ToolExecutionPane(execution, result);
+        addEditorPaneRespectingTextArea(toolPane);
+
+        return toolPane;
     }
 
     private void addContextMenu(JEditorPane editorPane) {

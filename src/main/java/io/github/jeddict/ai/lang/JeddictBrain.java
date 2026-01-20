@@ -21,7 +21,6 @@ package io.github.jeddict.ai.lang;
  */
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agentic.AgenticServices;
-import dev.langchain4j.agentic.agent.AgentBuilder;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -203,66 +202,36 @@ public class JeddictBrain implements PropertyChangeEmitter {
      * @return an instance of the configured agent
      */
     public <T> T pairProgrammer(PairProgrammer.Specialist specialist) {
-        //
-        // HACKER is a top level AI agent that interacts with the user. As such,
-        // it must support many more functionalities then other agents and
-        // overcome some design limitations currently in langchain4j agents (see
-        // https://github.com/langchain4j/langchain4j/issues/4098,
-        // https://github.com/langchain4j/langchain4j/issues/4177,
-        // https://github.com/langchain4j/langchain4j/issues/3519 )
-        //
-        // Assistant is a top level tool, but for generale enquiries and
-        // interactions with the AI. It is mainly for use in QUERY interaction
-        // mode. Since it supports streaming, we need to use AiServices.
-        //
-        if (
-            (specialist == PairProgrammer.Specialist.HACKER) ||
-            (specialist == PairProgrammer.Specialist.ASSISTANT) ||
-            (specialist == PairProgrammer.Specialist.HACKER_WITHOUT_TOOLS)) {
-            if (specialist == PairProgrammer.Specialist.HACKER) {
-                if (!probeToolSupport()) {
-                    specialist = PairProgrammer.Specialist.HACKER_WITHOUT_TOOLS;
-                }
+        if (specialist == PairProgrammer.Specialist.HACKER) {
+            if (!probeToolSupport()) {
+                specialist = PairProgrammer.Specialist.HACKER_WITHOUT_TOOLS;
             }
-
-            final AiServices builder = AiServices.builder(specialist.specialistClass);
-            if (streaming) {
-                builder.streamingChatModel(model());
-            } else {
-                builder.chatModel(model());
-            }
-            if (memorySize > 0) {
-                builder.chatMemory(MessageWindowChatMemory.withMaxMessages(memorySize));
-            }
-            if (specialist == PairProgrammer.Specialist.HACKER) {
-                builder.tools(tools.toArray());
-            }
-
-            //
-            // check this note in:
-            // NOTE: If you create a DefaultToolExecutor manually or use a custom
-            // ToolExecutor, ensure that a ToolExecutionException is thrown by
-            // ToolExecutor in such cases. For DefaultToolExecutor, you can
-            // enable this by setting DefaultToolExecutor.Builder.propagateToolExecutionExceptions(Boolean)
-            // to true.
-            //
-            builder.registerListeners(allListeners());
-            builder.toolExecutionErrorHandler(this::toolExecutionErrorHandler);
-            builder.toolArgumentsErrorHandler(this::toolArgumentsErrorHandler);
-
-            return (T) builder.build();
         }
 
-        //
-        // Build normal utility agents
-        //
-        final AgentBuilder<T> builder
-            = AgenticServices.agentBuilder(specialist.specialistClass)
-                .chatModel(model(false));
-
+        final AiServices builder = AiServices.builder(specialist.specialistClass);
+        if (streaming) {
+            builder.streamingChatModel(model());
+        } else {
+            builder.chatModel(model());
+        }
         if (memorySize > 0) {
             builder.chatMemory(MessageWindowChatMemory.withMaxMessages(memorySize));
         }
+        if (specialist == PairProgrammer.Specialist.HACKER) {
+            builder.tools(tools.toArray());
+        }
+
+        //
+        // check this note in:
+        // NOTE: If you create a DefaultToolExecutor manually or use a custom
+        // ToolExecutor, ensure that a ToolExecutionException is thrown by
+        // ToolExecutor in such cases. For DefaultToolExecutor, you can
+        // enable this by setting DefaultToolExecutor.Builder.propagateToolExecutionExceptions(Boolean)
+        // to true.
+        //
+        builder.registerListeners(allListeners());
+        builder.toolExecutionErrorHandler(this::toolExecutionErrorHandler);
+        builder.toolArgumentsErrorHandler(this::toolArgumentsErrorHandler);
 
         return (T) builder.build();
     }

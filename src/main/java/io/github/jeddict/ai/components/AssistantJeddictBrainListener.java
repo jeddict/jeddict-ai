@@ -16,7 +16,6 @@
 package io.github.jeddict.ai.components;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.AuthenticationException;
@@ -28,9 +27,6 @@ import io.github.jeddict.ai.lang.JeddictBrainListener;
 import io.github.jeddict.ai.response.Response;
 import io.github.jeddict.ai.response.TokenHandler;
 import io.github.jeddict.ai.settings.PreferencesManager;
-import io.github.jeddict.ai.util.Utilities;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
@@ -43,6 +39,7 @@ import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
+import org.openide.util.Exceptions;
 import org.openide.util.NbBundle;
 
 /**
@@ -126,6 +123,7 @@ public class AssistantJeddictBrainListener
             "\n----------"
         );
         final String result = response.aiMessage().text();
+        assistantChat.response().addMarkdown(result);
         CompletableFuture.runAsync(() -> TokenHandler.saveOutputToken(result));
     }
 
@@ -165,8 +163,6 @@ public class AssistantJeddictBrainListener
             "\n----------"
         );
 
-        assistantChat.response().addMarkdown(response.aiMessage().text());
-
         //
         // just in case...
         //
@@ -181,24 +177,20 @@ public class AssistantJeddictBrainListener
         LOG.finest(() ->
             "<<< error received\n------------------\n" +
             throwable +
-            "\n----------"
+            "\n------------------"
         );
 
         // Log the error with timestamp and thread info
-        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-        String threadName = Thread.currentThread().getName();
-        LOG.log(Level.SEVERE, "Error occurred at {0} on thread [{1}]", new Object[] { timestamp, threadName });
-        LOG.log(Level.SEVERE, "Details:", throwable);
+        LOG.log(Level.INFO, "Details:", throwable);
 
-        onChatCompleted(ChatResponse.builder().aiMessage(
-            AiMessage.from(Utilities.errorHTMLBlock(throwable))
-        ).build());
+        onProgress(throwable.getMessage());
 
         if (throwable instanceof AuthenticationException) {
             confirmApiKey();
         } else if (throwable instanceof ModelNotFoundException) {
             showError("Invalid model, check assistant settings.");
         } else {
+            Exceptions.printStackTrace(throwable);
             showError(String.valueOf(throwable.getMessage()));
         }
     }

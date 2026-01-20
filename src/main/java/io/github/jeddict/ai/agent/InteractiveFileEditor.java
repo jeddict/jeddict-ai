@@ -31,17 +31,17 @@ import org.apache.commons.lang3.StringUtils;
 /**
  * A tool for performing diff operations.
  */
-public class DiffTools extends AbstractTool {
+public class InteractiveFileEditor extends AbstractTool {
 
     private final AssistantChat assistantChat;
 
-    public DiffTools(String basedir, AssistantChat assistantChat) throws IOException {
+    public InteractiveFileEditor(String basedir, AssistantChat assistantChat) throws IOException {
         super(basedir);
         this.assistantChat = assistantChat;
     }
 
     @Tool("""
-    This is a user friendly editor to create or edit text content. Use it to
+    This is an interactive editor to create or edit text content. Use it to
     create new files or update existing files.
 
     Inputs:
@@ -55,9 +55,11 @@ public class DiffTools extends AbstractTool {
     """
     )
     @ToolPolicy(INTERACTIVE)
-    public String diff(final String path, final String content)
+    public String editFile(final String path, final String content)
     throws ToolExecutionException {
-        progress("∆ Performing diff on " + path + " with proposed content " + StringUtils.abbreviate(content, 40));
+        progress("∆ Editing " + path + " with proposed content " + StringUtils.abbreviate(content, 40));
+
+        checkPath(path);
 
         final CountDownLatch done = new CountDownLatch(1);
         final AtomicReference<String> newContent = new AtomicReference();

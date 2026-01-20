@@ -19,10 +19,12 @@ package io.github.jeddict.ai.components;
 import static io.github.jeddict.ai.util.EditorUtil.getFontFromMimeType;
 import static io.github.jeddict.ai.util.EditorUtil.getTextColorFromMimeType;
 import static io.github.jeddict.ai.util.MimeUtil.MIME_PLAIN_TEXT;
+import static io.github.jeddict.ai.util.UIUtil.COLOR_JEDDICT_MAIN;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import javax.swing.BorderFactory;
+import javax.swing.JButton;
 import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
@@ -31,7 +33,6 @@ import javax.swing.JTextArea;
  *
  */
 public class ToolExecutionConfirmationPane extends JOptionPane {
-
     protected static final Dimension MAX_SIZE = new Dimension(Integer.MAX_VALUE, 150);
 
     public ToolExecutionConfirmationPane() {
@@ -39,7 +40,7 @@ public class ToolExecutionConfirmationPane extends JOptionPane {
 
         setVisible(false);
         setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(92, 159, 194), 3),
+            BorderFactory.createLineBorder(COLOR_JEDDICT_MAIN, 3),
             BorderFactory.createEmptyBorder(5, 5, 5, 5)
         ));
         setBackground(Color.WHITE);
@@ -70,4 +71,5 @@ public class ToolExecutionConfirmationPane extends JOptionPane {
         return new Dimension(Integer.MAX_VALUE, getPreferredSize().height);
     }
 
+    // Remove the showConfirmDialog override since it's static in JOptionPane
 }
