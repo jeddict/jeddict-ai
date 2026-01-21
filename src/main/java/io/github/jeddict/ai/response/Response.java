@@ -22,6 +22,7 @@ import java.util.Scanner;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.commons.lang3.StringUtils;
 import org.openide.filesystems.FileObject;
 
 /**
@@ -33,6 +34,10 @@ public class Response {
     private final String query;
     private final List<TextBlock> blocks = new LinkedList();
     private final Set<FileObject> messageContext;
+    
+    public Response() {
+        this(null);
+    }
 
     public Response(String query) {
         this(query, null, Set.of());
@@ -66,15 +71,17 @@ public class Response {
         blocks.add(block);
     }
 
-    public void addMarkdown(String md) {
-        blocks.addAll(parseMarkdown(md));
+    public void addMarkdown(final String md) {
+        if (!StringUtils.isBlank(md)) {
+            blocks.addAll(parseMarkdown(md));
+        }
     }
 
     public void addContext(Set<FileObject> context) {
         messageContext.addAll(context);
     }
 
-    private List<TextBlock> parseMarkdown(String text) {
+    private List<TextBlock> parseMarkdown(final String text) {
         List<TextBlock> result = new LinkedList<>();
 
         if (text.isBlank()) {

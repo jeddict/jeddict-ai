@@ -371,4 +371,16 @@ public class ResponseTest extends TestBase {
         then(response.getMessageContext()).contains(newContextFile);
     }
 
+    @Test
+    void add_markdown_does_not_add_any_block_if_text_is_empty() {
+        final Response response = new Response(query, "Initial text.", messageContext);
+
+        then(response.getBlocks()).hasSize(1);
+
+        for (String blank: new String[] { null, "", "  ", "\n\t\r"}) {
+            response.addMarkdown(blank);
+            then(response.getBlocks()).hasSize(1);
+        }
+    }
+
 }
