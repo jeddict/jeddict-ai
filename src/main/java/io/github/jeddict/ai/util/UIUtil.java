@@ -33,6 +33,7 @@ public class UIUtil {
     // Colors
     //
     public static final Color COLOR_JEDDICT_MAIN = new Color(92, 159, 194);
+    public static final Color COLOR_JEDDICT_ACCENT1 = new Color(0xd6, 0x33, 0x84);
 
     //
     // Fonts
