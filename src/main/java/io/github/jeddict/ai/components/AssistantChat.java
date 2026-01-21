@@ -186,7 +186,7 @@ public abstract class AssistantChat extends TopComponent {
     //
     // Kind of model for this window
     //
-    private Response response;
+    private Response response = new Response();
 
     private final Timer timer = new Timer(200, e -> {
         int index = SPINNER_FRAMES.indexOf(submitButton.getText().charAt(0));
@@ -1574,6 +1574,9 @@ public abstract class AssistantChat extends TopComponent {
     }
 
 
+    //
+    // TODO: move reponse in the listener
+    //
     public void response(final Response response) {
         this.response = response;
     }
