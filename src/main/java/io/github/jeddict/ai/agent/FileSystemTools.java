@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READONLY;
 import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READWRITE;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * Collection of tools that expose file system and editor operations inside
@@ -158,7 +159,11 @@ public class FileSystemTools extends AbstractCodeTool {
      * @param replacement the replacement text
      * @return a status message
      */
-    @Tool("Replace parts of a file content matching a literal string with replacement text. Special regex characters are escaped automatically")
+    @Tool(
+    """
+    Replace parts of a file content matching a literal string with replacement text
+    with no user interaction. Special regex characters are escaped.
+    """)
     @ToolPolicy(READWRITE)
     public String replaceSnippetByLiteral(String path, String literalText, String replacement)
             throws Exception {
@@ -174,7 +179,7 @@ public class FileSystemTools extends AbstractCodeTool {
      * @param replacement the replacement text
      * @return a status message
      */
-    @Tool("Replace parts of a file content matching a regex pattern with replacement text")
+    @Tool("Replace parts of a file content matching a regex pattern with replacement text  with no user interaction")
     @ToolPolicy(READWRITE)
     public String replaceSnippetByRegex(
         final String path, final String regexPattern, final String replacement
@@ -211,7 +216,7 @@ public class FileSystemTools extends AbstractCodeTool {
      * @param newContent the new content to write
      * @return a status message
      */
-    @Tool("Replace the full content of a file by path with new text")
+    @Tool("Replace the full content of a file by path with new text with no user interaction")
     @ToolPolicy(READWRITE)
     public String replaceFileContent(final String path, final String newContent)
     throws ToolExecutionException {
@@ -236,7 +241,7 @@ public class FileSystemTools extends AbstractCodeTool {
      * @param content optional content to write into the file
      * @return a status message
      */
-    @Tool("Create a new file at the given path with optional content")
+    @Tool("Create a new file at the given path with optional content with no user interaction")
     @ToolPolicy(READWRITE)
     public String createFile(String path, String content) throws ToolExecutionException {
         progress("📄 Creating file " + path);
@@ -304,6 +309,7 @@ public class FileSystemTools extends AbstractCodeTool {
         a slash ('/')
         If the path does not exist or is not a directory, it returns
         "<directory> does not exist".
+        If the directory is empty (empty) is returned.
         """
     )
     @ToolPolicy(READONLY)
@@ -319,11 +325,15 @@ public class FileSystemTools extends AbstractCodeTool {
             throw new ToolExecutionException(path + " does not exist");
         }
 
+        //
+        // currently langchain4j does not allow a tool to return an empty or null ù
+        // result. See https://github.com/langchain4j/langchain4j/issues/4300
+        // Until the fix it, let's return (empty)
+        //
         try {
-            return Files.list(dirPath)
+            return StringUtils.defaultIfBlank(Files.list(dirPath)
                 .map(p -> " - " + p.getFileName() + (Files.isDirectory(p) ? "/" : ""))
-                .collect(Collectors.joining("\n"));
-
+                .collect(Collectors.joining("\n")), "(empty)");
         } catch (IOException e) {
             progress("❌ error listing " + path);
             throw new ToolExecutionException(e);
