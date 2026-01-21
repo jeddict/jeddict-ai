@@ -5,15 +5,21 @@
 package io.github.jeddict.ai.components;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import static io.github.jeddict.ai.util.ColorUtil.web;
 import io.github.jeddict.ai.util.UIUtil;
+import static io.github.jeddict.ai.util.UIUtil.COLOR_JEDDICT_ACCENT1;
 import static io.github.jeddict.ai.util.UIUtil.FONT_MONOSPACED;
+import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Dimension;
+import javax.swing.Box;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
+import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
 import static ste.lloop.Loop.on;
 
@@ -65,12 +71,10 @@ public class ToolExecutionPane extends javax.swing.JPanel {
             .addGap(0, 243, Short.MAX_VALUE)
         );
 
-        setBackground(new java.awt.Color(255, 255, 255));
         setBorder(javax.swing.BorderFactory.createCompoundBorder(javax.swing.BorderFactory.createEmptyBorder(5, 5, 5, 5), javax.swing.BorderFactory.createLineBorder(UIUtil.COLOR_JEDDICT_MAIN, 3)));
         setName("root"); // NOI18N
         setLayout(new java.awt.BorderLayout());
 
-        headerPanel.setBackground(new java.awt.Color(255, 255, 255));
         headerPanel.setBorder(javax.swing.BorderFactory.createEmptyBorder(20, 20, 20, 20));
         headerPanel.setName("headerPane"); // NOI18N
         headerPanel.setLayout(new java.awt.BorderLayout());
@@ -82,7 +86,6 @@ public class ToolExecutionPane extends javax.swing.JPanel {
         nameLabel.setName("name"); // NOI18N
         headerPanel.add(nameLabel, java.awt.BorderLayout.NORTH);
 
-        argumentsPanel.setBackground(new java.awt.Color(255, 255, 255));
         argumentsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
         argumentsPanel.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
         headerPanel.add(argumentsPanel, java.awt.BorderLayout.CENTER);
@@ -118,19 +121,35 @@ public class ToolExecutionPane extends javax.swing.JPanel {
     }// </editor-fold>//GEN-END:initComponents
 
 
-    private JPanel createParamChip(String name, String value) {
+    private JPanel createParamChip(final String name, final String value) {
         JPanel chip = new JPanel();
-        chip.setName("chip");
+        chip.setLayout(new BorderLayout());
+
+        final Box.Filler ribbon = new Box.Filler(
+            new Dimension(3, 16),  // min
+            new Dimension(3, 16),  // pref
+            new Dimension(3, 32767)   // max
+        );
+        ribbon.setBackground(COLOR_JEDDICT_ACCENT1);
+        ribbon.setOpaque(true);
+
+        chip.setName(name);
         chip.setBackground(new Color(241, 243, 245));
-        chip.setBorder(new CompoundBorder(
+
+        JLabel label = new JLabel(
+            "<html><font color='%s'><b>%s:</b></font> %s</html>"
+                .formatted(web(COLOR_JEDDICT_ACCENT1), name, StringUtils.abbreviateMiddle(value, " ... ", 80))
+        );
+        label.setName(name);
+        label.setFont(FONT_MONOSPACED);
+        label.setBorder(new CompoundBorder(
             new LineBorder(new Color(222, 226, 230), 1),
             new EmptyBorder(4, 10, 4, 8)
         ));
 
-        JLabel label = new JLabel("<html><font color='#d63384'><b>" + name + ":</b></font> " + value + "</html>");
-        label.setName("argument");
-        label.setFont(FONT_MONOSPACED);
-        chip.add(label);
+        chip.add(ribbon, BorderLayout.WEST);
+        chip.add(label, BorderLayout.CENTER);
+
         return chip;
     }
     // Variables declaration - do not modify//GEN-BEGIN:variables
