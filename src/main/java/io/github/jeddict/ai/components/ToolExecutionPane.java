@@ -1,43 +1,40 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JPanel.java to edit this template
+/**
+ * Copyright 2025-2026 the original author or authors from the Jeddict project
+ * (https://jeddict.github.io/).
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 package io.github.jeddict.ai.components;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import static io.github.jeddict.ai.util.ColorUtil.web;
 import io.github.jeddict.ai.util.UIUtil;
-import static io.github.jeddict.ai.util.UIUtil.COLOR_JEDDICT_ACCENT1;
-import static io.github.jeddict.ai.util.UIUtil.FONT_MONOSPACED;
-import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Component;
-import java.awt.Dimension;
-import javax.swing.Box;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.border.CompoundBorder;
-import javax.swing.border.EmptyBorder;
-import javax.swing.border.LineBorder;
-import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
 import static ste.lloop.Loop.on;
 
 /**
- *
- * @author ste
+ * A component for displaying tool execution details.
  */
 public class ToolExecutionPane extends javax.swing.JPanel {
-    /**
-     * Creates new form ToolExecutionPane
-     */
+
     public ToolExecutionPane(final ToolExecutionRequest execution, final String result) {
         initComponents();
 
         nameLabel.setText(execution.name());
         final JSONObject arguments = new JSONObject(execution.arguments());
         on(arguments.keySet()).loop((key) -> {
-            argumentsPanel.add(createParamChip(key, arguments.getString(key)));
+            argumentsPanel.add(createArgumentChip(key, arguments.getString(key)));
         });
         resultTextArea.setText(result);
     }
@@ -75,7 +72,7 @@ public class ToolExecutionPane extends javax.swing.JPanel {
         setName("root"); // NOI18N
         setLayout(new java.awt.BorderLayout());
 
-        headerPanel.setBorder(javax.swing.BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        headerPanel.setBorder(javax.swing.BorderFactory.createEmptyBorder(10, 10, 10, 10));
         headerPanel.setName("headerPane"); // NOI18N
         headerPanel.setLayout(new java.awt.BorderLayout());
 
@@ -87,22 +84,24 @@ public class ToolExecutionPane extends javax.swing.JPanel {
         headerPanel.add(nameLabel, java.awt.BorderLayout.NORTH);
 
         argumentsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        argumentsPanel.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
+        argumentsPanel.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 0, 0));
         headerPanel.add(argumentsPanel, java.awt.BorderLayout.CENTER);
 
         add(headerPanel, java.awt.BorderLayout.NORTH);
 
         resultPanel.setBackground(new java.awt.Color(250, 251, 255));
-        resultPanel.setBorder(javax.swing.BorderFactory.createCompoundBorder(javax.swing.BorderFactory.createEmptyBorder(20, 20, 20, 20), javax.swing.BorderFactory.createMatteBorder(1, 0, 0, 0, new java.awt.Color(224, 224, 224))));
+        resultPanel.setBorder(javax.swing.BorderFactory.createCompoundBorder(javax.swing.BorderFactory.createEmptyBorder(10, 10, 10, 10), javax.swing.BorderFactory.createMatteBorder(1, 0, 0, 0, new java.awt.Color(224, 224, 224))));
         resultPanel.setName("resultPane"); // NOI18N
         resultPanel.setLayout(new java.awt.BorderLayout());
 
         resultLabel.setFont(UIUtil.FONT_HEADER);
         resultLabel.setForeground(new java.awt.Color(150, 150, 150));
         org.openide.awt.Mnemonics.setLocalizedText(resultLabel, org.openide.util.NbBundle.getMessage(ToolExecutionPane.class, "ToolExecutionPane.resultLabel.text")); // NOI18N
+        resultLabel.setBorder(javax.swing.BorderFactory.createEmptyBorder(1, 1, 10, 1));
         resultPanel.add(resultLabel, java.awt.BorderLayout.PAGE_START);
 
         jScrollPane1.setBorder(javax.swing.BorderFactory.createEmptyBorder(1, 1, 1, 1));
+        jScrollPane1.setPreferredSize(new java.awt.Dimension(224, 50));
 
         resultTextArea.setEditable(false);
         resultTextArea.setBackground(new java.awt.Color(250, 251, 255));
@@ -111,7 +110,8 @@ public class ToolExecutionPane extends javax.swing.JPanel {
         resultTextArea.setLineWrap(true);
         resultTextArea.setRows(5);
         resultTextArea.setWrapStyleWord(true);
-        resultTextArea.setBorder(javax.swing.BorderFactory.createEmptyBorder(10, 0, 0, 0));
+        resultTextArea.setBorder(javax.swing.BorderFactory.createEmptyBorder(1, 1, 1, 1));
+        resultTextArea.setMinimumSize(new java.awt.Dimension(103, 87));
         resultTextArea.setName("result"); // NOI18N
         jScrollPane1.setViewportView(resultTextArea);
 
@@ -121,37 +121,10 @@ public class ToolExecutionPane extends javax.swing.JPanel {
     }// </editor-fold>//GEN-END:initComponents
 
 
-    private JPanel createParamChip(final String name, final String value) {
-        JPanel chip = new JPanel();
-        chip.setLayout(new BorderLayout());
-
-        final Box.Filler ribbon = new Box.Filler(
-            new Dimension(3, 16),  // min
-            new Dimension(3, 16),  // pref
-            new Dimension(3, 32767)   // max
-        );
-        ribbon.setBackground(COLOR_JEDDICT_ACCENT1);
-        ribbon.setOpaque(true);
-
-        chip.setName(name);
-        chip.setBackground(new Color(241, 243, 245));
-
-        JLabel label = new JLabel(
-            "<html><font color='%s'><b>%s:</b></font> %s</html>"
-                .formatted(web(COLOR_JEDDICT_ACCENT1), name, StringUtils.abbreviateMiddle(value, " ... ", 80))
-        );
-        label.setName(name);
-        label.setFont(FONT_MONOSPACED);
-        label.setBorder(new CompoundBorder(
-            new LineBorder(new Color(222, 226, 230), 1),
-            new EmptyBorder(4, 10, 4, 8)
-        ));
-
-        chip.add(ribbon, BorderLayout.WEST);
-        chip.add(label, BorderLayout.CENTER);
-
-        return chip;
+    private JPanel createArgumentChip(final String name, final String value) {
+        return new ArgumentChip(name, value);
     }
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel argumentsPanel;
     private javax.swing.JPanel headerPanel;

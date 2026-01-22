@@ -182,7 +182,7 @@ public class FileSystemToolsTest extends TestBase {
 
         listener.collector.clear();
         Files.createDirectory(projectPath.resolve(emptyDir));
-        then(tools.listFilesInDirectory(emptyDir)).isEmpty();
+        then(tools.listFilesInDirectory(emptyDir)).isEqualTo("(empty)");
         thenProgressContains(listener.collector.get(0), "📂 Listing contents of directory " + emptyDir);
 
         listener.collector.clear();
