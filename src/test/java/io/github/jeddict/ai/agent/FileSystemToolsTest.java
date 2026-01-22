@@ -397,7 +397,7 @@ public class FileSystemToolsTest extends TestBase {
         thenProgressContains(listener.collector.get(1), "❌ No matches found for regex 'none' in " + TESTFILE);
 
         listener.collector.clear();
-        Path notExistingPath =  projectPath.resolve("notexisting.txt");
+        Path notExistingPath =  projectPath.resolve("notexisting.txt").normalize();
         thenThrownBy( () -> tools.replaceSnippetByRegex(
             notExistingPath.toString(), "text", "nothing"
         )).isInstanceOf(ToolExecutionException.class)

@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.BDDAssertions.thenThrownBy;
+import org.junit.jupiter.api.BeforeEach;
 
 public class AbstractToolTest extends TestBase {
 
@@ -21,7 +22,7 @@ public class AbstractToolTest extends TestBase {
         final DummyTool tool = new DummyTool(projectDir);
 
         then(tool.basedir).isSameAs(projectDir);
-        then(tool.basepath.toString()).isEqualTo(projectDir);
+        then(tool.basepath).isEqualTo(projectPath);
     }
 
     @Test
@@ -36,7 +37,7 @@ public class AbstractToolTest extends TestBase {
     public void fullPath_returns_the_full_path_of_given_relative_path() throws Exception {
         final DummyTool tool = new DummyTool(projectDir);
 
-        then(tool.fullPath("relative")).isEqualTo(Paths.get(projectDir, "relative"));
+        then(tool.fullPath("relative")).isEqualTo(projectPath.resolve("relative"));
     }
 
     @Test
@@ -104,11 +105,11 @@ public class AbstractToolTest extends TestBase {
     @Test
     public void checkPath_completes_with_child() throws IOException {
         final DummyTool tool = new DummyTool(projectDir);
-        tool.checkPath(projectDir);
+        tool.checkPath(projectPath.toString());
         tool.checkPath(TESTFILE);
         tool.checkPath("folder/");
         tool.checkPath(projectPath.resolve(TESTFILE).toAbsolutePath().toString());
-}
+    }
 
     @Test
     public void checkPath_raises_exception_with_not_child_path() throws IOException {
