@@ -1,5 +1,5 @@
 /**
- * Copyright 2025 the original author or authors from the Jeddict project (https://jeddict.github.io/).
+ * Copyright 2025-2026 the original author or authors from the Jeddict project (https://jeddict.github.io/).
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -17,38 +17,12 @@ package io.github.jeddict.ai.response;
 
 /**
  *
- * @author Gaurav Gupta
  */
-public class Block {
+public abstract class Block {
 
-    private String type; // "text" or a language like "java", "bash", etc.
-    private String content;
+    public final String type; // "text" or a language like "java", "bash", etc.
 
-    public Block(String type, String content) {
+    public Block(final String type) {
         this.type = type;
-        this.content = content;
-    }
-
-    public String getType() {
-        return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    public void setContent(String content) {
-        this.content = content;
-    }
-    
-    
-
-    @Override
-    public String toString() {
-        return "Type: " + type + "\nContent:\n" + content + "\n";
     }
 }

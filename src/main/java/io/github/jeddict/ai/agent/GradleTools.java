@@ -16,6 +16,9 @@
 package io.github.jeddict.ai.agent;
 
 import dev.langchain4j.agent.tool.Tool;
+import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READONLY;
+import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READWRITE;
+import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,7 +32,7 @@ import org.openide.filesystems.FileObject;
  */
 public class GradleTools extends AbstractBuildTool {
 
-    public GradleTools(final String basedir) {
+    public GradleTools(final String basedir) throws IOException {
         super(basedir, "build.gradle");
     }
 
@@ -37,6 +40,7 @@ public class GradleTools extends AbstractBuildTool {
         name = "addGradleDependency",
         value = "Add a dependency to the build.gradle file"
     )
+    @ToolPolicy(READWRITE)
     public String addDependency(String configuration, String dependencyNotation)
     throws Exception {
         progress("Adding dependency: " + configuration + ":" + dependencyNotation);
@@ -87,6 +91,7 @@ public class GradleTools extends AbstractBuildTool {
         name = "removeGradleDependency",
         value = "Remove a dependency from the build.gradle file"
     )
+    @ToolPolicy(READWRITE)
     public String removeDependency(String configuration, String dependencyNotation)
     throws Exception {
         progress("Removing dependency: " + configuration + ":" + dependencyNotation);
@@ -125,6 +130,7 @@ public class GradleTools extends AbstractBuildTool {
         name = "listGradleDependencies",
         value = "List all dependencies in the build.gradle file"
     )
+    @ToolPolicy(READONLY)
     public String listDependencies() throws Exception {
         progress("Listing dependencies");
         try {
@@ -171,6 +177,7 @@ public class GradleTools extends AbstractBuildTool {
         name = "updateGradleDependency",
         value = "Update a dependency in the build.gradle file"
     )
+    @ToolPolicy(READWRITE)
     public String updateDependency(String configuration, String oldDependencyNotation, String newDependencyNotation)
     throws Exception {
         progress("Updating dependency: " + configuration + ":" + oldDependencyNotation + " -> " + newDependencyNotation);
@@ -208,6 +215,7 @@ public class GradleTools extends AbstractBuildTool {
         name = "gradleDependencyExists",
         value = "Check if a dependency exists in the build.gradle file"
     )
+    @ToolPolicy(READONLY)
     public boolean dependencyExists(String configuration, String dependencyNotation)
     throws Exception {
         progress("Checking dependency existence: " + configuration + ":" + dependencyNotation);

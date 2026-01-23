@@ -13,28 +13,24 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package io.github.jeddict.ai.agent;
+package io.github.jeddict.ai.agent.pair;
 
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.service.TokenStream;
-import java.util.List;
+import io.github.jeddict.ai.lang.JeddictBrainListener;
 
-/**
- *
- * @author Gaurav Gupta
- */
-public interface Assistant {
 
-    // simple one-shot request → response
-    String chat(String input);
+public interface Hacker extends PairProgrammer {
 
-    // full conversation style (structured)
-    ChatResponse chat(List<ChatMessage> messages);
+    String hack(
+        final String prompt,
+        final String globalRules, final String projectRules,
+        final String projectInfo
+    );
 
-    // streaming (one-shot)
-    TokenStream stream(String input);
+    void hack(
+        final JeddictBrainListener listener,
+        final String prompt,
+        final String globalRules, final String projectRules,
+        final String projectInfo
+    );
 
-    // streaming (structured messages)
-    TokenStream stream(List<ChatMessage> messages);
 }

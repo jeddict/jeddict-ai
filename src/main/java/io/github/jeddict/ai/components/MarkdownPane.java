@@ -15,8 +15,8 @@
  */
 package io.github.jeddict.ai.components;
 
-import static io.github.jeddict.ai.components.AssistantChat.createEditorKit;
-import io.github.jeddict.ai.response.Block;
+import io.github.jeddict.ai.response.TextBlock;
+import static io.github.jeddict.ai.util.EditorUtil.createEditorKit;
 import static io.github.jeddict.ai.util.EditorUtil.getBackgroundColorFromMimeType;
 import static io.github.jeddict.ai.util.EditorUtil.getHTMLContent;
 import static io.github.jeddict.ai.util.EditorUtil.getTextColorFromMimeType;
@@ -82,7 +82,7 @@ public class MarkdownPane extends JTabbedPane {
         return Math.max(0, width);
     }
 
-    public JEditorPane createPane(final Block content, JComponent component) {
+    public JEditorPane createPane(final TextBlock content, JComponent component) {
         Color backgroundColor = getBackgroundColorFromMimeType(MIME_PLAIN_TEXT);
         Color textColor = getTextColorFromMimeType(MIME_PLAIN_TEXT);
         JTabbedPane tabbedPane = this;

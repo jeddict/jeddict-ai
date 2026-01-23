@@ -13,24 +13,20 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package io.github.jeddict.ai.agent;
+package io.github.jeddict.ai.util;
 
-/**
- *
- * @author Gaurav Gupta
- */
-public enum AssistantAction {
-    ASK("Ask"),
-    BUILD("Agent");
+import io.github.jeddict.ai.test.TestBase;
+import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
-    private final String displayName;
+public class EditorUtilTest extends TestBase {
 
-    AssistantAction(String displayName) {
-        this.displayName = displayName;
-    }
+    @Test
+    public void wrapClassNamesWithAnchor_should_handle_special_characters_in_code_blocks() {
+        String input = "Here is some code: <code>$variable</code> and <code>C:\\path</code>";
+        String result = EditorUtil.wrapClassNamesWithAnchor(input);
 
-    @Override
-    public String toString() {
-        return displayName;
+        assertThat(result).contains("<code>$variable</code>");
+        assertThat(result).contains("<code>C:\\path</code>");
     }
 }

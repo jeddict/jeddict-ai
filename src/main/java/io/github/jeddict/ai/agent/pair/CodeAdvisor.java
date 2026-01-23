@@ -15,7 +15,6 @@
  */
 package io.github.jeddict.ai.agent.pair;
 
-import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
@@ -28,7 +27,7 @@ import org.apache.commons.lang3.StringUtils;
 
 
 /**
- * Provides an interface for suggesting improved variable names based on the context of Java code.
+ * An agent that suggests improved code based on the context of Java code.
  *
  * Implementations of this interface analyze a given line of code, its containing class,
  * and all relevant project classes to generate a list of up to three descriptive names
@@ -66,7 +65,6 @@ Project info: {{project}}
     //
     @SystemMessage(SYSTEM_MESSAGE)
     @UserMessage(USER_MESSAGE)
-    @Agent("Suggest up to 3 names for a variable, method or other elements")
     List<String> suggest(
         @V("element") final String element,    // variable, method, method invocation
         @V("classes") final String classes,    // related classes and method signatures

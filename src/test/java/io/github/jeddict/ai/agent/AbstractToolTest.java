@@ -1,30 +1,32 @@
 package io.github.jeddict.ai.agent;
 
+import dev.langchain4j.exception.ToolExecutionException;
 import io.github.jeddict.ai.test.TestBase;
 import io.github.jeddict.ai.test.DummyTool;
-import static io.github.jeddict.ai.agent.AbstractTool.PROPERTY_MESSAGE;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
+import io.github.jeddict.ai.lang.DummyJeddictBrainListener;
+import java.io.IOException;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.function.UnaryOperator;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.BDDAssertions.thenThrownBy;
+import org.junit.jupiter.api.BeforeEach;
 
 public class AbstractToolTest extends TestBase {
 
+    public final static String TESTFILE = "folder/testfile.txt";
+
     @Test
-    public void constructor_sets_instance_variables() {
-        DummyTool tool = new DummyTool(projectDir);
+    public void constructor_sets_instance_variables() throws IOException {
+        final DummyTool tool = new DummyTool(projectDir);
 
         then(tool.basedir).isSameAs(projectDir);
-        then(tool.basepath.toString()).isEqualTo(projectDir);
+        then(tool.basepath).isEqualTo(projectPath);
     }
 
     @Test
-    public void basedir_can_not_be_null_or_blank() {
+    public void basedir_can_not_be_null_or_blank() throws IOException {
         for (String S: new String[] {null, "  ", "", "\n", " \t"})
        thenThrownBy(() -> { new DummyTool(null); })
             .isInstanceOf(IllegalArgumentException.class)
@@ -32,74 +34,94 @@ public class AbstractToolTest extends TestBase {
     }
 
     @Test
-    public void fullPath_returns_the_full_path_of_given_relative_path() {
-        DummyTool tool = new DummyTool(projectDir);
+    public void fullPath_returns_the_full_path_of_given_relative_path() throws Exception {
+        final DummyTool tool = new DummyTool(projectDir);
 
-        then(tool.fullPath("relative")).isEqualTo(Paths.get(projectDir, "relative"));
+        then(tool.fullPath("relative")).isEqualTo(projectPath.resolve("relative"));
     }
 
     @Test
-    public void fires_property_change_event() {
+    public void set_and_get_humanInTheMiddle() throws IOException  {
+        final DummyTool tool = new DummyTool();
+
+        final UnaryOperator<String> hitm = (s) -> {return s;};
+
+        tool.withHumanInTheMiddle(hitm);
+        then(tool.humanInTheMiddle()).contains(hitm);
+
+        tool.withHumanInTheMiddle(null);
+        then(tool.humanInTheMiddle()).isEmpty();
+    }
+
+    @Test
+    public void fires_onProgress_events() throws IOException {
         // given
-        DummyTool tool = new DummyTool(projectDir);
-        final List<PropertyChangeEvent> events = new ArrayList<>();
-        PropertyChangeListener listener = new PropertyChangeListener() {
-            @Override
-            public void propertyChange(PropertyChangeEvent evt) {
-                events.add(evt);
-            }
-        };
-        tool.addPropertyChangeListener(listener);
+        final DummyTool tool = new DummyTool(projectDir);
+        final DummyJeddictBrainListener listener = new DummyJeddictBrainListener();
+        tool.addListener(listener);
 
         // when
         tool.progress("a message");
 
         // then
-        then(events).hasSize(1);
-        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(0).getNewValue()).isEqualTo("a message");
+        then(listener.collector).hasSize(1);
+        then(listener.collector.get(0)).asString().isEqualTo("(onProgress,a message)");
     }
 
     @Test
-    public void addPropertyChangeListener_does_not_accept_null() {
+    public void addListener_does_not_accept_null() throws IOException {
         // given
-        DummyTool tool = new DummyTool(projectDir);
+        final DummyTool tool = new DummyTool(projectDir);
 
         // when & then
-        thenThrownBy(() -> tool.addPropertyChangeListener(null))
+        thenThrownBy(() -> tool.addListener(null))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("listener can not be null");
     }
 
     @Test
-    public void removePropertyChangeListener_does_not_accept_null() {
+    public void removeListener_does_not_accept_null() throws IOException {
         // given
-        DummyTool tool = new DummyTool(projectDir);
+        final DummyTool tool = new DummyTool(projectDir);
 
         // when & then
-        thenThrownBy(() -> tool.removePropertyChangeListener(null))
+        thenThrownBy(() -> tool.removeListener(null))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("listener can not be null");
     }
 
     @Test
-    public void progress_also_logs_the_message() {
+    public void progress_also_logs_the_message() throws IOException {
         // given
-        DummyTool tool = new DummyTool(projectDir);
-        final List<PropertyChangeEvent> events = new ArrayList<>();
-        tool.addPropertyChangeListener(new PropertyChangeListener() {
-            @Override
-            public void propertyChange(PropertyChangeEvent evt) {
-                events.add(evt);
-            }
-        });
+        final DummyTool tool = new DummyTool(projectDir);
 
         // when
         tool.progress("a message");
 
         // then
-        then(events).hasSize(1);
         then(logHandler.getMessages()).contains("a message");
+    }
+
+    @Test
+    public void checkPath_completes_with_child() throws IOException {
+        final DummyTool tool = new DummyTool(projectDir);
+        tool.checkPath(projectPath.toString());
+        tool.checkPath(TESTFILE);
+        tool.checkPath("folder/");
+        tool.checkPath(projectPath.resolve(TESTFILE).toAbsolutePath().toString());
+    }
+
+    @Test
+    public void checkPath_raises_exception_with_not_child_path() throws IOException {
+        final DummyTool tool = new DummyTool(projectDir);
+
+        thenThrownBy(() -> tool.checkPath("/nowhere"))
+            .isInstanceOf(ToolExecutionException.class)
+            .hasMessageStartingWith("trying to reach a file");
+
+        thenThrownBy(() -> tool.checkPath(projectDir + "/../outside"))
+            .isInstanceOf(ToolExecutionException.class)
+            .hasMessageStartingWith("trying to reach a file");;
     }
 
 }

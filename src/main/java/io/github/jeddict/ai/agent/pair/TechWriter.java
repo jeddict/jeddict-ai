@@ -15,7 +15,6 @@
  */
 package io.github.jeddict.ai.agent.pair;
 
-import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
@@ -52,26 +51,27 @@ import io.github.jeddict.ai.util.AgentUtil;
  *
  */
 public interface TechWriter extends PairProgrammer {
-    public static final String SYSTEM_MESSAGE = """
-You are an expert technical writer that, based on user request can:
-- write Javadoc comments for the provided code
-- describe existing code, either classes, methods or snippets
-When requested to write javadoc, the folloing rules apply:
-- generate completely new Javadoc or enahance the existing Javadoc based on user request
-- generate the Javadoc wrapped with in /** ${javadoc} **/
-- generate javadoc only for the element (class, methods or members) requested by the user
-- do not provide any additional text or explanation
-When Requested to describe code, the following rules apply:
-- write an explenation of the code without adding javadoc
-Take into account the general rules: {{globalRules}}
-Take into account the project rules: {{projectRules}}
-Take into account the session rules: {{sessionRules}}
-""";
-    public static final String USER_MESSAGE = """
-{{prompt}}
-The code is: {{code}}
-The Javadoc is: {{javadoc}}
-""";
+    public static final String SYSTEM_MESSAGE =
+    """
+    You are an expert technical writer that, based on user request can:
+    - write Javadoc comments for the provided code
+    - describe existing code, either classes, methods or snippets
+    When requested to write javadoc, the folloing rules apply:
+    - generate completely new Javadoc or enahance the existing Javadoc based on user request
+    - generate the Javadoc wrapped with in /** ${javadoc} **/
+    - generate javadoc only for the element (class, methods or members) requested by the user
+    - do not provide any additional text or explanation
+    When Requested to describe code, the following rules apply:
+    - write an explenation of the code without adding javadoc
+    Take into account the general rules: {{globalRules}}
+    Take into account the project rules: {{projectRules}}
+    Take into account the session rules: {{sessionRules}}
+    """;
+        public static final String USER_MESSAGE = """
+    {{prompt}}
+    The code is: {{code}}
+    The Javadoc is: {{javadoc}}
+    """;
 
     public static final String USER_MESSAGE_JAVADOC = "Provide javadoc for the %s";
     public static final String USER_MESSAGE_DESCRIBE = "Describe the following code";
@@ -83,8 +83,7 @@ The Javadoc is: {{javadoc}}
 
     @SystemMessage(SYSTEM_MESSAGE)
     @UserMessage(USER_MESSAGE)
-    @Agent("Generate or enhance javadoc comments or describe existing code")
-    String writing(
+    public String writing(
         @V("prompt") final String prompt,
         @V("code") final String code,
         @V("javadoc") final String javadoc,

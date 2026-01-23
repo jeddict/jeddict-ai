@@ -764,7 +764,7 @@ public class JeddictCompletionProvider implements CompletionProvider {
         }
 
         private JeddictBrain newJeddictBrain() {
-            return new JeddictBrain(pm.getModelName(), false, List.of());
+            return new JeddictBrain(pm.getModelName(), false);
         }
 
         private Ghostwriter getGhostwriter() {
