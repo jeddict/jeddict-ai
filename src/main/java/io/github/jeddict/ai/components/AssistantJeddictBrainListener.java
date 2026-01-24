@@ -166,10 +166,7 @@ public class AssistantJeddictBrainListener
         //
         // just in case...
         //
-        assistantChat.stopLoading();
-        assistantChat.getQuestionPane().setText("");
-        assistantChat.updateHeight();
-        assistantChat.clearFileTab();
+        cleanup();
     }
 
     @Override
@@ -184,6 +181,8 @@ public class AssistantJeddictBrainListener
         LOG.log(Level.INFO, "Details:", throwable);
 
         onProgress(throwable.getMessage());
+        
+        cleanup();
 
         if (throwable instanceof AuthenticationException) {
             confirmApiKey();
@@ -224,5 +223,12 @@ public class AssistantJeddictBrainListener
             "Error in AI Assistant",
             JOptionPane.ERROR_MESSAGE
         );
+    }
+    
+    private void cleanup() {
+        assistantChat.stopLoading();
+        assistantChat.getQuestionPane().setText("");
+        assistantChat.updateHeight();
+        assistantChat.clearFileTab();
     }
 }
