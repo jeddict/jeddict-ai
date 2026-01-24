@@ -23,6 +23,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -232,6 +233,15 @@ public class JeddictBrain implements PropertyChangeEmitter {
         builder.registerListeners(allListeners());
         builder.toolExecutionErrorHandler(this::toolExecutionErrorHandler);
         builder.toolArgumentsErrorHandler(this::toolArgumentsErrorHandler);
+
+        builder.hallucinatedToolNameStrategy((exec) -> {
+            final ToolExecutionRequest ter = (ToolExecutionRequest)exec;
+            
+            LOG.finest(() -> "tool hallucination: " + ter.name());
+            return ToolExecutionResultMessage.from(
+                ter, "Error: there is no tool called " + ter.name() + " try with a different name"
+            );
+        });
 
         return (T) builder.build();
     }
