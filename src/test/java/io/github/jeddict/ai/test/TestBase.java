@@ -72,7 +72,10 @@ public class TestBase {
         logger.setLevel(Level.ALL);
         logger.addHandler(logHandler = new DummyLogHandler());
 
-        FileUtils.copyDirectory(new File("src/test/projects/minimal"), new File(projectDir));
+        FileUtils.copyDirectory(
+            Paths.get("src", "test", "projects", "minimal").toFile(), // platform independent
+            new File(projectDir)
+        );
 
         Path folder = Files.createDirectories(Paths.get(projectDir, "folder"));
         try (Writer w = new FileWriter(folder.resolve("testfile.txt").toFile())) {
@@ -80,7 +83,7 @@ public class TestBase {
         }
 
         Files.copy(
-            Paths.get("src/test/resources/settings/jeddict.json"),
+            Paths.get("src", "test", "resources", "settings", "jeddict.json"),
             HOME.resolve("jeddict.json"),
             StandardCopyOption.REPLACE_EXISTING
         );
