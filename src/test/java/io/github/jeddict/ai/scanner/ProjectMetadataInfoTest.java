@@ -34,7 +34,7 @@ public class ProjectMetadataInfoTest extends TestBase {
 
         then(info)
             .contains("- name: name")
-            .contains("- folder: " + FilenameUtils.normalize(projectDir))
+            .contains("- folder: " + FilenameUtils.separatorsToSystem(projectDir))
             .contains("- type: maven");
     }
     
