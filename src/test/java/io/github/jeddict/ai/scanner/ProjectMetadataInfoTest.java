@@ -37,15 +37,9 @@ public class ProjectMetadataInfoTest extends TestBase {
         final String info = ProjectMetadataInfo.get(project);
 
         
-        then(
-            info + "\n" +
-            project.getProjectDirectory().getPath() + "\n" +
-            Paths.get(project.getProjectDirectory().getPath()) + "\n" +
-            Paths.get(project.getProjectDirectory().getPath()).toAbsolutePath() + "\n" +
-            FilenameUtils.normalize(Paths.get(project.getProjectDirectory().getPath()).toAbsolutePath().toString())
-        )
+        then(info)
             .contains("- name: name")
-            .contains("- folder: " + FilenameUtils.normalize(projectDir))
+            .contains("- folder: " + Paths.get(project.getProjectDirectory().getPath()))
             .contains("- type: maven");
     }
     
