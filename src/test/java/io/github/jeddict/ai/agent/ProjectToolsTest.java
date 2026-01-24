@@ -32,9 +32,9 @@ public class ProjectToolsTest extends TestBase {
         then(tools.projectInfo()).isEqualToIgnoringNewLines(
             """
             - name: name
-            - folder: %s/src/test/projects/minimal
+            - folder: %s
             - type: maven
-            """.formatted(homedir)
+            """.formatted(Paths.get(homedir, "src/test/projects/minimal").toString())
         );
 
         tools = new ProjectTools(project("src/test/projects/jdk"));
