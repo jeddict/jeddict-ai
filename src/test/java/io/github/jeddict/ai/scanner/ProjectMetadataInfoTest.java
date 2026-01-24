@@ -35,8 +35,6 @@ public class ProjectMetadataInfoTest extends TestBase {
         final Project project = project(projectDir);
         
         final String info = ProjectMetadataInfo.get(project);
-
-        
         then(info)
             .contains("- name: name")
             .contains("- folder: " + Paths.get(project.getProjectDirectory().getPath()))

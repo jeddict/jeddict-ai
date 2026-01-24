@@ -117,7 +117,7 @@ public class ProjectMetadataInfo {
 
                 // Cache the result
                 final CachedResult result = new CachedResult(
-                    mavenProject.getName(), mavenProject.getBasedir().getAbsolutePath(), "maven",
+                    mavenProject.getName(), project.getProjectDirectory().getPath(), "maven",
                         importPrefix, eeVersion, jdkVersion, lastModified
                 );
                 cache.put(project, result);
