@@ -16,7 +16,6 @@
  */
 package io.github.jeddict.ai.scanner;
 
-import com.github.caciocavallosilano.cacio.ctc.junit.CacioTest;
 import io.github.jeddict.ai.test.TestBase;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.Test;
@@ -24,7 +23,6 @@ import org.junit.jupiter.api.Test;
 /**
  *
  */
-@CacioTest
 public class ProjectMetadataInfoTest extends TestBase {
 
     @Test
@@ -33,7 +31,7 @@ public class ProjectMetadataInfoTest extends TestBase {
 
         then(info)
             .contains("- name: name")
-            .contains("- folder: " + projectFolderPath().toRealPath())
+            .contains("- folder: " + projectFolderFile().getAbsolutePath())
             .contains("- type: maven");
     }
 

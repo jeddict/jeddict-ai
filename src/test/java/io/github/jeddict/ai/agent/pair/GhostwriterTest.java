@@ -18,8 +18,8 @@ package io.github.jeddict.ai.agent.pair;
 import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.util.JavacTask;
 import com.sun.source.util.TreePath;
-import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import dev.langchain4j.service.AiServices;
 import static io.github.jeddict.ai.agent.pair.Ghostwriter.LANGUAGE_JAVA;
 import static io.github.jeddict.ai.agent.pair.Ghostwriter.OUTPUT_SQL_SNIPPET_JSON_ARRAY;
 import static io.github.jeddict.ai.agent.pair.Ghostwriter.OUTPUT_SQL_SNIPPET_JSON_ARRAY_WITH_DESCRIPTION;
@@ -76,7 +76,7 @@ public class GhostwriterTest extends PairProgrammerTestBase {
     public void beforeEach() throws Exception {
         super.beforeEach();
 
-        pair = AgenticServices.agentBuilder(Ghostwriter.class)
+        pair = AiServices.builder(Ghostwriter.class)
             .chatModel(model)
             .build();
     }

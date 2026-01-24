@@ -23,22 +23,20 @@ import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import static io.github.jeddict.ai.agent.pair.PairProgrammer.LOG;
-import io.github.jeddict.ai.lang.JeddictBrain;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
+import io.github.jeddict.ai.lang.JeddictBrainListener;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 
 /**
  * AI assistant for chatting and non agentic tasks. It s meant to be the main
- * assistant for InterationMode.QUERY.
+ * assistant for InteractionMode.QUERY.
  */
 public interface Assistant extends PairProgrammer {
 
     public static final String SYSTEM_MESSAGE =
     """
-    You are an expert developer that can address complex questions and resolve
+    You are an expert software developer that can address complex questions and resolve
     problems, proposing solutions, writing and correcting code.
     Take into account the following rules and project information.
 
@@ -130,7 +128,7 @@ public interface Assistant extends PairProgrammer {
     // ----------------------------------------------------- streaming interface
 
     default void chat(
-        final PropertyChangeListener listener,
+        final JeddictBrainListener listener,
         final String prompt,
         final TreePath tree,
         final String projectInfo,
@@ -154,22 +152,22 @@ public interface Assistant extends PairProgrammer {
             StringUtils.defaultIfBlank(projectInfo, ""),
             StringUtils.defaultIfBlank(globalRules, ""),
             StringUtils.defaultIfBlank(projectRules, "")
-        ).onCompleteResponse(complete -> {
-            listener.propertyChange(new PropertyChangeEvent(this, JeddictBrain.EventProperty.CHAT_COMPLETED.name, null, complete));
-        })
-        .onPartialResponse(partial -> {
-            listener.propertyChange(new PropertyChangeEvent(this, JeddictBrain.EventProperty.CHAT_PARTIAL.name, null, partial));
-        })
-        .onIntermediateResponse(intermediate -> listener.propertyChange(new PropertyChangeEvent(this, JeddictBrain.EventProperty.CHAT_INTERMEDIATE.name, null, intermediate)))
-        .beforeToolExecution(execution -> listener.propertyChange(new PropertyChangeEvent(this, JeddictBrain.EventProperty.TOOL_BEFORE_EXECUTION.name, null, execution)))
-        .onToolExecuted(execution -> listener.propertyChange(new PropertyChangeEvent(this, JeddictBrain.EventProperty.TOOL_EXECUTED.name, null, execution)))
+        )
         .onError(error -> {
-            listener.propertyChange(new PropertyChangeEvent(this, JeddictBrain.EventProperty.CHAT_ERROR.name, null, error));
-        }).start();
+            if (listener != null) {
+                listener.onError(error);
+            }
+        })
+        .onPartialResponse(progress -> {
+            if (listener != null) {
+                listener.onProgress(progress);
+            }
+        })
+        .start();
     }
 
     default void chat(
-        final PropertyChangeListener listener,
+        final JeddictBrainListener listener,
         final String prompt,
         final List<String> images,
         final String projectInfo,
@@ -191,21 +189,21 @@ public interface Assistant extends PairProgrammer {
             StringUtils.defaultIfBlank(projectInfo, ""),
             StringUtils.defaultIfBlank(globalRules, ""),
             StringUtils.defaultIfBlank(projectRules, "")
-        ).onCompleteResponse(complete -> {
-            listener.propertyChange(new PropertyChangeEvent(this, JeddictBrain.EventProperty.CHAT_COMPLETED.name, null, complete));
-        })
-        .onPartialResponse(partial -> {
-            listener.propertyChange(new PropertyChangeEvent(this, JeddictBrain.EventProperty.CHAT_PARTIAL.name, null, partial));
-        })
-        .onIntermediateResponse(intermediate -> listener.propertyChange(new PropertyChangeEvent(this, JeddictBrain.EventProperty.CHAT_INTERMEDIATE.name, null, intermediate)))
-        .beforeToolExecution(execution -> listener.propertyChange(new PropertyChangeEvent(this, JeddictBrain.EventProperty.TOOL_BEFORE_EXECUTION.name, null, execution)))
-        .onToolExecuted(execution -> listener.propertyChange(new PropertyChangeEvent(this, JeddictBrain.EventProperty.TOOL_EXECUTED.name, null, execution)))
+        )
         .onError(error -> {
-            listener.propertyChange(new PropertyChangeEvent(this, JeddictBrain.EventProperty.CHAT_ERROR.name, null, error));
-        }).start();
+            if (listener != null) {
+                listener.onError(error);
+            }
+        })
+        .onPartialResponse(progress -> {
+            if (listener != null) {
+                listener.onProgress(progress);
+            }
+        })
+        .start();
     }
 
-    default void chat(final PropertyChangeListener listener, final String prompt) {
+    default void chat(final JeddictBrainListener listener, final String prompt) {
         chat(listener, prompt, (TreePath)null, null, null, null);
     }
 

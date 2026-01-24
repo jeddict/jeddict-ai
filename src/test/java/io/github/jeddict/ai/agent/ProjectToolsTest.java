@@ -17,7 +17,6 @@ package io.github.jeddict.ai.agent;
 
 import com.github.caciocavallosilano.cacio.ctc.junit.CacioTest;
 import io.github.jeddict.ai.test.TestBase;
-import java.io.File;
 import java.nio.file.Paths;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.Test;
@@ -28,49 +27,48 @@ public class ProjectToolsTest extends TestBase {
     @Test
     public void projectInfo_returns_project_metadata_as_text()
     throws Exception {
-        final String home = Paths.get("src/test/projects").toAbsolutePath().toRealPath().toString() + File.separator;
-
+        String homedir = Paths.get(".").toAbsolutePath().normalize().toString();
         ProjectTools tools = new ProjectTools(project("src/test/projects/minimal"));
         then(tools.projectInfo()).isEqualToIgnoringNewLines(
             """
             - name: name
-            - folder: %sminimal
+            - folder: %s/src/test/projects/minimal
             - type: maven
-            """.formatted(home)
+            """.formatted(homedir)
         );
 
         tools = new ProjectTools(project("src/test/projects/jdk"));
         then(tools.projectInfo()).isEqualToIgnoringNewLines(
             """
             - name: jdk
-            - folder: %sjdk
+            - folder: %s/src/test/projects/jdk
             - type: maven
             - Java Version: 11
-            """.formatted(home)
+            """.formatted(homedir)
         );
 
         tools = new ProjectTools(project("src/test/projects/jakarta"));
         then(tools.projectInfo()).isEqualToIgnoringNewLines(
             """
             - name: jakarta
-            - folder: %sjakarta
+            - folder: %s/src/test/projects/jakarta
             - type: maven
             - EE Version: jakarta
             - EE Import Prefix: jakarta
             - Java Version: 21
-            """.formatted(home)
+            """.formatted(homedir)
         );
 
         tools = new ProjectTools(project("src/test/projects/javax"));
         then(tools.projectInfo()).isEqualToIgnoringNewLines(
             """
             - name: javax
-            - folder: %sjavax
+            - folder: %s/src/test/projects/javax
             - type: maven
             - EE Version: javax
             - EE Import Prefix: javax
             - Java Version: 11
-            """.formatted(home)
+            """.formatted(homedir)
         );
     }
 

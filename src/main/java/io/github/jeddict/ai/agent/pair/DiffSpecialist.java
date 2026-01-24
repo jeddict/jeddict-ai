@@ -15,7 +15,6 @@
  */
 package io.github.jeddict.ai.agent.pair;
 
-import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
@@ -73,64 +72,66 @@ public interface DiffSpecialist extends PairProgrammer {
         }
     }
 
-    public static final String SYSTEM_MESSAGE = """
-You are an experience developer specialized in in writing commit messages or
-code review based on user request and provided git diff output.
-Based on the provided diff and an optional reference comment, you can:
-- create commit messages that reflect business or domain features rather than technical details like dependency updates or refactoring
-- create the following versions of the commit message:
-  - Very short
-  - Short
-  - Medium length
-  - Long
-  - Descriptive
-- review the changes and provide feedback following the bewlow instructions:
-  - base your review strictly on the provided Git diff
-  - focus areas:
-    - bugs, unsafe behavior, or runtime risks
-    - readability, naming, and clarity
-    - best practices or conventions
-    - opportunities for simplification or performance improvement
-  - anchor each suggestion to a specific hunk header from the diff
-  - DO NOT infer or hallucinate line numbers not present in the diff
-  - DO NOT reference line numbers or attempt to estimate exact start/end lines
+    public static final String SYSTEM_MESSAGE =
+    """
+    You are an experience developer specialized in in writing commit messages or
+    code review based on user request and provided git diff output.
+    Based on the provided diff and an optional reference comment, you can:
+    - create commit messages that reflect business or domain features rather than technical details like dependency updates or refactoring
+    - create the following versions of the commit message:
+      - Very short
+      - Short
+      - Medium length
+      - Long
+      - Descriptive
+    - review the changes and provide feedback following the bewlow instructions:
+      - base your review strictly on the provided Git diff
+      - focus areas:
+        - bugs, unsafe behavior, or runtime risks
+        - readability, naming, and clarity
+        - best practices or conventions
+        - opportunities for simplification or performance improvement
+      - anchor each suggestion to a specific hunk header from the diff
+      - DO NOT infer or hallucinate line numbers not present in the diff
+      - DO NOT reference line numbers or attempt to estimate exact start/end lines
 
-{{format}}
-""";
+    {{format}}
+    """;
 
     public static final String USER_MESSAGE = "{{prompt}}\n{{diff}}\nDiff description: {{description}}";
 
-    public static final String USER_MESSAGE_COMMENT = """
-Provide various types of commit messages (very short, short, medium length, long, descriptive)
-based on reference comment and changes below.
-""";
+    public static final String USER_MESSAGE_COMMENT =
+    """
+    Provide various types of commit messages (very short, short, medium length, long, descriptive)
+    based on reference comment and changes below.
+    """;
 
-    public static final String OUTPUT_REVIEW = """
-Respond only with a YAML array of review suggestions. Each suggestion must include:
-- file: the file name
-- hunk: the Git diff hunk header (e.g., "@@ -10,7 +10,9 @@")
-- type: one of "security", "warning", "info", or "suggestion"
-  - "security" for vulnerabilities or high-risk flaws
-  - "warning" for potential bugs or unsafe behavior
-  - "info" for minor issues or readability
-  - "suggestion" for non-critical improvements or refactoring
-- title: a short title summarizing the issue
-- description: a longer explanation or recommendation
+    public static final String OUTPUT_REVIEW =
+    """
+    Respond only with a YAML array of review suggestions. Each suggestion must include:
+    - file: the file name
+    - hunk: the Git diff hunk header (e.g., "@@ -10,7 +10,9 @@")
+    - type: one of "security", "warning", "info", or "suggestion"
+      - "security" for vulnerabilities or high-risk flaws
+      - "warning" for potential bugs or unsafe behavior
+      - "info" for minor issues or readability
+      - "suggestion" for non-critical improvements or refactoring
+    - title: a short title summarizing the issue
+    - description: a longer explanation or recommendation
 
-Output raw YAML with no markdown, code block, or extra formatting.
+    Output raw YAML with no markdown, code block, or extra formatting.
 
-Expected YAML format:
+    Expected YAML format:
 
-- file: src/com/example/MyService.java
-  hunk: "@@ -42,6 +42,10 @@"
-  type: warning
-  title: "Possible null pointer exception"
-  description: "The 'items' list might be null before iteration. Add a null check to avoid NPE."
-""";
+    - file: src/com/example/MyService.java
+      hunk: "@@ -42,6 +42,10 @@"
+      type: warning
+      title: "Possible null pointer exception"
+      description: "The 'items' list might be null before iteration. Add a null check to avoid NPE."
+    """;
 
     @SystemMessage(SYSTEM_MESSAGE)
     @UserMessage(USER_MESSAGE)
-    @Agent("Suggest commit messages for the given git diff")
     String review(
         @V("prompt") final String referenceMessage,
         @V("diff") final String diff,

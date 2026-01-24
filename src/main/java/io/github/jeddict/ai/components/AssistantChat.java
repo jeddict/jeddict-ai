@@ -21,13 +21,17 @@ import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.expr.ObjectCreationExpr;
-import io.github.jeddict.ai.agent.AssistantAction;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import io.github.jeddict.ai.JeddictUpdateManager;
+import io.github.jeddict.ai.lang.InteractionMode;
 import static io.github.jeddict.ai.classpath.JeddictQueryCompletionQuery.JEDDICT_EDITOR_CALLBACK;
 import static io.github.jeddict.ai.components.QueryPane.createIconButton;
 import static io.github.jeddict.ai.components.QueryPane.createStyledComboBox;
+import io.github.jeddict.ai.components.diff.DiffPane;
 import io.github.jeddict.ai.components.mermaid.MermaidPane;
 import static io.github.jeddict.ai.models.registry.GenAIProvider.getModelsByProvider;
-import io.github.jeddict.ai.response.Block;
+import io.github.jeddict.ai.response.TextBlock;
+import io.github.jeddict.ai.response.Response;
 import io.github.jeddict.ai.review.Review;
 import io.github.jeddict.ai.settings.PreferencesManager;
 import io.github.jeddict.ai.util.ColorUtil;
@@ -84,7 +88,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BiConsumer;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 import java.util.function.Consumer;
 import java.util.prefs.Preferences;
 import java.util.regex.Matcher;
@@ -94,6 +99,9 @@ import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.util.logging.Logger;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -119,6 +127,7 @@ import javax.swing.text.JTextComponent;
 import javax.swing.text.StyledDocument;
 import org.netbeans.api.editor.EditorRegistry;
 import org.netbeans.api.options.OptionsDisplayer;
+import org.netbeans.api.progress.ProgressHandle;
 import org.netbeans.api.project.Project;
 import org.netbeans.api.project.ProjectUtils;
 import org.netbeans.modules.editor.NbEditorUtilities;
@@ -127,13 +136,19 @@ import org.openide.NotifyDescriptor;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
 import org.openide.loaders.DataObject;
+import org.openide.util.NbBundle;
 import org.openide.windows.TopComponent;
+import static ste.lloop.Loop.on;
 
 /**
  *
  * @author Shiwani Gupta
  */
 public abstract class AssistantChat extends TopComponent {
+
+    private static final String SPINNER_FRAMES = "◐◓◑◒";
+
+    private final Logger LOG = Logger.getLogger(AssistantChat.class.getCanonicalName());
 
     private List<Review> reviews;
     public static final ImageIcon icon = new ImageIcon(AssistantChat.class.getResource("/icons/logo16.png"));
@@ -149,8 +164,6 @@ public abstract class AssistantChat extends TopComponent {
     private String type = "java";
     private static final PreferencesManager pm = PreferencesManager.getInstance();
 
-    private Timer timer;
-
     // top query pane
     private JButton copyButton, editButton, saveButton, cancelButton;
     private JEditorPane queryPane;
@@ -160,10 +173,26 @@ public abstract class AssistantChat extends TopComponent {
     private MessageContextComponentAdapter filePanelAdapter;
     private ComponentAdapter buttonPanelAdapter;
     private JComboBox<String> models;
-    private JComboBox<AssistantAction> actionComboBox;
+    private JComboBox<InteractionMode> actionComboBox;
     private JButton prevButton, nextButton, openInBrowserButton, submitButton;
     private JEditorPane questionPane;
     private JScrollPane questionScrollPane;
+
+    protected ProgressHandle handle;
+
+    // confirmation pane
+    private ToolExecutionConfirmationPane confirmationPane;
+
+    //
+    // Kind of model for this window
+    //
+    private Response response = new Response();
+
+    private final Timer timer = new Timer(200, e -> {
+        int index = SPINNER_FRAMES.indexOf(submitButton.getText().charAt(0));
+        index = (index < 0) ? 0 : ((index+1) % SPINNER_FRAMES.length());
+        submitButton.setText(String.valueOf(SPINNER_FRAMES.charAt(index)));
+    });
 
     public AssistantChat(String name, String type, Project project) {
         setName(name);
@@ -198,25 +227,57 @@ public abstract class AssistantChat extends TopComponent {
         return questionPane;
     }
 
+    public JEditorPane getQueryPane() {
+        return queryPane;
+    }
+
     public void updateButtons(Boolean prevButtonVisible, Boolean nextButtonVisible) {
-        // TODO: to be reviewed once all agents will use buit-in memory
         prevButton.setVisible(prevButtonVisible);
         nextButton.setVisible(nextButtonVisible);
         openInBrowserButton.setVisible(getAllEditorCount() > 0);
     }
 
     public void startLoading() {
-        final String[] spinnerFrames = {"◐", "◓", "◑", "◒"};
-        final int[] frameIndex = {0};
-        timer = new Timer(200, e -> {
-            submitButton.setText(spinnerFrames[frameIndex[0]]);
-            frameIndex[0] = (frameIndex[0] + 1) % spinnerFrames.length;
+        timer.restart();
+        LOG.finest(() -> "startLoading with handle %s".formatted(handle));
+        SwingUtilities.invokeLater(() -> {
+            LOG.finest(() -> ("updpating task loader with handle " + handle));
+            if (handle != null) {
+                handle.finish();
+            } else {
+                handle = ProgressHandle.createHandle(NbBundle.getMessage(JeddictUpdateManager.class, "PROGRESS_TASK_1"));
+                //handle.setDisplayName(taskName);
+                handle.start();
+                LOG.finest(() -> ("new task loader with handle %s created and started ".formatted(handle)));
+            }
         });
-        timer.start();
+    }
+
+    public void updateLoading(final String progress) {
+        if (handle == null) {
+            return;
+        }
+
+        SwingUtilities.invokeLater(() -> {
+            LOG.finest(() -> "updpating task loader with handle %s and progress %s".formatted(handle, progress));
+            handle.setDisplayName(progress);
+        });
     }
 
     public void stopLoading() {
+        LOG.finest(() -> ("stopping task loader with handle " + handle));
         timer.stop();
+        SwingUtilities.invokeLater(() -> {
+            if (handle != null) {
+                handle.finish();
+                handle = null;
+            }
+        });
+        buttonPanelResized();
+    }
+
+    public boolean isLoading() {
+        return (handle != null);
     }
 
    public String getModelName() {
@@ -232,7 +293,15 @@ public abstract class AssistantChat extends TopComponent {
     }
 
     public boolean isAgentEnabled() {
-        return actionComboBox.getSelectedItem() != AssistantAction.ASK;
+        return actionComboBox.getSelectedItem() != InteractionMode.ASK;
+    }
+
+    public boolean isInteractiveMode() {
+        return actionComboBox.getSelectedItem() == InteractionMode.INTERACTIVE;
+    }
+
+    public InteractionMode interactiveMode() {
+        return (InteractionMode)actionComboBox.getSelectedItem();
     }
 
     public JPanel createBottomPanel(String type, String fileName, Consumer<String> action) {
@@ -289,32 +358,32 @@ public abstract class AssistantChat extends TopComponent {
         });
         leftButtonPanel.add(models);
 
-        AssistantAction[] options = AssistantAction.values();
+        InteractionMode[] options = InteractionMode.values();
         actionComboBox = createStyledComboBox(options);
         String lastAction = pm.getAssistantAction();
         if (lastAction != null) {
             try {
-                actionComboBox.setSelectedItem(AssistantAction.valueOf(lastAction));
+                actionComboBox.setSelectedItem(InteractionMode.valueOf(lastAction));
             } catch (IllegalArgumentException ex) {
-                actionComboBox.setSelectedItem(AssistantAction.ASK);
+                actionComboBox.setSelectedItem(InteractionMode.ASK);
             }
         } else {
-            actionComboBox.setSelectedItem(AssistantAction.ASK);
+            actionComboBox.setSelectedItem(InteractionMode.ASK);
         }
-        actionComboBox.setToolTipText("<html><b>Chat</b> – for general queries<br><b>Agent</b> – for file/project generation actions</html>");
+        actionComboBox.setToolTipText(interactionModeTooltip());
         actionComboBox.addActionListener(e -> {
-            AssistantAction selectedAction = (AssistantAction) actionComboBox.getSelectedItem();
-            if (selectedAction == AssistantAction.BUILD) {
+            InteractionMode selectedAction = (InteractionMode) actionComboBox.getSelectedItem();
+            if (selectedAction != InteractionMode.ASK) {
                 if (this.project == null) {
                     final Project selectedProject = selectProject();
                     if (selectedProject == null) {
-                        actionComboBox.setSelectedItem(AssistantAction.ASK);
+                        actionComboBox.setSelectedItem(InteractionMode.ASK);
                     } else {
                         this.project = selectedProject;
                     }
                 }
             }
-            selectedAction = (AssistantAction) actionComboBox.getSelectedItem();
+            selectedAction = (InteractionMode) actionComboBox.getSelectedItem();
             if (selectedAction != null) {
                 pm.setAssistantAction(selectedAction.name());
             }
@@ -506,14 +575,78 @@ public abstract class AssistantChat extends TopComponent {
         actionMap.put(actionKey, submitButton.getAction());
 
         // ---
+
+        confirmationPane = new ToolExecutionConfirmationPane();
         bottomPanel.setLayout(new BoxLayout(bottomPanel, BoxLayout.Y_AXIS));
         bottomPanel.add(filePanel);
         bottomPanel.add(Box.createVerticalStrut(0));
         bottomPanel.add(questionScrollPane);
+        bottomPanel.add(confirmationPane);
         bottomPanel.add(Box.createVerticalStrut(0));
         bottomPanel.add(buttonPanel);
 
         return bottomPanel;
+    }
+
+    /**
+     * Acquire confirmation from the user, if needed by the current interaction
+     * mode, to proceed with the execution of a tool. The confirmation message
+     * is provided in {@code message} and returns a future boolean that shall
+     * resolve to true if the tool can be executed, false otherwise.
+     *
+     * @param message the confirmation message
+     *
+     * @return future boolean that shall resolve to true if the tool can be
+     *         executed, false otherwise
+     */
+    public Future<Boolean> promptConfirmation(final String message) {
+        //
+        // We check here again the interaction mode because the user may have
+        // changed through the UI. However, this does not change the JeddictBrain's
+        // interaction mode or how the PairProgrammer agents have been setup.
+        // Note that to keep status informatin in the agents (i.e. memory) the
+        // agents instances are created at AssistantChat creation, not per use.
+        //
+        // Ideally, if the user changes the interaction mode, we should recreate
+        // a new JeddictBrain and the Assistant/Hacker. But this would make
+        // the agent loose the memory.
+        //
+        // So for now we just enable/disable tool execution and confirmation.
+        //
+        if (isInteractiveMode()) {
+            CompletableFuture<Boolean> future = new CompletableFuture<>();
+            SwingUtilities.invokeLater(() -> {
+                confirmationPane.showMessage(message);
+
+                // remove existing listeners if any
+                for (PropertyChangeListener pcl : confirmationPane.getPropertyChangeListeners(JOptionPane.VALUE_PROPERTY)) {
+                    confirmationPane.removePropertyChangeListener(JOptionPane.VALUE_PROPERTY, pcl);
+                }
+
+                confirmationPane.addPropertyChangeListener(JOptionPane.VALUE_PROPERTY, new PropertyChangeListener() {
+                    @Override
+                    public void propertyChange(PropertyChangeEvent evt) {
+                        if (confirmationPane.isVisible() && evt.getNewValue() != null && evt.getNewValue() != JOptionPane.UNINITIALIZED_VALUE) {
+                            Object value = evt.getNewValue();
+                            confirmationPane.setVisible(false);
+
+                            boolean confirmed = (value instanceof Integer && ((Integer) value) == JOptionPane.YES_OPTION);
+                            future.complete(confirmed);
+
+                            // cleanup
+                            confirmationPane.removePropertyChangeListener(JOptionPane.VALUE_PROPERTY, this);
+                        }
+                    }
+                });
+
+                // Revalidate to show
+                confirmationPane.getParent().revalidate();
+                confirmationPane.getParent().repaint();
+            });
+            return future;
+        }
+
+        return CompletableFuture.completedFuture(isAgentEnabled());
     }
 
     public void updateHeight() {
@@ -552,7 +685,7 @@ public abstract class AssistantChat extends TopComponent {
         }
     }
 
-    private void createUserPaneButtons(BiConsumer<String, Set<FileObject>> queryUpdate, Set<FileObject> messageContext, JPanel buttonPanel) {
+    private void createUserPaneButtons(Consumer<String> queryUpdate, Set<FileObject> messageContext, JPanel buttonPanel) {
         copyButton = QueryPane.createIconButton(Labels.COPY, ICON_COPY);
         editButton = QueryPane.createIconButton(Labels.EDIT, ICON_EDIT);
         saveButton = QueryPane.createIconButton(Labels.SAVE, ICON_SEND);
@@ -572,7 +705,7 @@ public abstract class AssistantChat extends TopComponent {
 
             String question = queryPane.getText();
             if (!question.isEmpty()) {
-                queryUpdate.accept(question, messageContext);
+                queryUpdate.accept(question);
             }
         });
 
@@ -613,7 +746,7 @@ public abstract class AssistantChat extends TopComponent {
         filePanelAdapter.componentResized(null);
     }
 
-    public JEditorPane createUserQueryPane(BiConsumer<String, Set<FileObject>> queryUpdate, String content, Set<FileObject> messageContext) {
+    public JEditorPane createUserQueryPane(Consumer<String> queryUpdate, String content, Set<FileObject> messageContext) {
 
         Consumer<FileObject> callback = file -> {
             if (!messageContext.contains(file)) {
@@ -747,7 +880,7 @@ public abstract class AssistantChat extends TopComponent {
         return editorPane;
     }
 
-    public JEditorPane createCodePane(String mimeType, Block content) {
+    public JEditorPane createCodePane(String mimeType, TextBlock content) {
         if (mimeType == null || mimeType.isBlank()) {
             mimeType = MIME_PLAIN_TEXT;
         }
@@ -785,7 +918,7 @@ public abstract class AssistantChat extends TopComponent {
         return editorPane;
     }
 
-    public SVGPane createSVGPane(Block content) {
+    public SVGPane createSVGPane(TextBlock content) {
         SVGPane svgPane = new SVGPane();
         JEditorPane sourcePane = svgPane.createPane(content);
         addContextMenu(sourcePane);
@@ -793,7 +926,7 @@ public abstract class AssistantChat extends TopComponent {
         return svgPane;
     }
 
-    public MermaidPane createMermaidPane(Block content) {
+    public MermaidPane createMermaidPane(TextBlock content) {
         MermaidPane pane = new MermaidPane();
         JEditorPane sourcePane = pane.createPane(content);
         addContextMenu(sourcePane);
@@ -801,12 +934,32 @@ public abstract class AssistantChat extends TopComponent {
         return pane;
     }
 
-    public MarkdownPane createMarkdownPane(Block content) {
+    public MarkdownPane createMarkdownPane(TextBlock content) {
         MarkdownPane pane = new MarkdownPane();
         JEditorPane sourcePane = pane.createPane(content, this);
         addContextMenu(sourcePane);
         addEditorPaneRespectingTextArea(pane);
         return pane;
+    }
+
+    public DiffPane createDiffPane(final String path, final String content) {
+        LOG.finest(() -> "createDiffPane for interaction " + path);
+        final DiffPane diffPane = new DiffPane(getProject(), path, content);
+        diffPane.createPane();
+        addEditorPaneRespectingTextArea(diffPane);
+
+        return diffPane;
+    }
+
+    public ToolExecutionPane createToolExecutionPane(
+        final ToolExecutionRequest execution, final String result
+    ) {
+        LOG.finest(() -> "createToolExecutionPane for execution " + execution);
+
+        final ToolExecutionPane toolPane = new ToolExecutionPane(execution, result);
+        addEditorPaneRespectingTextArea(toolPane);
+
+        return toolPane;
     }
 
     private void addContextMenu(JEditorPane editorPane) {
@@ -1168,13 +1321,13 @@ public abstract class AssistantChat extends TopComponent {
 
                                 createEditorPaneMenus(fileObject, fileObject.getName(), -1, editorPane, cachedMethodSignatures);
                             } catch (Exception e) {
-                                System.out.println("Error parsing single method declaration from editor content: " + e.getMessage());
+                                LOG.finest(() -> "Error parsing single method declaration from editor content: " + e.getMessage());
                             }
                         }
                     }
                 }
             } catch (Exception e) {
-                System.out.println("Error parsing file: " + fileObject.getName() + " - " + e.getMessage());
+                LOG.finest(() -> "Error parsing file: " + fileObject.getName() + " - " + e.getMessage());
             }
         }
     }
@@ -1285,7 +1438,7 @@ public abstract class AssistantChat extends TopComponent {
                     NotifyDescriptor.WARNING_MESSAGE
             );
             DialogDisplayer.getDefault().notify(msg);
-            actionComboBox.setSelectedItem(AssistantAction.ASK);
+            actionComboBox.setSelectedItem(InteractionMode.ASK);
         }
 
         return null;
@@ -1407,4 +1560,28 @@ public abstract class AssistantChat extends TopComponent {
         this.reviews = reviews;
     }
 
+    private String interactionModeTooltip() {
+        final StringBuffer sb = new StringBuffer("<html>");
+        on(InteractionMode.values()).loop((mode) -> {
+            sb.append("<b>").append(mode.toString()).append("</b> - ");
+            sb.append(
+                NbBundle.getMessage(AssistantChat.class, mode.name())
+            ).append("<br>");
+        });
+        sb.append("</html>");
+
+        return sb.toString();
+    }
+
+
+    //
+    // TODO: move reponse in the listener
+    //
+    public void response(final Response response) {
+        this.response = response;
+    }
+
+    public Response response() {
+        return response;
+    }
 }

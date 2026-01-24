@@ -16,6 +16,8 @@
 package io.github.jeddict.ai.util;
 
 import io.github.jeddict.ai.components.AssistantChat;
+import java.awt.Color;
+import java.awt.Font;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -26,6 +28,19 @@ import javax.swing.JTextArea;
  * @author Shiwani Gupta
  */
 public class UIUtil {
+
+    //
+    // Colors
+    //
+    public static final Color COLOR_JEDDICT_MAIN = new Color(92, 159, 194);
+    public static final Color COLOR_JEDDICT_ACCENT1 = new Color(0xd6, 0x33, 0x84);
+
+    //
+    // Fonts
+    //
+    public static final Font FONT_HEADER = new Font("SansSerif", Font.BOLD, 14);
+    public static final Font FONT_NORMAL_TEXT = new Font("SansSerif", Font.PLAIN, 12);
+    public static final Font FONT_MONOSPACED = new Font("Monospaced", Font.PLAIN, 12);
 
     public static String queryToEnhance() {
         // Create a JTextArea for multiline input
@@ -86,7 +101,7 @@ public class UIUtil {
         );
 
         if (option != JOptionPane.OK_OPTION) {
-            return null; 
+            return null;
         }
 
         String initialMessage = textArea.getText().trim();
@@ -96,5 +111,5 @@ public class UIUtil {
 
         return initialMessage;
     }
-   
+
 }

@@ -15,7 +15,6 @@
  */
 package io.github.jeddict.ai.agent.pair;
 
-import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
@@ -36,25 +35,26 @@ import org.apache.commons.lang3.StringUtils;
  * programming assistance context.
  */
 public interface Shakespeare extends PairProgrammer {
-    public static final String SYSTEM_MESSAGE = """
-You are tech writer that can:
-- review provided text in the context of the java class
-- correct and/or improve provided text in the context of the java class
-Return only the reviewed text. Do not include any additional details or explanation.
-""";
+    public static final String SYSTEM_MESSAGE =
+    """
+    You are tech writer that can:
+    - review provided text in the context of the java class
+    - correct and/or improve provided text in the context of the java class
+    Return only the reviewed text. Do not include any additional details or explanation.
+    """;
 
-    public static final String USER_MESSAGE = """
-{{message}}
-The text is: {{text}}
-The code is: {{code}}
-""";
+    public static final String USER_MESSAGE =
+    """
+    {{message}}
+    The text is: {{text}}
+    The code is: {{code}}
+    """;
     public static final String USER_MESSAGE_ENHANCE_TEXT =
         "Enhance the text to be more engaging, clear, and polished." +
         "Ensure the text is well-structured and free of any grammatical errors or awkward phrasing.";
 
     @SystemMessage(SYSTEM_MESSAGE)
     @UserMessage(USER_MESSAGE)
-    @Agent("Review and fix or enhance java strings")
     String review(
         @V("message") final String message,
         @V("text") final String text,

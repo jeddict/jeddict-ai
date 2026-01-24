@@ -1,6 +1,5 @@
 package io.github.jeddict.ai.agent.pair;
 
-import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
@@ -13,30 +12,30 @@ import org.apache.commons.lang3.StringUtils;
  */
 public interface FileWizard extends PairProgrammer {
 
-    static final String SYSTEM_MESSAGE = """
-You are a programmer assistant that can generate a new file with code or other
-content based on the request and context provided by the user. Generate the file
-content only without any description.
-Take into account the following general rules: {{globalRules}}
-Take into account the following project rules: {{projectRules}}
-""";
+    static final String SYSTEM_MESSAGE =
+    """
+    You are a programmer assistant that can generate a new file with code or other
+    content based on the request and context provided by the user. Generate the file
+    content only without any description.
+    Take into account the following general rules: {{globalRules}}
+    Take into account the following project rules: {{projectRules}}
+    """;
 
-    static final String USER_MESSAGE_DEFAULT = """
-Generate the content of a new file given the below context information.
-""";
+    static final String USER_MESSAGE_DEFAULT =
+        "Generate the content of a new file given the below context information";
 
-    static final String USER_MESSAGE = """
-{{prompt}}
-filename: {{filename}}
-context: {{context}}
-content:
-```
-{{content}}
-```
-project info: {{project}}
-""";
+    static final String USER_MESSAGE =
+    """
+    {{prompt}}
+    filename: {{filename}}
+    context: {{context}}
+    content:
+    ```
+    {{content}}
+    ```
+    project info: {{project}}
+    """;
 
-    @Agent("Generate content for a new file given the provided context")
     @SystemMessage(SYSTEM_MESSAGE)
     @UserMessage(USER_MESSAGE)
     String _newFile_(

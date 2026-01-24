@@ -16,8 +16,9 @@
 package io.github.jeddict.ai.util;
 
 import io.github.jeddict.ai.components.AssistantChat;
-import io.github.jeddict.ai.response.Block;
+import io.github.jeddict.ai.response.TextBlock;
 import io.github.jeddict.ai.response.Response;
+import io.github.jeddict.ai.response.ToolExecutionBlock;
 import static io.github.jeddict.ai.util.MimeUtil.JAVA_MIME;
 import static io.github.jeddict.ai.util.MimeUtil.MIME_MARKDOWN;
 import static io.github.jeddict.ai.util.MimeUtil.MIME_MERMAID;
@@ -36,7 +37,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
@@ -73,98 +74,162 @@ public class EditorUtil {
     private static final Set<String> TEXT_BLOCK_TYPES = Set.of("text", "web", "html");
     private static final Logger LOG = Logger.getLogger(EditorUtil.class.getName());
 
-    public static String updateEditors(BiConsumer<String, Set<FileObject>> queryUpdate, Project project, AssistantChat topComponent, Response response, Set<FileObject> threadContext) {
+    /**
+     *
+     * @param queryUpdate prompt that generated the response and that goes in the
+     *                    top query pane
+     * @param project project attached to the chat (to be removed as it's already in AssistantChat)
+     * @param assistantChat chat window
+     * @param response the response to update the windows with
+     * @param chatContext files attached to the chat window as additional context
+     *
+     * @return all code created printing each single block
+     */
+    public static String updateEditors(
+        final Consumer<String> queryUpdate,
+        final AssistantChat assistantChat,
+        final Response response,
+        final Set<FileObject> chatCo
+    ) {
         StringBuilder code = new StringBuilder();
 
-        topComponent.clear();
+        assistantChat.clear();
 
         if (response.getQuery() != null && !response.getQuery().isEmpty()) {
-            topComponent.createUserQueryPane(queryUpdate, response.getQuery(), response.getMessageContext());
+            assistantChat.createUserQueryPane(queryUpdate, response.getQuery(), response.getMessageContext());
         }
 
         JComponent firstPane = null;
-        Block prevBlock = null;
-        for (Block block : response.getBlocks()) {
-            JComponent pane = printBlock(code, prevBlock, block, project, topComponent);
+
+        TextBlock actionBlock = null;
+        for (TextBlock block : response.getBlocks()) {
+            LOG.finest(() -> ("block:\n" + block));
+            if ("action".equals(block.type)) {  // TODO: maybe we do not need it?
+                actionBlock = block;
+                continue;
+            }
+            LOG.finest("printing\n" + actionBlock + "\nand\n" + block);
+            JComponent pane = printBlock(code, actionBlock, block, assistantChat);
+            actionBlock = null;
             if (firstPane == null) {
                 firstPane = pane;
             }
-            prevBlock = block;
         }
 
         if (firstPane != null) {
             firstPane.scrollRectToVisible(firstPane.getBounds());
         }
-        topComponent.revalidate();
-        topComponent.repaint();
+        assistantChat.revalidate();
+        assistantChat.repaint();
         List<FileObject> context = new ArrayList<>();
-        if (threadContext != null && !threadContext.isEmpty()) {
-            context.addAll(threadContext);
+        if (chatCo != null && !chatCo.isEmpty()) {
+            context.addAll(chatCo);
         }
         if (response.getMessageContext() != null && !response.getMessageContext().isEmpty()) {
             context.addAll(response.getMessageContext());
         }
-        topComponent.getParseCodeEditor(context);
-        topComponent.attachMenusToEditors();
+        assistantChat.getParseCodeEditor(context);
+        assistantChat.attachMenusToEditors();
+
         return code.toString();
     }
 
-    public static JComponent printBlock(StringBuilder code, Block prevBlock, Block block, Project project, AssistantChat topComponent) {
-        LOG.finest(() -> "printing blocks \n" + prevBlock + "\n" + block);
+    public static JComponent printBlock(
+        final StringBuilder code,
+        final TextBlock actionBlock,
+        final TextBlock contentBlock,
+        final AssistantChat assistantChat
+    ) {
+        final Project project = assistantChat.getProject();
 
-        JComponent pane;
-        if (block != null && (TEXT_BLOCK_TYPES.contains(block.getType()))) {
-            String html;
-            if (block.getType().equals("text")) {
-                html = renderer.render(parser.parse(block.getContent()));
-                html = wrapClassNamesWithAnchor(html);
-            } else {
-                html = String.format("<html><body>%s</body></html>", block.getContent());
-            }
-            JEditorPane htmlPane = topComponent.createHtmlPane(html);
-            pane = htmlPane;
-            htmlPane.addHyperlinkListener(e -> {
-                if (HyperlinkEvent.EventType.ACTIVATED.equals(e.getEventType())) {
-                    String fileName = e.getDescription();
-                    if (fileName.endsWith(".java")) {
-                        String javaClass = fileName.substring(0, fileName.length() - 5);
-                        FileObject path = findClassInSourcePath(javaClass, true);
-                        if (path != null) {
-                            openFileInEditor(path);
-                        }
-                    }
-                    if (fileName.startsWith("#")) {
-                        int lineNumber = -1;
-                        String javaClass = fileName.substring(1);
-                        if (javaClass.contains("@")) {
-                            String[] javaClassLoc = javaClass.split("@");
-                            javaClass = javaClassLoc[0];
-                            lineNumber = Integer.parseInt(javaClassLoc[1]);
-                        }
-                        FileObject path = findFileInProjects(javaClass);
-                        if (path == null) {
-                            path = findClassInSourcePath(javaClass, true);
-                        }
-                        if (path != null) {
-                            if (lineNumber < 0) {
+        LOG.finest(
+            () -> "\n" + code + "\n"
+                + actionBlock + "\n"
+                + contentBlock + "\n"
+                + project + "\n"
+                + assistantChat
+        );
+        JComponent pane = null;
+
+        if (contentBlock == null) {
+            return pane;
+        }
+
+        final String type = contentBlock.type;
+        switch (type) {
+            case "text", "web" -> {
+                LOG.finest(() -> "Creating a text/web pane");
+                String html;
+                if (contentBlock.type.equals("text")) {
+                    html = renderer.render(parser.parse(contentBlock.getContent()));
+                    html = wrapClassNamesWithAnchor(html);
+                } else {
+                    html = contentBlock.getContent();
+                }
+                JEditorPane htmlPane = assistantChat.createHtmlPane(html);
+                pane = htmlPane;
+                htmlPane.addHyperlinkListener(e -> {
+                    if (HyperlinkEvent.EventType.ACTIVATED.equals(e.getEventType())) {
+                        String fileName = e.getDescription();
+                        if (fileName.endsWith(".java")) {
+                            String javaClass = fileName.substring(0, fileName.length() - 5);
+                            FileObject path = findClassInSourcePath(javaClass, true);
+                            if (path != null) {
                                 openFileInEditor(path);
-                            } else {
-                                openFileInEditorAtLine(path, lineNumber);
+                            }
+                        }
+                        if (fileName.startsWith("#")) {
+                            int lineNumber = -1;
+                            String javaClass = fileName.substring(1);
+                            if (javaClass.contains("@")) {
+                                String[] javaClassLoc = javaClass.split("@");
+                                javaClass = javaClassLoc[0];
+                                lineNumber = Integer.parseInt(javaClassLoc[1]);
+                            }
+                            FileObject path = findFileInProjects(javaClass);
+                            if (path == null) {
+                                path = findClassInSourcePath(javaClass, true);
+                            }
+                            if (path != null) {
+                                if (lineNumber < 0) {
+                                    openFileInEditor(path);
+                                } else {
+                                    openFileInEditorAtLine(path, lineNumber);
+                                }
                             }
                         }
                     }
+                });
+            }
+
+            case "tooling" ->  {
+                LOG.finest(() -> "Creating a tool execution pane");
+                pane = assistantChat.createToolExecutionPane(
+                    ((ToolExecutionBlock)contentBlock).execution,
+                    contentBlock.getContent()
+                );
+            }
+
+            default -> {
+                LOG.finest(() -> "Creating specialized pane");
+                code.append('\n').append((contentBlock).getContent()).append('\n');
+                String mimeType = getMimeType(contentBlock.type);
+                if (MIME_PUML.equals(mimeType)) {
+                    LOG.finest(() -> "Creating an SVG pane");
+                    pane = assistantChat.createSVGPane(contentBlock);
+                } else if (MIME_MARKDOWN.equals(mimeType)) {
+                    LOG.finest(() -> "Creating a Markdown pane");
+                    pane = assistantChat.createMarkdownPane(contentBlock);
+                } else if (MIME_MERMAID.equals(mimeType)) {
+                    LOG.finest(() -> "Creating an Mermaid pane");
+                    pane = assistantChat.createMermaidPane(contentBlock);
+                } else {
+                    LOG.finest(() -> "Creating an generic code pane");
+                    pane = assistantChat.createCodePane(mimeType, contentBlock);
                 }
-            });
-        } else {
-            code.append('\n').append(block.getContent()).append('\n');
-            String mimeType = getMimeType(block.getType());
-            pane = switch (mimeType) {
-                case MIME_PUML -> topComponent.createSVGPane(block);
-                case MIME_MARKDOWN -> topComponent.createMarkdownPane(block);
-                case MIME_MERMAID -> topComponent.createMermaidPane(block);
-                default -> topComponent.createCodePane(mimeType, block);
-            };
+            }
         }
+
         return pane;
     }
 
@@ -562,7 +627,7 @@ public class EditorUtil {
         }
         return ""; // NOI18N
     }
-    
+
     public static NbEditorKit createEditorKit(String mimeType) {
         if (mimeType == null || mimeType.isBlank()) {
             mimeType = MIME_PLAIN_TEXT;

@@ -22,7 +22,6 @@ import com.sun.source.tree.Tree;
 import com.sun.source.tree.VariableTree;
 import com.sun.source.util.TreePath;
 import dev.langchain4j.agent.tool.Tool;
-import java.io.IOException;
 import java.util.Set;
 import java.util.stream.Collectors;
 import javax.lang.model.element.Element;
@@ -35,6 +34,9 @@ import org.netbeans.modules.refactoring.api.Problem;
 import org.netbeans.modules.refactoring.api.RefactoringSession;
 import org.netbeans.modules.refactoring.api.RenameRefactoring;
 import org.openide.util.lookup.Lookups;
+import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READONLY;
+import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READWRITE;
+import java.io.IOException;
 
 /**
  * Tools for code-level operations in NetBeans projects.
@@ -64,6 +66,7 @@ public class RefactoringTools extends AbstractCodeTool {
      * @return status message
      */
     @Tool("Format a Java file by path using NetBeans code formatter")
+    @ToolPolicy(READWRITE)
     public String formatFile(String path) throws Exception {
         progress("Formatting " + path);
         return withJavaSource(path, javaSource -> {
@@ -73,6 +76,7 @@ public class RefactoringTools extends AbstractCodeTool {
     }
 
     @Tool("Rename a class in a Java file")
+    @ToolPolicy(READWRITE)
     public String renameClass(String path, String oldName, String newName) throws Exception {
         progress("Renaming class " + oldName + " -> " + newName);
         return withJavaSource(path, javaSource -> {
@@ -104,6 +108,7 @@ public class RefactoringTools extends AbstractCodeTool {
     }
 
     @Tool("Rename a method in a Java file")
+    @ToolPolicy(READWRITE)
     public String renameMethod(String path, String className, String oldMethod, String newMethod)
             throws Exception {
         progress("Renaming method " + oldMethod + " -> " + newMethod + " in class " + className);
@@ -135,6 +140,7 @@ public class RefactoringTools extends AbstractCodeTool {
     }
 
     @Tool("Move a class to another package")
+    @ToolPolicy(READWRITE)
     public String moveClass(String path, String className, String newPackage) throws Exception {
         progress("Moving class " + className + " to package " + newPackage);
         return withJavaSource(path, javaSource -> {
@@ -162,6 +168,7 @@ public class RefactoringTools extends AbstractCodeTool {
     }
 
     @Tool("List all methods in a class")
+    @ToolPolicy(READONLY)
     public String listMethods(String path, String className) throws Exception {
         progress("📋 Listing methods of class " + className);
         return withJavaSource(path, javaSource -> {
@@ -186,6 +193,7 @@ public class RefactoringTools extends AbstractCodeTool {
     }
 
     @Tool("Update the body of an existing method. Only provide the statements inside the method, without the signature or braces.")
+    @ToolPolicy(READWRITE)
     public String updateMethodBody(String path, String className, String methodName, String newBody) throws Exception {
         progress("☕ Updating body of method " + methodName + " in class " + className);
         return withJavaSource(path, javaSource -> {
@@ -243,6 +251,7 @@ public class RefactoringTools extends AbstractCodeTool {
     }
 
     @Tool("Replace a method in a class with new code. Provide the full method definition including signature and body.")
+    @ToolPolicy(READWRITE)
     public String replaceMethod(String path, String className, String methodName, String newMethodCode) throws Exception {
         progress("☕ Replacing method " + methodName + " in class " + className);
         return withJavaSource(path, javaSource -> {
@@ -294,6 +303,7 @@ public class RefactoringTools extends AbstractCodeTool {
     }
 
     @Tool("Delete a method from a class by its name")
+    @ToolPolicy(READWRITE)
     public String deleteMethod(String path, String className, String methodName) throws Exception {
         progress("🗑 Deleting method " + methodName + " from class " + className);
         return withJavaSource(path, javaSource -> {
@@ -341,6 +351,7 @@ public class RefactoringTools extends AbstractCodeTool {
     }
 
     @Tool("Add a Javadoc comment to a method")
+    @ToolPolicy(READWRITE)
     public String addMethodJavadoc(String path, String className, String methodName, String javadoc) throws Exception {
         progress("☕ Adding Javadoc to method " + methodName + " in class " + className);
         return withJavaSource(path, javaSource -> {
@@ -392,6 +403,7 @@ public class RefactoringTools extends AbstractCodeTool {
     }
 
     @Tool("Add a new field to a class")
+    @ToolPolicy(READWRITE)
     public String addField(String path, String className, String fieldName, String fieldType, Set<String> modifiers) throws Exception {
         progress("☕ Adding Field " + fieldType + " " + fieldName + " in class " + className);
         Set<Modifier> mods = modifiers.stream()
@@ -424,6 +436,7 @@ public class RefactoringTools extends AbstractCodeTool {
     }
 
     @Tool("Rename a field in a Java file")
+    @ToolPolicy(READWRITE)
     public String renameField(String path, String className, String oldFieldName, String newFieldName) throws Exception {
         progress("✏ Renaming field " + oldFieldName + " -> " + newFieldName + " in class " + className);
         return withJavaSource(path, javaSource -> {
@@ -470,6 +483,7 @@ public class RefactoringTools extends AbstractCodeTool {
     }
 
     @Tool("Delete a field from a class by its name")
+    @ToolPolicy(READWRITE)
     public String deleteField(String path, String className, String fieldName) throws Exception {
         progress("🗑 Deleting field " + fieldName + " from class " + className);
         return withJavaSource(path, javaSource -> {
@@ -499,6 +513,7 @@ public class RefactoringTools extends AbstractCodeTool {
     }
 
     @Tool("Add an import statement to a Java file")
+    @ToolPolicy(READWRITE)
     public String addImport(String path, String importName) throws Exception {
         progress("➕ Adding import " + importName + " to " + path);
         return withJavaSource(path, javaSource -> {

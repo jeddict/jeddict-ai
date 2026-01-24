@@ -127,7 +127,7 @@ public class JavaDocFix extends BaseAIFix {
     protected void performRewrite(JavaFix.TransformationContext tc) throws Exception {
 
         try (
-            ProgressHandle progress = ProgressHandle.createHandle(NbBundle.getMessage(JeddictUpdateManager.class, "ProgressHandle", 0))
+            ProgressHandle progress = ProgressHandle.createHandle(NbBundle.getMessage(JeddictUpdateManager.class, "PROGRESS_TASK_1"))
         ) {
             WorkingCopy copy = tc.getWorkingCopy();
             if (copy.toPhase(JavaSource.Phase.RESOLVED).compareTo(JavaSource.Phase.RESOLVED) < 0) {

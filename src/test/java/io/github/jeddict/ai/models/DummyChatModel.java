@@ -16,6 +16,18 @@
 
 package io.github.jeddict.ai.models;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Set;
+import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.ArrayList;
+import java.util.Collections;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -34,26 +46,10 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.List;
-import java.util.Set;
-import java.util.logging.Logger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-/**
- *
- */
-import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ToolChoice;
-import java.util.ArrayList;
-import java.util.Collections;
 import static ste.lloop.Loop._break_;
 import static ste.lloop.Loop.on;
+
 
 public class DummyChatModel implements ChatModel, StreamingChatModel {
 
@@ -64,6 +60,11 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
     private static final Pattern MOCK_INSTRUCTION_PATTERN =
         Pattern.compile("use mock\\s+(?:'([^']+)'|(\\S+))", Pattern.CASE_INSENSITIVE);
 
+    /**
+     * Not that these ChatModelListener are not meant to be called by the model
+     * code itself. Langchain4j will use them as needed to trigger request/response
+     * related events.
+     */
     private final List<ChatModelListener> listeners;
 
     public ToolChoice toolChoice = ToolChoice.AUTO;
@@ -78,7 +79,7 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
         this.listeners = new ArrayList<>();
     }
 
-    public void addListener(ChatModelListener listener) {
+    public void addListener(final ChatModelListener listener) {
         this.listeners.add(listener);
     }
 
@@ -101,14 +102,9 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
         LOG.info(() -> "> " + String.valueOf(chatRequest));
 
         if (error != null) {
-            LOG.info(() -> "> DummyChatModel instructed to raise " + error);
+            LOG.info(() -> "DummyChatModel instructed to raise " + error);
 
             throw error;
-        }
-
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(chatRequest, provider(), Collections.emptyMap());
-        for (ChatModelListener listener : listeners) {
-            listener.onRequest(requestContext);
         }
 
         final StringBuilder bodyBuilder = new StringBuilder();
@@ -166,12 +162,22 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
             if (!toolExecuted) {
                 final String tool = on(chatRequest.toolSpecifications()).loop((specification) -> {
                     final String name = specification.name();
-                    if (body.contains("execute mock " + name)) {
+                    // (?i) makes "execute tool " case-insensitive
+                    // \Q and \E escape the 'name' to ensure special characters don't break the regex
+                    // "(?![a-zA-Z])" lookahead expression asserting that the next character is not a-z or A-Z.
+                    // the lookahead is needed to make sure an exatct match (e.g.
+                    // is name is dummyTool, execute tool dummyToolSomething
+                    // does not match)
+                    final String regex = "(?i)execute tool " + Pattern.quote(name) + "(?![a-zA-Z])";
+
+                    if (Pattern.compile(regex).matcher(body).find()) {
                         _break_(name);
                     }
                 });
 
                 if (tool != null) {
+                    LOG.info(() -> "Requesting to execute tool %s".formatted(tool));
+
                     toolExecuted = true; // set before execution to make sure
                                          // execution is done even in case of
                                          // exceptions
@@ -184,7 +190,7 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
                     responseMessage = AiMessage.from(toolRequest);
                 }
             } else {
-                toolExecuted = false;  // geeting ready for the next prompt
+                toolExecuted = false;  // getting ready for the next prompt
                 responseMessage = on(chatRequest.messages()).loop((msg) -> {
                     if (msg instanceof ToolExecutionResultMessage toolResult) {
                         _break_(AiMessage.from(toolResult.text()));
@@ -234,11 +240,6 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
 
         ChatResponse chatResponse =
             ChatResponse.builder().aiMessage(responseMessage).build();
-
-        ChatModelResponseContext responseContext = new ChatModelResponseContext(chatResponse, chatRequest, provider(), Collections.emptyMap());
-        for (ChatModelListener listener : listeners) {
-            listener.onResponse(responseContext);
-        }
 
         LOG.info(() -> "< " + String.valueOf(chatResponse));
 

@@ -79,11 +79,12 @@ public class FileStreamSource extends StreamSource {
 
     /**
      * Retrieves the title for the stream source which for now, defaults to file name and extension.
-     * 
+     * Potential update to include file path relative to project root as per TODO in class description.
      *
      * @return the title of the stream source.
      */
     @Override
+
     public String getTitle() {
         // TODO: Update to include relative file path.
         return fileObject.getNameExt();

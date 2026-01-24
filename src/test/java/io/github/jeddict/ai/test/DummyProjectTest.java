@@ -15,16 +15,35 @@
  */
 package io.github.jeddict.ai.test;
 
+import java.io.File;
 import java.io.IOException;
 import static org.assertj.core.api.BDDAssertions.then;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.BDDAssertions.thenThrownBy;
+
 import org.junit.jupiter.api.Test;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileSystem;
 import org.openide.filesystems.FileUtil;
 import org.openide.util.lookup.InstanceContent;
 
-public class DummyProjectTest {
+public class DummyProjectTest extends TestBase {
+
+    @Test
+    public void constructors() {
+        DummyProject p = new DummyProject(projectDir);
+        then(new File(p.getProjectDirectory().getPath())).exists().isDirectory();
+
+        p = new DummyProject(new File(projectDir));
+        then(new File(p.getProjectDirectory().getPath())).exists().isDirectory();
+
+        p = new DummyProject(new File(projectDir).toPath());
+        then(new File(p.getProjectDirectory().getPath())).exists().isDirectory();
+
+        thenThrownBy(() -> {
+            new DummyProject((File)null);
+        }).isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("projectDir can not be null");
+    }
 
     @Test
     public void get_project_directory_returns_correct_file_object() throws IOException {
@@ -36,17 +55,17 @@ public class DummyProjectTest {
 
     @Test
     public void constructor_throws_exception_for_null_directory() {
-        assertThatThrownBy(() -> new DummyProject((FileObject) null))
+        thenThrownBy(() -> new DummyProject((FileObject) null))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("projectDir cannot be null");
+                .hasMessage("projectDir can not be null");
     }
 
     @Test
     public void constructor_throws_exception_for_non_existent_file() {
         java.io.File nonExistentFile = new java.io.File("nonexistent-project-dir");
-        assertThatThrownBy(() -> new DummyProject(nonExistentFile))
+        thenThrownBy(() -> new DummyProject(nonExistentFile))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("project directory cannot be null or invalid");
+                .hasMessage("project directory can not be null or invalid");
     }
 
     @Test
@@ -61,9 +80,9 @@ public class DummyProjectTest {
     @Test
     public void name() throws IOException {
         final FileSystem fs = FileUtil.createMemoryFileSystem();
-        final FileObject projectDir = fs.getRoot().createFolder("test-project");
+        final FileObject folder = fs.getRoot().createFolder("test-project");
 
-        final DummyProject project = new DummyProject(projectDir);
+        final DummyProject project = new DummyProject(folder);
 
         project.name("hello world");
         then(project.name()).isEqualTo("hello world");
@@ -75,9 +94,9 @@ public class DummyProjectTest {
     @Test
     public void type() throws IOException {
         final FileSystem fs = FileUtil.createMemoryFileSystem();
-        final FileObject projectDir = fs.getRoot().createFolder("test-project");
+        final FileObject folder = fs.getRoot().createFolder("test-project");
 
-        final DummyProject project = new DummyProject(projectDir);
+        final DummyProject project = new DummyProject(folder);
 
         project.type("ant");
         then(project.type()).isEqualTo("ant");
