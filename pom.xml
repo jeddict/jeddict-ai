@@ -45,7 +45,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>17</maven.compiler.release>
-        <javalang4j.version>1.9.1</javalang4j.version>
+        <javalang4j.version>1.10.0</javalang4j.version>
         <netbeans.version>RELEASE280</netbeans.version>
     </properties>
 
@@ -179,6 +179,12 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.14.0</version>
+                <!--
+                  need to make sure methods' arguments name is preserved
+                -->
+                <configuration>
+                    <parameters>true</parameters>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -271,7 +277,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-local-ai</artifactId>
-            <version>${javalang4j.version}-beta17</version>
+            <version>${javalang4j.version}-beta18</version>
         </dependency>
         <dependency>
             <groupId>dev.langchain4j</groupId>
@@ -291,7 +297,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-agentic</artifactId>
-            <version>${javalang4j.version}-beta17</version>
+            <version>${javalang4j.version}-beta18</version>
             <type>jar</type>
         </dependency>
         <dependency>
@@ -333,6 +339,11 @@
             <groupId>org.yaml</groupId>
             <artifactId>snakeyaml</artifactId>
             <version>2.3</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-libs-asm</artifactId>
+            <version>${netbeans.version}</version>
         </dependency>
         <dependency>
             <groupId>org.netbeans.api</groupId>
@@ -660,14 +671,30 @@
         <dependency>
             <groupId>com.github.stefanofornari</groupId>
             <artifactId>lambda-loop</artifactId>
-            <version>0.2.2</version>
+            <version>0.5.0</version>
+        </dependency>
+        <dependency>
+            <groupId>net.bytebuddy</groupId>
+            <artifactId>byte-buddy</artifactId>
+            <version>1.18.2</version>
         </dependency>
 
         <!--
           TEST DEPENDENCIES
         -->
 
-
+        <dependency>
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock-standalone</artifactId>
+            <version>3.3.1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>info.picocli</groupId>
+            <artifactId>picocli</artifactId>
+            <version>4.7.6</version>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
