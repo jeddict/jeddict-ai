@@ -41,8 +41,7 @@ public class InteractiveFileEditor extends AbstractTool {
     }
 
     @Tool("""
-    This is an interactive editor to create or edit text content. Use it to
-    create new files or update existing files.
+    Interactive editor to create and edit text content and source code.
 
     Inputs:
     - 'path': the filesystem path of the file to be changed; this path may be for

@@ -839,14 +839,17 @@ public abstract class AssistantChat extends TopComponent {
 
     private void addEditorPaneRespectingTextArea(JComponent component) {
         int count = parentPanel.getComponentCount();
-        if (count > 0) {
-            Component lastComponent = parentPanel.getComponent(count - 1);
+        if (count > 1) {
+            final int last = count - 2; // the last component should be te glue
+            Component lastComponent = parentPanel.getComponent(last);
             if (lastComponent instanceof JTextArea) {
-                parentPanel.add(component, count - 1);
+                parentPanel.add(component, last);
                 return;
             }
         }
+        
         parentPanel.add(component);
+        parentPanel.add(Box.createVerticalGlue());
     }
 
     public JTextArea createTextAreaPane() {

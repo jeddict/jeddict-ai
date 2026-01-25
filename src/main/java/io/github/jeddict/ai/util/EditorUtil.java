@@ -119,6 +119,7 @@ public class EditorUtil {
         if (firstPane != null) {
             firstPane.scrollRectToVisible(firstPane.getBounds());
         }
+        
         assistantChat.revalidate();
         assistantChat.repaint();
         List<FileObject> context = new ArrayList<>();

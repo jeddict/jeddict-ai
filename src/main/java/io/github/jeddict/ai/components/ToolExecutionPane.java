@@ -37,6 +37,7 @@ public class ToolExecutionPane extends javax.swing.JPanel {
             argumentsPanel.add(createArgumentChip(key, arguments.getString(key)));
         });
         resultTextArea.setText(result);
+        resultTextArea.setRows(Math.min(5, resultTextArea.getLineCount()));
     }
 
     /**
@@ -54,7 +55,7 @@ public class ToolExecutionPane extends javax.swing.JPanel {
         argumentsPanel = new javax.swing.JPanel();
         resultPanel = new javax.swing.JPanel();
         resultLabel = new javax.swing.JLabel();
-        jScrollPane1 = new javax.swing.JScrollPane();
+        resultScrollPane = new javax.swing.JScrollPane();
         resultTextArea = new javax.swing.JTextArea();
 
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
@@ -69,6 +70,7 @@ public class ToolExecutionPane extends javax.swing.JPanel {
         );
 
         setBorder(javax.swing.BorderFactory.createCompoundBorder(javax.swing.BorderFactory.createEmptyBorder(5, 5, 5, 5), javax.swing.BorderFactory.createLineBorder(UIUtil.COLOR_JEDDICT_MAIN, 3)));
+        setMaximumSize(new java.awt.Dimension(2147483647, 350));
         setName("root"); // NOI18N
         setLayout(new java.awt.BorderLayout());
 
@@ -91,6 +93,7 @@ public class ToolExecutionPane extends javax.swing.JPanel {
 
         resultPanel.setBackground(new java.awt.Color(250, 251, 255));
         resultPanel.setBorder(javax.swing.BorderFactory.createCompoundBorder(javax.swing.BorderFactory.createEmptyBorder(10, 10, 10, 10), javax.swing.BorderFactory.createMatteBorder(1, 0, 0, 0, new java.awt.Color(224, 224, 224))));
+        resultPanel.setMaximumSize(new java.awt.Dimension(2147483647, 300));
         resultPanel.setName("resultPane"); // NOI18N
         resultPanel.setLayout(new java.awt.BorderLayout());
 
@@ -100,22 +103,24 @@ public class ToolExecutionPane extends javax.swing.JPanel {
         resultLabel.setBorder(javax.swing.BorderFactory.createEmptyBorder(1, 1, 10, 1));
         resultPanel.add(resultLabel, java.awt.BorderLayout.PAGE_START);
 
-        jScrollPane1.setBorder(javax.swing.BorderFactory.createEmptyBorder(1, 1, 1, 1));
-        jScrollPane1.setPreferredSize(new java.awt.Dimension(224, 50));
+        resultScrollPane.setBorder(javax.swing.BorderFactory.createEmptyBorder(1, 1, 1, 1));
+        resultScrollPane.setMaximumSize(new java.awt.Dimension(32767, 200));
+        resultScrollPane.setMinimumSize(new java.awt.Dimension(16, 25));
 
         resultTextArea.setEditable(false);
         resultTextArea.setBackground(new java.awt.Color(250, 251, 255));
         resultTextArea.setColumns(20);
         resultTextArea.setFont(UIUtil.FONT_NORMAL_TEXT);
         resultTextArea.setLineWrap(true);
-        resultTextArea.setRows(5);
+        resultTextArea.setText(org.openide.util.NbBundle.getMessage(ToolExecutionPane.class, "ToolExecutionPane.resultTextArea.text")); // NOI18N
         resultTextArea.setWrapStyleWord(true);
         resultTextArea.setBorder(javax.swing.BorderFactory.createEmptyBorder(1, 1, 1, 1));
+        resultTextArea.setMaximumSize(new java.awt.Dimension(2147483647, 200));
         resultTextArea.setMinimumSize(new java.awt.Dimension(103, 87));
         resultTextArea.setName("result"); // NOI18N
-        jScrollPane1.setViewportView(resultTextArea);
+        resultScrollPane.setViewportView(resultTextArea);
 
-        resultPanel.add(jScrollPane1, java.awt.BorderLayout.CENTER);
+        resultPanel.add(resultScrollPane, java.awt.BorderLayout.CENTER);
 
         add(resultPanel, java.awt.BorderLayout.CENTER);
     }// </editor-fold>//GEN-END:initComponents
@@ -129,10 +134,10 @@ public class ToolExecutionPane extends javax.swing.JPanel {
     private javax.swing.JPanel argumentsPanel;
     private javax.swing.JPanel headerPanel;
     private javax.swing.JPanel jPanel1;
-    private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JLabel nameLabel;
     private javax.swing.JLabel resultLabel;
     private javax.swing.JPanel resultPanel;
+    private javax.swing.JScrollPane resultScrollPane;
     private javax.swing.JTextArea resultTextArea;
     // End of variables declaration//GEN-END:variables
 }

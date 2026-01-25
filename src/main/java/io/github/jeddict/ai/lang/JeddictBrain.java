@@ -222,14 +222,6 @@ public class JeddictBrain implements PropertyChangeEmitter {
             builder.tools(tools.toArray());
         }
 
-        //
-        // check this note in:
-        // NOTE: If you create a DefaultToolExecutor manually or use a custom
-        // ToolExecutor, ensure that a ToolExecutionException is thrown by
-        // ToolExecutor in such cases. For DefaultToolExecutor, you can
-        // enable this by setting DefaultToolExecutor.Builder.propagateToolExecutionExceptions(Boolean)
-        // to true.
-        //
         builder.registerListeners(allListeners());
         builder.toolExecutionErrorHandler(this::toolExecutionErrorHandler);
         builder.toolArgumentsErrorHandler(this::toolArgumentsErrorHandler);
