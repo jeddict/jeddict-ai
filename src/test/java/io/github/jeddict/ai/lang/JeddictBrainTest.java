@@ -613,7 +613,7 @@ public class JeddictBrainTest extends TestBase {
     public void wrap_tools_if_interactive() throws IOException {
         final StringBuilder sb = new StringBuilder();
         final DummyTool tools = new DummyTool();
-        final Function<String, Boolean> defaultInteraction = (s) -> {
+        final Function<ToolExecutionRequest, Boolean> defaultInteraction = (s) -> {
             sb.append(s);  return true;
         };
         JeddictBrain brain = new JeddictBrain(

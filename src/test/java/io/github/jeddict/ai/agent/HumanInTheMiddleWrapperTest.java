@@ -24,14 +24,15 @@ import java.util.List;
 import java.util.function.Function;
 import java.lang.reflect.Method;
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class HumanInTheMiddleWrapperTest extends TestBase {
 
-    private List<String> interceptionEvents;
-    private Function<String, Boolean> interceptor;
+    private List<ToolExecutionRequest> interceptionEvents;
+    private Function<ToolExecutionRequest, Boolean> interceptor;
     private DummyTool wrappedTool;
     private DummyTool originalTool;
 
@@ -41,8 +42,8 @@ public class HumanInTheMiddleWrapperTest extends TestBase {
         super.beforeEach();
         interceptionEvents = new ArrayList<>();
         // Default interceptor allows execution
-        interceptor = s -> {
-            interceptionEvents.add(s);
+        interceptor = execution -> {
+            interceptionEvents.add(execution);
             return true;
         };
         originalTool = new DummyTool(projectDir);
@@ -66,16 +67,14 @@ public class HumanInTheMiddleWrapperTest extends TestBase {
     }
 
     @Test
-    void dummyToolWrite_is_intercepted_with_formatted_message() {
+    void dummyToolWrite_is_intercepted_with_tool_execution() {
         wrappedTool.dummyToolWrite();
 
         then(originalTool.executed()).isTrue();
         then(interceptionEvents).hasSize(1);
-        String message = interceptionEvents.get(0);
-        then(message).isEqualTo("""
-                Can I execute the tool below?
-                   dummyToolWrite
-                """);
+        final ToolExecutionRequest execution = interceptionEvents.get(0);
+        then(execution.name()).isEqualTo("dummyToolWrite");
+        then(execution.arguments()).isEqualTo("{}");
     }
 
     @Test
@@ -84,12 +83,11 @@ public class HumanInTheMiddleWrapperTest extends TestBase {
 
         then(originalTool.executed()).isTrue();
         then(interceptionEvents).hasSize(1);
-        String message = interceptionEvents.get(0);
         
-        then(message).contains("Can I execute the tool below?");
-        then(message).contains("dummyToolWithArgs");
-        then(message).contains("arg1: val1");
-        then(message).contains("arg2: [a, b]");
+        final ToolExecutionRequest execution = interceptionEvents.get(0);
+        
+        then(execution.name()).isEqualTo("dummyToolWithArgs");
+        then(execution.arguments()).isEqualTo("{\"arg2\":\"[a, b]\",\"arg1\":\"val1\"}");
     }
 
     @Test
@@ -98,8 +96,8 @@ public class HumanInTheMiddleWrapperTest extends TestBase {
 
         then(originalTool.executed()).isTrue();
         then(interceptionEvents).hasSize(1);
-        String message = interceptionEvents.get(0);
-        then(message).contains("dummyTool");
+        final ToolExecutionRequest execution = interceptionEvents.get(0);
+        then(execution.name()).isEqualTo("dummyTool");
     }
 
     @Test
@@ -126,7 +124,7 @@ public class HumanInTheMiddleWrapperTest extends TestBase {
 
     @Test
     void execution_is_blocked_with_ToolExecutionException_if_hitm_returns_false() {
-        Function<String, Boolean> blockingInterceptor = s -> false;
+        final Function<ToolExecutionRequest, Boolean> blockingInterceptor = s -> false;
         DummyTool blockingWrappedTool = new HumanInTheMiddleWrapper(blockingInterceptor).wrap(originalTool);
 
         assertThatThrownBy(() -> blockingWrappedTool.dummyToolWrite())

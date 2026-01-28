@@ -17,14 +17,18 @@
 
 package io.github.jeddict.ai.util;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import io.github.jeddict.ai.components.ToolExecutionConfirmationPane;
-import java.awt.BorderLayout;
-import static java.awt.BorderLayout.CENTER;
+import io.github.jeddict.ai.components.ToolExecutionPane;
+import io.github.jeddict.ai.components.ToolInvocationPane;
 import static java.awt.BorderLayout.SOUTH;
+import java.awt.Color;
 import java.awt.Container;
-import javax.swing.JButton;
+import javax.swing.BoxLayout;
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.border.LineBorder;
 
 /**
  *
@@ -32,6 +36,8 @@ import javax.swing.JPanel;
 public class UIRunner {
 
     private ToolExecutionConfirmationPane confirmationPane;
+    private ToolInvocationPane invocationPane;
+    private ToolExecutionPane executionPane;
 
     public static void main(final String[] args) {
         new UIRunner();
@@ -43,30 +49,27 @@ public class UIRunner {
         frame.setSize(300, 200);
 
         final Container content = frame.getContentPane();
+        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
 
-        content.setLayout(new BorderLayout());
-        content.add(confirmationPane = new ToolExecutionConfirmationPane(), CENTER);
+        final ToolExecutionRequest execution = ToolExecutionRequest.builder()
+            .name("helloTool").arguments("{\"argument1\":\"value1\",\"argument2\":\"value2\"}").build();
+        content.add(confirmationPane = new ToolExecutionConfirmationPane());
+        content.add(invocationPane = new ToolInvocationPane());
+        content.add(executionPane = new ToolExecutionPane(execution, "This is the result\n1\n2\n3\n4\n5"));
+        content.setBackground(Color.white);
 
         frame.setVisible(true);
-
+        
         final JPanel controls = new JPanel();
-        final JButton showConfirmationBtn = new JButton("Confirmation");
+        
+        confirmationPane.setBackground(Color.white);
 
-        showConfirmationBtn.addActionListener(e -> confirmationPane.showMessage(
-        """
-        one
-
-        two
-
-        three
-
-        four
-
-        five
-        """));
-
-        controls.add(showConfirmationBtn);
-
+        confirmationPane.showMessage(execution);
+        
+        confirmationPane.addPropertyChangeListener(JOptionPane.VALUE_PROPERTY, (e) -> {
+            JOptionPane.showConfirmDialog(content, "Hello");
+        });
+        
         content.add(controls, SOUTH);
     }
 }

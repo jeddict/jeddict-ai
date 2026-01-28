@@ -18,10 +18,12 @@ package io.github.jeddict.ai.util;
 import io.github.jeddict.ai.components.AssistantChat;
 import java.awt.Color;
 import java.awt.Font;
+import javax.swing.BorderFactory;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
+import javax.swing.border.Border;
 
 /**
  *
@@ -32,8 +34,9 @@ public class UIUtil {
     //
     // Colors
     //
-    public static final Color COLOR_JEDDICT_MAIN = new Color(92, 159, 194);
-    public static final Color COLOR_JEDDICT_ACCENT1 = new Color(0xd6, 0x33, 0x84);
+    public static final Color COLOR_JEDDICT_MAIN_BACKGROUND = Color.WHITE;
+    public static final Color COLOR_JEDDICT_ACCENT1 = new Color(92, 159, 194);
+    public static final Color COLOR_JEDDICT_ACCENT2 = new Color(0xd6, 0x33, 0x84);
 
     //
     // Fonts
@@ -42,6 +45,19 @@ public class UIUtil {
     public static final Font FONT_NORMAL_TEXT = new Font("SansSerif", Font.PLAIN, 12);
     public static final Font FONT_MONOSPACED = new Font("Monospaced", Font.PLAIN, 12);
 
+    //
+    // Borders
+    //
+    public static final Border BORDER_JEDDICT_SPACED = 
+        BorderFactory.createEmptyBorder(5, 5, 5, 5);
+    public static final Border BORDER_JEDDICT_SPACED_LINE_1 =
+        BorderFactory.createCompoundBorder(
+            BorderFactory.createEmptyBorder(5, 5, 5, 5), 
+            //BorderFactory.createLineBorder(UIUtil.COLOR_JEDDICT_ACCENT1, 1)
+            BorderFactory.createMatteBorder(1, 0, 1, 0, COLOR_JEDDICT_ACCENT1)
+        );
+        
+    
     public static String queryToEnhance() {
         // Create a JTextArea for multiline input
         JTextArea textArea = new JTextArea(10, 30); // 10 rows, 30 columns

@@ -18,15 +18,22 @@
 package io.github.jeddict.ai.components;
 
 import com.github.caciocavallosilano.cacio.ctc.junit.CacioTest;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import static io.github.jeddict.ai.components.ArgumentChip.CHIP_SAMPLE_ARGUMENT_NAME;
 import static io.github.jeddict.ai.components.ArgumentChip.CHIP_SAMPLE_ARGUMENT_VALUE;
+import static io.github.jeddict.ai.components.ToolInvocationPane.ARGUMENT_SAMPLE_TOOL_NAME;
 import java.awt.Container;
 import java.awt.Dimension;
+import java.util.Map;
 import javax.swing.BoxLayout;
 import javax.swing.JFrame;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import static org.assertj.core.api.BDDAssertions.then;
+import org.assertj.swing.core.BasicComponentFinder;
+import org.assertj.swing.core.BasicComponentPrinter;
+import org.assertj.swing.core.ComponentFinder;
+import org.assertj.swing.core.ComponentPrinter;
 import org.assertj.swing.edt.FailOnThreadViolationRepaintManager;
 import org.assertj.swing.edt.GuiActionRunner;
 import org.assertj.swing.fixture.FrameFixture;
@@ -34,14 +41,15 @@ import org.junit.BeforeClass;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import static ste.lloop.Loop.on;
 
 
 
 @CacioTest
-public class ArgumentChipTest {
+public class ToolInvocationPaneTest {
 
     private static final String VALUE100 = StringUtils.repeat("abcdefghij", 10);
+    private static final ComponentPrinter PRINTER = BasicComponentPrinter.printerWithCurrentAwtHierarchy();
+    private static final ComponentFinder FINDER = BasicComponentFinder.finderWithCurrentAwtHierarchy();
 
     private static final Pair<String,String>[] ARGUMENTS1 = new Pair[] {
         Pair.of("a1", "v1"), Pair.of("a2", "v2"), Pair.of("a3", "v3")
@@ -59,7 +67,7 @@ public class ArgumentChipTest {
     @BeforeEach
     void beforeEach() {
         frame = GuiActionRunner.execute(() -> new JFrame());
-        frame.setTitle(("Test ToolExecutionPane"));
+        frame.setTitle(("Test ArgumentPane"));
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         content = frame.getContentPane();
@@ -76,36 +84,46 @@ public class ArgumentChipTest {
     }
     
     @Test
-    public void no_argument_contructor_create_a_sample_chip() {
+    public void no_argument_contructor_create_a_sample_argument_pane() {
         //
         // This is particularly useful to add the component to the GUI Builder
         // palette
         //
-        final ArgumentChip chip = new ArgumentChip();
-        content.add(chip);
-        window.panel(CHIP_SAMPLE_ARGUMENT_NAME).requireVisible();
-        window.panel(CHIP_SAMPLE_ARGUMENT_NAME).label(CHIP_SAMPLE_ARGUMENT_NAME)
-            .requireText(".*%s:.*%s.*".formatted(CHIP_SAMPLE_ARGUMENT_NAME, CHIP_SAMPLE_ARGUMENT_VALUE));
+        final ToolInvocationPane pane = new ToolInvocationPane();
+        content.add(pane);
+        window.panel(ARGUMENT_SAMPLE_TOOL_NAME).requireVisible();
+        window.panel("arguments").panel(CHIP_SAMPLE_ARGUMENT_NAME).requireVisible();
+        window.panel("arguments").label("argument")
+            .requireText(".*%s:.* %s.*".formatted(CHIP_SAMPLE_ARGUMENT_NAME, CHIP_SAMPLE_ARGUMENT_VALUE));
+        then(FINDER.findAll(pane, (component) -> {
+            return component instanceof ArgumentChip;
+        })).hasSize(1);
     }
-
+    
     @Test
-    public void chip_shows_argument_and_value() {
-        on(ARGUMENTS1).loop((argument) -> {
-            final String name = argument.getKey();
-            final ArgumentChip chip = new ArgumentChip(name, argument.getValue());
-            content.add(chip);
-            window.panel(name).requireVisible();
-            window.panel(name).label(name).requireText(".*%s:.*%s.*".formatted(name, argument.getValue()));
-        });
-    }
-
-    @Test
-    public void abbreviate_long_arguments() {
-        final ArgumentChip chip = new ArgumentChip("arg", VALUE100);
-        content.add(chip);
-
-        then(window.panel("arg").label("arg").text())
-            .contains(StringUtils.abbreviateMiddle(VALUE100, " ... ", 80))
-            .doesNotContain(VALUE100);
+    public void constructors_with_executions() {
+        ToolInvocationPane pane = 
+            new ToolInvocationPane("callMe", Map.of("phone", "+1234567890"));
+        
+        content.add(pane);
+        
+        window.panel("callMe").requireVisible();
+        window.panel("arguments").panel("phone").requireVisible();
+        window.panel("arguments").label("phone")
+            .requireText(".*%s:.* %s.*".formatted("phone", "\\+1234567890"));
+        then(FINDER.findAll(pane, (component) -> {
+            return component instanceof ArgumentChip;
+        })).hasSize(1);
+        
+        pane = new ToolInvocationPane(
+            ToolExecutionRequest.builder()
+            .name("callMeAgain").arguments("{\"phone\":\"+1234567890\",\"mobile\":\"+1222333444\"}")
+            .build()
+        );
+        
+        content.removeAll(); content.add(pane);
+        then(FINDER.findAll(pane, (component) -> {
+            return component instanceof ArgumentChip;
+        })).hasSize(2);
     }
 }

@@ -94,7 +94,7 @@ public class JeddictBrain implements PropertyChangeEmitter {
 
     protected Map<String, Boolean> probedModels = new HashMap(); // per instance on purpose to avoid race conditions
 
-    private Function<String, Boolean> defaultInteraction = (text) -> {
+    private Function<ToolExecutionRequest, Boolean> defaultInteraction = (text) -> {
         throw new ToolExecutionException("Write, unknown and null policy tools can not be executed");
     };
 
@@ -123,7 +123,7 @@ public class JeddictBrain implements PropertyChangeEmitter {
         final String modelName,
         final boolean streaming,
         final InteractionMode mode,
-        final Function<String, Boolean> defaultInteraction,
+        final Function<ToolExecutionRequest, Boolean> defaultInteraction,
         final List<AbstractTool> tools
     ) {
         if (modelName == null) {

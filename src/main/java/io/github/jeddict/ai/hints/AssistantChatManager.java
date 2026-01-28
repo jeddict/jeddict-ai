@@ -769,9 +769,9 @@ public class AssistantChatManager extends JavaFix {
         final JeddictBrain brain = new JeddictBrain(
             modelName, pm.isStreamEnabled(),
             mode,
-            (message)-> {
+            (execution)-> {
                 try {
-                    return ac.promptConfirmation(message).get();
+                    return ac.promptConfirmation(execution).get();
                 } catch (InterruptedException | ExecutionException x) {
                     return false;
                 }

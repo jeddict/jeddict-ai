@@ -594,12 +594,12 @@ public abstract class AssistantChat extends TopComponent {
      * is provided in {@code message} and returns a future boolean that shall
      * resolve to true if the tool can be executed, false otherwise.
      *
-     * @param message the confirmation message
+     * @param execution the tool execution to confirm
      *
      * @return future boolean that shall resolve to true if the tool can be
      *         executed, false otherwise
      */
-    public Future<Boolean> promptConfirmation(final String message) {
+    public Future<Boolean> promptConfirmation(final ToolExecutionRequest execution) {
         //
         // We check here again the interaction mode because the user may have
         // changed through the UI. However, this does not change the JeddictBrain's
@@ -616,7 +616,7 @@ public abstract class AssistantChat extends TopComponent {
         if (isInteractiveMode()) {
             CompletableFuture<Boolean> future = new CompletableFuture<>();
             SwingUtilities.invokeLater(() -> {
-                confirmationPane.showMessage(message);
+                confirmationPane.showMessage(execution);
 
                 // remove existing listeners if any
                 for (PropertyChangeListener pcl : confirmationPane.getPropertyChangeListeners(JOptionPane.VALUE_PROPERTY)) {

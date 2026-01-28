@@ -18,24 +18,38 @@ package io.github.jeddict.ai.components;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import io.github.jeddict.ai.util.UIUtil;
-import java.awt.Component;
 import javax.swing.JPanel;
-import org.json.JSONObject;
-import static ste.lloop.Loop.on;
 
 /**
- * A component for displaying tool execution details.
+ * A Swing component that displays the details and results of a tool execution.
+ * 
+ * This pane provides a visual representation of an AI tool execution, showing:
+ * <ul>
+ *   <li>The tool name and invocation arguments (via {@link ToolInvocationPane})
+ *   <li>The execution result in a scrollable text area
+ * </ul>
+ * 
+ * The component is designed to be used within the {@link AssistantChat} to show
+ * users the tools that were executed and their outcomes. The result text area
+ * automatically adjusts its height based on the content (up to 5 lines).
+ * 
+ * @see ToolExecutionRequest
+ * @see ToolInvocationPane
+ * @see AssistantChat
  */
 public class ToolExecutionPane extends javax.swing.JPanel {
 
+    /**
+     * Creates a new ToolExecutionPane with the given execution details and result.
+     * 
+     * @param execution the tool execution request containing tool name and arguments
+     * @param result the result/output of the tool execution to display
+     */
     public ToolExecutionPane(final ToolExecutionRequest execution, final String result) {
         initComponents();
 
-        nameLabel.setText(execution.name());
-        final JSONObject arguments = new JSONObject(execution.arguments());
-        on(arguments.keySet()).loop((key) -> {
-            argumentsPanel.add(createArgumentChip(key, arguments.getString(key)));
-        });
+        toolInvocationPane.toolInvocation(execution);
+
         resultTextArea.setText(result);
         resultTextArea.setRows(Math.min(5, resultTextArea.getLineCount()));
     }
@@ -49,66 +63,33 @@ public class ToolExecutionPane extends javax.swing.JPanel {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        jPanel1 = new javax.swing.JPanel();
-        headerPanel = new javax.swing.JPanel();
-        nameLabel = new javax.swing.JLabel();
-        argumentsPanel = new javax.swing.JPanel();
-        resultPanel = new javax.swing.JPanel();
-        resultLabel = new javax.swing.JLabel();
+        toolInvocationPane = new io.github.jeddict.ai.components.ToolInvocationPane();
+        resultPane = new javax.swing.JPanel();
         resultScrollPane = new javax.swing.JScrollPane();
         resultTextArea = new javax.swing.JTextArea();
+        filler1 = new javax.swing.Box.Filler(new java.awt.Dimension(0, 2), new java.awt.Dimension(0, 2), new java.awt.Dimension(32767, 2));
 
-        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
-        jPanel1.setLayout(jPanel1Layout);
-        jPanel1Layout.setHorizontalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 358, Short.MAX_VALUE)
-        );
-        jPanel1Layout.setVerticalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 243, Short.MAX_VALUE)
-        );
-
-        setBorder(javax.swing.BorderFactory.createCompoundBorder(javax.swing.BorderFactory.createEmptyBorder(5, 5, 5, 5), javax.swing.BorderFactory.createLineBorder(UIUtil.COLOR_JEDDICT_MAIN, 3)));
+        setBackground(new java.awt.Color(255, 255, 255));
+        setBorder(UIUtil.BORDER_JEDDICT_SPACED_LINE_1);
         setMaximumSize(new java.awt.Dimension(2147483647, 350));
         setName("root"); // NOI18N
         setLayout(new java.awt.BorderLayout());
 
-        headerPanel.setBorder(javax.swing.BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        headerPanel.setName("headerPane"); // NOI18N
-        headerPanel.setLayout(new java.awt.BorderLayout());
+        toolInvocationPane.setBackground(UIUtil.COLOR_JEDDICT_MAIN_BACKGROUND);
+        add(toolInvocationPane, java.awt.BorderLayout.NORTH);
 
-        nameLabel.setFont(UIUtil.FONT_HEADER);
-        nameLabel.setForeground(UIUtil.COLOR_JEDDICT_MAIN);
-        org.openide.awt.Mnemonics.setLocalizedText(nameLabel, org.openide.util.NbBundle.getMessage(ToolExecutionPane.class, "ToolExecutionPane.name.text")); // NOI18N
-        nameLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        nameLabel.setName("name"); // NOI18N
-        headerPanel.add(nameLabel, java.awt.BorderLayout.NORTH);
-
-        argumentsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        argumentsPanel.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 0, 0));
-        headerPanel.add(argumentsPanel, java.awt.BorderLayout.CENTER);
-
-        add(headerPanel, java.awt.BorderLayout.NORTH);
-
-        resultPanel.setBackground(new java.awt.Color(250, 251, 255));
-        resultPanel.setBorder(javax.swing.BorderFactory.createCompoundBorder(javax.swing.BorderFactory.createEmptyBorder(10, 10, 10, 10), javax.swing.BorderFactory.createMatteBorder(1, 0, 0, 0, new java.awt.Color(224, 224, 224))));
-        resultPanel.setMaximumSize(new java.awt.Dimension(2147483647, 300));
-        resultPanel.setName("resultPane"); // NOI18N
-        resultPanel.setLayout(new java.awt.BorderLayout());
-
-        resultLabel.setFont(UIUtil.FONT_HEADER);
-        resultLabel.setForeground(new java.awt.Color(150, 150, 150));
-        org.openide.awt.Mnemonics.setLocalizedText(resultLabel, org.openide.util.NbBundle.getMessage(ToolExecutionPane.class, "ToolExecutionPane.resultLabel.text")); // NOI18N
-        resultLabel.setBorder(javax.swing.BorderFactory.createEmptyBorder(1, 1, 10, 1));
-        resultPanel.add(resultLabel, java.awt.BorderLayout.PAGE_START);
+        resultPane.setBackground(UIUtil.COLOR_JEDDICT_MAIN_BACKGROUND);
+        resultPane.setBorder(javax.swing.BorderFactory.createCompoundBorder(javax.swing.BorderFactory.createEmptyBorder(5, 5, 5, 5), javax.swing.BorderFactory.createLineBorder(new java.awt.Color(234, 234, 234))));
+        resultPane.setMaximumSize(new java.awt.Dimension(2147483647, 300));
+        resultPane.setName("result"); // NOI18N
+        resultPane.setLayout(new java.awt.BorderLayout());
 
         resultScrollPane.setBorder(javax.swing.BorderFactory.createEmptyBorder(1, 1, 1, 1));
         resultScrollPane.setMaximumSize(new java.awt.Dimension(32767, 200));
         resultScrollPane.setMinimumSize(new java.awt.Dimension(16, 25));
 
         resultTextArea.setEditable(false);
-        resultTextArea.setBackground(new java.awt.Color(250, 251, 255));
+        resultTextArea.setBackground(UIUtil.COLOR_JEDDICT_MAIN_BACKGROUND);
         resultTextArea.setColumns(20);
         resultTextArea.setFont(UIUtil.FONT_NORMAL_TEXT);
         resultTextArea.setLineWrap(true);
@@ -120,9 +101,10 @@ public class ToolExecutionPane extends javax.swing.JPanel {
         resultTextArea.setName("result"); // NOI18N
         resultScrollPane.setViewportView(resultTextArea);
 
-        resultPanel.add(resultScrollPane, java.awt.BorderLayout.CENTER);
+        resultPane.add(resultScrollPane, java.awt.BorderLayout.CENTER);
+        resultPane.add(filler1, java.awt.BorderLayout.SOUTH);
 
-        add(resultPanel, java.awt.BorderLayout.CENTER);
+        add(resultPane, java.awt.BorderLayout.CENTER);
     }// </editor-fold>//GEN-END:initComponents
 
 
@@ -131,13 +113,10 @@ public class ToolExecutionPane extends javax.swing.JPanel {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JPanel argumentsPanel;
-    private javax.swing.JPanel headerPanel;
-    private javax.swing.JPanel jPanel1;
-    private javax.swing.JLabel nameLabel;
-    private javax.swing.JLabel resultLabel;
-    private javax.swing.JPanel resultPanel;
+    private javax.swing.Box.Filler filler1;
+    private javax.swing.JPanel resultPane;
     private javax.swing.JScrollPane resultScrollPane;
     private javax.swing.JTextArea resultTextArea;
+    private io.github.jeddict.ai.components.ToolInvocationPane toolInvocationPane;
     // End of variables declaration//GEN-END:variables
 }

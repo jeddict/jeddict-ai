@@ -16,6 +16,7 @@
 package io.github.jeddict.ai.agent;
 
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.dynamic.DynamicType;
 import net.bytebuddy.implementation.MethodDelegation;
@@ -26,11 +27,12 @@ import net.bytebuddy.matcher.ElementMatchers;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
 import java.util.Arrays;
 import java.util.function.Function;
 
 import static io.github.jeddict.ai.agent.ToolPolicy.Policy.*;
+import org.json.JSONObject;
+import static ste.lloop.Loop.on;
 
 /**
  * A factory for creating dynamic proxy wrappers around tool objects.
@@ -62,7 +64,7 @@ import static io.github.jeddict.ai.agent.ToolPolicy.Policy.*;
  */
 public class HumanInTheMiddleWrapper {
 
-    private final Function<String, Boolean> hitm;
+    private final Function<ToolExecutionRequest, Boolean> hitm;
 
     /**
      * Constructs a new HumanInTheMiddleWrapper.
@@ -73,7 +75,7 @@ public class HumanInTheMiddleWrapper {
      *             and must return {@code true} to allow execution or
      *             {@code false} to reject it.
      */
-    public HumanInTheMiddleWrapper(Function<String, Boolean> hitm) {
+    public HumanInTheMiddleWrapper(Function<ToolExecutionRequest, Boolean> hitm) {
         this.hitm = hitm;
     }
 
@@ -136,10 +138,10 @@ public class HumanInTheMiddleWrapper {
      * The Byte Buddy interceptor that contains the core HITM logic.
      */
     public static class Interceptor {
-        private final Function<String, Boolean> hitm;
+        private final Function<ToolExecutionRequest, Boolean> hitm;
         private final Object target;
 
-        public Interceptor(Function<String, Boolean> hitm, Object target) {
+        public Interceptor(Function<ToolExecutionRequest, Boolean> hitm, Object target) {
             this.hitm = hitm;
             this.target = target;
         }
@@ -158,20 +160,18 @@ public class HumanInTheMiddleWrapper {
 
                 // For risky policies, invoke the HITM function for approval
                 if (hitm != null) {
-                    String message = formatHitmMessage(method, args);
-                                            if (!hitm.apply(message)) {
-                            throw new ToolExecutionRejected("user cancelled action: " + method.getName());
-                        }                }
+                    final ToolExecutionRequest execution = executionFromMethodCall(method, args);
+                    if (!hitm.apply(execution)) {
+                        throw new ToolExecutionRejected("user cancelled action: " + method.getName());
+                    }                
+                }
             }
             
             // Always delegate execution to the original target to preserve state
             return method.invoke(target, args);
         }
 
-        private String formatHitmMessage(Method method, Object[] args) {
-            StringBuilder sb = new StringBuilder("Can I execute the tool below?\n");
-            sb.append("   ").append(method.getName()).append("\n");
-
+        private ToolExecutionRequest executionFromMethodCall(final Method method, final Object[] args) {
             // Try to find the method on the target class to get better parameter names
             Method targetMethod = method;
             try {
@@ -180,25 +180,28 @@ public class HumanInTheMiddleWrapper {
                 // Fallback to the original method if not found (shouldn't happen for valid overrides)
             }
 
-            Parameter[] parameters = targetMethod.getParameters();
-            if (parameters.length > 0) {
-                for (int i = 0; i < parameters.length; i++) {
-                    String paramName = parameters[i].getName(); // Should be real name if compiled with -parameters
-                    String valueString = "null";
-                    if (args != null && i < args.length) {
-                        Object value = args[i];
-                        if (value != null) {
-                            if (value.getClass().isArray()) {
-                                valueString = Arrays.deepToString((Object[]) value);
-                            } else {
-                                valueString = value.toString();
-                            }
+            
+            final JSONObject arguments = new JSONObject();
+            on(targetMethod.getParameters()).loop((i, parameter) -> {
+                final String paramName = parameter.getName(); // Should be real name if compiled with -parameters
+                String valueString = "null";
+                if (args != null && i < args.length) {
+                    final Object value = args[i];
+                    if (value != null) {
+                        if (value.getClass().isArray()) {
+                            valueString = Arrays.deepToString((Object[]) value);
+                        } else {
+                            valueString = value.toString();
                         }
                     }
-                    sb.append("   ").append(paramName).append(": ").append(valueString).append("\n");
                 }
-            }
-            return sb.toString();
+                arguments.put(paramName, valueString);
+            });
+            
+            return ToolExecutionRequest.builder()
+                .name(targetMethod.getName())
+                .arguments(arguments.toString())
+                .build();
         }
     }
 }

@@ -23,13 +23,13 @@ import java.awt.Container;
 import java.awt.Dimension;
 import javax.swing.BoxLayout;
 import javax.swing.JFrame;
-import org.assertj.core.api.BDDAssertions;
 import static org.assertj.core.api.BDDAssertions.then;
+import org.assertj.swing.core.BasicComponentFinder;
 import org.assertj.swing.core.BasicComponentPrinter;
+import org.assertj.swing.core.ComponentFinder;
 import org.assertj.swing.core.ComponentPrinter;
 import org.assertj.swing.edt.FailOnThreadViolationRepaintManager;
 import org.assertj.swing.edt.GuiActionRunner;
-import org.assertj.swing.exception.ComponentLookupException;
 import org.assertj.swing.fixture.FrameFixture;
 import org.junit.BeforeClass;
 import org.junit.jupiter.api.AfterEach;
@@ -42,6 +42,7 @@ import org.junit.jupiter.api.Test;
 public class ToolExecutionPaneTest {
 
     private static final ComponentPrinter PRINTER = BasicComponentPrinter.printerWithCurrentAwtHierarchy();
+    private static final ComponentFinder FINDER = BasicComponentFinder.finderWithCurrentAwtHierarchy();
 
     private static final ToolExecutionRequest EXECUTION1 =
         ToolExecutionRequest.builder()
@@ -76,7 +77,6 @@ public class ToolExecutionPaneTest {
         content = frame.getContentPane();
         content.setPreferredSize(new Dimension(300, 300));
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
-        content.add(executionPane = new ToolExecutionPane(EXECUTION1, RESULT1));
 
         window = new FrameFixture(frame);
         window.show();
@@ -88,28 +88,31 @@ public class ToolExecutionPaneTest {
     }
 
     @Test
-    public void inizialization() {
+    public void no_arguments_no_chip() {
+        content.add(executionPane = new ToolExecutionPane(EXECUTION1, RESULT1));
+        
         then(executionPane.isVisible()).isTrue();
-        window.panel("root").panel("headerPane").requireVisible();
-        window.panel("root").panel("resultPane").requireVisible();
-        window.panel("root").panel("headerPane").label("name").requireText(EXECUTION1.name());
-        window.panel("root").panel("resultPane").textBox("result").requireText(RESULT1);
-        BDDAssertions.thenThrownBy(() -> {
-            window.panel("root").panel("headerPane").panel("chip");
-        }).isInstanceOf(ComponentLookupException.class);
+        window.panel(executionPane.getName()).requireVisible();
+        window.panel("arguments").requireVisible();
+        window.panel("result").requireVisible();
+        window.panel("result").textBox().requireText(RESULT1);
+        
+        then(FINDER.findAll(executionPane, (component) -> component instanceof ArgumentChip))
+            .hasSize(0);
     }
 
     @Test
     public void one_chip_each_argument() {
-        content.remove(executionPane);  // remove the old one
         content.add(executionPane = new ToolExecutionPane(EXECUTION2, RESULT2));
 
-        for (int i=1; i<4; ++i) {
-            window.panel("root").panel("headerPane").panel("a"+i).label().requireText(
-                ".*a%d:.*v%d.*".formatted(i, i)
-            );
-        }
-        window.panel("root").panel("resultPane").textBox("result").requireText(RESULT2);
+        then(executionPane.isVisible()).isTrue();
+        window.panel(executionPane.getName()).requireVisible();
+        window.panel("arguments").requireVisible();
+        window.panel("result").requireVisible();
+        window.panel("result").textBox().requireText(RESULT2);
+        
+        then(FINDER.findAll(executionPane, (component) -> component instanceof ArgumentChip))
+            .hasSize(3);
     }
 
 }
