@@ -54,7 +54,7 @@ public class UIUtil {
         BorderFactory.createCompoundBorder(
             BorderFactory.createEmptyBorder(5, 5, 5, 5), 
             //BorderFactory.createLineBorder(UIUtil.COLOR_JEDDICT_ACCENT1, 1)
-            BorderFactory.createMatteBorder(1, 0, 1, 0, COLOR_JEDDICT_ACCENT1)
+            BorderFactory.createMatteBorder(1, 0, 0, 0, COLOR_JEDDICT_ACCENT1)
         );
         
     
