@@ -94,7 +94,7 @@ public class DiffPane extends JPanel {
             //
             // Disable the interface to prevent additional interactions
             //
-            setEnabled(false);;
+            setEnabled(false);
 
             //
             // Save the content (if diffView is null, there is no diff and a new
