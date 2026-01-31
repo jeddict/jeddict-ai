@@ -178,18 +178,18 @@ public class FileSystemToolsTest extends TestBase {
         final String emptyDir = "newfolder";
 
         then(tools.listFilesInDirectory(existingDir)).contains("testfile.txt");
-        thenProgressContains(listener.collector.get(0), "📂 Listing contents of directory " + existingDir);
+        thenProgressContains(listener.collector.get(0), "📂 Listing content of directory " + existingDir);
 
         listener.collector.clear();
         Files.createDirectory(projectPath.resolve(emptyDir));
         then(tools.listFilesInDirectory(emptyDir)).isEqualTo("(empty)");
-        thenProgressContains(listener.collector.get(0), "📂 Listing contents of directory " + emptyDir);
+        thenProgressContains(listener.collector.get(0), "📂 Listing content of directory " + emptyDir);
 
         listener.collector.clear();
         thenThrownBy(() -> tools.listFilesInDirectory(nonExistingDir))
             .isInstanceOf(ToolExecutionException.class)
             .hasMessage(nonExistingDir + " does not exist");
-        thenProgressContains(listener.collector.get(0), "📂 Listing contents of directory " + nonExistingDir);
+        thenProgressContains(listener.collector.get(0), "📂 Listing content of directory " + nonExistingDir);
         thenProgressContains(listener.collector.get(1), "❌ " + nonExistingDir + " does not exist");
     }
 
@@ -201,7 +201,7 @@ public class FileSystemToolsTest extends TestBase {
         final String abs = HOME.resolve("folder").toAbsolutePath().toString();
 
         thenTriedFileOutsideProjectFolder(() -> tools.listFilesInDirectory(abs));
-        thenProgressContains(listener.collector.get(0), "📂 Listing contents of directory " + abs);
+        thenProgressContains(listener.collector.get(0), "📂 Listing content of directory " + abs);
 
         //
         // relative path
@@ -211,7 +211,7 @@ public class FileSystemToolsTest extends TestBase {
         final String rel = projectDir + File.separator + "../outside";
 
         thenTriedFileOutsideProjectFolder(() -> tools.listFilesInDirectory(rel));
-        thenProgressContains(listener.collector.get(0), "📂 Listing contents of directory " + rel);
+        thenProgressContains(listener.collector.get(0), "📂 Listing content of directory " + rel);
     }
 
     @Test
