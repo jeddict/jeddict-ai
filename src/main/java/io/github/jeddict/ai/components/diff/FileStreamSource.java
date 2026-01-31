@@ -131,6 +131,6 @@ public class FileStreamSource extends StreamSource {
      */
     @Override
     public String toString() {
-        return getClass().getCanonicalName() + "[" + fileObject.getPath() + "]";
+        return getClass().getName() + "[" + fileObject.getPath() + "]";
     }
 }
