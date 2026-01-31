@@ -1,17 +1,17 @@
 package io.github.jeddict.ai.components.diff;
 
-import java.io.File;
 import org.netbeans.api.project.Project;
 import java.io.IOException;
-import java.nio.file.Files;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.function.Consumer;
-import org.apache.commons.io.FileUtils;
-import org.openide.cookies.SaveCookie;
+import java.util.logging.Logger;
+import org.apache.commons.lang3.StringUtils;
 import org.openide.filesystems.FileObject;
+import org.openide.filesystems.FileSystem;
 import org.openide.filesystems.FileUtil;
-import org.openide.loaders.DataObject;
 import org.openide.util.Exceptions;
 
 /**
@@ -20,6 +20,8 @@ import org.openide.util.Exceptions;
  * validation and interacts with the project's file system.
  */
 public class DiffPaneController {
+    
+    private final Logger LOG = Logger.getLogger(this.getClass().getName());
 
     public enum UserAction {
         ACCEPT, REJECT
@@ -28,13 +30,16 @@ public class DiffPaneController {
     public final Project project;
     public final String path;
     public final String fullPath;
-    public final FileObject fileObject;
+    public final FileObject original;  // original version
+    public final FileObject modified;  // new version
 
-    public String content = "";
+    protected final boolean isNewFile;
+    
     protected Consumer<UserAction> onDone = null;
+    
 
     /**
-     * Constructs a new {@code ActionPaneController}.
+     * Constructs a new {@code DiffPaneController}.
      *
      * @param project The NetBeans project associated with the action.
      * @param path The {@code FileAction} to be performed.
@@ -56,54 +61,63 @@ public class DiffPaneController {
         this.project = project;
         this.path = path;
         this.fullPath = getValidatedFullPath(path);
-        this.content = content;
-
-        this.fileObject = FileUtil.toFileObject(Paths.get(fullPath));
-    }
-
-    public String content() {
+ 
+        final FileObject original = FileUtil.toFileObject(Paths.get(fullPath));
+        isNewFile = (original == null);
+        final FileSystem fs = FileUtil.createMemoryFileSystem();
+        FileObject modified = null;
         try {
-            return Files.readString(Paths.get(fullPath));
-        } catch (IOException x) {
-            Exceptions.printStackTrace(x);
-            return null;
+            modified = FileUtil.createData(fs.getRoot(), path);
+        
+            try (Writer w = new OutputStreamWriter(modified.getOutputStream())) {
+                w.write(content); w.close();
+            }
+        }  catch (IOException x) {
+            LOG.severe(() -> "error creating the updated version: %s".formatted(String.valueOf(x)));
         }
+        this.modified = modified;
+        this.original = (isNewFile) 
+                      ? project.getProjectDirectory().getFileObject(path, false)
+                      : original;
     }
-
+    
+    public String original() {
+        try {
+            return original.asText();
+        } catch (IOException x) {
+            LOG.severe("unexpected error retrieving the content: " + x);
+            Exceptions.printStackTrace(x);
+        }
+        
+        return null;
+    }
+    
     /**
      * Save the content of the base file. This method is public to allow classes
      * using it to save the content from outside the DiffView.
      */
-    public void save() {
+    public void save(final String text) {
         try {
-            if (fileObject != null) {
-                //
-                // the file already existed, the diff editor has the latest
-                // version that can be saved with its cookie.
-                //
-
-                //
-                // find should not return null, it throws a DataObjectNotFoundException
-                // if the object is not found
-                //
-                final SaveCookie saveCookie = DataObject.find(fileObject).getLookup().lookup(SaveCookie.class);
-
-                // If there are unsaved changes, save the file
-                if (saveCookie != null) {
-                    saveCookie.save();
-                }
-            } else {
-                //
-                // it's a new file, content contains the text that is saved
-                // drirectly.
-                //
-                FileUtils.writeStringToFile(new File(fullPath), content, "UTF8");
+            LOG.finest(
+                () -> "saving to %s %s with content:\n%s".formatted(
+                    fullPath, (isNewFile) ? "new" : "existing", StringUtils.abbreviateMiddle(text, "...", 80)
+                )
+            );
+            
+            try (final Writer w = new OutputStreamWriter(original.getOutputStream())) {
+                w.write(text);
             }
         } catch (IOException x) {
             Exceptions.printStackTrace(x);
         }
     }
+    
+    public boolean isNewFile() {
+        return isNewFile;
+    }
 
+    // --------------------------------------------------------- Private methods
+    
     /**
      * Validates the path path and returns its canonical full path.
      * This method ensures that the file path is within the project directory.

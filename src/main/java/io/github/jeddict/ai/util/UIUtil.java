@@ -17,13 +17,22 @@ package io.github.jeddict.ai.util;
 
 import io.github.jeddict.ai.components.AssistantChat;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Font;
+import java.util.ArrayList;
+import java.util.List;
 import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JRootPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
+import javax.swing.SwingUtilities;
 import javax.swing.border.Border;
+import javax.swing.event.AncestorEvent;
+import javax.swing.event.AncestorListener;
 
 /**
  *
@@ -55,6 +64,20 @@ public class UIUtil {
             BorderFactory.createEmptyBorder(5, 5, 5, 5), 
             BorderFactory.createMatteBorder(1, 0, 0, 0, COLOR_JEDDICT_ACCENT1)
         );
+    
+    public static void makeDefaultButton(final JButton button) {
+        button.addAncestorListener(new AncestorListener() {
+            @Override
+            public void ancestorAdded(AncestorEvent event) {
+                JRootPane root = SwingUtilities.getRootPane(button);
+                if (root != null) {
+                    root.setDefaultButton(button);
+                }
+            }
+            @Override public void ancestorRemoved(AncestorEvent event) {}
+            @Override public void ancestorMoved(AncestorEvent event) {}
+        });
+    }
         
     
     public static String queryToEnhance() {
@@ -127,4 +150,26 @@ public class UIUtil {
         return initialMessage;
     }
 
+    public static <T extends JComponent> List<T> find(final JComponent parent, final Class<T> ofType) {
+        if (parent == null) {
+            throw new IllegalArgumentException("parent can not be null");
+        }
+        if (ofType == null) {
+            throw new IllegalArgumentException("ofType can not be null");
+        }
+        List<T> result = new ArrayList<>();
+        findRecursive(parent, ofType, result);
+        return result;
+    }
+
+    private static <T extends JComponent> void findRecursive(JComponent parent, Class<T> ofType, List<T> result) {
+        for (Component comp : parent.getComponents()) {
+            if (ofType.isInstance(comp)) {
+                result.add(ofType.cast(comp));
+            }
+            if (comp instanceof JComponent jcomp) {
+                findRecursive(jcomp, ofType, result);
+            }
+        }
+    }
 }

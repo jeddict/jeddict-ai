@@ -48,7 +48,7 @@ public class DiffView extends JPanel implements PropertyChangeListener {
     private static final Logger LOG = Logger.getLogger(DiffView.class.getCanonicalName());
 
     private DiffController ctrl;
-    private StreamSource baseSource;
+    private StreamSource modifiedSource;
 
 
     /**
@@ -59,21 +59,16 @@ public class DiffView extends JPanel implements PropertyChangeListener {
         initKeyBindings();
     }
 
-    public DiffView(final StreamSource modifiedSource, final StreamSource baseSource)
+    public DiffView(final StreamSource originalSource, final StreamSource modifiedSource)
     throws IOException {
         this();
 
-        this.baseSource = baseSource;
+        this.modifiedSource = modifiedSource;
 
-        ctrl = DiffController.createEnhanced(modifiedSource, baseSource);
+        ctrl = DiffController.createEnhanced(originalSource, modifiedSource);
 
         initMyComponents();
         refreshComponents();
-    }
-
-    public DiffView(final StreamSource modifiedSource, final FileStreamSource baseSource)
-    throws IOException {
-        this(modifiedSource, (StreamSource)baseSource);
     }
 
     /**
@@ -93,6 +88,8 @@ public class DiffView extends JPanel implements PropertyChangeListener {
         btnRedo = new javax.swing.JButton();
         jSeparator2 = new javax.swing.JToolBar.Separator();
         sourceDiffPanel = new javax.swing.JPanel();
+
+        setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(186, 186, 186)));
 
         actionsToolbar.setRollover(true);
 
@@ -153,15 +150,15 @@ public class DiffView extends JPanel implements PropertyChangeListener {
         this.setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(sourceDiffPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 531, Short.MAX_VALUE)
-            .addComponent(actionsToolbar, javax.swing.GroupLayout.DEFAULT_SIZE, 531, Short.MAX_VALUE)
+            .addComponent(sourceDiffPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 529, Short.MAX_VALUE)
+            .addComponent(actionsToolbar, javax.swing.GroupLayout.DEFAULT_SIZE, 529, Short.MAX_VALUE)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addComponent(actionsToolbar, javax.swing.GroupLayout.PREFERRED_SIZE, 25, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(0, 0, 0)
-                .addComponent(sourceDiffPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 371, Short.MAX_VALUE))
+                .addComponent(sourceDiffPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 369, Short.MAX_VALUE))
         );
     }// </editor-fold>//GEN-END:initComponents
 
@@ -263,8 +260,8 @@ public class DiffView extends JPanel implements PropertyChangeListener {
     }
 
     private FileObject getFileObject() {
-        if (baseSource instanceof FileStreamSource) {
-            return ((FileStreamSource)baseSource).fileObject;
+        if (modifiedSource instanceof FileStreamSource) {
+            return ((FileStreamSource)modifiedSource).fileObject;
         }
 
         return null;

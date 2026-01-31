@@ -19,6 +19,7 @@ import io.github.jeddict.ai.components.diff.DiffPaneController.UserAction;
 import static io.github.jeddict.ai.components.diff.DiffPaneController.UserAction.ACCEPT;
 import static io.github.jeddict.ai.components.diff.DiffPaneController.UserAction.REJECT;
 import static io.github.jeddict.ai.util.EditorUtil.createEditorKit;
+import io.github.jeddict.ai.util.UIUtil;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -26,24 +27,17 @@ import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.io.File;
 import java.io.IOException;
-import java.io.StringReader;
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JEditorPane;
 import javax.swing.JPanel;
-import javax.swing.JRootPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
-import javax.swing.SwingUtilities;
-import javax.swing.event.AncestorEvent;
-import javax.swing.event.AncestorListener;
 import javax.swing.text.EditorKit;
-import org.netbeans.api.diff.StreamSource;
 import org.netbeans.api.project.Project;
-import org.openide.filesystems.FileObject;
-import org.openide.filesystems.FileUtil;
 import org.openide.loaders.DataObject;
 import org.openide.loaders.DataObjectNotFoundException;
 import org.openide.util.Exceptions;
@@ -61,14 +55,14 @@ public class DiffPane extends JPanel {
     private final JTabbedPane sourcePane;
     private DiffView diffView;
     private JEditorPane sourceView;
-    private JButton btnAccept, btnReject;
+    private final JButton btnAccept, btnReject;
 
     /**
      * Constructs a new {@code DiffPane}.
      *
      * @param project The NetBeans project associated with the action.
      * @param path The path of the file.
-     * @param content The proposed content.
+     * @param content The modified content.
      */
     public DiffPane(final Project project, final String path, final String content) {
         this.ctrl = new DiffPaneController(project, path, content);
@@ -78,9 +72,10 @@ public class DiffPane extends JPanel {
 
         setPreferredSize(new Dimension(600, 600));
         setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(92, 159, 194), 3),
-            BorderFactory.createEmptyBorder(3, 3, 3, 3)
+            BorderFactory.createEmptyBorder(5, 5, 5, 5),
+            BorderFactory.createMatteBorder(1, 0, 0, 0, UIUtil.COLOR_JEDDICT_ACCENT1)
         ));
+        setBackground(UIUtil.COLOR_JEDDICT_MAIN_BACKGROUND);
         setLayout(new BorderLayout());
         add(sourcePane = new JTabbedPane(), BorderLayout.CENTER);
         sourcePane.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(194, 194, 194)));
@@ -94,52 +89,45 @@ public class DiffPane extends JPanel {
             //
             // Disable the interface to prevent additional interactions
             //
-            setEnabled(false);
-
+            getParent().remove(this);
+            
             //
-            // Save the content (if diffView is null, there is no diff and a new
+            // Save the original (if diffView is null, there is no diff and a new
             // file is created saving the proposed wource
             //
             LOG.finest(() -> "changes accepted, saving %s".formatted(new File(project.getProjectDirectory().getPath(), path).toString()));
 
-            //
-            // update the source text with the content of the source editor so
-            // that in the case of a new file, save() will use the latest text
-            //
-            ctrl.content = sourceView.getText();
-
-            ctrl.save();
-
+            ctrl.save(modifiedContent());
+            
             //
             // Call tool's callback
-            ctrl.onDone.accept(ACCEPT);
+            //
+            if (ctrl.onDone != null) {
+                ctrl.onDone.accept(ACCEPT);
+            }
         });
 
         btnReject.addActionListener((ActionEvent event) -> {
             //
             // Disable the interface to prevent additional interactions
             //
-            setEnabled(false);
+            getParent().remove(this);
 
             LOG.finest("changes rejected");
-            ctrl.onDone.accept(REJECT);
+            
+            //
+            // Call tool's callback
+            //
+            if (ctrl.onDone != null) {
+                ctrl.onDone.accept(REJECT);
+            }
         });
 
         //
         // To make the OK button look like the default button of a standard
         // JOptiopnPane...
         //
-        btnAccept.addAncestorListener(new AncestorListener() {
-            @Override
-            public void ancestorAdded(AncestorEvent event) {
-                JRootPane root = SwingUtilities.getRootPane(btnAccept);
-                if (root != null) {
-                    root.setDefaultButton(btnAccept);
-                }
-            }
-            @Override public void ancestorRemoved(AncestorEvent event) {}
-            @Override public void ancestorMoved(AncestorEvent event) {}
-        });
+        UIUtil.makeDefaultButton(btnAccept);
 
         buttonPanel.add(btnAccept);
         buttonPanel.add(btnReject);
@@ -149,43 +137,43 @@ public class DiffPane extends JPanel {
     }
 
     /**
-     * Creates and returns a {@code JEditorPane} displaying the content of the file.
+     * Creates and returns a {@code JEditorPane} displaying the original of the file.
      */
     public void createPane() {
         //
         // show two tabs, one with the provided source and one with the diff
         //
         final File file = new File(ctrl.fullPath);
-        final FileObject fo = FileUtil.toFileObject(file);
-        final String mimeType = (fo != null)
-                ? fo.getMIMEType()
+        final String mimeType = (ctrl.original != null)
+                ? ctrl.original.getMIMEType()
                 : io.github.jeddict.ai.util.FileUtil.mimeType(file.getName());
-
+        
+        LOG.finest(() -> "create pane for %s with mime type %s".formatted(ctrl.original.getPath(), mimeType));
         //
         // If fo is not null, the source file is there and can be compared with
-        // the content provided by the AI. Otherwise, only the new content will
+        // the original provided by the AI. Otherwise, only the new original will
         // be displayed.
         //
 
         // diff tab
-        if (fo != null) {
+        if (!ctrl.isNewFile()) {
             LOG.finest("adding the diff tab");
-            addDiffTab(fo, mimeType);
+            addDiffTab(mimeType);
             //
             // find should not return null, it throws a DataObjectNotFoundException
             // if the object is not found
             //
             try {
-                DataObject.find(ctrl.fileObject).addPropertyChangeListener(diffView);
+                DataObject.find(ctrl.original).addPropertyChangeListener(diffView);
             } catch (DataObjectNotFoundException x) {
                 // nothign to do, the file should be there, unless deleted in
                 // the meantime
             }
         }
 
-        // suggested content tab
+        // suggested original tab
         LOG.finest("adding the content tab");
-        addSourceTab(ctrl.content, mimeType);
+        addSourceTab(mimeType);
     }
 
     public void onDone(final Consumer<UserAction> action) {
@@ -204,35 +192,63 @@ public class DiffPane extends JPanel {
 
     /**
      * Adds a "Diff" tab to the {@code JTabbedPane} displaying the difference
-     * between the original file and the modified content provided by the AI.
+     * between the original file and the modified original provided by the AI.
      *
      * @param fo The {@code FileObject} representing the original file.
-     * @param mimeType The MIME type of the file content.
+     * @param mimeType The MIME type of the file original.
      */
-    private void addDiffTab(final FileObject fo, final String mimeType) {
+    private void addDiffTab(final String mimeType) {
         try {
-            final StreamSource left = StreamSource.createSource(
-                    "Modified " + ctrl.path,
-                    "Modified " + ctrl.path,
-                    mimeType,
-                    new StringReader(ctrl.content)
-            );
-            final FileStreamSource right = new FileStreamSource(fo);
+            final FileStreamSource left = new FileStreamSource(ctrl.original);
+            final FileStreamSource right = new FileStreamSource(ctrl.modified);
 
             sourcePane.addTab("Diff", diffView = new DiffView(left, right));
         } catch (IOException x) {
-            final String msg = "error creating a diff view for " + ctrl.path;
-            LOG.severe(msg);
+            LOG.severe(() -> "error creating a diff view for %s: %s".formatted(ctrl.path, String.valueOf(x)));
             Exceptions.printStackTrace(x);
         }
     }
 
-    private void addSourceTab(final String content, final String mimeType) {
+    private void addSourceTab(final String mimeType) {
         sourceView = new JEditorPane();
         EditorKit editorKit = createEditorKit(mimeType);
         sourceView.setEditorKit(editorKit);
-        sourceView.setText(ctrl.content);
+        try {
+            sourceView.setText(ctrl.modified.asText());
+        } catch (IOException x) {
+            sourceView.setText("Ups! " + x);
+            Exceptions.printStackTrace(x);
+        }
         sourceView.setEditable(true);
         sourcePane.addTab("Source", new JScrollPane(sourceView));
+    }
+    
+    /**
+     * This method gets the content of the modified source. Since this is provided
+     * as new memory FileObject there is not a SaveCookie nor the content is
+     * kept in sync with the file (or at least I could not fix a way to do it).
+     * 
+     * The method finds the second JEditorPane in the hierarchy and returns its text.
+     * 
+     * @return the modified content in the diff pane
+     */
+    private String modifiedContent() {
+        if (ctrl.isNewFile()) {
+            return sourceView.getText();
+        }
+        
+        List<JEditorPane> editors = UIUtil.find(this, JEditorPane.class);
+        
+        //
+        // If there is only one editor, the file is new, otherwise the first one
+        // contains the original content, the second one the modified content
+        //
+        if (editors.size() < 2) {
+            final String msg = "ups... unexpected number of editors in DiffPane: " + editors;
+            LOG.severe(msg);
+            throw new IllegalStateException(msg);
+        }
+        
+        return editors.get(1).getText();
     }
 }

@@ -16,16 +16,23 @@
 
 package io.github.jeddict.ai.components.diff;
 
-import java.io.IOException;
+import com.github.caciocavallosilano.cacio.ctc.junit.CacioTest;
 import io.github.jeddict.ai.test.DummyProject;
 import io.github.jeddict.ai.test.TestBase;
+import java.awt.Container;
+import java.awt.Dimension;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import javax.swing.BoxLayout;
+import javax.swing.JFrame;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.BDDAssertions.then;
+import org.assertj.swing.edt.GuiActionRunner;
+import org.assertj.swing.fixture.FrameFixture;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.netbeans.api.project.Project;
@@ -34,26 +41,64 @@ import org.openide.filesystems.FileUtil;
 /**
  *
  */
+@CacioTest
 public class DiffPaneControllerTest extends TestBase {
+    
+    protected FrameFixture window;
+    protected JFrame frame;
+    protected Container content;
+    
 
     final private static String F = "folder/testfile.txt";
     final private static String C = "new content";
 
     private Project P;
 
-
     @BeforeEach
-    public void before() throws IOException {
+    public void before() throws Exception {
         P = new DummyProject(projectPath);
+        frame = GuiActionRunner.execute(() -> new JFrame());
+        frame.setTitle(("Test ArgumentPane"));
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        content = frame.getContentPane();
+        content.setPreferredSize(new Dimension(300, 300));
+        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
+
+        window = new FrameFixture(frame);
+        window.show();
+    }
+    
+    @AfterEach
+    public void afterEach() {
+        super.afterEach();
+        window.cleanUp();
     }
 
     @Test
     public void creation() {
-        final DiffPaneController ctrl = new DiffPaneController(P, F, C);
+        DiffPaneController ctrl = new DiffPaneController(P, F, C);
+        
         then(ctrl.project).isSameAs(P);
+        
+        //
+        // Updating a file
+        //
         then(ctrl.path).isSameAs(F);
         then(ctrl.fullPath).isEqualTo(new File(P.getProjectDirectory().getPath(), F).getAbsolutePath());
-        then(ctrl.fileObject).isNotNull();
+        then(ctrl.original).isNotNull();
+        then(ctrl.modified).isNotNull();
+        then(ctrl.isNewFile()).isFalse();
+        
+        //
+        // Creating a new file
+        //
+        ctrl = new DiffPaneController(P, "newfile.txt", C);
+        then(ctrl.path).isSameAs("newfile.txt");
+        then(ctrl.fullPath).isEqualTo(new File(P.getProjectDirectory().getPath(), "newfile.txt").getAbsolutePath());
+        then(ctrl.original).isNotNull();
+        then(ctrl.modified).isNotNull();
+        then(ctrl.isNewFile()).isTrue();
     }
 
     @Test
@@ -72,7 +117,6 @@ public class DiffPaneControllerTest extends TestBase {
         final DiffPaneController ctrl = new DiffPaneController(P, abs.toString(), C);
 
         then(ctrl.fullPath).isEqualTo(abs.toString());
-
     }
 
     @Test
@@ -90,28 +134,65 @@ public class DiffPaneControllerTest extends TestBase {
     }
 
     @Test
-    public void return_actual_content() throws Exception {
+    public void return_current_content() throws Exception {
+        final Path path = Paths.get(P.getProjectDirectory().getPath()).resolve(F);
+        final String fileText = Files.readString(path); 
+        
         //
-        // The actual content is the content currently saved in the modified
-        // text (the original, modified with some or all changes of the diff
-        // and saved to the original file
+        // original is the original text of the file
         //
         final DiffPaneController ctrl = new DiffPaneController(P, F, C);
-        final Path path = Paths.get(P.getProjectDirectory().getPath()).resolve(F);
-
-        then(ctrl.content()).isEqualTo(Files.readString(path));
+        then(ctrl.original()).isEqualTo(fileText);
 
         //
-        // Simulating applying changes by writing to the file
+        // if the file original changes, the new text is returned
         //
         Files.writeString(path, "new line", StandardOpenOption.APPEND);
 
-        then(ctrl.content()).contains("new line").isEqualTo(Files.readString(path));
+        then(ctrl.original()).endsWith("new line").isEqualTo(Files.readString(path));
 
         //
         // If for any reasons the file does not exist any more, return null
         //
         Files.delete(path);
-        then(ctrl.content()).isNull();
+        then(ctrl.original()).isNull();
+    }
+    
+    @Test
+    public void save_saves_modified_to_original() throws Exception {
+        //
+        // Update existing file
+        //
+        final DiffPaneController ctrl = new DiffPaneController(P, F, C + "\nnew line");
+        
+        ctrl.save(C + "\nnew line");
+        then(ctrl.original.asText()).isEqualTo(C + "\nnew line");
+        
+        ctrl.save("hello");
+        then(ctrl.original.asText()).isEqualTo("hello");
+    }
+    
+    @Test
+    public void save_creates_a_new_file() throws Exception {
+        //
+        // Create a new file
+        //
+        DiffPaneController ctrl = new DiffPaneController(
+            P, "cities.txt", ""
+        );
+        
+        ctrl.save("""
+                  1. Paris, France
+                  2. New York City, USA
+                  3. New Delhi, India
+                  """);
+        then(Paths.get(P.getProjectDirectory().getPath()).resolve("cities.txt")).exists();
+        then(ctrl.original.asText()).contains("New York");
+        
+        ctrl = new DiffPaneController(
+            P, "newfolder/newfile.txt", ""
+        );
+        ctrl.save("hello");
+        then(ctrl.original.asText()).isEqualTo("hello");
     }
 }
