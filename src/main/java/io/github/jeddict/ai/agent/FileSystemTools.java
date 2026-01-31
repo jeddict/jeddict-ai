@@ -314,7 +314,7 @@ public class FileSystemTools extends AbstractCodeTool {
     )
     @ToolPolicy(READONLY)
     public String listFilesInDirectory(final String path) throws ToolExecutionException {
-        progress("📂 Listing contents of directory " + path);
+        progress("📂 Listing content of directory " + path);
 
         checkPath(path);
 
