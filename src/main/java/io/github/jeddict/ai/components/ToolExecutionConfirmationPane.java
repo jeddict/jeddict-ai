@@ -21,10 +21,6 @@ import io.github.jeddict.ai.util.UIUtil;
 import java.awt.Dimension;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JRootPane;
-import javax.swing.SwingUtilities;
-import javax.swing.event.AncestorEvent;
-import javax.swing.event.AncestorListener;
 
 /**
  * A JPanel component designed to display tool execution requests and obtain user consent.
@@ -52,21 +48,7 @@ public class ToolExecutionConfirmationPane extends JPanel {
             close(JOptionPane.NO_OPTION);
         });
         
-        //
-        // To make the Accept button look like the default button of a standard
-        // JOptiopnPane...
-        //
-        acceptButton.addAncestorListener(new AncestorListener() {
-            @Override
-            public void ancestorAdded(AncestorEvent event) {
-                JRootPane root = SwingUtilities.getRootPane(acceptButton);
-                if (root != null) {
-                    root.setDefaultButton(acceptButton);
-                }
-            }
-            @Override public void ancestorRemoved(AncestorEvent event) {}
-            @Override public void ancestorMoved(AncestorEvent event) {}
-        });
+        UIUtil.makeDefaultButton(acceptButton);
     }
 
     /**
