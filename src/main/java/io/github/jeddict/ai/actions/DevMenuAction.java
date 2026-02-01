@@ -48,7 +48,7 @@ import org.openide.util.actions.Presenter;
 @Messages(
     {"CTL_JeddictDevToolsAction=Jeddict Dev"}
 )
-public final class DevToolbarAction extends AbstractAction implements ContextAwareAction {
+public final class DevMenuAction extends AbstractAction implements ContextAwareAction {
     //
     // TODO: use a setting instead
     //
@@ -72,7 +72,7 @@ public final class DevToolbarAction extends AbstractAction implements ContextAwa
      */
     @Override
     public Action createContextAwareInstance(Lookup actionContext) {
-        return new DevToolbarAction.ContextAction(ENABLED);
+        return new DevMenuAction.ContextAction(ENABLED);
     }
     
     private static final class ContextAction 
