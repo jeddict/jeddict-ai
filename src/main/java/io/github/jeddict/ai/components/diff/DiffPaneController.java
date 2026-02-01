@@ -73,6 +73,7 @@ public class DiffPaneController {
         isNewFile = !Files.exists(fullPath);
  
         final FileSystem fs = FileUtil.createMemoryFileSystem();
+        LOG.finest(()-> "in memory path: " + this.path);
         FileObject modified = null;
         try {
             modified = FileUtil.createData(fs.getRoot(), this.path);

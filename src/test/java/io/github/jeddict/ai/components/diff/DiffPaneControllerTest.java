@@ -167,6 +167,8 @@ public class DiffPaneControllerTest extends TestBase {
     
     @Test
     public void save_creates_a_new_file() throws Exception {
+        final Path newFilePath = Paths.get("newfolder/newfile.txt");
+        
         //
         // Create a new file
         //
@@ -182,11 +184,11 @@ public class DiffPaneControllerTest extends TestBase {
         Path expectedPath = Paths.get(P.realProjectDirectory).resolve("cities.txt");
         then(expectedPath).exists().content().contains("New York");
         
-        ctrl = new DiffPaneController(
-            P, "newfolder/newfile.txt", ""
-        );
+        
+        
+        ctrl = new DiffPaneController(P, newFilePath.toString(), "");
         ctrl.save("hello");
-        expectedPath = Paths.get(P.realProjectDirectory).resolve("newfolder").resolve("newfile.txt");
+        expectedPath = Paths.get(P.realProjectDirectory).resolve(newFilePath);
         then(expectedPath).exists().content().isEqualTo("hello");
         
         //
