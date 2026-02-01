@@ -16,8 +16,7 @@
 package io.github.jeddict.ai.response;
 
 import io.github.jeddict.ai.test.TestBase;
-import java.io.File;
-import java.nio.file.Paths;
+import io.github.jeddict.ai.util.FileUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openide.filesystems.FileObject;
@@ -30,7 +29,6 @@ import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.openide.filesystems.FileUtil;
 
 
 public class ResponseTest extends TestBase {
@@ -42,7 +40,7 @@ public class ResponseTest extends TestBase {
     void before() throws Exception {
         super.beforeEach();
         messageContext = new HashSet<>();
-        messageContext.add(FileUtil.toFileObject(Paths.get(projectDir, "folder", "testfile.txt").toRealPath()));
+        messageContext.add(FileUtil.realFileObject(projectDir, "folder/testfile.txt"));
     }
 
     @Test
@@ -378,7 +376,7 @@ public class ResponseTest extends TestBase {
     void add_context_adds_provided_context_to_message_context() {
         final Response response = new Response(query, "Initial text.", messageContext);
 
-        FileObject newContextFile = FileUtil.toFileObject(new File(projectDir, "folder/newfile.txt"));
+        FileObject newContextFile = FileUtil.realFileObject(projectDir, "folder/newfile.txt");
         Set<FileObject> newContext = new HashSet<>();
         newContext.add(newContextFile);
 

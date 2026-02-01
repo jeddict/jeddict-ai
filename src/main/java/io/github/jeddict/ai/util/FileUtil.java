@@ -140,25 +140,42 @@ public class FileUtil {
         }
     }
 
-    public static FileObject getFileObject(Project project, String path) {
-        java.io.File file = resolvePath(project, path).toFile();
-        return org.openide.filesystems.FileUtil.toFileObject(file);
+    public static FileObject realFileObject(final Project project, String path) {
+        final FileObject fo = project.getProjectDirectory();
+        
+        try {
+            return org.openide.filesystems.FileUtil.toFileObject(
+                resolveRealPath((fo != null) ? fo.getPath() : null, path)
+            );
+        } catch (IOException x) {
+            return null;
+        }
+    }
+    
+    public static FileObject realFileObject(final String basedir, String path) {
+        try {
+            return org.openide.filesystems.FileUtil.toFileObject(
+                resolveRealPath(basedir, path)
+            );
+        } catch (IOException x) {
+            return null;
+        }
     }
 
     public static String readContent(Project project, String path) throws IOException {
         return project.getProjectDirectory().getFileObject(path).asText();
     }
 
-    public static Path resolvePath(Project project, String path) {
+    public static Path resolveRealPath(final String basedir, final String path) 
+    throws IOException {
         Path p = Paths.get(path);
-        if (!p.isAbsolute() && project != null) {
-            FileObject projectDir = project.getProjectDirectory();
-            if (projectDir != null) {
-                return Paths.get(projectDir.getPath()).resolve(path)
-                        .toAbsolutePath().normalize();
-            }
+        if (!p.isAbsolute() && basedir != null) {
+            p = Paths.get(basedir).resolve(path);
         }
-        return p.toAbsolutePath().normalize();
+        return
+            p.toAbsolutePath()  // make it absolute
+            .normalize()        // remove relative parts (e.g. ../)
+            .toRealPath();      // follow links and Windows's short names;
     }
 
 
