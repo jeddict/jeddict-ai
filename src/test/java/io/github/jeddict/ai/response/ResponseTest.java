@@ -17,6 +17,7 @@ package io.github.jeddict.ai.response;
 
 import io.github.jeddict.ai.test.TestBase;
 import java.io.File;
+import java.nio.file.Paths;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openide.filesystems.FileObject;
@@ -41,7 +42,7 @@ public class ResponseTest extends TestBase {
     void before() throws Exception {
         super.beforeEach();
         messageContext = new HashSet<>();
-        messageContext.add(FileUtil.toFileObject(new File(projectDir, "folder/testfile.txt")));
+        messageContext.add(FileUtil.toFileObject(Paths.get(projectDir, "folder", "testfile.txt").toRealPath()));
     }
 
     @Test
