@@ -112,7 +112,7 @@ public class DiffPaneControllerTest extends TestBase {
         thenThrownBy(() -> new DiffPaneController(P, F, C))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("invalid project directory")
-            .hasMessageContaining(P.getProjectDirectory().getPath());
+            .hasMessageContaining(Paths.get(P.getProjectDirectory().getPath()).toString()); // keep Windows into account
     }
 
     @Test
@@ -186,7 +186,7 @@ public class DiffPaneControllerTest extends TestBase {
             P, "newfolder/newfile.txt", ""
         );
         ctrl.save("hello");
-        expectedPath = Paths.get(P.realProjectDirectory).resolve("newfolder/newfile.txt");
+        expectedPath = Paths.get(P.realProjectDirectory).resolve("newfolder").resolve("newfile.txt");
         then(expectedPath).exists().content().isEqualTo("hello");
         
         //
