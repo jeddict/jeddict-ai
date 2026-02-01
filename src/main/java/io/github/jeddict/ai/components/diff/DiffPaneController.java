@@ -119,7 +119,7 @@ public class DiffPaneController {
             
             final FileObject destination = isNewFile
 //            ? FileUtil.createData(realProjectDir, path)
-                ? FileUtil.createData(project.getProjectDirectory(), path)
+                ? FileUtil.createData(project.getProjectDirectory(), path.replace('\\', '/'))
                 : original;
             
             try (final Writer w = new OutputStreamWriter(destination.getOutputStream())) {
