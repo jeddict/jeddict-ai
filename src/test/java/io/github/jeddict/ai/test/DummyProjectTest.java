@@ -15,6 +15,7 @@
  */
 package io.github.jeddict.ai.test;
 
+import com.github.caciocavallosilano.cacio.ctc.junit.CacioTest;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -27,6 +28,7 @@ import org.openide.filesystems.FileSystem;
 import org.openide.filesystems.FileUtil;
 import org.openide.util.lookup.InstanceContent;
 
+@CacioTest
 public class DummyProjectTest extends TestBase {
 
     @Test
