@@ -56,7 +56,7 @@ public class DiffPaneControllerTest extends TestBase {
         //
         // Updating a file
         //
-        then(ctrl.path).isEqualTo(F);
+        then(ctrl.path).isEqualTo(Paths.get(F).toString());
         then(ctrl.fullPath())
             .isEqualTo(Paths.get(P.getProjectDirectory().getPath()).toRealPath().resolve(F).toAbsolutePath());
         then(ctrl.original).isNotNull();
