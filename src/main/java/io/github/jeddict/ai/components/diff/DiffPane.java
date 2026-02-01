@@ -28,6 +28,7 @@ import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -158,10 +159,10 @@ public class DiffPane extends JPanel {
         //
         // show two tabs, one with the provided source and one with the diff
         //
-        final File file = new File(ctrl.fullPath());
+        final Path path = ctrl.fullPath();
         final String mimeType = (ctrl.original != null)
                 ? ctrl.original.getMIMEType()
-                : io.github.jeddict.ai.util.FileUtil.mimeType(file.getName());
+                : io.github.jeddict.ai.util.FileUtil.mimeType(path.getFileName().toString());
         
         LOG.finest(() -> "create pane for %s with mime type %s".formatted(ctrl.original.getPath(), mimeType));
         //

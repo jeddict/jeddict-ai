@@ -61,7 +61,7 @@ public class DiffPaneController {
         this.project = project;
         this.path = getValidatedPath(path);
  
-        final FileObject original = FileUtil.toFileObject(Paths.get(fullPath()));
+        final FileObject original = FileUtil.toFileObject(fullPath());
         isNewFile = (original == null);
         final FileSystem fs = FileUtil.createMemoryFileSystem();
         FileObject modified = null;
@@ -99,7 +99,7 @@ public class DiffPaneController {
         try {
             LOG.finest(
                 () -> "saving to %s (%s) with content:\n%s".formatted(
-                    fullPath(), (isNewFile) ? "new" : "existing", StringUtils.abbreviateMiddle(text, "...", 80)
+                    String.valueOf(fullPath()), (isNewFile) ? "new" : "existing", StringUtils.abbreviateMiddle(text, "...", 80)
                 )
             );
             
@@ -107,6 +107,7 @@ public class DiffPaneController {
                 w.write(text);
             }
         } catch (IOException x) {
+            LOG.severe("error saving the file: " + x);
             Exceptions.printStackTrace(x);
         }
     }
@@ -115,8 +116,20 @@ public class DiffPaneController {
         return isNewFile;
     }
     
-    public String fullPath() {
-        return project.getProjectDirectory().getFileObject(path, false).getPath();
+    public Path fullPath() {
+        try {
+            return Paths.get(project.getProjectDirectory().getPath())
+                .toRealPath() // the project directory must exist
+                .resolve(path).normalize() // the new path
+                .toAbsolutePath(); // make it absolute
+        } catch (IOException x) {
+            //
+            // This is not supposed to happen...
+            //
+            LOG.severe("ups... this is not supposed to happen: " + x);
+            Exceptions.printStackTrace(x);
+        }
+        return null;
     }
 
     // --------------------------------------------------------- Private methods
