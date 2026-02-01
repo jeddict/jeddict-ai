@@ -21,6 +21,11 @@ import java.awt.Container;
 import java.awt.Dimension;
 import javax.swing.BoxLayout;
 import javax.swing.JFrame;
+import org.apache.commons.lang3.StringUtils;
+import org.assertj.swing.core.BasicComponentFinder;
+import org.assertj.swing.core.BasicComponentPrinter;
+import org.assertj.swing.core.ComponentFinder;
+import org.assertj.swing.core.ComponentPrinter;
 import org.assertj.swing.edt.FailOnThreadViolationRepaintManager;
 import org.assertj.swing.edt.GuiActionRunner;
 import org.assertj.swing.fixture.FrameFixture;
@@ -36,6 +41,9 @@ public class UITestBase extends TestBase {
     protected JFrame frame;
     protected Container content;
     
+    protected ComponentPrinter PRINTER; 
+    protected ComponentFinder FINDER;
+    
     @BeforeClass
     public static void beforeClass() {
         FailOnThreadViolationRepaintManager.install();
@@ -46,8 +54,11 @@ public class UITestBase extends TestBase {
     public void beforeEach() throws Exception {
         super.beforeEach();
         
+        PRINTER = BasicComponentPrinter.printerWithCurrentAwtHierarchy();
+        FINDER = BasicComponentFinder.finderWithCurrentAwtHierarchy();
+        
         frame = GuiActionRunner.execute(() -> new JFrame());
-        frame.setTitle(("Test ArgumentPane"));
+        frame.setTitle("Test ArgumentPane");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         content = frame.getContentPane();
