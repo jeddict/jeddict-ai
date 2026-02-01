@@ -17,6 +17,7 @@ package io.github.jeddict.ai.test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Paths;
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.BDDAssertions.thenThrownBy;
 
@@ -72,7 +73,7 @@ public class DummyProjectTest extends TestBase {
     public void lookup_returns_provided_instances() throws IOException {
         final FileSystem fs = FileUtil.createMemoryFileSystem();
         final FileObject projectDir = fs.getRoot().createFolder("test-project");
-        final DummyProject project = new DummyProject((FileObject) projectDir);
+        final DummyProject project = new DummyProject(projectDir);
 
         then(project.instances).isInstanceOf(InstanceContent.class).isNotNull();
     }
@@ -90,6 +91,14 @@ public class DummyProjectTest extends TestBase {
         project.name("test project");
         then(project.name()).isEqualTo("test project");
     }
+    
+    @Test
+    public void real_project_dir() throws IOException {
+        final DummyProject project = new DummyProject(projectDir);
+        
+        then(project.realProjectDirectory)
+            .isEqualTo(Paths.get(project.getProjectDirectory().getPath()).toRealPath().toString());
+    } 
 
     @Test
     public void type() throws IOException {

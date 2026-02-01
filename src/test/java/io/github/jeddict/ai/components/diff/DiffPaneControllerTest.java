@@ -26,9 +26,9 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.BDDAssertions.then;
+import static org.assertj.core.api.BDDAssertions.thenThrownBy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.netbeans.api.project.Project;
 import org.openide.filesystems.FileUtil;
 
 /**
@@ -40,7 +40,7 @@ public class DiffPaneControllerTest extends TestBase {
     final private static String F = "folder/testfile.txt";
     final private static String C = "new content";
 
-    private Project P;
+    private DummyProject P;
 
     @BeforeEach
     public void before() throws Exception {
@@ -61,7 +61,7 @@ public class DiffPaneControllerTest extends TestBase {
             .isEqualTo(Paths.get(P.getProjectDirectory().getPath()).toRealPath().resolve(F).toAbsolutePath());
         then(ctrl.original).isNotNull();
         then(ctrl.modified).isNotNull();
-        then(ctrl.isNewFile()).isFalse();
+        then(ctrl.isNewFile).isFalse();
         
         //
         // Creating a new file
@@ -69,9 +69,9 @@ public class DiffPaneControllerTest extends TestBase {
         ctrl = new DiffPaneController(P, "newfile.txt", C);
         then(ctrl.path).isEqualTo("newfile.txt");
         then(ctrl.fullPath().toString()).isEqualTo(new File(P.getProjectDirectory().getPath(), "newfile.txt").getAbsolutePath());
-        then(ctrl.original).isNotNull();
+        then(ctrl.original).isNull();
         then(ctrl.modified).isNotNull();
-        then(ctrl.isNewFile()).isTrue();
+        then(ctrl.isNewFile).isTrue();
     }
 
     @Test
@@ -94,16 +94,25 @@ public class DiffPaneControllerTest extends TestBase {
 
     @Test
     public void project_cannot_be_null() {
-        assertThatThrownBy(() -> new DiffPaneController(null, F, C))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("project cannot be null");
+        thenThrownBy(() -> new DiffPaneController(null, F, C))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("project cannot be null");
     }
 
     @Test
-    public void action_cannot_be_null() {
-        assertThatThrownBy(() -> new DiffPaneController(P, null, C))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("path cannot be null");
+    public void action_cannot_be_null_nor_invalid() throws Exception {
+        thenThrownBy(() -> new DiffPaneController(P, null, C))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("path cannot be null");
+        
+        //
+        // Make the project dir invalid by deleteing it
+        //
+        P.getProjectDirectory().delete();
+        thenThrownBy(() -> new DiffPaneController(P, F, C))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("invalid project directory")
+            .hasMessageContaining(P.getProjectDirectory().getPath());
     }
 
     @Test
@@ -112,23 +121,23 @@ public class DiffPaneControllerTest extends TestBase {
         final String fileText = Files.readString(path); 
         
         //
-        // original is the original text of the file
+        // modified is the modified text of the file
         //
         final DiffPaneController ctrl = new DiffPaneController(P, F, C);
-        then(ctrl.original()).isEqualTo(fileText);
+        then(ctrl.modified()).isEqualTo(fileText);
 
         //
-        // if the file original changes, the new text is returned
+        // if the file modified changes, the new text is returned
         //
         Files.writeString(path, "new line", StandardOpenOption.APPEND);
 
-        then(ctrl.original()).endsWith("new line").isEqualTo(Files.readString(path));
+        then(ctrl.modified()).endsWith("new line").isEqualTo(Files.readString(path));
 
         //
         // If for any reasons the file does not exist any more, return null
         //
         Files.delete(path);
-        then(ctrl.original()).isNull();
+        then(ctrl.modified()).isNull();
     }
     
     @Test
@@ -170,14 +179,15 @@ public class DiffPaneControllerTest extends TestBase {
                   2. New York City, USA
                   3. New Delhi, India
                   """);
-        then(Paths.get(P.getProjectDirectory().getPath()).resolve("cities.txt")).exists();
-        then(ctrl.original.asText()).contains("New York");
+        Path expectedPath = Paths.get(P.realProjectDirectory).resolve("cities.txt");
+        then(expectedPath).exists().content().contains("New York");
         
         ctrl = new DiffPaneController(
             P, "newfolder/newfile.txt", ""
         );
         ctrl.save("hello");
-        then(ctrl.original.asText()).isEqualTo("hello");
+        expectedPath = Paths.get(P.realProjectDirectory).resolve("newfolder/newfile.txt");
+        then(expectedPath).exists().content().isEqualTo("hello");
         
         //
         // Absolute path

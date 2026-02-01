@@ -16,7 +16,9 @@
 package io.github.jeddict.ai.test;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import org.netbeans.api.project.Project;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
@@ -29,12 +31,13 @@ import org.openide.util.lookup.InstanceContent;
  */
 public class DummyProject implements Project {
 
-    private final FileObject projectDir;
+    private final FileObject projectDirectory;
     private final Lookup lookup;
 
     private String name, type;
 
     public final InstanceContent instances;
+    public final String realProjectDirectory;
 
     public DummyProject(final File projectDir) {
         if (projectDir == null) {
@@ -44,7 +47,14 @@ public class DummyProject implements Project {
         if (fo == null) {
             throw new IllegalArgumentException("project directory can not be null or invalid");
         }
-        this.projectDir = fo;
+        this.projectDirectory = fo;
+        
+        try {
+            this.realProjectDirectory = Paths.get(fo.getPath()).toRealPath().toString();
+        } catch (IOException x) {
+            x.printStackTrace();
+            throw new IllegalArgumentException("unexpected error in getting the real path: " + x);
+        }
         this.instances = new InstanceContent();
         this.lookup = new AbstractLookup(instances);
     }
@@ -53,7 +63,27 @@ public class DummyProject implements Project {
         if (projectDir == null) {
             throw new IllegalArgumentException("projectDir can not be null");
         }
-        this.projectDir = projectDir;
+        
+        //
+        // We need to deal with different file systems here...
+        // - on Windows long paths have a "link" to a short path; toRealPath()
+        //   makes sure we have always the one provided (i.e. long)
+        // - on Mac, temporary files are created in a directory which is simlinked
+        //   from /private; toRealPath() makes sure we have always the real 
+        //   path under /private
+        // - on Linux, all is pretty much as expected; toRealPath() is basically 
+        //   transparent
+        // - on a memory file system toRealPath() fails ... :|
+        //
+        try {
+            this.realProjectDirectory = (projectDir.getFileSystem().isDefault())
+                ? Paths.get(projectDir.getPath()).toRealPath().toString()
+                : projectDir.getPath();
+        } catch (IOException x) {
+            x.printStackTrace();
+            throw new IllegalArgumentException("unexpected error in getting the real path: " + x);
+        }
+        this.projectDirectory = projectDir;
         this.instances = new InstanceContent();
         this.lookup = new AbstractLookup(instances);
     }
@@ -68,7 +98,7 @@ public class DummyProject implements Project {
 
     @Override
     public FileObject getProjectDirectory() {
-        return projectDir;
+        return projectDirectory;
     }
 
     @Override

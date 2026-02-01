@@ -67,7 +67,7 @@ public class InteractiveFileEditor extends AbstractTool {
             final DiffPane diffPane = assistantChat.createDiffPane(path, content);
             diffPane.onDone((action) -> {
                 if (action == DiffPaneController.UserAction.ACCEPT) {
-                    newContent.set(diffPane.ctrl.original());
+                    newContent.set(diffPane.ctrl.modified());
                 } else {
                     accepted.set(false);
                 }
@@ -80,7 +80,7 @@ public class InteractiveFileEditor extends AbstractTool {
 
             log.finest(() -> "changes %s".formatted((accepted.get()) ? "accepted" : "rejected"));
             //
-            // if the original was accepted, return it to the LM, otherwise
+            // if the modified was accepted, return it to the LM, otherwise
             // throw a ToolExecutionException
             //
             if (accepted.get()) {

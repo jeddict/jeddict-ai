@@ -108,7 +108,7 @@ public class DiffPane extends JPanel {
             getParent().remove(this);
             
             //
-            // Save the original (if diffView is null, there is no diff and a new
+            // Save the modified (if diffView is null, there is no diff and a new
             // file is created saving the proposed wource
             //
             LOG.finest(() -> "changes accepted, saving %s".formatted(new File(project.getProjectDirectory().getPath(), path).toString()));
@@ -153,7 +153,7 @@ public class DiffPane extends JPanel {
     }
 
     /**
-     * Creates and returns a {@code JEditorPane} displaying the original of the file.
+     * Creates and returns a {@code JEditorPane} displaying the modified of the file.
      */
     public void createPane() {
         //
@@ -167,12 +167,12 @@ public class DiffPane extends JPanel {
         LOG.finest(() -> "create pane for %s with mime type %s".formatted(ctrl.original.getPath(), mimeType));
         //
         // If fo is not null, the source file is there and can be compared with
-        // the original provided by the AI. Otherwise, only the new original will
+        // the modified provided by the AI. Otherwise, only the new modified will
         // be displayed.
         //
 
         // diff tab
-        if (!ctrl.isNewFile()) {
+        if (!ctrl.isNewFile) {
             LOG.finest("adding the diff tab");
             addDiffTab(mimeType);
             //
@@ -187,7 +187,7 @@ public class DiffPane extends JPanel {
             }
         }
 
-        // suggested original tab
+        // suggested modified tab
         LOG.finest("adding the content tab");
         addSourceTab(mimeType);
     }
@@ -208,10 +208,10 @@ public class DiffPane extends JPanel {
 
     /**
      * Adds a "Diff" tab to the {@code JTabbedPane} displaying the difference
-     * between the original file and the modified original provided by the AI.
+between the modified file and the modified modified provided by the AI.
      *
-     * @param fo The {@code FileObject} representing the original file.
-     * @param mimeType The MIME type of the file original.
+     * @param fo The {@code FileObject} representing the modified file.
+     * @param mimeType The MIME type of the file modified.
      */
     private void addDiffTab(final String mimeType) {
         try {
@@ -249,7 +249,7 @@ public class DiffPane extends JPanel {
      * @return the modified content in the diff pane
      */
     private String modifiedContent() {
-        if (ctrl.isNewFile()) {
+        if (ctrl.isNewFile) {
             return sourceView.getText();
         }
         
@@ -257,7 +257,7 @@ public class DiffPane extends JPanel {
         
         //
         // If there is only one editor, the file is new, otherwise the first one
-        // contains the original content, the second one the modified content
+        // contains the modified content, the second one the modified content
         //
         if (editors.size() < 2) {
             final String msg = "ups... unexpected number of editors in DiffPane: " + editors;

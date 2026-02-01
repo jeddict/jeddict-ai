@@ -4,6 +4,7 @@ import org.netbeans.api.project.Project;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.function.Consumer;
@@ -28,11 +29,11 @@ public class DiffPaneController {
     }
 
     public final Project project;
+    public final String realProjectDir;
     public final String path;
-    public final FileObject original;  // original version
+    public final FileObject original;  // modified version
     public final FileObject modified;  // new version
-
-    protected final boolean isNewFile;
+    public final boolean isNewFile;
     
     protected Consumer<UserAction> onDone = null;
     
@@ -60,9 +61,17 @@ public class DiffPaneController {
         
         this.project = project;
         this.path = getValidatedPath(path);
+        
+        try {
+            this.realProjectDir = Paths.get(project.getProjectDirectory().getPath())
+                .toRealPath().toString();
+        } catch (IOException x) {
+            throw new IllegalArgumentException("invalid project directory " + x.getMessage());
+        }
+        
+        final Path fullPath = fullPath();
+        isNewFile = !Files.exists(fullPath);
  
-        final FileObject original = FileUtil.toFileObject(fullPath());
-        isNewFile = (original == null);
         final FileSystem fs = FileUtil.createMemoryFileSystem();
         FileObject modified = null;
         try {
@@ -74,15 +83,14 @@ public class DiffPaneController {
         }  catch (IOException x) {
             LOG.severe(() -> "error creating the updated version: %s".formatted(String.valueOf(x)));
         }
+        
+        this.original = FileUtil.toFileObject(fullPath()); // null if it does not exist
         this.modified = modified;
-        this.original = (isNewFile) 
-                      ? project.getProjectDirectory().getFileObject(this.path, false)
-                      : original;
     }
     
-    public String original() {
+    public String modified() {
         try {
-            return original.asText();
+            return Files.readString(fullPath());
         } catch (IOException x) {
             LOG.severe("unexpected error retrieving the content: " + x);
             Exceptions.printStackTrace(x);
@@ -103,17 +111,18 @@ public class DiffPaneController {
                 )
             );
             
-            try (final Writer w = new OutputStreamWriter(original.getOutputStream())) {
+            final FileObject destination = isNewFile
+//            ? FileUtil.createData(realProjectDir, path)
+                ? FileUtil.createData(project.getProjectDirectory(), path)
+                : original;
+            
+            try (final Writer w = new OutputStreamWriter(destination.getOutputStream())) {
                 w.write(text);
             }
         } catch (IOException x) {
             LOG.severe("error saving the file: " + x);
             Exceptions.printStackTrace(x);
         }
-    }
-    
-    public boolean isNewFile() {
-        return isNewFile;
     }
     
     public Path fullPath() {
