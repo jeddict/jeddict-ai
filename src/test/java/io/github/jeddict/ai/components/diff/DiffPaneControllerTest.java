@@ -19,20 +19,13 @@ package io.github.jeddict.ai.components.diff;
 import com.github.caciocavallosilano.cacio.ctc.junit.CacioTest;
 import io.github.jeddict.ai.test.DummyProject;
 import io.github.jeddict.ai.test.TestBase;
-import java.awt.Container;
-import java.awt.Dimension;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import javax.swing.BoxLayout;
-import javax.swing.JFrame;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.BDDAssertions.then;
-import org.assertj.swing.edt.GuiActionRunner;
-import org.assertj.swing.fixture.FrameFixture;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.netbeans.api.project.Project;
@@ -43,11 +36,6 @@ import org.openide.filesystems.FileUtil;
  */
 @CacioTest
 public class DiffPaneControllerTest extends TestBase {
-    
-    protected FrameFixture window;
-    protected JFrame frame;
-    protected Container content;
-    
 
     final private static String F = "folder/testfile.txt";
     final private static String C = "new content";
@@ -57,24 +45,8 @@ public class DiffPaneControllerTest extends TestBase {
     @BeforeEach
     public void before() throws Exception {
         P = new DummyProject(projectPath);
-        frame = GuiActionRunner.execute(() -> new JFrame());
-        frame.setTitle(("Test ArgumentPane"));
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
-        content = frame.getContentPane();
-        content.setPreferredSize(new Dimension(300, 300));
-        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
-
-        window = new FrameFixture(frame);
-        window.show();
     }
     
-    @AfterEach
-    public void afterEach() {
-        super.afterEach();
-        window.cleanUp();
-    }
-
     @Test
     public void creation() {
         DiffPaneController ctrl = new DiffPaneController(P, F, C);

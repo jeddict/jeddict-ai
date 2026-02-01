@@ -41,6 +41,15 @@ public class FileStreamSourceTest {
 
         thenAllValuesMatch(S, FILE);
     }
+    
+    @Test
+    public void giving_a_title() {
+        final FileObject FILE = FileUtil.getSystemConfigRoot();
+        final String TITLE = "Original " + FILE.getNameExt();
+        final FileStreamSource S = new FileStreamSource(FILE, TITLE);
+        
+        then(S.getTitle()).isEqualTo(TITLE);
+    }
 
     @Test
     public void constructor_sanity_check() {

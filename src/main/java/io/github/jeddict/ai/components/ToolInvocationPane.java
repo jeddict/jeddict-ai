@@ -79,7 +79,9 @@ public class ToolInvocationPane extends JPanel {
         // Put everything together
         //
         add(nameLabel, java.awt.BorderLayout.NORTH);
-        add(new JScrollPane(argumentsPanel), java.awt.BorderLayout.CENTER);
+        final JScrollPane scrollPane = new JScrollPane(argumentsPanel);
+        scrollPane.setBorder(null);
+        add(scrollPane, java.awt.BorderLayout.CENTER);
     }
     
     public ToolInvocationPane(final ToolExecutionRequest execution) {

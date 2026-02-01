@@ -15,6 +15,7 @@
  */
 package io.github.jeddict.ai.components.diff;
 
+import io.github.jeddict.ai.components.ToolInvocationPane;
 import io.github.jeddict.ai.components.diff.DiffPaneController.UserAction;
 import static io.github.jeddict.ai.components.diff.DiffPaneController.UserAction.ACCEPT;
 import static io.github.jeddict.ai.components.diff.DiffPaneController.UserAction.REJECT;
@@ -28,6 +29,7 @@ import java.awt.event.ActionEvent;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
 import javax.swing.BorderFactory;
@@ -77,6 +79,19 @@ public class DiffPane extends JPanel {
         ));
         setBackground(UIUtil.COLOR_JEDDICT_MAIN_BACKGROUND);
         setLayout(new BorderLayout());
+        ;
+        
+        //
+        // Invocation Pane
+        //
+        add(
+            new ToolInvocationPane("interactiveFileEditor", Map.of("path", path)), 
+            BorderLayout.NORTH
+        );
+        
+        //
+        // Diff UI
+        //
         add(sourcePane = new JTabbedPane(), BorderLayout.CENTER);
         sourcePane.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(194, 194, 194)));
 
@@ -199,10 +214,10 @@ public class DiffPane extends JPanel {
      */
     private void addDiffTab(final String mimeType) {
         try {
-            final FileStreamSource left = new FileStreamSource(ctrl.original);
-            final FileStreamSource right = new FileStreamSource(ctrl.modified);
-
-            sourcePane.addTab("Diff", diffView = new DiffView(left, right));
+            sourcePane.addTab("Diff", diffView = new DiffView(
+                new FileStreamSource(ctrl.original, "Original " + ctrl.original.getNameExt()), // left
+                new FileStreamSource(ctrl.modified, "Modified " + ctrl.modified.getNameExt())  // right
+            ));
         } catch (IOException x) {
             LOG.severe(() -> "error creating a diff view for %s: %s".formatted(ctrl.path, String.valueOf(x)));
             Exceptions.printStackTrace(x);
