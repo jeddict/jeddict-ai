@@ -76,7 +76,11 @@ public class DiffPaneController {
         LOG.finest(()-> "in memory path: " + this.path);
         FileObject modified = null;
         try {
-            modified = FileUtil.createData(fs.getRoot(), this.path);
+            //
+            // The memory fily system uses '/' as path separator, let's make sure 
+            // we use the proper name
+            //
+            modified = FileUtil.createData(fs.getRoot(), this.path.replace('\\', '/'));
         
             try (Writer w = new OutputStreamWriter(modified.getOutputStream())) {
                 w.write(content); w.close();

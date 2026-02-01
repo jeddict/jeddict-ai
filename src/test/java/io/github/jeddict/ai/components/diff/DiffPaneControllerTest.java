@@ -167,7 +167,7 @@ public class DiffPaneControllerTest extends TestBase {
     
     @Test
     public void save_creates_a_new_file() throws Exception {
-        final Path newFilePath = Paths.get("newfolder/newfile.txt");
+        final Path newFilePath = Paths.get("newfolder/newfile.txt");  
         
         //
         // Create a new file
