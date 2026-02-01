@@ -83,6 +83,7 @@ public class DiffPaneController {
             }
         }  catch (IOException x) {
             LOG.severe(() -> "error creating the updated version: %s".formatted(String.valueOf(x)));
+            x.printStackTrace();
         }
         
         this.original = FileUtil.toFileObject(fullPath()); // null if it does not exist
