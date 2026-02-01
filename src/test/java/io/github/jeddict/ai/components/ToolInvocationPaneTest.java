@@ -22,65 +22,32 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import static io.github.jeddict.ai.components.ArgumentChip.CHIP_SAMPLE_ARGUMENT_NAME;
 import static io.github.jeddict.ai.components.ArgumentChip.CHIP_SAMPLE_ARGUMENT_VALUE;
 import static io.github.jeddict.ai.components.ToolInvocationPane.ARGUMENT_SAMPLE_TOOL_NAME;
-import java.awt.Container;
-import java.awt.Dimension;
+import io.github.jeddict.ai.test.UITestBase;
+import io.github.jeddict.ai.util.UIUtil;
+import java.util.List;
 import java.util.Map;
-import javax.swing.BoxLayout;
-import javax.swing.JFrame;
+import javax.swing.JScrollBar;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import static org.assertj.core.api.BDDAssertions.then;
-import org.assertj.swing.core.BasicComponentFinder;
-import org.assertj.swing.core.BasicComponentPrinter;
-import org.assertj.swing.core.ComponentFinder;
-import org.assertj.swing.core.ComponentPrinter;
-import org.assertj.swing.edt.FailOnThreadViolationRepaintManager;
-import org.assertj.swing.edt.GuiActionRunner;
-import org.assertj.swing.fixture.FrameFixture;
-import org.junit.BeforeClass;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 
 
 @CacioTest
-public class ToolInvocationPaneTest {
+public class ToolInvocationPaneTest extends UITestBase {
 
     private static final String VALUE100 = StringUtils.repeat("abcdefghij", 10);
-    private static final ComponentPrinter PRINTER = BasicComponentPrinter.printerWithCurrentAwtHierarchy();
-    private static final ComponentFinder FINDER = BasicComponentFinder.finderWithCurrentAwtHierarchy();
-
     private static final Pair<String,String>[] ARGUMENTS1 = new Pair[] {
         Pair.of("a1", "v1"), Pair.of("a2", "v2"), Pair.of("a3", "v3")
     };
 
-    private FrameFixture window;
-    private JFrame frame;
-    private Container content;
-
-    @BeforeClass
-    public static void beforeClass() {
-        FailOnThreadViolationRepaintManager.install();
-    }
-
     @BeforeEach
-    void beforeEach() {
-        frame = GuiActionRunner.execute(() -> new JFrame());
+    @Override
+    public void beforeEach() throws Exception {
+        super.beforeEach();
         frame.setTitle(("Test ArgumentPane"));
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
-        content = frame.getContentPane();
-        content.setPreferredSize(new Dimension(300, 300));
-        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
-
-        window = new FrameFixture(frame);
-        window.show();
-    }
-
-    @AfterEach
-    public void tearDown() throws Exception {
-        window.cleanUp();
     }
     
     @Test
@@ -125,5 +92,29 @@ public class ToolInvocationPaneTest {
         then(FINDER.findAll(pane, (component) -> {
             return component instanceof ArgumentChip;
         })).hasSize(2);
+    }
+    
+    @Test
+    public void show_scrollbars_when_not_enough_space() {
+        ToolInvocationPane pane = new ToolInvocationPane(
+            "callMe", Map.of("name", "James Bond", "phone", "+1234567890")
+        );
+        
+        pane.setSize(500, 200); content.add(pane);
+        pane.validate(); pane.repaint();
+        
+        final List<JScrollBar> scrollbars = UIUtil.find(pane, JScrollBar.class);
+        then(scrollbars).hasSize(2);
+        
+        then(scrollbars.get(0).isVisible()).isFalse();
+        then(scrollbars.get(1).isVisible()).isFalse();
+        
+        pane.setSize(100, 50); content.add(pane);
+        pane.validate(); pane.repaint();
+
+        then(scrollbars.get(0).isVisible()).isTrue();
+        then(scrollbars.get(1).isVisible()).isTrue();
+        
+        
     }
 }

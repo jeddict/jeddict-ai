@@ -84,8 +84,8 @@ public class DiffPaneControllerTest extends TestBase {
         //
         // Updating a file
         //
-        then(ctrl.path).isSameAs(F);
-        then(ctrl.fullPath).isEqualTo(new File(P.getProjectDirectory().getPath(), F).getAbsolutePath());
+        then(ctrl.path).isEqualTo(F);
+        then(ctrl.fullPath()).isEqualTo(new File(P.getProjectDirectory().getPath(), F).getAbsolutePath());
         then(ctrl.original).isNotNull();
         then(ctrl.modified).isNotNull();
         then(ctrl.isNewFile()).isFalse();
@@ -94,8 +94,8 @@ public class DiffPaneControllerTest extends TestBase {
         // Creating a new file
         //
         ctrl = new DiffPaneController(P, "newfile.txt", C);
-        then(ctrl.path).isSameAs("newfile.txt");
-        then(ctrl.fullPath).isEqualTo(new File(P.getProjectDirectory().getPath(), "newfile.txt").getAbsolutePath());
+        then(ctrl.path).isEqualTo("newfile.txt");
+        then(ctrl.fullPath()).isEqualTo(new File(P.getProjectDirectory().getPath(), "newfile.txt").getAbsolutePath());
         then(ctrl.original).isNotNull();
         then(ctrl.modified).isNotNull();
         then(ctrl.isNewFile()).isTrue();
@@ -116,7 +116,7 @@ public class DiffPaneControllerTest extends TestBase {
 
         final DiffPaneController ctrl = new DiffPaneController(P, abs.toString(), C);
 
-        then(ctrl.fullPath).isEqualTo(abs.toString());
+        then(ctrl.fullPath()).isEqualTo(abs.toString());
     }
 
     @Test
@@ -163,13 +163,24 @@ public class DiffPaneControllerTest extends TestBase {
         //
         // Update existing file
         //
-        final DiffPaneController ctrl = new DiffPaneController(P, F, C + "\nnew line");
+        DiffPaneController ctrl = new DiffPaneController(P, F, C + "\nnew line");
         
         ctrl.save(C + "\nnew line");
-        then(ctrl.original.asText()).isEqualTo(C + "\nnew line");
+        then(new File(ctrl.fullPath())).hasContent(C + "\nnew line");
         
         ctrl.save("hello");
-        then(ctrl.original.asText()).isEqualTo("hello");
+        then(new File(ctrl.fullPath())).hasContent("hello");
+        
+        //
+        // Absolute path
+        //
+        ctrl = new DiffPaneController(
+            P, 
+            FileUtil.toPath(P.getProjectDirectory().getFileObject(F)).toAbsolutePath().toString(),
+            C
+        );
+        ctrl.save("absolute path");
+        then(new File(ctrl.fullPath())).hasContent("absolute path");
     }
     
     @Test
@@ -194,5 +205,16 @@ public class DiffPaneControllerTest extends TestBase {
         );
         ctrl.save("hello");
         then(ctrl.original.asText()).isEqualTo("hello");
+        
+        //
+        // Absolute path
+        //
+        ctrl = new DiffPaneController(
+            P, 
+            FileUtil.toPath(P.getProjectDirectory().getFileObject("newfile.txt", false)).toAbsolutePath().toString(),
+            C
+        );
+        ctrl.save("absolute path");
+        then(new File(ctrl.fullPath())).hasContent("absolute path");
     }
 }

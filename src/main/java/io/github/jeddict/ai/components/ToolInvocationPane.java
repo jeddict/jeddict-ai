@@ -26,6 +26,7 @@ import java.awt.FlowLayout;
 import java.util.Map;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import org.json.JSONObject;
 import static ste.lloop.Loop.on;
 
@@ -78,7 +79,7 @@ public class ToolInvocationPane extends JPanel {
         // Put everything together
         //
         add(nameLabel, java.awt.BorderLayout.NORTH);
-        add(argumentsPanel, java.awt.BorderLayout.CENTER);
+        add(new JScrollPane(argumentsPanel), java.awt.BorderLayout.CENTER);
     }
     
     public ToolInvocationPane(final ToolExecutionRequest execution) {

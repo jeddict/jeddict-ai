@@ -29,7 +29,6 @@ public class DiffPaneController {
 
     public final Project project;
     public final String path;
-    public final String fullPath;
     public final FileObject original;  // original version
     public final FileObject modified;  // new version
 
@@ -58,16 +57,16 @@ public class DiffPaneController {
         if (path == null) {
             throw new IllegalArgumentException("path cannot be null");
         }
+        
         this.project = project;
-        this.path = path;
-        this.fullPath = getValidatedFullPath(path);
+        this.path = getValidatedPath(path);
  
-        final FileObject original = FileUtil.toFileObject(Paths.get(fullPath));
+        final FileObject original = FileUtil.toFileObject(Paths.get(fullPath()));
         isNewFile = (original == null);
         final FileSystem fs = FileUtil.createMemoryFileSystem();
         FileObject modified = null;
         try {
-            modified = FileUtil.createData(fs.getRoot(), path);
+            modified = FileUtil.createData(fs.getRoot(), this.path);
         
             try (Writer w = new OutputStreamWriter(modified.getOutputStream())) {
                 w.write(content); w.close();
@@ -77,7 +76,7 @@ public class DiffPaneController {
         }
         this.modified = modified;
         this.original = (isNewFile) 
-                      ? project.getProjectDirectory().getFileObject(path, false)
+                      ? project.getProjectDirectory().getFileObject(this.path, false)
                       : original;
     }
     
@@ -99,8 +98,8 @@ public class DiffPaneController {
     public void save(final String text) {
         try {
             LOG.finest(
-                () -> "saving to %s %s with content:\n%s".formatted(
-                    fullPath, (isNewFile) ? "new" : "existing", StringUtils.abbreviateMiddle(text, "...", 80)
+                () -> "saving to %s (%s) with content:\n%s".formatted(
+                    fullPath(), (isNewFile) ? "new" : "existing", StringUtils.abbreviateMiddle(text, "...", 80)
                 )
             );
             
@@ -115,6 +114,10 @@ public class DiffPaneController {
     public boolean isNewFile() {
         return isNewFile;
     }
+    
+    public String fullPath() {
+        return project.getProjectDirectory().getFileObject(path, false).getPath();
+    }
 
     // --------------------------------------------------------- Private methods
     
@@ -124,15 +127,15 @@ public class DiffPaneController {
      *
      * @param path the relative path to validate
      *
-     * @return The canonical full path of the file.
+     * @return The canonical path of the file relative to the project directory
      *
      * @throws IllegalArgumentException if the file path is invalid or outside
      * the project directory.
      */
-    private String getValidatedFullPath(final String path) {
+    private String getValidatedPath(final String path) {
         //
-        // NOTE: we use File here to easily manipulate the file, but bear in
-        // mind not use use the File object directly. They may not be the same
+        // NOTE: we use Path here to easily manipulate the file, but bear in
+        // mind not use use the Path object directly. They may not be the same
         // as the files in the project, depending on the FileSystem used
         //
 
@@ -146,6 +149,6 @@ public class DiffPaneController {
                 "file path '" + absolutePath + "' must be within the project directory"
             );
         }
-        return absolutePath.toString();
+        return projectPath.relativize(absolutePath).toString();
     }
 }

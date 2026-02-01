@@ -143,7 +143,7 @@ public class DiffPane extends JPanel {
         //
         // show two tabs, one with the provided source and one with the diff
         //
-        final File file = new File(ctrl.fullPath);
+        final File file = new File(ctrl.fullPath());
         final String mimeType = (ctrl.original != null)
                 ? ctrl.original.getMIMEType()
                 : io.github.jeddict.ai.util.FileUtil.mimeType(file.getName());
