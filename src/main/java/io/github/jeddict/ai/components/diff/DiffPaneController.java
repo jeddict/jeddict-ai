@@ -118,7 +118,9 @@ public class DiffPaneController {
             );
             
             final FileObject destination = isNewFile
-//            ? FileUtil.createData(realProjectDir, path)
+                //
+                // FileUtil.createData wants / ...
+                //
                 ? FileUtil.createData(project.getProjectDirectory(), path.replace('\\', '/'))
                 : original;
             
