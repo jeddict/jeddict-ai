@@ -34,11 +34,13 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
 import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JEditorPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
+import javax.swing.border.EmptyBorder;
 import javax.swing.text.EditorKit;
 import org.netbeans.api.project.Project;
 import org.openide.loaders.DataObject;
@@ -80,15 +82,14 @@ public class DiffPane extends JPanel {
         ));
         setBackground(UIUtil.COLOR_JEDDICT_MAIN_BACKGROUND);
         setLayout(new BorderLayout());
-        ;
         
         //
         // Invocation Pane
         //
-        add(
-            new ToolInvocationPane("interactiveFileEditor", Map.of("path", path)), 
-            BorderLayout.NORTH
-        );
+        //add(
+        //    new ToolInvocationPane("interactiveFileEditor", Map.of("path", path)), 
+        //    BorderLayout.NORTH
+        //);
         
         //
         // Diff UI
@@ -97,9 +98,11 @@ public class DiffPane extends JPanel {
         sourcePane.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(194, 194, 194)));
 
         //
-        // Accept/Reject button panel
+        // ToolInvocation Pane + Accept/Reject button panel
         //
-        final JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        final JPanel topPanel = new JPanel();
+        topPanel.setLayout(new BoxLayout(topPanel, BoxLayout.X_AXIS));
+        topPanel.setOpaque(false);
 
         btnAccept.addActionListener((ActionEvent event) -> {
             //
@@ -145,11 +148,19 @@ public class DiffPane extends JPanel {
         //
         UIUtil.makeDefaultButton(btnAccept);
 
-        buttonPanel.add(btnAccept);
-        buttonPanel.add(btnReject);
-        buttonPanel.setBorder(BorderFactory.createEmptyBorder(3, 0, 0, 10));
+        final ToolInvocationPane tip 
+            = new ToolInvocationPane("interactiveFileEditor", Map.of("path", path));
+        tip.setAlignmentY(TOP_ALIGNMENT); topPanel.add(tip);
+        
+        final JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.LEADING, 5, 3));
+        btnPanel.setOpaque(false); btnPanel.setAlignmentY(TOP_ALIGNMENT); 
+        btnPanel.add(btnAccept); btnPanel.add(btnReject); 
+        
+        topPanel.add(btnPanel);
+        
+        topPanel.setBorder(BorderFactory.createEmptyBorder(3, 0, 0, 10));
 
-        add(buttonPanel, BorderLayout.SOUTH);
+        add(topPanel, BorderLayout.NORTH);
     }
 
     /**
