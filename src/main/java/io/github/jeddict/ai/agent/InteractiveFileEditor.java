@@ -56,7 +56,7 @@ public class InteractiveFileEditor extends AbstractTool {
     @ToolPolicy(INTERACTIVE)
     public String editFile(final String path, final String content)
     throws ToolExecutionException {
-        progress("∆ Editing " + path + " with proposed content " + StringUtils.abbreviate(content, 40));
+        progress("∆ Editing " + path);
 
         checkPath(path);
 

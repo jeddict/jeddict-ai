@@ -51,7 +51,7 @@ public class FileSystemToolsTest extends TestBase {
 
         then(tools.searchInFile(path, pattern)).contains("Match at").contains("test file");
         then(listener.collector).hasSize(1);
-        thenProgressContains(listener.collector.get(0), "🔎 Looking for '" + pattern + "' inside '" + path + "'");
+        thenProgressContains(listener.collector.get(0), "\n🔎 Looking for '" + pattern + "' inside '" + path + "'");
     }
 
     @Test
@@ -61,7 +61,7 @@ public class FileSystemToolsTest extends TestBase {
 
         then(tools.searchInFile(path, pattern)).isEqualTo("No matches found");
         then(listener.collector).hasSize(1);
-        thenProgressContains(listener.collector.get(0), "🔎 Looking for '" + pattern + "' inside '" + path + "'");
+        thenProgressContains(listener.collector.get(0), "\n🔎 Looking for '" + pattern + "' inside '" + path + "'");
     }
 
     @Test
@@ -74,7 +74,7 @@ public class FileSystemToolsTest extends TestBase {
 
         thenTriedFileOutsideProjectFolder(() -> tools.searchInFile(abs, pattern));
 
-        thenProgressContains(listener.collector.get(0), "🔎 Looking for '" + pattern + "' inside '" + abs + "'");
+        thenProgressContains(listener.collector.get(0), "\n🔎 Looking for '" + pattern + "' inside '" + abs + "'");
 
         //
         // relative path
@@ -93,15 +93,15 @@ public class FileSystemToolsTest extends TestBase {
 
         then(tools.createFile(path, content)).isEqualTo("File created");
 
-        thenProgressContains(listener.collector.get(0), "📄 Creating file " + path);
+        thenProgressContains(listener.collector.get(0), "\n📄 Creating file " + path);
 
         listener.collector.clear();
         thenThrownBy(() -> tools.createFile(path, content))
             .isInstanceOf(ToolExecutionException.class)
             .hasMessage("❌ " + path + " already exists");
 
-        thenProgressContains(listener.collector.get(0), "📄 Creating file " + path);
-        thenProgressContains(listener.collector.get(1), "❌ " + path + " already exists");
+        thenProgressContains(listener.collector.get(0), "\n📄 Creating file " + path);
+        thenProgressContains(listener.collector.get(1), "\n❌ " + path + " already exists");
     }
 
     @Test
@@ -123,7 +123,7 @@ public class FileSystemToolsTest extends TestBase {
 
         thenTriedFileOutsideProjectFolder(() -> tools.createFile(rel, content));
 
-        thenProgressContains(listener.collector.get(0), "📄 Creating file " + rel);
+        thenProgressContains(listener.collector.get(0), "\n📄 Creating file " + rel);
     }
 
     @Test
@@ -138,15 +138,15 @@ public class FileSystemToolsTest extends TestBase {
         then(tools.deleteFile(path)).isEqualTo("File deleted");
         then(fileToDelete).doesNotExist();
 
-        thenProgressContains(listener.collector.get(0), "🗑️ Deleting file " + path);
+        thenProgressContains(listener.collector.get(0), "\n🗑️ Deleting file " + path);
 
         listener.collector.clear();
         thenThrownBy(() -> tools.deleteFile(path))
             .isInstanceOf(ToolExecutionException.class)
             .hasMessage(path + " does not exist");
 
-        thenProgressContains(listener.collector.get(0), "🗑️ Deleting file " + path);
-        thenProgressContains(listener.collector.get(1), "❌ " + path + " does not exist");
+        thenProgressContains(listener.collector.get(0), "\n🗑️ Deleting file " + path);
+        thenProgressContains(listener.collector.get(1), "\n❌ " + path + " does not exist");
     }
 
     @Test
@@ -158,7 +158,7 @@ public class FileSystemToolsTest extends TestBase {
 
         thenTriedFileOutsideProjectFolder(() -> tools.deleteFile(abs));
 
-        thenProgressContains(listener.collector.get(0), "🗑️ Deleting file " + abs);
+        thenProgressContains(listener.collector.get(0), "\n🗑️ Deleting file " + abs);
 
         //
         // relative path
@@ -168,7 +168,7 @@ public class FileSystemToolsTest extends TestBase {
         final String rel = projectDir + File.separator + "../outside.txt";
 
         thenTriedFileOutsideProjectFolder(() -> tools.deleteFile(rel));
-        thenProgressContains(listener.collector.get(0), "🗑️ Deleting file " + rel);
+        thenProgressContains(listener.collector.get(0), "\n🗑️ Deleting file " + rel);
     }
 
     @Test
@@ -178,19 +178,19 @@ public class FileSystemToolsTest extends TestBase {
         final String emptyDir = "newfolder";
 
         then(tools.listFilesInDirectory(existingDir)).contains("testfile.txt");
-        thenProgressContains(listener.collector.get(0), "📂 Listing content of directory " + existingDir);
+        thenProgressContains(listener.collector.get(0), "\n📂 Listing content of directory " + existingDir);
 
         listener.collector.clear();
         Files.createDirectory(projectPath.resolve(emptyDir));
         then(tools.listFilesInDirectory(emptyDir)).isEqualTo("(empty)");
-        thenProgressContains(listener.collector.get(0), "📂 Listing content of directory " + emptyDir);
+        thenProgressContains(listener.collector.get(0), "\n📂 Listing content of directory " + emptyDir);
 
         listener.collector.clear();
         thenThrownBy(() -> tools.listFilesInDirectory(nonExistingDir))
             .isInstanceOf(ToolExecutionException.class)
             .hasMessage(nonExistingDir + " does not exist");
-        thenProgressContains(listener.collector.get(0), "📂 Listing content of directory " + nonExistingDir);
-        thenProgressContains(listener.collector.get(1), "❌ " + nonExistingDir + " does not exist");
+        thenProgressContains(listener.collector.get(0), "\n📂 Listing content of directory " + nonExistingDir);
+        thenProgressContains(listener.collector.get(1), "\n❌ " + nonExistingDir + " does not exist");
     }
 
     @Test
@@ -201,7 +201,7 @@ public class FileSystemToolsTest extends TestBase {
         final String abs = HOME.resolve("folder").toAbsolutePath().toString();
 
         thenTriedFileOutsideProjectFolder(() -> tools.listFilesInDirectory(abs));
-        thenProgressContains(listener.collector.get(0), "📂 Listing content of directory " + abs);
+        thenProgressContains(listener.collector.get(0), "\n📂 Listing content of directory " + abs);
 
         //
         // relative path
@@ -211,7 +211,7 @@ public class FileSystemToolsTest extends TestBase {
         final String rel = projectDir + File.separator + "../outside";
 
         thenTriedFileOutsideProjectFolder(() -> tools.listFilesInDirectory(rel));
-        thenProgressContains(listener.collector.get(0), "📂 Listing content of directory " + rel);
+        thenProgressContains(listener.collector.get(0), "\n📂 Listing content of directory " + rel);
     }
 
     @Test
@@ -225,7 +225,7 @@ public class FileSystemToolsTest extends TestBase {
         //
         then(tools.readFile(pathOK)).isEqualTo(expectedContent);
         then(listener.collector).hasSize(1);
-        thenProgressContains(listener.collector.get(0), "📖 Reading file " + pathOK);
+        thenProgressContains(listener.collector.get(0), "\n📖 Reading file " + pathOK);
 
         //
         // success absolute path inside folder
@@ -233,7 +233,7 @@ public class FileSystemToolsTest extends TestBase {
         listener.collector.clear();
         then(tools.readFile(fullPathOK.toString())).isEqualTo(expectedContent);
         then(listener.collector).hasSize(1);
-        thenProgressContains(listener.collector.get(0), "📖 Reading file " + fullPathOK);
+        thenProgressContains(listener.collector.get(0), "\n📖 Reading file " + fullPathOK);
 
         //
         // failure (not we log absolute path to make troubleshooting easier)
@@ -248,8 +248,8 @@ public class FileSystemToolsTest extends TestBase {
         .hasMessageContaining("failed to read file: java.nio.file.NoSuchFileException: ");
 
         then(listener.collector).hasSize(2);
-        thenProgressContains(listener.collector.get(0), "📖 Reading file " + pathKO);
-        thenProgressContains(listener.collector.get(1), "❌ Failed to read file:");
+        thenProgressContains(listener.collector.get(0), "\n📖 Reading file " + pathKO);
+        thenProgressContains(listener.collector.get(1), "\n❌ Failed to read file:");
     }
 
     @Test
@@ -263,7 +263,7 @@ public class FileSystemToolsTest extends TestBase {
             tools.readFile(abs.toString())
         );
 
-        thenProgressContains(listener.collector.get(0), "📖 Reading file " + abs);
+        thenProgressContains(listener.collector.get(0), "\n📖 Reading file " + abs);
 
         //
         // relative path
@@ -276,7 +276,7 @@ public class FileSystemToolsTest extends TestBase {
             tools.readFile(rel)
         );
 
-        thenProgressContains(listener.collector.get(0), "📖 Reading file " + rel);
+        thenProgressContains(listener.collector.get(0), "\n📖 Reading file " + rel);
     }
 
     @Test
@@ -284,8 +284,8 @@ public class FileSystemToolsTest extends TestBase {
         final String path = "newdir";
 
         then(tools.createDirectory(path)).isEqualTo("Directory created");
-        thenProgressContains(listener.collector.get(0), "📂 Creating new directory " + path);
-        thenProgressContains(listener.collector.get(1), "✅ Directory created");
+        thenProgressContains(listener.collector.get(0), "\n📂 Creating new directory " + path);
+        thenProgressContains(listener.collector.get(1), "\n✅ Directory created");
 
         listener.collector.clear();
         thenThrownBy( () ->
@@ -293,8 +293,8 @@ public class FileSystemToolsTest extends TestBase {
         ).isInstanceOf(ToolExecutionException.class)
         .hasMessage("❌ " + path + " already exists");
 
-        thenProgressContains(listener.collector.get(0), "📂 Creating new directory " + path);
-        thenProgressContains(listener.collector.get(1), "❌ " + path + " already exists");
+        thenProgressContains(listener.collector.get(0), "\n📂 Creating new directory " + path);
+        thenProgressContains(listener.collector.get(1), "\n❌ " + path + " already exists");
     }
 
     @Test
@@ -308,7 +308,7 @@ public class FileSystemToolsTest extends TestBase {
             tools.createDirectory(abs.toString())
         );
 
-        thenProgressContains(listener.collector.get(0), "📂 Creating new directory " + abs);
+        thenProgressContains(listener.collector.get(0), "\n📂 Creating new directory " + abs);
 
         //
         // relative path
@@ -321,7 +321,7 @@ public class FileSystemToolsTest extends TestBase {
             tools.createDirectory(rel)
         );
 
-        thenProgressContains(listener.collector.get(0), "📂 Creating new directory " + rel);
+        thenProgressContains(listener.collector.get(0), "\n📂 Creating new directory " + rel);
     }
 
     @Test
@@ -332,24 +332,24 @@ public class FileSystemToolsTest extends TestBase {
         Files.createDirectories(fullPath);
 
         then(tools.deleteDirectory(path)).isEqualTo("Directory deleted");
-        thenProgressContains(listener.collector.get(0), "🗑️ Deleting directory " + path);
-        thenProgressContains(listener.collector.get(1), "✅ " + path + " deleted");
+        thenProgressContains(listener.collector.get(0), "\n🗑️ Deleting directory " + path);
+        thenProgressContains(listener.collector.get(1), "\n✅ " + path + " deleted");
 
         listener.collector.clear();
         thenThrownBy( () ->
             tools.deleteDirectory(path)
         ).isInstanceOf(ToolExecutionException.class)
         .hasMessage("❌ " + path + " not found");
-        thenProgressContains(listener.collector.get(0), "🗑️ Deleting directory " + path);
-        thenProgressContains(listener.collector.get(1), "❌ " + path + " not found");
+        thenProgressContains(listener.collector.get(0), "\n🗑️ Deleting directory " + path);
+        thenProgressContains(listener.collector.get(1), "\n❌ " + path + " not found");
 
         final String notdir = projectPath.resolve(TESTFILE).toString();
         listener.collector.clear();
         thenThrownBy( () -> tools.deleteDirectory(notdir))
             .isInstanceOf(ToolExecutionException.class)
             .hasMessage("❌ " + notdir + " not a directory");
-        thenProgressContains(listener.collector.get(0), "🗑️ Deleting directory " + notdir);
-        thenProgressContains(listener.collector.get(1), "❌ " + notdir + " not a directory");
+        thenProgressContains(listener.collector.get(0), "\n🗑️ Deleting directory " + notdir);
+        thenProgressContains(listener.collector.get(1), "\n❌ " + notdir + " not a directory");
     }
 
     @Test
@@ -363,7 +363,7 @@ public class FileSystemToolsTest extends TestBase {
             tools.deleteDirectory(abs.toString())
         );
 
-        thenProgressContains(listener.collector.get(0), "🗑️ Deleting directory " + abs);
+        thenProgressContains(listener.collector.get(0), "\n🗑️ Deleting directory " + abs);
 
         //
         // relative path
@@ -376,7 +376,7 @@ public class FileSystemToolsTest extends TestBase {
             tools.deleteDirectory(rel)
         );
 
-        thenProgressContains(listener.collector.get(0), "🗑️ Deleting directory " + rel);
+        thenProgressContains(listener.collector.get(0), "\n🗑️ Deleting directory " + rel);
     }
 
     @Test
@@ -386,15 +386,15 @@ public class FileSystemToolsTest extends TestBase {
         then(tools.replaceSnippetByRegex(TESTFILE, "for.*ing", "for testing"))
             .isEqualTo("Snippet replaced");
         then(fullPath).content().isEqualTo("This is a test file content for testing.");
-        thenProgressContains(listener.collector.get(0), "🔄 Replacing text matching regex 'for.*ing' in " + TESTFILE);
-        thenProgressContains(listener.collector.get(1), "✅ Snippet replaced");
+        thenProgressContains(listener.collector.get(0), "\n🔄 Replacing text matching regex 'for.*ing' in " + TESTFILE);
+        thenProgressContains(listener.collector.get(1), "\n✅ Snippet replaced");
 
         listener.collector.clear();
         then(
             tools.replaceSnippetByRegex(TESTFILE, "none", "do not change me")
         ).isEqualTo("No matches found for pattern");
-        thenProgressContains(listener.collector.get(0), "🔄 Replacing text matching regex 'none' in " + TESTFILE);
-        thenProgressContains(listener.collector.get(1), "❌ No matches found for regex 'none' in " + TESTFILE);
+        thenProgressContains(listener.collector.get(0), "\n🔄 Replacing text matching regex 'none' in " + TESTFILE);
+        thenProgressContains(listener.collector.get(1), "\n❌ No matches found for regex 'none' in " + TESTFILE);
 
         listener.collector.clear();
         Path notExistingPath =  projectPath.resolve("notexisting.txt").normalize();
@@ -402,8 +402,8 @@ public class FileSystemToolsTest extends TestBase {
             notExistingPath.toString(), "text", "nothing"
         )).isInstanceOf(ToolExecutionException.class)
         .hasMessage("replacement failed: java.nio.file.NoSuchFileException: " + notExistingPath);
-        thenProgressContains(listener.collector.get(0), "🔄 Replacing text matching regex 'text' in " + projectPath.resolve("notexisting.txt"));
-        thenProgressContains(listener.collector.get(1), "❌ Replacement failed: java.nio.file.NoSuchFileException: " + notExistingPath);
+        thenProgressContains(listener.collector.get(0), "\n🔄 Replacing text matching regex 'text' in " + projectPath.resolve("notexisting.txt"));
+        thenProgressContains(listener.collector.get(1), "\n❌ Replacement failed: java.nio.file.NoSuchFileException: " + notExistingPath);
     }
 
     @Test
@@ -417,7 +417,7 @@ public class FileSystemToolsTest extends TestBase {
             tools.replaceSnippetByRegex(abs.toString(), ".*", "nothing")
         );
 
-        thenProgressContains(listener.collector.get(0), "🔄 Replacing text matching regex '.*' in " + abs);
+        thenProgressContains(listener.collector.get(0), "\n🔄 Replacing text matching regex '.*' in " + abs);
 
     //
         // relative path
@@ -430,7 +430,7 @@ public class FileSystemToolsTest extends TestBase {
             tools.replaceSnippetByRegex(rel, ".*", "nothing")
         );
 
-        thenProgressContains(listener.collector.get(0), "🔄 Replacing text matching regex '.*' in " + rel);
+        thenProgressContains(listener.collector.get(0), "\n🔄 Replacing text matching regex '.*' in " + rel);
 }
 
     @Test
@@ -440,16 +440,16 @@ public class FileSystemToolsTest extends TestBase {
         then(tools.replaceFileContent(TESTFILE, "new text"))
             .isEqualTo("File updated");
         then(fullPath).content().isEqualTo("new text");
-        thenProgressContains(listener.collector.get(0), "🔄 Replacing content in " + TESTFILE);
-        thenProgressContains(listener.collector.get(1), "✅ File content replaced");
+        thenProgressContains(listener.collector.get(0), "\n🔄 Replacing content in " + TESTFILE);
+        thenProgressContains(listener.collector.get(1), "\n✅ File content replaced");
 
         listener.collector.clear();
         Path notExistingPath =  projectPath.resolve("notexisting.txt");
         thenThrownBy( () -> tools.replaceFileContent(notExistingPath.toString(), "new text"))
             .isInstanceOf(ToolExecutionException.class)
             .hasMessage("replacement failed: java.nio.file.NoSuchFileException: " + notExistingPath);
-        thenProgressContains(listener.collector.get(0), "🔄 Replacing content in " + projectPath.resolve("notexisting.txt"));
-        thenProgressContains(listener.collector.get(1), "❌ Replacement failed: java.nio.file.NoSuchFileException: " + notExistingPath);
+        thenProgressContains(listener.collector.get(0), "\n🔄 Replacing content in " + projectPath.resolve("notexisting.txt"));
+        thenProgressContains(listener.collector.get(1), "\n❌ Replacement failed: java.nio.file.NoSuchFileException: " + notExistingPath);
     }
 
     @Test
@@ -463,7 +463,7 @@ public class FileSystemToolsTest extends TestBase {
             tools.replaceFileContent(abs.toString(), "nothing")
         );
 
-        thenProgressContains(listener.collector.get(0), "🔄 Replacing content in " + abs);
+        thenProgressContains(listener.collector.get(0), "\n🔄 Replacing content in " + abs);
 
         //
         // relative path
@@ -476,7 +476,7 @@ public class FileSystemToolsTest extends TestBase {
             tools.replaceFileContent(rel, "nothing")
         );
 
-        thenProgressContains(listener.collector.get(0), "🔄 Replacing content in " + rel);
+        thenProgressContains(listener.collector.get(0), "\n🔄 Replacing content in " + rel);
     }
 
     // --------------------------------------------------------- private methods
@@ -487,7 +487,7 @@ public class FileSystemToolsTest extends TestBase {
         .hasMessage("trying to reach a file outside the project folder");
         then(listener.collector).anyMatch((e) -> {
             return (
-                e.getRight().equals("❌ Trying to reach a file outside the project folder")
+                e.getRight().equals("\n❌ Trying to reach a file outside the project folder")
            );
         });
 }

@@ -198,7 +198,7 @@ public class JeddictBrainTest extends TestBase {
 
             then(args.getLeft()).isEqualTo("onProgress");
 
-            then(args.getRight()).isEqualTo("executing dummyTool");
+            then(args.getRight()).isEqualTo("\nexecuting dummyTool");
         });
 
         //

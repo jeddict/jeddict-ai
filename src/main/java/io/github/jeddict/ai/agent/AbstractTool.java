@@ -41,8 +41,6 @@ public abstract class AbstractTool {
     protected final Path basepath;
     protected final Logger log;
 
-    protected Optional<JeddictBrainListener> listener = Optional.empty();
-
     private final List<JeddictBrainListener> listeners = new CopyOnWriteArrayList<>();
 
     // TODO: add comment
@@ -98,7 +96,7 @@ public abstract class AbstractTool {
 
     public void progress(final String message) {
         log(() -> message);
-        on(listeners).loop((l) -> l.onProgress(message+"\n"));
+        on(listeners).loop((l) -> l.onProgress(message, true));
     }
 
     public String basedir() {

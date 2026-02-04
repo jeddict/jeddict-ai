@@ -63,7 +63,10 @@ public class DummyJeddictBrainListener implements JeddictBrainListener {
     }
 
     @Override
-    public void onProgress(final String progress) {
-        collector.add(Pair.of("onProgress", progress.trim()));
+    public void onProgress(final String progress, final boolean newThread) {
+        final String msg = ((newThread) ? "\n" : "")
+                  + progress.trim()
+                  ;
+        collector.add(Pair.of("onProgress", msg));
     }
 }

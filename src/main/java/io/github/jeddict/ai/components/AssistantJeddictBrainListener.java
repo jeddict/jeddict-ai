@@ -145,12 +145,15 @@ public class AssistantJeddictBrainListener
     }
 
     @Override
-    public void onProgress(String partialResponse) {
+    public void onProgress(final String partialResponse, final boolean newThread) {
         LOG.finest(() ->
             "<<< partial response\n--------------------\n" +
             partialResponse +
             "\n----------");
         SwingUtilities.invokeLater(() -> {
+            if (newThread) {
+                textArea.append("\n");
+            }
             textArea.append(partialResponse);
         });
     }
