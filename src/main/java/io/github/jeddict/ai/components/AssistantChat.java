@@ -138,6 +138,7 @@ import org.openide.filesystems.FileUtil;
 import org.openide.loaders.DataObject;
 import org.openide.util.NbBundle;
 import org.openide.windows.TopComponent;
+import static ste.lloop.Loop._break_;
 import static ste.lloop.Loop.on;
 
 /**
@@ -837,19 +838,17 @@ public abstract class AssistantChat extends TopComponent {
         return editorPane;
     }
 
-    private void addEditorPaneRespectingTextArea(JComponent component) {
-        int count = parentPanel.getComponentCount();
-        if (count > 1) {
-            final int last = count - 2; // the last component should be te glue
-            Component lastComponent = parentPanel.getComponent(last);
-            if (lastComponent instanceof JTextArea) {
-                parentPanel.add(component, last);
-                return;
+    private void addEditorPaneRespectingTextArea(final JComponent component) {
+        final Integer last = on(parentPanel.getComponents()).loop((i, c) -> {
+            if (c instanceof Box.Filler) {
+                parentPanel.add(component, i);
+                _break_(i);
             }
+        });
+        if (last == null) {
+            parentPanel.add(component);
+            parentPanel.add(Box.createVerticalGlue());
         }
-        
-        parentPanel.add(component);
-        parentPanel.add(Box.createVerticalGlue());
     }
 
     public JTextArea createTextAreaPane() {
