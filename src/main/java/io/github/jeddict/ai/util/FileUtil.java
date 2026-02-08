@@ -28,6 +28,8 @@ import org.openide.cookies.SaveCookie;
 import org.openide.filesystems.FileObject;
 import org.openide.loaders.DataObject;
 import org.openide.windows.TopComponent;
+import java.net.FileNameMap;
+import java.net.URLConnection;
 
 /**
  *
@@ -84,25 +86,96 @@ public class FileUtil {
         }
     }
 
-    public static FileObject getFileObject(Project project, String path) {
-        java.io.File file = resolvePath(project, path).toFile();
-        return org.openide.filesystems.FileUtil.toFileObject(file);
+    /**
+     * Determines the MIME type of a file based on its filename.
+     * This method handles both existing and non-existing files.
+     * <p>
+     * For existing files, it attempts to use NetBeans' {@code FileObject.getMIMEType()}
+     * for accurate MIME type detection.
+     * </p>
+     * <p>
+     * For non-existing files, or if {@code FileObject.getMIMEType()} cannot determine
+     * the MIME type (e.g., for files not yet created or not recognized by NetBeans'
+     * internal resolvers), it falls back to a custom logic:
+     * <ul>
+     *     <li>Specific programming language extensions (e.g., .java, .c, .cpp, .ruby, .php, .php5)
+     *         are mapped to their respective {@code text/x-<extension>} MIME types.</li>
+     *     <li>For other extensions, it uses {@code URLConnection.getFileNameMap()} as a general fallback.</li>
+     *     <li>If no specific MIME type can be determined, it defaults to {@code application/octet-stream}.</li>
+     * </ul>
+     * This approach is necessary because NetBeans' primary MIME type resolution
+     * relies on {@code FileObject}s (which require existing files), and its
+     * {@code FileUtil.getMIMEType(String ext)} method is deprecated and can be problematic.
+     * </p>
+     *
+     * @param filename The name of the file, including its extension.
+     * @return The determined MIME type as a String.
+     */
+    public static String mimeType(final String filename) {
+        if (filename == null || filename.isBlank()) {
+            throw new IllegalArgumentException("filename can not be null or empty");
+        }
+
+        final FileObject fo = org.openide.filesystems.FileUtil.toFileObject(
+            org.openide.filesystems.FileUtil.normalizeFile(new File(filename))
+        );
+        if (fo != null) {
+            return fo.getMIMEType();
+        }
+
+        final String extension = org.openide.filesystems.FileUtil.getExtension(filename);
+
+        switch (extension) {
+            case "java", "c", "cpp", "ruby", "php", "php5" -> {
+                return "text/x-" + extension;
+            }
+            default -> {
+                FileNameMap fileNameMap = URLConnection.getFileNameMap();
+                String mimeType = fileNameMap.getContentTypeFor(filename);
+                if (mimeType == null) {
+                    return "application/octet-stream";
+                }
+                return mimeType;
+            }
+        }
+    }
+
+    public static FileObject realFileObject(final Project project, String path) {
+        final FileObject fo = project.getProjectDirectory();
+        
+        try {
+            return org.openide.filesystems.FileUtil.toFileObject(
+                resolveRealPath((fo != null) ? fo.getPath() : null, path)
+            );
+        } catch (IOException x) {
+            return null;
+        }
+    }
+    
+    public static FileObject realFileObject(final String basedir, String path) {
+        try {
+            return org.openide.filesystems.FileUtil.toFileObject(
+                resolveRealPath(basedir, path)
+            );
+        } catch (IOException x) {
+            return null;
+        }
     }
 
     public static String readContent(Project project, String path) throws IOException {
         return project.getProjectDirectory().getFileObject(path).asText();
     }
 
-    public static Path resolvePath(Project project, String path) {
+    public static Path resolveRealPath(final String basedir, final String path) 
+    throws IOException {
         Path p = Paths.get(path);
-        if (!p.isAbsolute() && project != null) {
-            FileObject projectDir = project.getProjectDirectory();
-            if (projectDir != null) {
-                return Paths.get(projectDir.getPath()).resolve(path)
-                        .toAbsolutePath().normalize();
-            }
+        if (!p.isAbsolute() && basedir != null) {
+            p = Paths.get(basedir).resolve(path);
         }
-        return p.toAbsolutePath().normalize();
+        return
+            p.toAbsolutePath()  // make it absolute
+            .normalize()        // remove relative parts (e.g. ../)
+            .toRealPath();      // follow links and Windows's short names;
     }
 
 

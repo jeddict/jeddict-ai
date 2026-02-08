@@ -21,9 +21,17 @@ import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.expr.ObjectCreationExpr;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import io.github.jeddict.ai.JeddictUpdateManager;
+import io.github.jeddict.ai.lang.InteractionMode;
 import static io.github.jeddict.ai.classpath.JeddictQueryCompletionQuery.JEDDICT_EDITOR_CALLBACK;
+import static io.github.jeddict.ai.components.QueryPane.createIconButton;
+import static io.github.jeddict.ai.components.QueryPane.createStyledComboBox;
+import io.github.jeddict.ai.components.diff.DiffPane;
 import io.github.jeddict.ai.components.mermaid.MermaidPane;
-import io.github.jeddict.ai.response.Block;
+import static io.github.jeddict.ai.models.registry.GenAIProvider.getModelsByProvider;
+import io.github.jeddict.ai.response.TextBlock;
+import io.github.jeddict.ai.response.Response;
 import io.github.jeddict.ai.review.Review;
 import io.github.jeddict.ai.settings.PreferencesManager;
 import io.github.jeddict.ai.util.ColorUtil;
@@ -37,10 +45,18 @@ import static io.github.jeddict.ai.util.EditorUtil.getExtension;
 import static io.github.jeddict.ai.util.EditorUtil.getFontFromMimeType;
 import static io.github.jeddict.ai.util.EditorUtil.getTextColorFromMimeType;
 import static io.github.jeddict.ai.util.EditorUtil.isSuitableForWebAppDirectory;
+import static io.github.jeddict.ai.util.Icons.ICON_ATTACH;
 import static io.github.jeddict.ai.util.Icons.ICON_CANCEL;
+import static io.github.jeddict.ai.util.Icons.ICON_CONTEXT;
 import static io.github.jeddict.ai.util.Icons.ICON_COPY;
 import static io.github.jeddict.ai.util.Icons.ICON_EDIT;
+import static io.github.jeddict.ai.util.Icons.ICON_NEW_CHAT;
+import static io.github.jeddict.ai.util.Icons.ICON_NEXT;
+import static io.github.jeddict.ai.util.Icons.ICON_PREV;
 import static io.github.jeddict.ai.util.Icons.ICON_SEND;
+import static io.github.jeddict.ai.util.Icons.ICON_SETTINGS;
+import static io.github.jeddict.ai.util.Icons.ICON_STATS;
+import static io.github.jeddict.ai.util.Icons.ICON_WEB;
 import io.github.jeddict.ai.util.Labels;
 import static io.github.jeddict.ai.util.MimeUtil.JAVA_MIME;
 import static io.github.jeddict.ai.util.MimeUtil.MIME_PLAIN_TEXT;
@@ -49,10 +65,16 @@ import static io.github.jeddict.ai.util.StringUtil.convertToCapitalized;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Desktop;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
@@ -66,16 +88,23 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BiConsumer;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 import java.util.function.Consumer;
 import java.util.prefs.Preferences;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.BoxLayout;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.util.logging.Logger;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JEditorPane;
 import javax.swing.JFileChooser;
@@ -84,8 +113,12 @@ import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
+import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
+import javax.swing.KeyStroke;
+import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.text.Document;
@@ -93,31 +126,74 @@ import javax.swing.text.EditorKit;
 import javax.swing.text.JTextComponent;
 import javax.swing.text.StyledDocument;
 import org.netbeans.api.editor.EditorRegistry;
+import org.netbeans.api.options.OptionsDisplayer;
+import org.netbeans.api.progress.ProgressHandle;
 import org.netbeans.api.project.Project;
+import org.netbeans.api.project.ProjectUtils;
 import org.netbeans.modules.editor.NbEditorUtilities;
+import org.openide.DialogDisplayer;
+import org.openide.NotifyDescriptor;
 import org.openide.filesystems.FileObject;
+import org.openide.filesystems.FileUtil;
 import org.openide.loaders.DataObject;
+import org.openide.util.NbBundle;
 import org.openide.windows.TopComponent;
+import static ste.lloop.Loop._break_;
+import static ste.lloop.Loop.on;
 
 /**
  *
  * @author Shiwani Gupta
  */
-public class AssistantChat extends TopComponent {
+public abstract class AssistantChat extends TopComponent {
+
+    private static final String SPINNER_FRAMES = "◐◓◑◒";
+
+    private final Logger LOG = Logger.getLogger(AssistantChat.class.getCanonicalName());
 
     private List<Review> reviews;
     public static final ImageIcon icon = new ImageIcon(AssistantChat.class.getResource("/icons/logo16.png"));
     public static final ImageIcon logoIcon = new ImageIcon(AssistantChat.class.getResource("/icons/logo28.png"));
 
-    public static final String PREFERENCE_KEY = "AssistantTopComponentOpen";
+    private static final String QUESTION_KEY = "QUESTION";
     private final JPanel parentPanel;
-    private final Project project;
+    private Project project;
 
     private final Map<JEditorPane, JPopupMenu> menus = new HashMap<>();
     private final Map<JEditorPane, List<JMenuItem>> menuItems = new HashMap<>();
     private final Map<JEditorPane, List<JMenuItem>> submenuItems = new HashMap<>();
     private String type = "java";
     private static final PreferencesManager pm = PreferencesManager.getInstance();
+
+    // top query pane
+    private JButton copyButton, editButton, saveButton, cancelButton;
+    private JEditorPane queryPane;
+
+    // bottom question pane
+    private JPanel filePanel;
+    private MessageContextComponentAdapter filePanelAdapter;
+    private ComponentAdapter buttonPanelAdapter;
+    private JComboBox<String> models;
+    private JComboBox<InteractionMode> actionComboBox;
+    private JButton prevButton, nextButton, openInBrowserButton, submitButton;
+    private JEditorPane questionPane;
+    private JScrollPane questionScrollPane;
+
+    protected ProgressHandle handle;
+
+    // confirmation pane
+    private ToolExecutionConfirmationPane confirmationPane;
+
+    //
+    // Kind of model for this window
+    //
+    private Response response = new Response();
+
+    private final Timer timer = new Timer(200, e -> {
+        int index = SPINNER_FRAMES.indexOf(submitButton.getText().charAt(0));
+        index = (index < 0) ? 0 : ((index+1) % SPINNER_FRAMES.length());
+        submitButton.setText(String.valueOf(SPINNER_FRAMES.charAt(index)));
+    });
 
     public AssistantChat(String name, String type, Project project) {
         setName(name);
@@ -133,6 +209,465 @@ public class AssistantChat extends TopComponent {
         add(parentPanel, BorderLayout.CENTER);
     }
 
+    public abstract void onChatReset();
+
+    public abstract void onSubmit();
+
+    public abstract void onPrev();
+
+    public abstract void onNext();
+
+    public abstract void onSessionContext();
+
+    public abstract void addFileTab(FileObject file);
+
+    public abstract void clearFileTab();
+
+
+    public JEditorPane getQuestionPane() {
+        return questionPane;
+    }
+
+    public JEditorPane getQueryPane() {
+        return queryPane;
+    }
+
+    public void updateButtons(Boolean prevButtonVisible, Boolean nextButtonVisible) {
+        prevButton.setVisible(prevButtonVisible);
+        nextButton.setVisible(nextButtonVisible);
+        openInBrowserButton.setVisible(getAllEditorCount() > 0);
+    }
+
+    public void startLoading() {
+        timer.restart();
+        LOG.finest(() -> "startLoading with handle %s".formatted(handle));
+        SwingUtilities.invokeLater(() -> {
+            LOG.finest(() -> ("updpating task loader with handle " + handle));
+            if (handle != null) {
+                handle.finish();
+            } else {
+                handle = ProgressHandle.createHandle(NbBundle.getMessage(JeddictUpdateManager.class, "PROGRESS_TASK_1"));
+                //handle.setDisplayName(taskName);
+                handle.start();
+                LOG.finest(() -> ("new task loader with handle %s created and started ".formatted(handle)));
+            }
+        });
+    }
+
+    public void updateLoading(final String progress) {
+        if (handle == null) {
+            return;
+        }
+
+        SwingUtilities.invokeLater(() -> {
+            LOG.finest(() -> "updpating task loader with handle %s and progress %s".formatted(handle, progress));
+            handle.setDisplayName(progress);
+        });
+    }
+
+    public void stopLoading() {
+        LOG.finest(() -> ("stopping task loader with handle " + handle));
+        timer.stop();
+        SwingUtilities.invokeLater(() -> {
+            if (handle != null) {
+                handle.finish();
+                handle = null;
+            }
+        });
+        buttonPanelResized();
+    }
+
+    public boolean isLoading() {
+        return (handle != null);
+    }
+
+   public String getModelName() {
+        String modelName = (String) models.getSelectedItem();
+        if (modelName == null || modelName.isEmpty()) {
+            return pm.getModel();
+        }
+        return modelName;
+    }
+
+    public void buttonPanelResized() {
+         buttonPanelAdapter.componentResized(null);
+    }
+
+    public boolean isAgentEnabled() {
+        return actionComboBox.getSelectedItem() != InteractionMode.ASK;
+    }
+
+    public boolean isInteractiveMode() {
+        return actionComboBox.getSelectedItem() == InteractionMode.INTERACTIVE;
+    }
+
+    public InteractionMode interactiveMode() {
+        return (InteractionMode)actionComboBox.getSelectedItem();
+    }
+
+    public JPanel createBottomPanel(String type, String fileName, Consumer<String> action) {
+        JPanel bottomPanel = new JPanel(new BorderLayout());
+
+        Color backgroundColor = getBackgroundColorFromMimeType(MIME_PLAIN_TEXT);
+        filePanel = new JPanel();
+        filePanelAdapter = new MessageContextComponentAdapter(filePanel);
+        filePanel.setLayout(new FlowLayout(FlowLayout.LEFT));
+        filePanel.setBackground(backgroundColor);
+        filePanel.setBorder(BorderFactory.createEmptyBorder());
+        filePanel.addComponentListener(filePanelAdapter);
+
+        JPanel buttonPanel = new JPanel(new BorderLayout());
+        buttonPanel.setBackground(backgroundColor);
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder());
+
+        JPanel rightButtonPanel = new JPanel();
+        rightButtonPanel.setLayout(new FlowLayout(FlowLayout.RIGHT, 8, 1));
+        rightButtonPanel.setBackground(backgroundColor);
+        rightButtonPanel.setBorder(BorderFactory.createEmptyBorder());
+        buttonPanel.add(rightButtonPanel, BorderLayout.EAST);
+
+        JPanel leftButtonPanel = new JPanel();
+        leftButtonPanel.setLayout(new FlowLayout(FlowLayout.LEFT, 8, 1));
+        leftButtonPanel.setBackground(backgroundColor);
+        leftButtonPanel.setBorder(BorderFactory.createEmptyBorder());
+        buttonPanel.add(leftButtonPanel, BorderLayout.WEST);
+
+        prevButton = createIconButton(Labels.PREV, ICON_PREV);
+        prevButton.setToolTipText("Previous Chat");
+        leftButtonPanel.add(prevButton);
+
+        nextButton = createIconButton(Labels.NEXT, ICON_NEXT);
+        nextButton.setToolTipText("Next Chat");
+        leftButtonPanel.add(nextButton);
+
+        openInBrowserButton = createIconButton(Labels.VIEW, ICON_WEB);
+        openInBrowserButton.setToolTipText("Open in Browser");
+        openInBrowserButton.setVisible(getAllEditorCount() > 0);
+        leftButtonPanel.add(openInBrowserButton);
+
+        Set<String> modelsByProvider = getModelsByProvider(pm.getProvider());
+
+        modelsByProvider.add(pm.getModelName());
+        models = createStyledComboBox(modelsByProvider.toArray(new String[0]));
+        models.setSelectedItem(pm.getChatModel() != null ? pm.getChatModel() : pm.getModel());
+        models.setToolTipText("AI Models");
+        models.addActionListener(e -> {
+            String selectedModel = (String) models.getSelectedItem();
+            if (selectedModel != null) {
+                pm.setChatModel(selectedModel);
+            }
+        });
+        leftButtonPanel.add(models);
+
+        InteractionMode[] options = InteractionMode.values();
+        actionComboBox = createStyledComboBox(options);
+        String lastAction = pm.getAssistantAction();
+        if (lastAction != null) {
+            try {
+                actionComboBox.setSelectedItem(InteractionMode.valueOf(lastAction));
+            } catch (IllegalArgumentException ex) {
+                actionComboBox.setSelectedItem(InteractionMode.ASK);
+            }
+        } else {
+            actionComboBox.setSelectedItem(InteractionMode.ASK);
+        }
+        actionComboBox.setToolTipText(interactionModeTooltip());
+        actionComboBox.addActionListener(e -> {
+            InteractionMode selectedAction = (InteractionMode) actionComboBox.getSelectedItem();
+            if (selectedAction != InteractionMode.ASK) {
+                if (this.project == null) {
+                    final Project selectedProject = selectProject();
+                    if (selectedProject == null) {
+                        actionComboBox.setSelectedItem(InteractionMode.ASK);
+                    } else {
+                        this.project = selectedProject;
+                    }
+                }
+            }
+            selectedAction = (InteractionMode) actionComboBox.getSelectedItem();
+            if (selectedAction != null) {
+                pm.setAssistantAction(selectedAction.name());
+            }
+        });
+        leftButtonPanel.add(actionComboBox);
+
+        JButton showChartsButton = createIconButton(Labels.STATS, ICON_STATS);
+        showChartsButton.setToolTipText("Show Token Usage Charts");
+        rightButtonPanel.add(showChartsButton);
+        showChartsButton.addActionListener(e -> {
+            TokenUsageChartDialog.showDialog(SwingUtilities.getWindowAncestor(showChartsButton));
+        });
+
+        JButton optionsButton = createIconButton(Labels.SETTINGS, ICON_SETTINGS);
+        optionsButton.setToolTipText("Open Jeddict AI Assistant Settings");
+        optionsButton.addActionListener(e -> OptionsDisplayer.getDefault().open("JeddictAIAssistant"));
+        rightButtonPanel.add(optionsButton);
+
+        JButton messageContextButton = createIconButton(Labels.MESSAGE_CONTEXT, ICON_ATTACH);
+        messageContextButton.setToolTipText("Attach a file to current message context");
+        rightButtonPanel.add(messageContextButton);
+
+        JButton sessionContextButton = createIconButton(Labels.SESSION_CONTEXT, ICON_CONTEXT);
+        sessionContextButton.setToolTipText("View detailed context of the current chat session context.");
+        sessionContextButton.addActionListener(e -> onSessionContext());
+        rightButtonPanel.add(sessionContextButton);
+
+        JButton newChatButton = createIconButton(Labels.NEW_CHAT, ICON_NEW_CHAT);
+        newChatButton.setToolTipText("Start a new chat");
+        leftButtonPanel.add(newChatButton);
+
+        submitButton = createIconButton(Labels.SEND, ICON_SEND);
+        submitButton.setToolTipText("Ask a question");
+        rightButtonPanel.add(submitButton);
+
+        buttonPanelAdapter = new ComponentAdapter() {
+            boolean showOnlyIcons = false;
+
+            @Override
+            public void componentResized(ComponentEvent e) {
+                double totalButtonWidth = leftButtonPanel.getPreferredSize().width
+                        + rightButtonPanel.getPreferredSize().width;
+                if (showOnlyIcons) {
+                    totalButtonWidth = totalButtonWidth * 2;
+                }
+
+                int availableWidth = buttonPanel.getWidth();
+                showOnlyIcons = availableWidth < totalButtonWidth;
+
+                updateButton(prevButton, showOnlyIcons, ICON_PREV, Labels.PREV + " " + ICON_PREV);
+                updateButton(nextButton, showOnlyIcons, ICON_NEXT, Labels.NEXT + " " + ICON_NEXT);
+                updateButton(openInBrowserButton, showOnlyIcons, ICON_WEB, Labels.VIEW + " " + ICON_WEB);
+//                updateButton(copyButton, showOnlyIcons, ICON_COPY, Labels.COPY + " " + ICON_COPY);
+//                updateButton(saveButton, showOnlyIcons, ICON_SAVE, Labels.SAVE + " " + ICON_SAVE);
+//                updateButton(saveToEditorButton, showOnlyIcons, ICON_UPDATE, Labels.UPDATE + " " + ICON_UPDATE);
+                updateButton(newChatButton, showOnlyIcons, ICON_NEW_CHAT, Labels.NEW_CHAT + " " + ICON_NEW_CHAT);
+                updateButton(showChartsButton, showOnlyIcons, ICON_STATS, Labels.STATS + " " + ICON_STATS);
+                updateButton(optionsButton, showOnlyIcons, ICON_SETTINGS, Labels.SETTINGS + " " + ICON_SETTINGS);
+                updateButton(messageContextButton, showOnlyIcons, ICON_ATTACH, Labels.MESSAGE_CONTEXT + " " + ICON_ATTACH);
+                updateButton(sessionContextButton, showOnlyIcons, ICON_CONTEXT, Labels.SESSION_CONTEXT + " " + ICON_CONTEXT);
+                updateButton(submitButton, showOnlyIcons, ICON_SEND, Labels.SEND + " " + ICON_SEND);
+                updateCombobox(models, showOnlyIcons);
+                updateCombobox(actionComboBox, showOnlyIcons);
+                updateUserPaneButtons(showOnlyIcons);
+
+            }
+
+            private void updateButton(JButton button, boolean iconOnly, String iconText, String fullText) {
+                button.setText(iconOnly ? iconText : fullText);
+            }
+
+            private <T> void updateCombobox(JComboBox<T> comboBox, boolean iconOnly) {
+                comboBox.putClientProperty("minimal", iconOnly);
+            }
+        };
+        buttonPanel.addComponentListener(buttonPanelAdapter);
+
+        questionPane = new JEditorPane();
+        questionPane.setEditorKit(createEditorKit("text/x-" + (type == null ? "java" : type)));
+        questionPane.putClientProperty("AI_QUERY_EDITOR", Boolean.TRUE);
+
+        Document doc = questionPane.getDocument();
+        doc.putProperty(JEDDICT_EDITOR_CALLBACK, (Consumer<FileObject>) this::addFileTab);
+
+        questionScrollPane = new JScrollPane(questionPane);
+        questionScrollPane.setBorder(BorderFactory.createEmptyBorder());
+        questionScrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
+        questionScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        Color bgColor = getBackgroundColorFromMimeType(MIME_PLAIN_TEXT);
+        boolean isDark = ColorUtil.isDarkColor(bgColor);
+        if (isDark) {
+            questionScrollPane.getViewport().setBackground(Color.DARK_GRAY);
+            questionScrollPane.getVerticalScrollBar().setUI(new CustomScrollBarUI());
+            questionScrollPane.getHorizontalScrollBar().setUI(new CustomScrollBarUI());
+        }
+        questionPane.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                updateHeight();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                updateHeight();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                updateHeight();
+            }
+        });
+
+        newChatButton.addActionListener(e -> {
+            this.clear();
+            this.repaint();
+            questionPane.setText("");
+            clearFileTab();
+            onChatReset();
+
+        });
+
+        openInBrowserButton.addActionListener(e -> {
+            try {
+                File latestTempFile = File.createTempFile("gen-ai", ".html");
+                latestTempFile.deleteOnExit();
+                try (FileWriter writer = new FileWriter(latestTempFile)) {
+                    writer.write(this.getAllEditorText());
+                }
+                if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+                    Desktop.getDesktop().browse(latestTempFile.toURI());
+                }
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
+        });
+
+        submitButton.setAction(new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent ae) {
+                onSubmit();
+
+            }
+        });
+
+        prevButton.addActionListener(e -> {
+            onPrev();
+        });
+
+        nextButton.addActionListener(e -> {
+            onNext();
+        });
+
+        messageContextButton.addActionListener(e -> {
+            JFileChooser fileChooser = new JFileChooser(pm.getLastBrowseDirectory());
+            int result = fileChooser.showOpenDialog(bottomPanel);
+            if (result == JFileChooser.APPROVE_OPTION) {
+                File selectedFile = fileChooser.getSelectedFile();
+                pm.setLastBrowseDirectory(selectedFile.getParent());
+                addFileTab(FileUtil.toFileObject(selectedFile));
+            }
+        });
+
+        FileTransferHandler.register(bottomPanel, this::addFileTab);
+        FileTransferHandler.register(questionPane, this::addFileTab);
+
+        //
+        // intercept shortkeys to submit the prompt
+        //
+        final String actionKey = "submit-prompt";
+
+        String shortcut = pm.getSubmitShortcut(); // e.g. "Ctrl + Enter", "Enter", "Shift + Enter", "Alt + Enter"
+
+        javax.swing.KeyStroke submitKey;
+        switch (shortcut) {
+            case "Enter":
+                submitKey = KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0);
+                break;
+            case "Shift + Enter":
+                submitKey = KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, KeyEvent.SHIFT_DOWN_MASK);
+                break;
+            default: // "Ctrl + Enter"
+                submitKey = KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, KeyEvent.CTRL_DOWN_MASK);
+        }
+
+        final javax.swing.InputMap inputMap = questionPane.getInputMap(JComponent.WHEN_FOCUSED);
+        final javax.swing.ActionMap actionMap = questionPane.getActionMap();
+
+        inputMap.put(submitKey, actionKey);
+        actionMap.put(actionKey, submitButton.getAction());
+
+        // ---
+
+        confirmationPane = new ToolExecutionConfirmationPane();
+        bottomPanel.setLayout(new BoxLayout(bottomPanel, BoxLayout.Y_AXIS));
+        bottomPanel.add(filePanel);
+        bottomPanel.add(Box.createVerticalStrut(0));
+        bottomPanel.add(questionScrollPane);
+        bottomPanel.add(confirmationPane);
+        bottomPanel.add(Box.createVerticalStrut(0));
+        bottomPanel.add(buttonPanel);
+
+        return bottomPanel;
+    }
+
+    /**
+     * Acquire confirmation from the user, if needed by the current interaction
+     * mode, to proceed with the execution of a tool. The confirmation message
+     * is provided in {@code message} and returns a future boolean that shall
+     * resolve to true if the tool can be executed, false otherwise.
+     *
+     * @param execution the tool execution to confirm
+     *
+     * @return future boolean that shall resolve to true if the tool can be
+     *         executed, false otherwise
+     */
+    public Future<Boolean> promptConfirmation(final ToolExecutionRequest execution) {
+        //
+        // We check here again the interaction mode because the user may have
+        // changed through the UI. However, this does not change the JeddictBrain's
+        // interaction mode or how the PairProgrammer agents have been setup.
+        // Note that to keep status informatin in the agents (i.e. memory) the
+        // agents instances are created at AssistantChat creation, not per use.
+        //
+        // Ideally, if the user changes the interaction mode, we should recreate
+        // a new JeddictBrain and the Assistant/Hacker. But this would make
+        // the agent loose the memory.
+        //
+        // So for now we just enable/disable tool execution and confirmation.
+        //
+        if (isInteractiveMode()) {
+            CompletableFuture<Boolean> future = new CompletableFuture<>();
+            SwingUtilities.invokeLater(() -> {
+                confirmationPane.showMessage(execution);
+
+                // remove existing listeners if any
+                for (PropertyChangeListener pcl : confirmationPane.getPropertyChangeListeners(JOptionPane.VALUE_PROPERTY)) {
+                    confirmationPane.removePropertyChangeListener(JOptionPane.VALUE_PROPERTY, pcl);
+                }
+
+                confirmationPane.addPropertyChangeListener(JOptionPane.VALUE_PROPERTY, new PropertyChangeListener() {
+                    @Override
+                    public void propertyChange(PropertyChangeEvent evt) {
+                        if (confirmationPane.isVisible() && evt.getNewValue() != null && evt.getNewValue() != JOptionPane.UNINITIALIZED_VALUE) {
+                            Object value = evt.getNewValue();
+                            confirmationPane.setVisible(false);
+
+                            boolean confirmed = (value instanceof Integer && ((Integer) value) == JOptionPane.YES_OPTION);
+                            future.complete(confirmed);
+
+                            // cleanup
+                            confirmationPane.removePropertyChangeListener(JOptionPane.VALUE_PROPERTY, this);
+                        }
+                    }
+                });
+
+                // Revalidate to show
+                confirmationPane.getParent().revalidate();
+                confirmationPane.getParent().repaint();
+            });
+            return future;
+        }
+
+        return CompletableFuture.completedFuture(isAgentEnabled());
+    }
+
+    public void updateHeight() {
+        int lineHeight = questionPane.getFontMetrics(questionPane.getFont()).getHeight();
+        String text = questionPane.getText().trim();
+        int preferredHeight;
+        int linePadding = 5;
+        if (text.isEmpty()) {
+            preferredHeight = lineHeight * 3 + linePadding;
+        } else {
+            preferredHeight = questionPane.getPreferredSize().height;
+            preferredHeight = Math.max(lineHeight * 3 + linePadding,
+                    Math.min(preferredHeight, lineHeight * 12 + linePadding));
+        }
+
+        Dimension size = new Dimension(questionScrollPane.getWidth(), preferredHeight);
+        questionScrollPane.setPreferredSize(size);
+        questionScrollPane.revalidate();
+    }
+
     public void lastRemove() {
         parentPanel.remove(parentPanel.getComponentCount() - 1);
     }
@@ -141,9 +676,6 @@ public class AssistantChat extends TopComponent {
         parentPanel.removeAll();
         menus.clear();
     }
-
-    private JButton copyButton, editButton, saveButton, cancelButton;
-    private JEditorPane queryPane;
 
     public void updateUserPaneButtons(boolean iconOnly) {
         if (copyButton != null) {
@@ -154,7 +686,7 @@ public class AssistantChat extends TopComponent {
         }
     }
 
-    private void createUserPaneButtons(BiConsumer<String, Set<FileObject>> queryUpdate, Set<FileObject> messageContext, JPanel buttonPanel) {
+    private void createUserPaneButtons(Consumer<String> queryUpdate, Set<FileObject> messageContext, JPanel buttonPanel) {
         copyButton = QueryPane.createIconButton(Labels.COPY, ICON_COPY);
         editButton = QueryPane.createIconButton(Labels.EDIT, ICON_EDIT);
         saveButton = QueryPane.createIconButton(Labels.SAVE, ICON_SEND);
@@ -174,7 +706,7 @@ public class AssistantChat extends TopComponent {
 
             String question = queryPane.getText();
             if (!question.isEmpty()) {
-                queryUpdate.accept(question, messageContext);
+                queryUpdate.accept(question);
             }
         });
 
@@ -196,7 +728,26 @@ public class AssistantChat extends TopComponent {
         });
     }
 
-    public JEditorPane createUserQueryPane(BiConsumer<String, Set<FileObject>> queryUpdate, String content, Set<FileObject> messageContext) {
+    public void clearFiles() {
+        filePanel.removeAll();
+        refreshFilePanel();
+        filePanel.revalidate();
+        filePanel.repaint();
+    }
+
+    public void addFile(FileObject file, Consumer<FileObject> onCloseCallback) {
+        FileTab fileTab = new FileTab(file, filePanel, onCloseCallback);
+        filePanel.add(fileTab);
+        refreshFilePanel();
+        filePanel.revalidate();
+        filePanel.repaint();
+    }
+
+    public void refreshFilePanel() {
+        filePanelAdapter.componentResized(null);
+    }
+
+    public JEditorPane createUserQueryPane(Consumer<String> queryUpdate, String content, Set<FileObject> messageContext) {
 
         Consumer<FileObject> callback = file -> {
             if (!messageContext.contains(file)) {
@@ -279,8 +830,6 @@ public class AssistantChat extends TopComponent {
         return queryPane;
     }
 
-    private JPanel filePanel;
-    private MessageContextComponentAdapter filePanelAdapter;
 
     public JEditorPane createHtmlPane(String content) {
         JEditorPane editorPane = new JEditorPane();
@@ -289,16 +838,17 @@ public class AssistantChat extends TopComponent {
         return editorPane;
     }
 
-    private void addEditorPaneRespectingTextArea(JComponent component) {
-        int count = parentPanel.getComponentCount();
-        if (count > 0) {
-            Component lastComponent = parentPanel.getComponent(count - 1);
-            if (lastComponent instanceof JTextArea) {
-                parentPanel.add(component, count - 1);
-                return;
+    private void addEditorPaneRespectingTextArea(final JComponent component) {
+        final Integer last = on(parentPanel.getComponents()).loop((i, c) -> {
+            if (c instanceof Box.Filler) {
+                parentPanel.add(component, i);
+                _break_(i);
             }
+        });
+        if (last == null) {
+            parentPanel.add(component);
+            parentPanel.add(Box.createVerticalGlue());
         }
-        parentPanel.add(component);
     }
 
     public JTextArea createTextAreaPane() {
@@ -332,8 +882,7 @@ public class AssistantChat extends TopComponent {
         return editorPane;
     }
 
-
-    public JEditorPane createCodePane(String mimeType, Block content) {
+    public JEditorPane createCodePane(String mimeType, TextBlock content) {
         if (mimeType == null || mimeType.isBlank()) {
             mimeType = MIME_PLAIN_TEXT;
         }
@@ -347,8 +896,8 @@ public class AssistantChat extends TopComponent {
         } else {
             editorPane = createInMemoryEditorCopy(mimeType);
         }
-        
-            editorPane.setText(content.getContent());
+
+        editorPane.setText(content.getContent());
         editorPane.getDocument().addDocumentListener(new DocumentListener() {
             @Override
             public void insertUpdate(DocumentEvent e) {
@@ -371,7 +920,7 @@ public class AssistantChat extends TopComponent {
         return editorPane;
     }
 
-    public SVGPane createSVGPane(Block content) {
+    public SVGPane createSVGPane(TextBlock content) {
         SVGPane svgPane = new SVGPane();
         JEditorPane sourcePane = svgPane.createPane(content);
         addContextMenu(sourcePane);
@@ -379,7 +928,7 @@ public class AssistantChat extends TopComponent {
         return svgPane;
     }
 
-    public MermaidPane createMermaidPane(Block content) {
+    public MermaidPane createMermaidPane(TextBlock content) {
         MermaidPane pane = new MermaidPane();
         JEditorPane sourcePane = pane.createPane(content);
         addContextMenu(sourcePane);
@@ -387,12 +936,32 @@ public class AssistantChat extends TopComponent {
         return pane;
     }
 
-    public MarkdownPane createMarkdownPane(Block content) {
+    public MarkdownPane createMarkdownPane(TextBlock content) {
         MarkdownPane pane = new MarkdownPane();
         JEditorPane sourcePane = pane.createPane(content, this);
         addContextMenu(sourcePane);
         addEditorPaneRespectingTextArea(pane);
         return pane;
+    }
+
+    public DiffPane createDiffPane(final String path, final String content) {
+        LOG.finest(() -> "createDiffPane for interaction " + path);
+        final DiffPane diffPane = new DiffPane(getProject(), path, content);
+        diffPane.createPane();
+        addEditorPaneRespectingTextArea(diffPane);
+
+        return diffPane;
+    }
+
+    public ToolExecutionPane createToolExecutionPane(
+        final ToolExecutionRequest execution, final String result
+    ) {
+        LOG.finest(() -> "createToolExecutionPane for execution " + execution);
+
+        final ToolExecutionPane toolPane = new ToolExecutionPane(execution, result);
+        addEditorPaneRespectingTextArea(toolPane);
+
+        return toolPane;
     }
 
     private void addContextMenu(JEditorPane editorPane) {
@@ -532,17 +1101,14 @@ public class AssistantChat extends TopComponent {
     public void componentOpened() {
         super.componentOpened();
         Preferences prefs = Preferences.userNodeForPackage(this.getClass());
-        boolean shouldOpen = prefs.getBoolean(PREFERENCE_KEY, true);
-        if (!shouldOpen) {
-            this.close();
-        }
+        questionPane.setText(prefs.get(QUESTION_KEY, ""));
     }
 
     @Override
     public void componentClosed() {
         super.componentClosed();
         Preferences prefs = Preferences.userNodeForPackage(this.getClass());
-        prefs.putBoolean(PREFERENCE_KEY, false);
+        prefs.put(QUESTION_KEY, questionPane.getText());
     }
 
     public JPanel getParentPanel() {
@@ -660,7 +1226,7 @@ public class AssistantChat extends TopComponent {
                 }
 
                 //
-                // For each EditoPane (i.e. code block) collect the method,
+                // For each EditorPane (i.e. code block) collect the method,
                 // class and interface signatures parsing the block first as a
                 // method, if it fails, as a class, if it fails as an interface.
                 // For each element the corresponding code is also saved in the
@@ -757,13 +1323,13 @@ public class AssistantChat extends TopComponent {
 
                                 createEditorPaneMenus(fileObject, fileObject.getName(), -1, editorPane, cachedMethodSignatures);
                             } catch (Exception e) {
-                                System.out.println("Error parsing single method declaration from editor content: " + e.getMessage());
+                                LOG.finest(() -> "Error parsing single method declaration from editor content: " + e.getMessage());
                             }
                         }
                     }
                 }
             } catch (Exception e) {
-                System.out.println("Error parsing file: " + fileObject.getName() + " - " + e.getMessage());
+                LOG.finest(() -> "Error parsing file: " + fileObject.getName() + " - " + e.getMessage());
             }
         }
     }
@@ -819,6 +1385,68 @@ public class AssistantChat extends TopComponent {
             }
         }
     }
+
+    public Project getProject() {
+        return project;
+    }
+
+    public Project selectProject() {
+        final Project[] openProjects = org.netbeans.api.project.ui.OpenProjects.getDefault().getOpenProjects();
+        if (openProjects.length == 1) {
+            project = openProjects[0];
+            DialogDisplayer.getDefault().notify(
+                new NotifyDescriptor.Message(
+                        "Connected chat to project: " + ProjectUtils.getInformation(project).getDisplayName(),
+                        NotifyDescriptor.INFORMATION_MESSAGE
+                )
+            );
+        } else if (openProjects.length > 1) {
+            JComboBox<Project> projectComboBox = new JComboBox<>(openProjects);
+            projectComboBox.setRenderer(new javax.swing.ListCellRenderer<>() {
+                private final javax.swing.DefaultListCellRenderer defaultRenderer = new javax.swing.DefaultListCellRenderer();
+
+                @Override
+                public java.awt.Component getListCellRendererComponent(javax.swing.JList<? extends Project> list, Project value, int index, boolean isSelected, boolean cellHasFocus) {
+                    String displayName = (value == null) ? "" : ProjectUtils.getInformation(value).getDisplayName();
+                    return defaultRenderer.getListCellRendererComponent(list, displayName, index, isSelected, cellHasFocus);
+                }
+            });
+            NotifyDescriptor descriptor = new NotifyDescriptor(
+                projectComboBox,
+                "Select Project for AI Agent Mode",
+                NotifyDescriptor.OK_CANCEL_OPTION,
+                NotifyDescriptor.QUESTION_MESSAGE,
+                null,
+                NotifyDescriptor.OK_OPTION
+            );
+            Object dialogResult = DialogDisplayer.getDefault().notify(descriptor);
+            if (NotifyDescriptor.OK_OPTION.equals(dialogResult)) {
+                Project selectedProject = (Project) projectComboBox.getSelectedItem();
+                if (selectedProject != null) {
+                    project = selectedProject;
+                    DialogDisplayer.getDefault().notify(
+                        new NotifyDescriptor.Message(
+                            "Connected chat to project: " + ProjectUtils.getInformation(project).getDisplayName(),
+                            NotifyDescriptor.INFORMATION_MESSAGE
+                        )
+                    );
+
+                    return project;
+                }
+            }
+        } else {
+            NotifyDescriptor.Message msg = new NotifyDescriptor.Message(
+                    "To use AI agent mode, connect chat to any project by dropping any source file on chat window or start new chat from project/package/source file context.",
+                    NotifyDescriptor.WARNING_MESSAGE
+            );
+            DialogDisplayer.getDefault().notify(msg);
+            actionComboBox.setSelectedItem(InteractionMode.ASK);
+        }
+
+        return null;
+    }
+
+    // --------------------------------------------------------- private methods
 
     private boolean isAnonymousInnerMethod(MethodDeclaration method) {
         return method.getParentNode().isPresent() && method.getParentNode().get() instanceof ObjectCreationExpr;
@@ -934,4 +1562,28 @@ public class AssistantChat extends TopComponent {
         this.reviews = reviews;
     }
 
+    private String interactionModeTooltip() {
+        final StringBuffer sb = new StringBuffer("<html>");
+        on(InteractionMode.values()).loop((mode) -> {
+            sb.append("<b>").append(mode.toString()).append("</b> - ");
+            sb.append(
+                NbBundle.getMessage(AssistantChat.class, mode.name())
+            ).append("<br>");
+        });
+        sb.append("</html>");
+
+        return sb.toString();
+    }
+
+
+    //
+    // TODO: move reponse in the listener
+    //
+    public void response(final Response response) {
+        this.response = response;
+    }
+
+    public Response response() {
+        return response;
+    }
 }

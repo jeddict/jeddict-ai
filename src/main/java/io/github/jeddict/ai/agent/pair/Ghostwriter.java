@@ -2,7 +2,6 @@ package io.github.jeddict.ai.agent.pair;
 
 import com.sun.source.tree.Tree;
 import com.sun.source.util.TreePath;
-import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
@@ -13,34 +12,43 @@ import static io.github.jeddict.ai.util.MimeUtil.MIME_TYPE_DESCRIPTIONS;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 
+/**
+ * Interface defining the Ghostwriter agent, which acts as an AI pair programmer.
+ * It extends {@link PairProgrammer} and provides functionality for suggesting
+ * code, comments, Javadoc, annotations, and SQL queries.
+ * It is primarily used in code suggesters (i.e. code hints).
+ */
 public interface Ghostwriter extends PairProgrammer {
 
     static final String LANGUAGE_JAVA = "Java";
 
-    static final String SYSTEM_MESSAGE = """
-You are an expert programmer that can suggest code based on the context of the
-program and best practices to write good quality code. Generate context-aware,
-and syntactically valid Java code suggestions that naturally fit into the
-code surrounding the placeholder ${SUGGESTION} to improve code clarity or functionality.
-Keep same formatting, structure and convensions. Add the code at the placeholder
-location ${SUGGESTION}
-{{format}}
-""";
+    static final String SYSTEM_MESSAGE =
+    """
+    You are an expert programmer that can suggest code based on the context of the
+    program and best practices to write good quality code. Generate context-aware,
+    and syntactically valid Java code suggestions that naturally fit into the
+    code surrounding the placeholder ${SUGGESTION} to improve code clarity or functionality.
+    Keep same formatting, structure and convensions. Add the code at the placeholder
+    location ${SUGGESTION}
+    {{format}}
+    """;
 
-    static final String USER_MESSAGE = """
-{{message}}
-Code language: {{language}}
-Current code: {{code}}
-Current line: {{line}}
-Project classes: {{classes}}
-Project info: {{project}}
-Hint: {{hint}}
-""";
+    static final String USER_MESSAGE =
+    """
+    {{message}}
+    Code language: {{language}}
+    Current code: {{code}}
+    Current line: {{line}}
+    Project classes: {{classes}}
+    Project info: {{project}}
+    Hint: {{hint}}
+    """;
 
-    static final String USER_MESSAGE_DEFAULT = """
-Suggest additional classes, interfaces, enums, or other top-level constructs.
-Ensure that the suggestions fit the context of the entire file.
-""";
+    static final String USER_MESSAGE_DEFAULT =
+    """
+    Suggest additional classes, interfaces, enums, or other top-level constructs.
+    Ensure that the suggestions fit the context of the entire file.
+    """;
 
     static final String USER_MESSAGE_COMPILATION_UNIT =
         "Suggest package declarations, import statements, comments, or annotations for public class.";
@@ -123,7 +131,6 @@ Return a JSON array where each element is an object containing the fields:
 
     @SystemMessage(SYSTEM_MESSAGE)
     @UserMessage(USER_MESSAGE)
-    @Agent("Suggest code for the given content and cotext")
     String suggest(
         @V("message") final String message, // additional user request
         @V("language") final String codeLanguage, // the source code language (based on mime type)

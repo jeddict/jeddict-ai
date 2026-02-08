@@ -15,8 +15,8 @@
  */
 package io.github.jeddict.ai.agent.pair;
 
-import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import dev.langchain4j.service.AiServices;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,7 +32,7 @@ public class RefactorSpecialistTest extends PairProgrammerTestBase {
     public void beforeEach() throws Exception {
         super.beforeEach();
 
-        pair = AgenticServices.agentBuilder(RefactorSpecialist.class)
+        pair = AiServices.builder(RefactorSpecialist.class)
             .chatModel(model)
             .build();
     }

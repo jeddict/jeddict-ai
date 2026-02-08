@@ -17,6 +17,7 @@ package io.github.jeddict.ai.lang;
 
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import io.github.jeddict.ai.lang.impl.AnthropicBuilder;
 import io.github.jeddict.ai.lang.impl.AnthropicStreamingBuilder;
 import io.github.jeddict.ai.lang.impl.GoogleBuilder;
@@ -31,21 +32,22 @@ import io.github.jeddict.ai.lang.impl.OllamaBuilder;
 import io.github.jeddict.ai.lang.impl.OllamaStreamingBuilder;
 import io.github.jeddict.ai.lang.impl.OpenAiBuilder;
 import io.github.jeddict.ai.lang.impl.OpenAiStreamingBuilder;
-import static io.github.jeddict.ai.settings.GenAIProvider.ANTHROPIC;
-import static io.github.jeddict.ai.settings.GenAIProvider.COPILOT_PROXY;
-import static io.github.jeddict.ai.settings.GenAIProvider.CUSTOM_OPEN_AI;
-import static io.github.jeddict.ai.settings.GenAIProvider.DEEPINFRA;
-import static io.github.jeddict.ai.settings.GenAIProvider.DEEPSEEK;
-import static io.github.jeddict.ai.settings.GenAIProvider.GOOGLE;
-import static io.github.jeddict.ai.settings.GenAIProvider.GPT4ALL;
-import static io.github.jeddict.ai.settings.GenAIProvider.GROQ;
-import static io.github.jeddict.ai.settings.GenAIProvider.LM_STUDIO;
-import static io.github.jeddict.ai.settings.GenAIProvider.MISTRAL;
-import static io.github.jeddict.ai.settings.GenAIProvider.OLLAMA;
-import static io.github.jeddict.ai.settings.GenAIProvider.OPEN_AI;
-import static io.github.jeddict.ai.settings.GenAIProvider.PERPLEXITY;
+import static io.github.jeddict.ai.models.registry.GenAIProvider.ANTHROPIC;
+import static io.github.jeddict.ai.models.registry.GenAIProvider.COPILOT_PROXY;
+import static io.github.jeddict.ai.models.registry.GenAIProvider.CUSTOM_OPEN_AI;
+import static io.github.jeddict.ai.models.registry.GenAIProvider.DEEPINFRA;
+import static io.github.jeddict.ai.models.registry.GenAIProvider.DEEPSEEK;
+import static io.github.jeddict.ai.models.registry.GenAIProvider.GOOGLE;
+import static io.github.jeddict.ai.models.registry.GenAIProvider.GPT4ALL;
+import static io.github.jeddict.ai.models.registry.GenAIProvider.GROQ;
+import static io.github.jeddict.ai.models.registry.GenAIProvider.LM_STUDIO;
+import static io.github.jeddict.ai.models.registry.GenAIProvider.MISTRAL;
+import static io.github.jeddict.ai.models.registry.GenAIProvider.OLLAMA;
+import static io.github.jeddict.ai.models.registry.GenAIProvider.OPEN_AI;
+import static io.github.jeddict.ai.models.registry.GenAIProvider.PERPLEXITY;
 import io.github.jeddict.ai.settings.PreferencesManager;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -62,12 +64,21 @@ public class JeddictChatModelBuilder {
     protected static PreferencesManager pm = PreferencesManager.getInstance();
     private String modelName;
 
+    private final ChatModelListener listener;
+
     public JeddictChatModelBuilder() {
         this(null);
     }
 
-    public JeddictChatModelBuilder(String modelName) {
+    public JeddictChatModelBuilder(final String modelName) {
+        this(modelName, null); // P2 - TODO: can this be null?
+    }
+
+    public JeddictChatModelBuilder(
+        final String modelName, final ChatModelListener listener
+    ) {
         this.modelName = modelName; // P2 - TODO: can this be null?
+        this.listener = listener;
     }
 
     public ChatModel build() {
@@ -151,6 +162,7 @@ public class JeddictChatModelBuilder {
         setIfValid(builder::topK, pm.getTopK(), Integer.MIN_VALUE);
         setIfValid(builder::presencePenalty, pm.getPresencePenalty(), Double.MIN_VALUE);
         setIfValid(builder::frequencyPenalty, pm.getFrequencyPenalty(), Double.MIN_VALUE);
+        setIfValid(builder::listeners, (listener != null) ? List.of(listener) : null, List.of());
         setIfPredicate(builder::organizationId, pm.getOrganizationId(), String::isEmpty);
 
         builder.logRequestsResponses(pm.isLogRequestsEnabled(), pm.isLogResponsesEnabled())

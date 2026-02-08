@@ -15,11 +15,10 @@
  */
 package io.github.jeddict.ai.file;
 
-//import static io.github.jeddict.ai.file.DocSetupPanelVisual.JAXB_SUPPORT;
-//import static io.github.jeddict.ai.file.DocSetupPanelVisual.JPA_SUPPORT;
-//import static io.github.jeddict.ai.file.DocSetupPanelVisual.JSONB_SUPPORT;
-//import static io.github.jeddict.ai.file.DocSetupPanelVisual.JSON_FILE;
+import io.github.jeddict.ai.agent.pair.FileWizard;
+import io.github.jeddict.ai.agent.pair.PairProgrammer;
 import io.github.jeddict.ai.lang.JeddictBrain;
+import io.github.jeddict.ai.scanner.ProjectMetadataInfo;
 import io.github.jeddict.ai.settings.PreferencesManager;
 import static io.github.jeddict.ai.util.StringUtil.removeCodeBlockMarkers;
 import java.io.BufferedReader;
@@ -31,13 +30,13 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 import static java.util.Objects.nonNull;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import javax.swing.SwingUtilities;
+import org.apache.commons.lang3.StringUtils;
 import org.netbeans.api.progress.aggregate.AggregateProgressFactory;
 import org.netbeans.api.progress.aggregate.AggregateProgressHandle;
 import org.netbeans.api.progress.aggregate.ProgressContributor;
@@ -67,7 +66,7 @@ public final class GenerateFileWizardDescriptor extends BaseWizardDescriptor {
 
     private FileObject packageFileObject;
     private String fileName, context, contextFile, prompt;
-    private static final PreferencesManager prefsManager = PreferencesManager.getInstance();
+    private static final PreferencesManager pm = PreferencesManager.getInstance();
 
     public GenerateFileWizardDescriptor() {
     }
@@ -109,9 +108,9 @@ public final class GenerateFileWizardDescriptor extends BaseWizardDescriptor {
         }
         packageFileObject = Templates.getTargetFolder(wizard);
         fileName = Templates.getTargetName(wizard);
-        contextFile = (String) wizard.getProperty("CONTEXT_FILE");
-        prompt = (String) wizard.getProperty("PROMPT");
-        context = (String) wizard.getProperty("CONTEXT");
+        contextFile = StringUtils.defaultString((String) wizard.getProperty("CONTEXT_FILE"));
+        prompt = StringUtils.defaultString((String) wizard.getProperty("PROMPT"));
+        context = StringUtils.defaultString((String)wizard.getProperty("CONTEXT"));
         instantiateProcess(null);
         return Collections.singleton(DataFolder.findFolder(packageFileObject));
     }
@@ -134,15 +133,11 @@ public final class GenerateFileWizardDescriptor extends BaseWizardDescriptor {
                 if (fileObject == null) {
                     fileObject = packageFileObject.createData(fileName);
                 }
-                StringBuilder inputBuilder = new StringBuilder();
-                inputBuilder.append("Generate only the content of ").append(fileName).append(" without any explanation.\n");
-                if (prompt != null && !prompt.isEmpty()) {
-                    inputBuilder.append(prefsManager.getPrompts().get(prompt)).append("\n");
-                }
-                if (context != null && !context.isEmpty()) {
-                    inputBuilder.append(context).append("\n");
-                }
-                if (contextFile != null && !contextFile.isEmpty()) {
+
+                final String promptText = (prompt.isBlank()) ? "" : pm.getPrompts().get(prompt);
+
+                final StringBuilder inputBuilder = new StringBuilder();
+                if (!contextFile.isEmpty()) {
                     FileObject contextFileObject = FileUtil.toFileObject(new File(contextFile));
                     if (contextFileObject == null || !contextFileObject.isValid()) {
                         throw new IOException("Invalid FileObject");
@@ -152,7 +147,14 @@ public final class GenerateFileWizardDescriptor extends BaseWizardDescriptor {
                     }
                 }
 
-                String responseText = new JeddictBrain(prefsManager.getModelName(), false, List.of()).generate(project, inputBuilder.toString());
+                final JeddictBrain brain = new JeddictBrain(pm.getModelName(), false);
+                final FileWizard pair = brain.pairProgrammer(PairProgrammer.Specialist.WIZARD);
+
+                final String responseText = pair.newFile(
+                    promptText, context, fileName, inputBuilder.toString(),
+                    ProjectMetadataInfo.get(project),
+                    pm.getGlobalRules(), pm.getProjectRules(project)
+                );
                 try (OutputStream os = fileObject.getOutputStream()) {
                     os.write(removeCodeBlockMarkers(responseText).getBytes(StandardCharsets.UTF_8));
                     os.flush();

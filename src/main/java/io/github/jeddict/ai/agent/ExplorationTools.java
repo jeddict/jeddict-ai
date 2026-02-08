@@ -36,6 +36,8 @@ import org.netbeans.modules.refactoring.api.WhereUsedQuery;
 import org.openide.filesystems.FileObject;
 import org.openide.util.Lookup;
 import org.openide.util.lookup.Lookups;
+import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READONLY;
+import java.io.IOException;
 
 /**
  * Tools for code-level operations in NetBeans Java projects only.
@@ -74,7 +76,7 @@ public class ExplorationTools extends AbstractCodeTool {
 
     private final Lookup lookup;
 
-    public ExplorationTools(final String basedir, Lookup lookup) {
+    public ExplorationTools(final String basedir, Lookup lookup) throws IOException {
         super(basedir);
         this.lookup = lookup;
     }
@@ -107,6 +109,7 @@ public class ExplorationTools extends AbstractCodeTool {
      * @return names of all top-level classes, or a message if none found
      */
     @Tool("JAVA ONLY: List all classes declared in a given Java file by path")
+    @ToolPolicy(READONLY)
     public String listClassesInFile(String path) throws Exception {
 
         if (!isJavaFile(path)) {
@@ -155,6 +158,7 @@ public class ExplorationTools extends AbstractCodeTool {
      * @return method signatures, or a message if none found
      */
     @Tool("JAVA ONLY: List all methods of a class in a given Java file by path")
+    @ToolPolicy(READONLY)
     public String listMethodsInFile(String path) throws Exception {
 
         if (!isJavaFile(path)) {
@@ -249,8 +253,9 @@ public class ExplorationTools extends AbstractCodeTool {
       "Returns one result per line prefixed with Class:, Method:, or Field:. " +
       "If no symbol is found, returns 'No matches found.'. " +
       "If the project has no Java sources, returns an explanatory message.")
-    public String searchSymbol(String symbolName) throws Exception {
-
+    @ToolPolicy(READONLY)
+    public String searchSymbol(String symbolName)
+    throws Exception {
         progress("Searching symbol " + symbolName);
 
         Sources sources = lookup.lookup(Sources.class);
@@ -359,14 +364,14 @@ public class ExplorationTools extends AbstractCodeTool {
             + "description of where and how the symbol is used. "
             + "If no usages are found, returns 'No usages found.'."
     )
-    public String findUsages(String path, String symbolName) throws Exception {
-
-        if (!isJavaFile(path)) {
+    @ToolPolicy(READONLY)
+    public String findUsages(String path, String symbolName)
+    throws Exception {
+       if (!isJavaFile(path)) {
             return "Not a Java source file: " + path;
         }
-
-        return withJavaSource(path, javaSource -> {
-            StringBuilder result = new StringBuilder();
+        String jr = withJavaSource(path, javaSource -> {
+            final StringBuilder result = new StringBuilder();
             javaSource.runUserActionTask(cc -> {
                 cc.toPhase(JavaSource.Phase.ELEMENTS_RESOLVED);
                 for (TypeElement type

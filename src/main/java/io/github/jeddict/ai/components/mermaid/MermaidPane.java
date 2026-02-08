@@ -17,7 +17,7 @@ package io.github.jeddict.ai.components.mermaid;
 
 import static io.github.jeddict.ai.components.mermaid.MermaidClassDiagramViewer.createMermaidClassDiagramView;
 import static io.github.jeddict.ai.components.mermaid.MermaidERDViewer.createMermaidERDView;
-import io.github.jeddict.ai.response.Block;
+import io.github.jeddict.ai.response.TextBlock;
 import static io.github.jeddict.ai.util.ColorUtil.isDarkColor;
 import static io.github.jeddict.ai.util.EditorUtil.createEditorKit;
 import static io.github.jeddict.ai.util.EditorUtil.getBackgroundColorFromMimeType;
@@ -62,7 +62,7 @@ public class MermaidPane extends JTabbedPane {
         }
     }
 
-    public JEditorPane createPane(final Block content) {
+    public JEditorPane createPane(final TextBlock content) {
         Color backgroundColor = getBackgroundColorFromMimeType(MIME_PLAIN_TEXT);
         Color textColor = getTextColorFromMimeType(MIME_PLAIN_TEXT);
         JTabbedPane tabbedPane = this;

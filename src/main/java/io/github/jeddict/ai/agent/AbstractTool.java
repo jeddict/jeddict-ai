@@ -15,12 +15,20 @@
  */
 package io.github.jeddict.ai.agent;
 
-import java.beans.PropertyChangeListener;
-import java.beans.PropertyChangeSupport;
+import dev.langchain4j.exception.ToolExecutionException;
+import io.github.jeddict.ai.lang.JeddictBrainListener;
+import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
+import java.util.logging.Level;
 import java.util.logging.Logger;
+import static ste.lloop.Loop.on;
 
 public abstract class AbstractTool {
 
@@ -32,41 +40,74 @@ public abstract class AbstractTool {
     protected final String basedir;
     protected final Path basepath;
     protected final Logger log;
-    private final PropertyChangeSupport toolListener = new PropertyChangeSupport(this);
 
-    public AbstractTool(final String basedir) {
+    private final List<JeddictBrainListener> listeners = new CopyOnWriteArrayList<>();
+
+    // TODO: add comment
+    private Optional<UnaryOperator<String>> humanInTheMiddle = Optional.empty();
+
+    public AbstractTool(final String basedir) throws IOException {
         if (basedir == null) {
             throw new IllegalArgumentException("basedir can not be null or blank");
         }
         this.basedir = basedir;
-        this.basepath = Paths.get(basedir);
-        this.log = Logger.getLogger(this.getClass().getCanonicalName()); // this will be the concrete class name
+        this.basepath = Paths.get(basedir).toAbsolutePath().toRealPath();
+        this.log = Logger.getLogger(this.getClass().getName()); // this will be the concrete class name
     }
 
-    public void addPropertyChangeListener(PropertyChangeListener listener) {
+    public void addListener(final JeddictBrainListener listener) {
         if (listener == null) {
             throw new IllegalArgumentException("listener can not be null");
         }
-        toolListener.addPropertyChangeListener(listener);
+        listeners.add(listener);
     }
 
-    public void removePropertyChangeListener(PropertyChangeListener listener) {
+    public void checkPath(final String path) throws ToolExecutionException {
+        //
+        // NOTE: we can not use toRealPath here because we want to check even
+        // if a path does not exists yet (toRealPath throws an exceptin if the
+        // path is not valid
+        //
+        final Path absolutePath = (path.startsWith(File.separator)
+                                ? Paths.get(path).normalize()
+                                : basepath.resolve(path).toAbsolutePath().normalize());
+
+        if (!absolutePath.startsWith(basepath)) {
+            progress("❌ Trying to reach a file outside the project folder");
+            throw new ToolExecutionException(
+                "trying to reach a file outside the project folder");
+        }
+    }
+
+    public void removeListener(final JeddictBrainListener listener) {
         if (listener == null) {
             throw new IllegalArgumentException("listener can not be null");
         }
-        toolListener.removePropertyChangeListener(listener);
+        listeners.remove(listener);
     }
 
     public Path fullPath(final String path) {
-        return basepath.resolve(path);
+        return basepath.resolve(path).normalize();
     }
 
     public void log(Supplier<String> supplier) {
-        log.info(supplier);
+        log.logp(Level.INFO, log.getName(), "progress", supplier);
     }
 
-    public void progress(String message) {
+    public void progress(final String message) {
         log(() -> message);
-        toolListener.firePropertyChange(PROPERTY_MESSAGE, null, message);
+        on(listeners).loop((l) -> l.onProgress(message + "\n", true));
+    }
+
+    public String basedir() {
+        return basedir;
+    }
+
+    public Optional<UnaryOperator<String>> humanInTheMiddle() {
+        return humanInTheMiddle;
+    }
+
+    public void withHumanInTheMiddle(final UnaryOperator<String> hitm) {
+        humanInTheMiddle = (hitm == null) ? Optional.empty() : Optional.of(hitm);
     }
 }

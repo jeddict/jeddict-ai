@@ -15,8 +15,8 @@
  */
 package io.github.jeddict.ai.agent.pair;
 
-import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import dev.langchain4j.service.AiServices;
 import io.github.jeddict.ai.agent.pair.DiffSpecialist.CodeReviewLevel;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,7 +36,7 @@ public class DiffSpecialistTest extends PairProgrammerTestBase {
     public void beforeEach() throws Exception {
         super.beforeEach();
 
-        pair = AgenticServices.agentBuilder(DiffSpecialist.class)
+        pair = AiServices.builder(DiffSpecialist.class)
             .chatModel(model)
             .build();
     }
@@ -94,7 +94,7 @@ public class DiffSpecialistTest extends PairProgrammerTestBase {
 
     @Test
     public void reviewChanges_AI_provided_response() {
-        final String DIFF = "use mock 'changes review.txt'";
+        final String DIFF2 = "use mock 'changes review.txt'";
         final String expectedSystem = DiffSpecialist.SYSTEM_MESSAGE
             .replace("{{format}}", DiffSpecialist.OUTPUT_REVIEW);
 
@@ -104,7 +104,7 @@ public class DiffSpecialistTest extends PairProgrammerTestBase {
                 .replace("{{diff}}", "use mock 'changes review.txt'")
                 .replace("{{description}}", DESCRIPTION);
 
-            final String result = pair.reviewChanges(DIFF, l.level, DESCRIPTION);
+            final String result = pair.reviewChanges(DIFF2, l.level, DESCRIPTION);
 
             final ChatModelRequestContext request = listener.lastRequestContext.get();
             thenMessagesMatch(

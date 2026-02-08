@@ -1,0 +1,16 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>groupid</groupId>
+    <artifactId>artifactid</artifactId>
+    <version>0.0.0</version>
+    <name>jdk</name>
+    <description>description</description>
+    <url>https://somewhere.com/</url>
+
+    <properties>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
+        <junit.jupiter.version>5.9.2</junit.jupiter.version>
+        <assertj.version>3.25.1</assertj.version>
+    </properties>
+</project>

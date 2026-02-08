@@ -15,7 +15,6 @@
  */
 package io.github.jeddict.ai.agent.pair;
 
-import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
@@ -36,32 +35,32 @@ import org.apache.commons.lang3.StringUtils;
  * and the annotated JAX-RS method declarations as a text string.</p>
  */
 public interface TestSpecialist extends PairProgrammer {
-        public static final String SYSTEM_MESSAGE = """
-You are an experienced programmer specialized writing unit tests based on the
-provided project code, for the provided class and/or method code and accordingly
-to the rules below.
-Rules:
-{{rules}}
-- Test cases must be well-structured and functional.
-- Use the following testing frameworks: {{frameworks}}
-""";
-    public static final String USER_MESSAGE = """
-{{prompt}}
-{{query}}
---
-The project classes are:
-{{project}}
---
-The class to test is:
-{{class}}
---
-The method to test is:
-{{method}}
-""";
+    public static final String SYSTEM_MESSAGE =
+    """
+    You are an experienced programmer specialized writing unit tests based on the
+    provided project code, for the provided class and/or method code and accordingly
+    to the rules below.
+    Rules:
+    {{rules}}
+    - Test cases must be well-structured and functional.
+    - Use the following testing frameworks: {{frameworks}}
+    """;
+        public static final String USER_MESSAGE = """
+    {{prompt}}
+    {{query}}
+    --
+    The project classes are:
+    {{project}}
+    --
+    The class to test is:
+    {{class}}
+    --
+    The method to test is:
+    {{method}}
+    """;
     @SystemMessage(SYSTEM_MESSAGE)
     @UserMessage(USER_MESSAGE)
-    @Agent("Generate Unit Test for the given class or method")
-    String generateUnitTest(
+    public String generateUnitTest(
         @V("query") final String query,
         @V("project") final String allClasses,
         @V("class") final String classCode,
