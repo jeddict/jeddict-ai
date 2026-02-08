@@ -151,7 +151,7 @@ public class AssistantJeddictBrainListener
             partialResponse +
             "\n----------");
         SwingUtilities.invokeLater(() -> {
-            if (newThread) {
+            if (newThread && !textArea.getText().endsWith("\\n")) {
                 textArea.append("\n");
             }
             textArea.append(partialResponse);
@@ -184,7 +184,7 @@ public class AssistantJeddictBrainListener
         LOG.log(Level.INFO, "Details:", throwable);
 
         onProgress(throwable.getMessage());
-        
+
         cleanup();
 
         if (throwable instanceof AuthenticationException) {
@@ -227,7 +227,7 @@ public class AssistantJeddictBrainListener
             JOptionPane.ERROR_MESSAGE
         );
     }
-    
+
     private void cleanup() {
         assistantChat.stopLoading();
         assistantChat.getQuestionPane().setText("");

@@ -96,7 +96,7 @@ public abstract class AbstractTool {
 
     public void progress(final String message) {
         log(() -> message);
-        on(listeners).loop((l) -> l.onProgress(message, true));
+        on(listeners).loop((l) -> l.onProgress(message + "\n", true));
     }
 
     public String basedir() {
