@@ -370,7 +370,7 @@ public class ExplorationTools extends AbstractCodeTool {
        if (!isJavaFile(path)) {
             return "Not a Java source file: " + path;
         }
-        String jr = withJavaSource(path, javaSource -> {
+        return withJavaSource(path, javaSource -> {
             final StringBuilder result = new StringBuilder();
             javaSource.runUserActionTask(cc -> {
                 cc.toPhase(JavaSource.Phase.ELEMENTS_RESOLVED);
