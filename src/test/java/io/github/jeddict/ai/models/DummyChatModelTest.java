@@ -96,29 +96,6 @@ public class DummyChatModelTest extends TestBase {
     }
 
     @Test
-    public void listeners_are_invoked_during_chat_operation() {
-        // Given
-        final DummyChatModel chat = new DummyChatModel();
-
-        DummyChatModelListener testListener1 = new DummyChatModelListener();
-        DummyChatModelListener testListener2 = new DummyChatModelListener();
-        chat.addListener(testListener1);
-        chat.addListener(testListener2);
-
-        UserMessage userMessage = new UserMessage("use mock 'hello world.txt'");
-        ChatRequest chatRequest = ChatRequest.builder().messages(userMessage).build();
-
-        // When
-        chat.doChat(chatRequest);
-
-        // Then for listener 1
-        thenReceivedMessageIs(testListener1, userMessage);
-
-        // Then for listener 2
-        thenReceivedMessageIs(testListener2, userMessage);
-    }
-
-    @Test
     public void chat_string_invokes_listeners() {
         // Given
         final DummyChatModel chat = new DummyChatModel();
@@ -164,7 +141,7 @@ public class DummyChatModelTest extends TestBase {
 
         ChatRequest request = ChatRequest.builder()
             .messages(List.of(
-                UserMessage.from("execute mock dummyTool")
+                UserMessage.from("execute tool dummyTool")
             ))
             .toolSpecifications(
                 ToolSpecifications.toolSpecificationsFrom(new DummyTool())
@@ -187,7 +164,7 @@ public class DummyChatModelTest extends TestBase {
 
         request = ChatRequest.builder()
             .messages(List.of(
-                UserMessage.from("execute mock dummyTool")
+                UserMessage.from("execute tool dummyTool")
             ))
             .toolSpecifications(
                 ToolSpecifications.toolSpecificationsFrom(new DummyTool())
@@ -207,7 +184,7 @@ public class DummyChatModelTest extends TestBase {
         // Given
         request = ChatRequest.builder()
             .messages(List.of(
-                UserMessage.from("execute mock fileRead")
+                UserMessage.from("execute tool fileRead")
             ))
             .toolSpecifications(
                 ToolSpecifications.toolSpecificationsFrom(new DummyTool())
@@ -230,7 +207,7 @@ public class DummyChatModelTest extends TestBase {
 
         ChatRequest request = ChatRequest.builder()
             .messages(List.of(
-                UserMessage.from("execute mock dummyTool")
+                UserMessage.from("execute tool dummyTool")
             ))
             .toolSpecifications(
                 ToolSpecifications.toolSpecificationsFrom(new DummyTool())
@@ -245,7 +222,7 @@ public class DummyChatModelTest extends TestBase {
     }
 
     @Test
-    public void simulate_streaming() {
+    public void simulate_streaming() throws IOException {
         final DummyChatModel chat = new DummyChatModel();
 
         final List<String> messages = new ArrayList();

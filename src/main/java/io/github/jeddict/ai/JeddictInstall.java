@@ -21,14 +21,17 @@ import static io.github.jeddict.ai.settings.ReportManager.DAILY_INPUT_TOKEN_STAT
 import static io.github.jeddict.ai.settings.ReportManager.DAILY_OUTPUT_TOKEN_STATS_KEY;
 import static io.github.jeddict.ai.settings.ReportManager.JEDDICT_STATS;
 import io.github.jeddict.ai.util.FileUtil;
+import io.github.jeddict.ai.util.JeddictLogFormatter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.logging.Formatter;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.json.JSONObject;
 import org.openide.modules.ModuleInstall;
+import static ste.lloop.Loop.on;
 
 /**
  * Jeddict Module installation class. This shall be set in manifest.mf with key
@@ -45,6 +48,8 @@ public class JeddictInstall extends ModuleInstall {
 
         final Path configPath = FileUtil.getConfigPath();
         final Path configFile = configPath.resolve(JEDDICT_CONFIG);
+
+        configureLogging();
 
         //
         // Old versions of Jeddict used to store the configuration in $HOME/jeddict.json,
@@ -85,5 +90,21 @@ public class JeddictInstall extends ModuleInstall {
         } catch (IOException e) {
             LOG.log(Level.SEVERE, "Failed to migrate old config file", e);
         }
+    }
+
+    protected void configureLogging() {
+        final Formatter f = new JeddictLogFormatter();
+
+        //
+        // go backward to wach parent
+        //
+        Logger logger = Logger.getLogger(JeddictInstall.class.getPackageName());
+        do {
+            on(logger.getHandlers()).loop(h -> {
+                h.setFormatter(f);
+            });
+            logger = logger.getParent();
+        } while (logger != null);
+        LOG.info("Jeddict logging configured");
     }
 }

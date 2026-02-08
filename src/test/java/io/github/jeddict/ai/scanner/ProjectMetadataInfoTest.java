@@ -18,8 +18,11 @@ package io.github.jeddict.ai.scanner;
 
 import com.github.caciocavallosilano.cacio.ctc.junit.CacioTest;
 import io.github.jeddict.ai.test.TestBase;
+import java.nio.file.Paths;
+import org.apache.commons.io.FilenameUtils;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.Test;
+import org.netbeans.api.project.Project;
 
 /**
  *
@@ -29,14 +32,13 @@ public class ProjectMetadataInfoTest extends TestBase {
 
     @Test
     public void get_returns_basic_info_for_maven_project() throws Exception {
-        String info = ProjectMetadataInfo.get(project(projectDir));
-
+        final Project project = project(projectDir);
+        
+        final String info = ProjectMetadataInfo.get(project);
         then(info)
             .contains("- name: name")
-            .contains("- folder: " + projectFolderPath().toRealPath())
+            .contains("- folder: " + Paths.get(project.getProjectDirectory().getPath()))
             .contains("- type: maven");
     }
-
-
-
+    
 }

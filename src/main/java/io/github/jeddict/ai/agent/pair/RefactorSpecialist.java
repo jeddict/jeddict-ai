@@ -15,7 +15,6 @@
  */
 package io.github.jeddict.ai.agent.pair;
 
-import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
@@ -46,32 +45,34 @@ import io.github.jeddict.ai.util.JSONUtil;
  * user instructions, or fixed prompts for code enhancements.
  */
 public interface RefactorSpecialist extends PairProgrammer {
-    public static final String SYSTEM_MESSAGE = """
-You are a programmer specialized in writing Java code. Base on user request, you will:
-- Write new or enhancing existing code
-- Incorporate any specific details or requirements mentioned by the user.
-- Include all necessary imports relevant to the enhanced or newly created method.
-- Return only the Java code and its necessary imports, without including any class declarations, constructors, or other boilerplate code.
-- Not include any description or explanation beside the code
-- Format the output as a JSON object with two fields: 'imports' as array (list of necessary imports) and 'content' as text.
-  Example output:
-  {
-    "imports": [
-      "io.github.jeddict.ai.agent.pair.RestSpecialits",
-      "io.github.jeddict.ai.agent.pair.CodeSpecialits",
-      "io.github.jeddict.ai.ReturnType"
-    ],
-    "content": "public ReturnType method() {\\n // implementation \\n}"
-  }
-- Ensure any generated method is unique and does not duplicates of existing methods in the class.
-Take into account the following general rules: {{globalRules}}
-Take into account the following project rules: {{projectRules}}
-""";
-    public static final String USER_MESSAGE = """
-{{message}}
-The class is: {{code}}
-The snippet: {{snippet}}
-""";
+    public static final String SYSTEM_MESSAGE =
+    """
+    You are a programmer specialized in writing Java code. Base on user request, you will:
+    - Write new or enhancing existing code
+    - Incorporate any specific details or requirements mentioned by the user.
+    - Include all necessary imports relevant to the enhanced or newly created method.
+    - Return only the Java code and its necessary imports, without including any class declarations, constructors, or other boilerplate code.
+    - Not include any description or explanation beside the code
+    - Format the output as a JSON object with two fields: 'imports' as array (list of necessary imports) and 'content' as text.
+      Example output:
+      {
+        "imports": [
+          "io.github.jeddict.ai.agent.pair.RestSpecialits",
+          "io.github.jeddict.ai.agent.pair.CodeSpecialits",
+          "io.github.jeddict.ai.ReturnType"
+        ],
+        "content": "public ReturnType method() {\\n // implementation \\n}"
+      }
+    - Ensure any generated method is unique and does not duplicates of existing methods in the class.
+    Take into account the following general rules: {{globalRules}}
+    Take into account the following project rules: {{projectRules}}
+    """;
+    public static final String USER_MESSAGE =
+    """
+    {{message}}
+    The class is: {{code}}
+    The snippet: {{snippet}}
+    """;
     public static final String PROMPT_ENHANCE_METHOD_FROM_METHOD_CODE =
         "Given the following Java class content and Java method content, modify and enhance the method accordingly.";
     public static final String PROMPT_ENHANCE_VARIABLE_NAME =
@@ -83,7 +84,6 @@ The snippet: {{snippet}}
 
     @SystemMessage(SYSTEM_MESSAGE)
     @UserMessage(USER_MESSAGE)
-    @Agent("Generate or enhance source code based on the class code and the snippet to work on")
     String refactor(
         @V("message") final String message,            // prompt details
         @V("code") final String source,                // the source code (e.g. the entire class)

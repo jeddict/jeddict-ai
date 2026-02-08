@@ -3,17 +3,15 @@ package io.github.jeddict.ai.agent;
 import dev.langchain4j.exception.ToolExecutionException;
 import io.github.jeddict.ai.test.TestBase;
 import io.github.jeddict.ai.test.DummyTool;
-import static io.github.jeddict.ai.agent.AbstractTool.PROPERTY_MESSAGE;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
+import io.github.jeddict.ai.lang.DummyJeddictBrainListener;
 import java.io.IOException;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.function.UnaryOperator;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.BDDAssertions.thenThrownBy;
+import org.junit.jupiter.api.BeforeEach;
 
 public class AbstractToolTest extends TestBase {
 
@@ -24,7 +22,7 @@ public class AbstractToolTest extends TestBase {
         final DummyTool tool = new DummyTool(projectDir);
 
         then(tool.basedir).isSameAs(projectDir);
-        then(tool.basepath.toString()).isEqualTo(projectDir);
+        then(tool.basepath).isEqualTo(projectPath);
     }
 
     @Test
@@ -39,49 +37,63 @@ public class AbstractToolTest extends TestBase {
     public void fullPath_returns_the_full_path_of_given_relative_path() throws Exception {
         final DummyTool tool = new DummyTool(projectDir);
 
-        then(tool.fullPath("relative")).isEqualTo(Paths.get(projectDir, "relative"));
+        then(tool.fullPath("relative")).isEqualTo(projectPath.resolve("relative"));
     }
 
     @Test
-    public void fires_property_change_event() throws IOException {
+    public void set_and_get_humanInTheMiddle() throws IOException  {
+        final DummyTool tool = new DummyTool();
+
+        final UnaryOperator<String> hitm = (s) -> {return s;};
+
+        tool.withHumanInTheMiddle(hitm);
+        then(tool.humanInTheMiddle()).contains(hitm);
+
+        tool.withHumanInTheMiddle(null);
+        then(tool.humanInTheMiddle()).isEmpty();
+    }
+
+    @Test
+    public void fires_onProgress_events() throws IOException {
+        //
+        // When a tool send an onProgress event, we want to start a new thread.
+        // This is because when stremaing, content does not necessarily ends with 
+        // a \n and the output of the tool may not go to a new line.
+        //
+        
         // given
         final DummyTool tool = new DummyTool(projectDir);
-        final List<PropertyChangeEvent> events = new ArrayList<>();
-        PropertyChangeListener listener = new PropertyChangeListener() {
-            @Override
-            public void propertyChange(PropertyChangeEvent evt) {
-                events.add(evt);
-            }
-        };
-        tool.addPropertyChangeListener(listener);
+        final DummyJeddictBrainListener listener = new DummyJeddictBrainListener();
+        tool.addListener(listener);
 
         // when
         tool.progress("a message");
 
         // then
-        then(events).hasSize(1);
-        then(events.get(0).getPropertyName()).isEqualTo(PROPERTY_MESSAGE);
-        then(events.get(0).getNewValue()).isEqualTo("a message");
+        then(listener.collector).hasSize(1);
+        then(listener.collector.get(0)).asString().isEqualTo("(onProgress,\na message)");
+        
+        
     }
 
     @Test
-    public void addPropertyChangeListener_does_not_accept_null() throws IOException {
+    public void addListener_does_not_accept_null() throws IOException {
         // given
-        DummyTool tool = new DummyTool(projectDir);
+        final DummyTool tool = new DummyTool(projectDir);
 
         // when & then
-        thenThrownBy(() -> tool.addPropertyChangeListener(null))
+        thenThrownBy(() -> tool.addListener(null))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("listener can not be null");
     }
 
     @Test
-    public void removePropertyChangeListener_does_not_accept_null() throws IOException {
+    public void removeListener_does_not_accept_null() throws IOException {
         // given
         final DummyTool tool = new DummyTool(projectDir);
 
         // when & then
-        thenThrownBy(() -> tool.removePropertyChangeListener(null))
+        thenThrownBy(() -> tool.removeListener(null))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("listener can not be null");
     }
@@ -90,26 +102,18 @@ public class AbstractToolTest extends TestBase {
     public void progress_also_logs_the_message() throws IOException {
         // given
         final DummyTool tool = new DummyTool(projectDir);
-        final List<PropertyChangeEvent> events = new ArrayList<>();
-        tool.addPropertyChangeListener(new PropertyChangeListener() {
-            @Override
-            public void propertyChange(PropertyChangeEvent evt) {
-                events.add(evt);
-            }
-        });
 
         // when
         tool.progress("a message");
 
         // then
-        then(events).hasSize(1);
         then(logHandler.getMessages()).contains("a message");
     }
 
     @Test
     public void checkPath_completes_with_child() throws IOException {
         final DummyTool tool = new DummyTool(projectDir);
-        tool.checkPath(projectDir);
+        tool.checkPath(projectPath.toString());
         tool.checkPath(TESTFILE);
         tool.checkPath("folder/");
         tool.checkPath(projectPath.resolve(TESTFILE).toAbsolutePath().toString());

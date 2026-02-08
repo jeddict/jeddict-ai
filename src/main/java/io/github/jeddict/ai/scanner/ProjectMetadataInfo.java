@@ -15,10 +15,10 @@
  */
 package io.github.jeddict.ai.scanner;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.model.Plugin;
 import org.apache.maven.project.MavenProject;
@@ -39,7 +39,7 @@ public class ProjectMetadataInfo {
 
     private static final Map<Project, CachedResult> cache = new HashMap<>();
 
-    public static String get(final Project project) {
+    public static String get(Project project) {
         if (project == null) {
             return "";
         }
@@ -88,8 +88,8 @@ public class ProjectMetadataInfo {
             }
 
             // Get the pom.xml FileObject
-            final Path pomFile = nbMavenProject.getMavenProject().getFile().toPath().toRealPath();
-            final long lastModified = Files.getLastModifiedTime(pomFile).toMillis();
+            final File pomFile = nbMavenProject.getMavenProject().getFile();
+            final long lastModified = pomFile.lastModified();
 
             // Invalidate cache if timestamp has changed
             if (cachedResult == null || cachedResult.timestamp < lastModified) {
@@ -118,8 +118,10 @@ public class ProjectMetadataInfo {
 
                 // Cache the result
                 final CachedResult result = new CachedResult(
-                    mavenProject.getName(), mavenProject.getBasedir().getAbsolutePath(), "maven",
-                        importPrefix, eeVersion, jdkVersion, lastModified
+                    mavenProject.getName(), 
+                    FilenameUtils.separatorsToSystem(project.getProjectDirectory().getPath()), 
+                    "maven",
+                    importPrefix, eeVersion, jdkVersion, lastModified
                 );
                 cache.put(project, result);
 

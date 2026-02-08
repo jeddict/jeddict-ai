@@ -18,6 +18,7 @@ package io.github.jeddict.ai.lang;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import io.github.jeddict.ai.models.DummyChatModel;
 import io.github.jeddict.ai.settings.PreferencesManager;
 import java.util.logging.Logger;
@@ -46,7 +47,8 @@ public class JeddictChatModelBuilder {
     public final Logger LOG = Logger.getLogger(JeddictChatModelBuilder.class.getCanonicalName());
 
     protected static PreferencesManager pm = PreferencesManager.getInstance();
-    private String modelName;
+    final protected String modelName;
+    final protected boolean withTools, withError;
 
     private final ChatModelListener listener;
 
@@ -63,6 +65,8 @@ public class JeddictChatModelBuilder {
     ) {
         this.modelName = modelName; // P2 - TODO: can this be null?
         this.listener = listener;
+        withTools = (modelName != null) && modelName.contains("-with-tools");
+        withError = (modelName != null) && modelName.contains("-with-error");
     }
 
     public ChatModel build() {
@@ -72,12 +76,28 @@ public class JeddictChatModelBuilder {
             throw new IllegalArgumentException("modelName can not be null");
         }
 
-        return new DummyChatModel();
+        final DummyChatModel model = new DummyChatModel();
+
+        if (listener != null) {
+            model.addListener(listener);
+        }
+        model.toolChoice = (withTools) ? ToolChoice.AUTO : ToolChoice.NONE;
+        model.error = (withError) ? new RuntimeException("something went wrong") : null;
+
+        return model;
     }
 
     public StreamingChatModel buildStreaming() {
         LOG.finest(() -> "Building testing dummy streaming model instead of " + modelName);
 
-        return new DummyChatModel();
+        final DummyChatModel model = new DummyChatModel();
+
+        if (listener != null) {
+            model.addListener(listener);
+        }
+        model.toolChoice = (withTools) ? ToolChoice.AUTO : ToolChoice.NONE;
+        model.error = (withError) ? new RuntimeException("something went wrong") : null;
+
+        return model;
     }
 }

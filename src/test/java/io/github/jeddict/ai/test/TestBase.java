@@ -65,30 +65,37 @@ public class TestBase {
 
     @BeforeEach
     public void beforeEach() throws Exception {
+        projectPath = HOME.resolve("dummy-project");
+        projectDir = projectPath.toString();
+
         Logger logger = Logger.getLogger("io.github.jeddict.ai");
         logger.setLevel(Level.ALL);
         logger.addHandler(logHandler = new DummyLogHandler());
 
-        projectPath = HOME.resolve("dummy-project");
-        Files.createDirectories(projectPath);
-        FileUtils.copyDirectory(new File("src/test/projects/minimal"), projectPath.toFile());
+        FileUtils.copyDirectory(
+            Paths.get("src", "test", "projects", "minimal").toFile(), // platform independent
+            new File(projectDir)
+        );
 
-        projectPath = projectPath.toAbsolutePath().toRealPath();
-        projectDir = projectPath.toString();
-
-        final Path folder = Files.createDirectories(projectPath.resolve("folder"));
-      
+        Path folder = Files.createDirectories(Paths.get(projectDir, "folder"));
         try (Writer w = new FileWriter(folder.resolve("testfile.txt").toFile())) {
             w.append("This is a test file content for real file testing.");
         }
 
         Files.copy(
-            Paths.get(
-                "src/test/resources/settings/jeddict.json"),
-                HOME.resolve("jeddict.json"
-            ),
+            Paths.get("src", "test", "resources", "settings", "jeddict.json"),
+            HOME.resolve("jeddict.json"),
             StandardCopyOption.REPLACE_EXISTING
         );
+        
+        //
+        // Now that we have the project dir as a real file, we can get the real 
+        // path. This is needed to make sure all links are followed. For example
+        // on MacOS /var (where temp files are created) is a link to /private/var;
+        // on Windows, Path by default uses the short version of the pathname
+        // instead the real pathname
+        //
+        projectPath = projectPath.toRealPath();
 
         //
         // Making sure the singleton is initilazed with a testing configuration
