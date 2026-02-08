@@ -56,6 +56,12 @@ public class InteractiveFileEditor extends AbstractTool {
     @ToolPolicy(INTERACTIVE)
     public String editFile(final String path, final String content)
     throws ToolExecutionException {
+        if (StringUtils.isBlank(path)) {
+            throw new ToolExecutionException("path can not be null or empty");
+        }
+        if (content == null) {
+            throw new ToolExecutionException("path can not be null");
+        }
         progress("∆ Editing " + path);
 
         checkPath(path);

@@ -151,7 +151,7 @@ public class AssistantJeddictBrainListener
             partialResponse +
             "\n----------");
         SwingUtilities.invokeLater(() -> {
-            if (newThread && !textArea.getText().endsWith("\\n")) {
+            if (newThread && !textArea.getText().endsWith("\n")) {
                 textArea.append("\n");
             }
             textArea.append(partialResponse);
