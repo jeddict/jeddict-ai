@@ -53,7 +53,7 @@ public interface HackerWithTools extends Hacker {
       - If there is a conflict between rules, explicitly highlight it and request clarification.
     3. Tool execution
       - Give priority to tools that interact with the user whenever possible
-      - If tool execution is reject by the user, the action is not performed; find
+      - If tool execution is rejected by the user, the action is not performed; find
         alternatives or ask the user the next step
     4. File Changes: whenever you want to create or update a file, you must use a tool
        that shows the user a diff of the changes. The user shall review and approve.
@@ -67,6 +67,7 @@ public interface HackerWithTools extends Hacker {
     1. Clearly separate analysis, plan, and final solution.
     2. Be concise but thorough.
     3. Prefer correctness and clarity over brevity.
+
     ## Project information
     {{projectInfo}}
     """

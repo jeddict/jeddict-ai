@@ -40,7 +40,6 @@ import javax.swing.JEditorPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
-import javax.swing.border.EmptyBorder;
 import javax.swing.text.EditorKit;
 import org.netbeans.api.project.Project;
 import org.openide.loaders.DataObject;
@@ -82,15 +81,15 @@ public class DiffPane extends JPanel {
         ));
         setBackground(UIUtil.COLOR_JEDDICT_MAIN_BACKGROUND);
         setLayout(new BorderLayout());
-        
+
         //
         // Invocation Pane
         //
         //add(
-        //    new ToolInvocationPane("interactiveFileEditor", Map.of("path", path)), 
+        //    new ToolInvocationPane("interactiveFileEditor", Map.of("path", path)),
         //    BorderLayout.NORTH
         //);
-        
+
         //
         // Diff UI
         //
@@ -109,7 +108,7 @@ public class DiffPane extends JPanel {
             // Disable the interface to prevent additional interactions
             //
             getParent().remove(this);
-            
+
             //
             // Save the modified (if diffView is null, there is no diff and a new
             // file is created saving the proposed wource
@@ -117,7 +116,7 @@ public class DiffPane extends JPanel {
             LOG.finest(() -> "changes accepted, saving %s".formatted(new File(project.getProjectDirectory().getPath(), path).toString()));
 
             ctrl.save(modifiedContent());
-            
+
             //
             // Call tool's callback
             //
@@ -133,7 +132,7 @@ public class DiffPane extends JPanel {
             getParent().remove(this);
 
             LOG.finest("changes rejected");
-            
+
             //
             // Call tool's callback
             //
@@ -148,16 +147,16 @@ public class DiffPane extends JPanel {
         //
         UIUtil.makeDefaultButton(btnAccept);
 
-        final ToolInvocationPane tip 
+        final ToolInvocationPane tip
             = new ToolInvocationPane("interactiveFileEditor", Map.of("path", path));
         tip.setAlignmentY(TOP_ALIGNMENT); topPanel.add(tip);
-        
+
         final JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.LEADING, 5, 3));
-        btnPanel.setOpaque(false); btnPanel.setAlignmentY(TOP_ALIGNMENT); 
-        btnPanel.add(btnAccept); btnPanel.add(btnReject); 
-        
+        btnPanel.setOpaque(false); btnPanel.setAlignmentY(TOP_ALIGNMENT);
+        btnPanel.add(btnAccept); btnPanel.add(btnReject);
+
         topPanel.add(btnPanel);
-        
+
         topPanel.setBorder(BorderFactory.createEmptyBorder(3, 0, 0, 10));
 
         add(topPanel, BorderLayout.NORTH);
@@ -173,9 +172,9 @@ public class DiffPane extends JPanel {
         final Path path = ctrl.fullPath();
         final String mimeType = (ctrl.original != null)
                 ? ctrl.original.getMIMEType()
-                : io.github.jeddict.ai.util.FileUtil.mimeType(path.getFileName().toString());
-        
-        LOG.finest(() -> "create pane for %s with mime type %s".formatted(ctrl.original.getPath(), mimeType));
+                : ctrl.modified.getMIMEType();
+
+        LOG.finest(() -> "create pane for %s with mime type %s".formatted(path, mimeType));
         //
         // If fo is not null, the source file is there and can be compared with
         // the modified provided by the AI. Otherwise, only the new modified will
@@ -219,7 +218,7 @@ public class DiffPane extends JPanel {
 
     /**
      * Adds a "Diff" tab to the {@code JTabbedPane} displaying the difference
-between the modified file and the modified modified provided by the AI.
+     * between the modified file and the original source.
      *
      * @param fo The {@code FileObject} representing the modified file.
      * @param mimeType The MIME type of the file modified.
@@ -249,23 +248,23 @@ between the modified file and the modified modified provided by the AI.
         sourceView.setEditable(true);
         sourcePane.addTab("Source", new JScrollPane(sourceView));
     }
-    
+
     /**
      * This method gets the content of the modified source. Since this is provided
      * as new memory FileObject there is not a SaveCookie nor the content is
      * kept in sync with the file (or at least I could not fix a way to do it).
-     * 
+     *
      * The method finds the second JEditorPane in the hierarchy and returns its text.
-     * 
+     *
      * @return the modified content in the diff pane
      */
     private String modifiedContent() {
         if (ctrl.isNewFile) {
             return sourceView.getText();
         }
-        
+
         List<JEditorPane> editors = UIUtil.find(this, JEditorPane.class);
-        
+
         //
         // If there is only one editor, the file is new, otherwise the first one
         // contains the modified content, the second one the modified content
@@ -275,7 +274,7 @@ between the modified file and the modified modified provided by the AI.
             LOG.severe(msg);
             throw new IllegalStateException(msg);
         }
-        
+
         return editors.get(1).getText();
     }
 }

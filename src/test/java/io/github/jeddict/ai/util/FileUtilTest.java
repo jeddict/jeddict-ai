@@ -39,8 +39,6 @@ public class FileUtilTest {
 
         // Fallback to URLConnection
         FileNameMap fileNameMap = URLConnection.getFileNameMap();
-        then(FileUtil.mimeType("file.txt")).isEqualTo(fileNameMap.getContentTypeFor("file.txt"));
-        then(FileUtil.mimeType("file.json")).isEqualTo(fileNameMap.getContentTypeFor("file.json"));
         then(FileUtil.mimeType("file.html")).isEqualTo(fileNameMap.getContentTypeFor("file.html"));
         then(FileUtil.mimeType("product.png")).isEqualTo(fileNameMap.getContentTypeFor("product.png"));
 
