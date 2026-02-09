@@ -125,24 +125,27 @@ public class FileUtil {
 
         final String extension = org.openide.filesystems.FileUtil.getExtension(filename);
 
-        switch (extension) {
-            case "java", "c", "cpp", "ruby", "php", "php5" -> {
-                return "text/x-" + extension;
+        return switch (extension) {
+            case "java", "json", "c", "cpp", "ruby", "php", "php5" -> {
+                yield "text/x-" + extension;
+            }
+            case "xml" -> {
+                yield "text/xml";
             }
             default -> {
                 FileNameMap fileNameMap = URLConnection.getFileNameMap();
                 String mimeType = fileNameMap.getContentTypeFor(filename);
                 if (mimeType == null) {
-                    return "application/octet-stream";
+                    yield "application/octet-stream";
                 }
-                return mimeType;
+                yield mimeType;
             }
-        }
+        };
     }
 
     public static FileObject realFileObject(final Project project, String path) {
         final FileObject fo = project.getProjectDirectory();
-        
+
         try {
             return org.openide.filesystems.FileUtil.toFileObject(
                 resolveRealPath((fo != null) ? fo.getPath() : null, path)
@@ -151,7 +154,7 @@ public class FileUtil {
             return null;
         }
     }
-    
+
     public static FileObject realFileObject(final String basedir, String path) {
         try {
             return org.openide.filesystems.FileUtil.toFileObject(
@@ -166,7 +169,7 @@ public class FileUtil {
         return project.getProjectDirectory().getFileObject(path).asText();
     }
 
-    public static Path resolveRealPath(final String basedir, final String path) 
+    public static Path resolveRealPath(final String basedir, final String path)
     throws IOException {
         Path p = Paths.get(path);
         if (!p.isAbsolute() && basedir != null) {
