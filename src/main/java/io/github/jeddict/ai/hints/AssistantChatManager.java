@@ -717,9 +717,6 @@ public class AssistantChatManager extends JavaFix {
     }
 
     private void handler(final AssistantChat chat) {
-        //
-        // TODO: can't we merge this in the base AssistantJeddictBrainListener ?
-        //
         listener = new AssistantJeddictBrainListener(chat) {
 
             @Override

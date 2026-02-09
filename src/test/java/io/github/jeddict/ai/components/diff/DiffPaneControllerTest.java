@@ -46,13 +46,13 @@ public class DiffPaneControllerTest extends TestBase {
     public void before() throws Exception {
         P = new DummyProject(projectPath);
     }
-    
+
     @Test
     public void creation() throws Exception {
         DiffPaneController ctrl = new DiffPaneController(P, F, C);
-        
+
         then(ctrl.project).isSameAs(P);
-        
+
         //
         // Updating a file
         //
@@ -62,7 +62,7 @@ public class DiffPaneControllerTest extends TestBase {
         then(ctrl.original).isNotNull();
         then(ctrl.modified).isNotNull();
         then(ctrl.isNewFile).isFalse();
-        
+
         //
         // Creating a new file
         //
@@ -100,11 +100,11 @@ public class DiffPaneControllerTest extends TestBase {
     }
 
     @Test
-    public void action_cannot_be_null_nor_invalid() throws Exception {
+    public void path_cannot_be_null_nor_invalid() throws Exception {
         thenThrownBy(() -> new DiffPaneController(P, null, C))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("path cannot be null");
-        
+
         //
         // Make the project dir invalid by deleteing it
         //
@@ -116,10 +116,17 @@ public class DiffPaneControllerTest extends TestBase {
     }
 
     @Test
+    public void content_cannot_be_null() {
+        thenThrownBy(() -> new DiffPaneController(P, F, null))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("content can not be null");
+    }
+
+    @Test
     public void return_current_content() throws Exception {
         final Path path = Paths.get(P.getProjectDirectory().getPath()).resolve(F);
-        final String fileText = Files.readString(path); 
-        
+        final String fileText = Files.readString(path);
+
         //
         // modified is the modified text of the file
         //
@@ -139,43 +146,43 @@ public class DiffPaneControllerTest extends TestBase {
         Files.delete(path);
         then(ctrl.modified()).isNull();
     }
-    
+
     @Test
     public void save_saves_modified_to_original() throws Exception {
         //
         // Update existing file
         //
         DiffPaneController ctrl = new DiffPaneController(P, F, C + "\nnew line");
-        
+
         ctrl.save(C + "\nnew line");
         then(ctrl.fullPath()).hasContent(C + "\nnew line");
-        
+
         ctrl.save("hello");
         then(ctrl.fullPath()).hasContent("hello");
-        
+
         //
         // Absolute path
         //
         ctrl = new DiffPaneController(
-            P, 
+            P,
             FileUtil.toPath(P.getProjectDirectory().getFileObject(F)).toAbsolutePath().toString(),
             C
         );
         ctrl.save("absolute path");
         then(ctrl.fullPath()).hasContent("absolute path");
     }
-    
+
     @Test
     public void save_creates_a_new_file() throws Exception {
-        final Path newFilePath = Paths.get("newfolder/newfile.txt");  
-        
+        final Path newFilePath = Paths.get("newfolder/newfile.txt");
+
         //
         // Create a new file
         //
         DiffPaneController ctrl = new DiffPaneController(
             P, "cities.txt", ""
         );
-        
+
         ctrl.save("""
                   1. Paris, France
                   2. New York City, USA
@@ -183,19 +190,19 @@ public class DiffPaneControllerTest extends TestBase {
                   """);
         Path expectedPath = Paths.get(P.realProjectDirectory).resolve("cities.txt");
         then(expectedPath).exists().content().contains("New York");
-        
-        
-        
+
+
+
         ctrl = new DiffPaneController(P, newFilePath.toString(), "");
         ctrl.save("hello");
         expectedPath = Paths.get(P.realProjectDirectory).resolve(newFilePath);
         then(expectedPath).exists().content().isEqualTo("hello");
-        
+
         //
         // Absolute path
         //
         ctrl = new DiffPaneController(
-            P, 
+            P,
             FileUtil.toPath(P.getProjectDirectory().getFileObject("newfile.txt", false)).toAbsolutePath().toString(),
             C
         );
