@@ -1,0 +1,196 @@
+
+To write a JUnit test for your JavaFX application using **TestFX** (which provides `FxRobot`), you'll need to:
+1. **Load the FXML file** into a `Parent` node.
+2. **Inject the controller** (if needed).
+3. **Use `FxRobot`** to interact with UI controls (e.g., setting text in `TextArea`).
+
+---
+
+### **Step 1: Add TestFX to Your Project**
+Ensure you have **TestFX** in your dependencies (Maven/Gradle):
+
+#### **Maven (`pom.xml`)**
+```xml
+<dependency>
+    <groupId>org.testfx</groupId>
+    <artifactId>testfx-core</artifactId>
+    <version>4.0.20</version>
+    <scope>test</scope>
+</dependency>
+```
+
+#### **Gradle (`build.gradle`)**
+```groovy
+testImplementation 'org.testfx:testfx-core:4.0.20'
+```
+
+---
+
+### **Step 2: Write the JUnit Test**
+Here's a complete example using **TestFX** to set text in `userPromptTextArea`:
+
+```java
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.stage.Stage;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.testfx.api.FxRobot;
+import org.testfx.framework.junit5.ApplicationTest;
+import org.testfx.util.WaitForAsyncUtils;
+
+import java.io.IOException;
+
+import static org.testfx.api.FxAssert.verifyThat;
+import static org.testfx.matcher.control.TextAreaMatcher.hasText;
+
+public class MainControllerTest extends ApplicationTest {
+
+    private Parent root;
+
+    @Override
+    public void start(Stage stage) throws Exception {
+        // Load the FXML file
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("/ste/ai/toolify/MainView.fxml"));
+        root = loader.load();
+        stage.setScene(new Scene(root));
+        stage.show();
+    }
+
+    @BeforeEach
+    public void setUp() {
+        // Load the FXML before each test
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/ste/ai/toolify/MainView.fxml"));
+            root = loader.load();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to load FXML", e);
+        }
+    }
+
+    @Test
+    public void testSetUserPromptTextAreaText(FxRobot robot) {
+        // Wait for the UI to load
+        WaitForAsyncUtils.waitForFxRobot(() -> {
+            // Find the TextArea by FXML ID
+            robot.clickOn("#userPromptTextArea");
+
+            // Wait for focus (optional, but ensures the TextArea is ready)
+            WaitForAsyncUtils.waitForFxRobot(() -> {
+                // Set text in the TextArea
+                robot.write("Hello, this is a test prompt!");
+            });
+
+            // Verify the text was set
+            verifyThat("#userPromptTextArea", hasText("Hello, this is a test prompt!"));
+        });
+    }
+}
+```
+
+---
+
+### **Key Points**
+1. **`FxRobot`** is used to interact with UI controls.
+2. **`robot.clickOn("#userPromptTextArea")`** ensures the `TextArea` is focused.
+3. **`robot.write("...")`** sets the text.
+4. **`verifyThat("#userPromptTextArea", hasText("..."))`** checks if the text was set correctly.
+
+---
+
+### **Alternative: Directly Setting Text (Without Clicking)**
+If you don't need to simulate user interaction, you can directly set the text using `FxRobot`'s `write()` method:
+
+```java
+@Test
+public void testSetUserPromptTextAreaTextDirectly(FxRobot robot) {
+    robot.write("#userPromptTextArea", "Hello, this is a test prompt!");
+    verifyThat("#userPromptTextArea", hasText("Hello, this is a test prompt!"));
+}
+```
+
+---
+
+### **Handling Controllers (If Needed)**
+If your `MainController` has logic that modifies the `TextArea` after loading, you may need to **inject the controller** into the `FXMLLoader`:
+
+```java
+@BeforeEach
+public void setUp() {
+    FXMLLoader loader = new FXMLLoader(getClass().getResource("/ste/ai/toolify/MainView.fxml"));
+    loader.setController(new MainController()); // Inject controller if needed
+    try {
+        root = loader.load();
+    } catch (IOException e) {
+        throw new RuntimeException("Failed to load FXML", e);
+    }
+}
+```
+
+---
+
+### **Full Example with Error Handling**
+```java
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.stage.Stage;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.testfx.api.FxRobot;
+import org.testfx.framework.junit5.ApplicationTest;
+import org.testfx.util.WaitForAsyncUtils;
+
+import java.io.IOException;
+
+import static org.testfx.api.FxAssert.verifyThat;
+import static org.testfx.matcher.control.TextAreaMatcher.hasText;
+
+public class MainControllerTest extends ApplicationTest {
+
+    private Parent root;
+
+    @Override
+    public void start(Stage stage) throws Exception {
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("/ste/ai/toolify/MainView.fxml"));
+        root = loader.load();
+        stage.setScene(new Scene(root));
+        stage.show();
+    }
+
+    @BeforeEach
+    public void setUp() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/ste/ai/toolify/MainView.fxml"));
+            root = loader.load();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to load FXML", e);
+        }
+    }
+
+    @Test
+    public void testSetUserPromptTextAreaText(FxRobot robot) {
+        WaitForAsyncUtils.waitForFxRobot(() -> {
+            robot.write("#userPromptTextArea", "Hello, this is a test prompt!");
+            verifyThat("#userPromptTextArea", hasText("Hello, this is a test prompt!"));
+        });
+    }
+}
+```
+
+---
+
+### **Troubleshooting**
+1. **If the `TextArea` is not found**, ensure:
+   - The FXML path is correct (`/ste/ai/toolify/MainView.fxml`).
+   - The `fx:id` (`userPromptTextArea`) matches the FXML.
+2. **If the test hangs**, use `WaitForAsyncUtils` to ensure the UI loads.
+3. **If the test fails with `NoSuchElementException`**, verify that the `TextArea` is visible and interactive.
+
+---
+
+### **Final Notes**
+- **TestFX** is the standard way to test JavaFX UI interactions.
+- **`FxRobot`** provides methods like `clickOn()`, `write()`, and `verifyThat()` for easy UI testing.
+- Always ensure the FXML is loaded before interacting with controls.
