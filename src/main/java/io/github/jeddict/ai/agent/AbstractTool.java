@@ -62,6 +62,13 @@ public abstract class AbstractTool {
         listeners.add(listener);
     }
 
+    public void removeListener(final JeddictBrainListener listener) {
+        if (listener == null) {
+            throw new IllegalArgumentException("listener can not be null");
+        }
+        listeners.remove(listener);
+    }
+
     public void checkPath(final String path) throws ToolExecutionException {
         //
         // NOTE: we can not use toRealPath here because we want to check even
@@ -78,14 +85,7 @@ public abstract class AbstractTool {
                 "trying to reach a file outside the project folder");
         }
     }
-
-    public void removeListener(final JeddictBrainListener listener) {
-        if (listener == null) {
-            throw new IllegalArgumentException("listener can not be null");
-        }
-        listeners.remove(listener);
-    }
-
+    
     public Path fullPath(final String path) {
         return basepath.resolve(path).normalize();
     }

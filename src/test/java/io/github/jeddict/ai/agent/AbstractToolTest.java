@@ -5,13 +5,11 @@ import io.github.jeddict.ai.test.TestBase;
 import io.github.jeddict.ai.test.DummyTool;
 import io.github.jeddict.ai.lang.DummyJeddictBrainListener;
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.util.function.UnaryOperator;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.BDDAssertions.thenThrownBy;
-import org.junit.jupiter.api.BeforeEach;
 
 public class AbstractToolTest extends TestBase {
 
@@ -57,10 +55,10 @@ public class AbstractToolTest extends TestBase {
     public void fires_onProgress_events() throws IOException {
         //
         // When a tool send an onProgress event, we want to start a new thread.
-        // This is because when stremaing, content does not necessarily ends with 
+        // This is because when stremaing, content does not necessarily ends with
         // a \n and the output of the tool may not go to a new line.
         //
-        
+
         // given
         final DummyTool tool = new DummyTool(projectDir);
         final DummyJeddictBrainListener listener = new DummyJeddictBrainListener();
@@ -72,8 +70,8 @@ public class AbstractToolTest extends TestBase {
         // then
         then(listener.collector).hasSize(1);
         then(listener.collector.get(0)).asString().isEqualTo("(onProgress,\na message)");
-        
-        
+
+
     }
 
     @Test

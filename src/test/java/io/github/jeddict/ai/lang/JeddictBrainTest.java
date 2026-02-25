@@ -360,7 +360,7 @@ public class JeddictBrainTest extends TestBase {
      * non interactive. Both must receive events.
      */
     @Test
-    public void interactive_and_not_interactove_agents_receive_events() {
+    public void interactive_and_not_interactive_agents_receive_events() {
         final DummyJeddictBrainListener listener = new DummyJeddictBrainListener();
         final JeddictBrain brain = new JeddictBrain(false);
 

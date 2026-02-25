@@ -368,15 +368,19 @@ public class JeddictBrain implements PropertyChangeEmitter {
                     // the toString() of the object so that the listener can
                     // rely on receive always the same object
                     //
-                    final Object obj = e.result().get();
-
-                    final ChatResponse result = (obj instanceof ChatResponse)
-                                              ? (ChatResponse)obj
-                                              : ChatResponse.builder().aiMessage(AiMessage.from(String.valueOf(obj))).build();
-                    LOG.finest(() ->
-                        "%s\n%s".formatted(String.valueOf(e.eventClass()), String.valueOf(result))
-                    );
-                    on(listeners).loop((l) -> l.onChatCompleted(result));
+                    e.result().ifPresentOrElse(obj -> {
+                        final ChatResponse result = (obj instanceof ChatResponse)
+                                                  ? (ChatResponse)obj
+                                                  : ChatResponse.builder().aiMessage(AiMessage.from(String.valueOf(obj))).build();
+                        LOG.finest(() ->
+                            "%s\n%s".formatted(String.valueOf(e.eventClass()), String.valueOf(result))
+                        );
+                        on(listeners).loop((l) -> l.onChatCompleted(result));
+                    }, () -> {
+                        LOG.finest(() ->
+                            "no result from the model..."
+                        );
+                    });
                 }
             },
             new AiServiceErrorListener() {

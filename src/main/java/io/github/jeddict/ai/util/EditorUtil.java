@@ -119,7 +119,7 @@ public class EditorUtil {
         if (firstPane != null) {
             firstPane.scrollRectToVisible(firstPane.getBounds());
         }
-        
+
         assistantChat.revalidate();
         assistantChat.repaint();
         List<FileObject> context = new ArrayList<>();
@@ -642,13 +642,31 @@ public class EditorUtil {
     public static JEditorPane createInMemoryEditorCopy(String mimeType) {
         JEditorPane mirrorEditor;
         try {
-            String ext = getExtension(mimeType);
+            final String ext = getExtension(mimeType);
+            final FileObject root =
+                org.openide.filesystems.FileUtil.createMemoryFileSystem().getRoot();
 
-            FileObject fo = org.openide.filesystems.FileUtil.createMemoryFileSystem()
-                    .getRoot()
-                    .createData("code-preview." + ext);
+            FileObject fo = root.createData("code-preview." + ext);
 
             EditorCookie ec = fo.getLookup().lookup(EditorCookie.class);
+
+            if (ec == null) {
+                LOG.info(() -> "no editor to display '" + ext + "', falling back to txt");
+                fo.delete();
+                fo = root.createData("code-previre.txt");
+                ec = fo.getLookup().lookup(EditorCookie.class);
+            }
+
+            //
+            // if here ec is still null (potentially it may happen if there is
+            // no editor associated to .txt, although unlikely) there is nothing
+            // we can do more...
+            //
+            if (ec == null) {
+                final String msg = "no editors to display '" + ext + "' content have been found in NetBeans";
+                LOG.severe(msg);
+                throw new IllegalStateException(msg);
+            }
 
             try {
                 ec.open();
