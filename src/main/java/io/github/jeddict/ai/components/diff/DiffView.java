@@ -17,22 +17,27 @@ package io.github.jeddict.ai.components.diff;
 
 import java.awt.BorderLayout;
 import java.awt.Container;
+import java.awt.event.ActionEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.IOException;
 import java.util.logging.Logger;
+import javax.swing.AbstractAction;
+import javax.swing.InputMap;
+import javax.swing.ActionMap;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
+import javax.swing.KeyStroke;
+import javax.swing.SwingUtilities;
 import org.netbeans.api.diff.DiffController;
 import org.netbeans.api.diff.StreamSource;
 import org.openide.awt.UndoRedo;
-import org.openide.cookies.SaveCookie;
 import org.openide.filesystems.FileObject;
-import org.openide.loaders.DataObject;
-import org.openide.util.Exceptions;
+import org.openide.util.ImageUtilities;
+import org.openide.util.Utilities;
 
 /**
- * A DiffView nspired  by org.netbeans.modules.diff.builtin.SingleDiffPanel
+ * A DiffView inspired by org.netbeans.modules.diff.builtin.SingleDiffPanel
  * which is an internal class and therefore a brittle dependency. It also
  * gives the basis to build specific functionality for Jeddict or cleaning
  * up the UI removed unused functionalities.
@@ -43,38 +48,27 @@ public class DiffView extends JPanel implements PropertyChangeListener {
     private static final Logger LOG = Logger.getLogger(DiffView.class.getCanonicalName());
 
     private DiffController ctrl;
-    private StreamSource baseSource;
-    private DataObject dataObject;
+    private StreamSource modifiedSource;
+
 
     /**
      * Creates new form SingleDiffPanel
      */
     protected DiffView() {
         initComponents();
+        initKeyBindings();
     }
 
-    public DiffView(final StreamSource modifiedSource, final StreamSource baseSource)
+    public DiffView(final StreamSource originalSource, final StreamSource modifiedSource)
     throws IOException {
         this();
 
-        this.baseSource = baseSource;
+        this.modifiedSource = modifiedSource;
 
-        ctrl = DiffController.createEnhanced(modifiedSource, baseSource);
+        ctrl = DiffController.createEnhanced(originalSource, modifiedSource);
 
         initMyComponents();
         refreshComponents();
-    }
-
-    public DiffView(final StreamSource modifiedSource, final FileStreamSource baseSource)
-    throws IOException {
-        this(modifiedSource, (StreamSource)baseSource);
-
-        //
-        // find should not return null, it throws a DataObjectNotFoundException
-        // if the object is not found
-        //
-        dataObject = DataObject.find(baseSource.fileObject);
-        dataObject.addPropertyChangeListener(this);
     }
 
     /**
@@ -90,9 +84,12 @@ public class DiffView extends JPanel implements PropertyChangeListener {
         btnNext = new javax.swing.JButton();
         btnPrev = new javax.swing.JButton();
         jSeparator1 = new javax.swing.JToolBar.Separator();
-        btnSave = new javax.swing.JButton();
-        btnClose = new javax.swing.JButton();
+        btnUndo = new javax.swing.JButton();
+        btnRedo = new javax.swing.JButton();
+        jSeparator2 = new javax.swing.JToolBar.Separator();
         sourceDiffPanel = new javax.swing.JPanel();
+
+        setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(186, 186, 186)));
 
         actionsToolbar.setRollover(true);
 
@@ -123,35 +120,29 @@ public class DiffView extends JPanel implements PropertyChangeListener {
         actionsToolbar.add(btnPrev);
         actionsToolbar.add(jSeparator1);
 
-        btnSave.setIcon(new javax.swing.ImageIcon(getClass().getResource("/icons/save.png"))); // NOI18N
-        org.openide.awt.Mnemonics.setLocalizedText(btnSave, org.openide.util.NbBundle.getMessage(DiffView.class, "DiffView.btnSave.text")); // NOI18N
-        btnSave.setToolTipText(org.openide.util.NbBundle.getMessage(DiffView.class, "DiffView.btnSave.toolTipText")); // NOI18N
-        btnSave.setEnabled(false);
-        btnSave.setFocusable(false);
-        btnSave.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
-        btnSave.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
-        btnSave.addActionListener(new java.awt.event.ActionListener() {
+        btnUndo.setIcon(ImageUtilities.loadImageIcon("org/openide/resources/actions/undo.gif", false));
+        org.openide.awt.Mnemonics.setLocalizedText(btnUndo, org.openide.util.NbBundle.getMessage(DiffView.class, "DiffView.btnUndo.text")); // NOI18N
+        btnUndo.setFocusable(false);
+        btnUndo.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        btnUndo.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        btnUndo.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnSaveActionPerformed(evt);
+                btnUndoActionPerformed(evt);
             }
         });
-        actionsToolbar.add(btnSave);
+        actionsToolbar.add(btnUndo);
 
-        btnClose.setFont(new java.awt.Font("Fira Sans", 1, 18)); // NOI18N
-        btnClose.setIcon(new javax.swing.ImageIcon(getClass().getResource("/icons/close.png"))); // NOI18N
-        org.openide.awt.Mnemonics.setLocalizedText(btnClose, org.openide.util.NbBundle.getMessage(DiffView.class, "DiffView.btnClose.text")); // NOI18N
-        btnClose.setToolTipText(org.openide.util.NbBundle.getMessage(DiffView.class, "DiffView.btnClose.toolTipText")); // NOI18N
-        btnClose.setActionCommand(org.openide.util.NbBundle.getMessage(DiffView.class, "DiffView.btnClose.actionCommand")); // NOI18N
-        btnClose.setFocusable(false);
-        btnClose.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
-        btnClose.setLabel(org.openide.util.NbBundle.getMessage(DiffView.class, "DiffView.btnClose.label")); // NOI18N
-        btnClose.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
-        btnClose.addActionListener(new java.awt.event.ActionListener() {
+        btnRedo.setIcon(ImageUtilities.loadImageIcon("org/openide/resources/actions/redo.gif", false));
+        org.openide.awt.Mnemonics.setLocalizedText(btnRedo, org.openide.util.NbBundle.getMessage(DiffView.class, "DiffView.btnRedo.text")); // NOI18N
+        btnRedo.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        btnRedo.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        btnRedo.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnCloseActionPerformed(evt);
+                btnRedoActionPerformed(evt);
             }
         });
-        actionsToolbar.add(btnClose);
+        actionsToolbar.add(btnRedo);
+        actionsToolbar.add(jSeparator2);
 
         sourceDiffPanel.setLayout(new java.awt.BorderLayout());
 
@@ -159,21 +150,19 @@ public class DiffView extends JPanel implements PropertyChangeListener {
         this.setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(sourceDiffPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 531, Short.MAX_VALUE)
-            .addComponent(actionsToolbar, javax.swing.GroupLayout.DEFAULT_SIZE, 531, Short.MAX_VALUE)
+            .addComponent(sourceDiffPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 529, Short.MAX_VALUE)
+            .addComponent(actionsToolbar, javax.swing.GroupLayout.DEFAULT_SIZE, 529, Short.MAX_VALUE)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addComponent(actionsToolbar, javax.swing.GroupLayout.PREFERRED_SIZE, 25, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(0, 0, 0)
-                .addComponent(sourceDiffPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 371, Short.MAX_VALUE))
+                .addComponent(sourceDiffPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 369, Short.MAX_VALUE))
         );
     }// </editor-fold>//GEN-END:initComponents
 
     private void btnNextActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnNextActionPerformed
-        LOG.finest(() -> "go to the next change " + evt);
-        LOG.finest(() -> "change " + ctrl.getDifferenceIndex() + " out of " + ctrl.getDifferenceCount());
         int idx = ctrl.getDifferenceIndex();
         if (idx < ctrl.getDifferenceCount() - 1) {
             ctrl.setLocation(DiffController.DiffPane.Modified, DiffController.LocationType.DifferenceIndex, idx + 1);
@@ -182,8 +171,6 @@ public class DiffView extends JPanel implements PropertyChangeListener {
     }//GEN-LAST:event_btnNextActionPerformed
 
     private void btnPrevActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnPrevActionPerformed
-        LOG.finest(() -> "go to the previous change " + evt);
-        LOG.finest(() -> "change " + ctrl.getDifferenceIndex() + " out of " + ctrl.getDifferenceCount());
         int idx = ctrl.getDifferenceIndex();
         if (idx > 0) {
             ctrl.setLocation(DiffController.DiffPane.Modified, DiffController.LocationType.DifferenceIndex, idx - 1);
@@ -191,28 +178,44 @@ public class DiffView extends JPanel implements PropertyChangeListener {
         refreshComponents();
     }//GEN-LAST:event_btnPrevActionPerformed
 
-    private void btnSaveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSaveActionPerformed
-        LOG.finest(() -> "btnSaveActionPerformed " + evt);
-        saveBase();
-    }//GEN-LAST:event_btnSaveActionPerformed
-
     private void btnCloseActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCloseActionPerformed
-        LOG.finest(() -> "btnCloseActionPerformed " + evt);
-
         getParent().remove(this);
     }//GEN-LAST:event_btnCloseActionPerformed
 
+    private void btnUndoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnUndoActionPerformed
+        UndoRedo unredo = getUndoRedo();
+
+        if (unredo.canUndo()) {
+            unredo.undo();
+        }
+    }//GEN-LAST:event_btnUndoActionPerformed
+
+    private void btnRedoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRedoActionPerformed
+        UndoRedo unredo = getUndoRedo();
+        if (unredo.canRedo()) {
+            unredo.redo();
+        }
+    }//GEN-LAST:event_btnRedoActionPerformed
+
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        LOG.finest("property changed " + evt);
         refreshComponents();
     }
 
     public UndoRedo getUndoRedo() {
         UndoRedo undoRedo =
             (UndoRedo) ctrl.getJComponent().getClientProperty(UndoRedo.class);
-        return (undoRedo == null) ? UndoRedo.NONE : undoRedo;
+
+        if (undoRedo != null) {
+            undoRedo.addChangeListener((event) -> {
+                LOG.finest(() -> String.valueOf(event));
+            });
+        }
+
+        return undoRedo;
     }
+
+    // --------------------------------------------------------- private methods
 
     private void initMyComponents() {
         //
@@ -236,62 +239,81 @@ public class DiffView extends JPanel implements PropertyChangeListener {
     }
 
     private void refreshComponents() {
-        LOG.finest("refreshComponent - change " + ctrl.getDifferenceIndex() + " of " + ctrl.getDifferenceCount());
-        LOG.finest(
-            () -> "refreshComponent - " + (baseSource.getClass()) + " " + isEditable() + " " + isModified()
-        );
         btnNext.setEnabled(ctrl.getDifferenceIndex() < ctrl.getDifferenceCount() - 1);
         btnPrev.setEnabled(ctrl.getDifferenceIndex() > 0);
-        btnSave.setEnabled(isModified());
-    }
 
-    private void refreshController() {
+        //
+        // Using invokeLater otherwise it won't work well
+        //
+        SwingUtilities.invokeLater(
+            new Runnable() {
+                public void run() {
+                    final UndoRedo ur = getUndoRedo();
 
-    }
-
-    private void saveBase() {
-        LOG.finest(() -> "Saving " + baseSource);
-        if (!isEditable()) {
-            throw new IllegalStateException("base source is not editable, it can not be saved");
-        }
-
-        try {
-            SaveCookie saveCookie = dataObject.getLookup().lookup(SaveCookie.class);
-
-            // If there are unsaved changes, save the file
-            if (saveCookie != null) {
-                saveCookie.save();
+                    if (ur != null) {
+                        btnUndo.setEnabled(ur.canUndo());
+                        btnRedo.setEnabled(ur.canRedo());
+                    }
+                }
             }
-        } catch (IOException x) {
-            LOG.finest(() -> "error saving base " + baseSource + ": " + x.getMessage());
-            Exceptions.printStackTrace(x);
-        }
-    }
-
-    private boolean isEditable() {
-        return (baseSource instanceof FileStreamSource) &&
-               dataObject != null;
-    }
-
-    private boolean isModified() {
-        return isEditable() && dataObject.isModified();
+        );
     }
 
     private FileObject getFileObject() {
-        if (baseSource instanceof FileStreamSource) {
-            return ((FileStreamSource)baseSource).fileObject;
+        if (modifiedSource instanceof FileStreamSource) {
+            return ((FileStreamSource)modifiedSource).fileObject;
         }
 
         return null;
     }
 
+    /**
+     * Adds key bindings to invoke "save" with Ctrl-S, Undo with Ctrl-Z and Redo with Ctrl-Shift-Z.
+     */
+    private void initKeyBindings() {
+        // Save only if editable and modified
+        final InputMap inputMap = getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+        final ActionMap actionMap = getActionMap();
+
+        //
+        // BUG: for some reason, while Ctrl-S works, Ctrl-Z and Ctrl-Y do not :(
+        //
+
+        // Add Undo Ctrl-Z
+        KeyStroke ks = Utilities.stringToKey("D-Z");
+        inputMap.put(ks, "undoAction");
+        actionMap.put("undoAction", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                LOG.finest(() -> "Ctrl-Z, let's undo");
+                if (btnUndo.isEnabled()) {
+                    btnUndo.doClick();
+                }
+            }
+        });
+
+        // Add Redo Ctrl-Shift-Z
+        ks = Utilities.stringToKey("D-S-Z");
+        inputMap.put(ks, "redoAction");
+        actionMap.put("redoAction", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                LOG.finest(() -> "Ctrl-Shift-Z, let's redo");
+                if (btnRedo.isEnabled()) {
+                    btnRedo.doClick();
+                }
+            }
+        });
+    }
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JToolBar actionsToolbar;
-    private javax.swing.JButton btnClose;
     private javax.swing.JButton btnNext;
     private javax.swing.JButton btnPrev;
-    private javax.swing.JButton btnSave;
+    private javax.swing.JButton btnRedo;
+    private javax.swing.JButton btnUndo;
     private javax.swing.JToolBar.Separator jSeparator1;
+    private javax.swing.JToolBar.Separator jSeparator2;
     private javax.swing.JPanel sourceDiffPanel;
     // End of variables declaration//GEN-END:variables
 }

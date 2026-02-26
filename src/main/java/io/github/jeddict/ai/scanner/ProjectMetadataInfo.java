@@ -18,6 +18,8 @@ package io.github.jeddict.ai.scanner;
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.model.Plugin;
 import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
@@ -27,40 +29,51 @@ import org.netbeans.modules.maven.api.NbMavenProject;
 /**
  *
  * @author Gaurav Gupta
+ *
+ * TODO: add more info about the project like:
+ *       - base directory
+ *       - build system (maven, ant, gradle)
+ *       - project name
  */
 public class ProjectMetadataInfo {
 
     private static final Map<Project, CachedResult> cache = new HashMap<>();
 
     public static String get(Project project) {
-        CachedResult cachedResult = getCachedResult(project);
+        if (project == null) {
+            return "";
+        }
+
+        final CachedResult cachedResult = getCachedResult(project);
 
         // Check if cachedResult is null and handle accordingly
         if (cachedResult == null) {
             return "Project Metadata: Unable to retrieve metadata for the specified project.";
         }
 
-        StringBuilder sb = new StringBuilder();
+        final StringBuilder sb = new StringBuilder();
 
-        // Append EE Version with appropriate label if importPrefix is "jakarta"
-        if (cachedResult.getEeVersion() != null) {
-            if ("jakarta".equals(cachedResult.getImportPrefix())) {
-                sb.append("Jakarta EE Version: ").append(cachedResult.getEeVersion()).append("\n");
+        sb.append("- name: ").append(StringUtils.defaultString(cachedResult.name)).append('\n')
+          .append("- folder: ").append(StringUtils.defaultString(cachedResult.folder)).append('\n')
+          .append("- type: ").append(StringUtils.defaultString(cachedResult.type)).append('\n')
+        ;
+
+        // Append EE Version with appropriate label if importPrefix is "jakarta
+        if (cachedResult.eeVersion() != null) {
+            if ("- jakarta".equals(cachedResult.importPrefix())) {
+                sb.append("- EE Version: ").append(cachedResult.eeVersion()).append("\n");
             } else {
-                sb.append("EE Version: ").append(cachedResult.getEeVersion()).append("\n");
+                sb.append("- EE Version: ").append(cachedResult.eeVersion()).append("\n");
             }
         }
-        if (cachedResult.getImportPrefix() != null) {
-            sb.append("EE Import Prefix: ").append(cachedResult.getImportPrefix()).append("\n");
+        if (cachedResult.importPrefix() != null) {
+            sb.append("- EE Import Prefix: ").append(cachedResult.importPrefix()).append("\n");
         }
-        if (cachedResult.getJdkVersion() != null) {
-            sb.append("Java Version: ").append(cachedResult.getJdkVersion()).append("\n");
+        if (cachedResult.jdkVersion() != null) {
+            sb.append("- Java Version: ").append(cachedResult.jdkVersion()).append("\n");
         }
 
-        if (!sb.isEmpty()) {
-            sb.insert(0, "Project Metadata:\n");
-        }
-        return sb.toString();
+        return sb.toString().trim();
     }
 
     public static CachedResult getCachedResult(Project project) {
@@ -75,8 +88,8 @@ public class ProjectMetadataInfo {
             }
 
             // Get the pom.xml FileObject
-            File pomFile = nbMavenProject.getMavenProject().getFile();
-            long lastModified = pomFile.lastModified();
+            final File pomFile = nbMavenProject.getMavenProject().getFile();
+            final long lastModified = pomFile.lastModified();
 
             // Invalidate cache if timestamp has changed
             if (cachedResult == null || cachedResult.timestamp < lastModified) {
@@ -104,7 +117,12 @@ public class ProjectMetadataInfo {
                 }
 
                 // Cache the result
-                CachedResult result = new CachedResult(importPrefix, eeVersion, jdkVersion, lastModified);
+                final CachedResult result = new CachedResult(
+                    mavenProject.getName(), 
+                    FilenameUtils.separatorsToSystem(project.getProjectDirectory().getPath()), 
+                    "maven",
+                    importPrefix, eeVersion, jdkVersion, lastModified
+                );
                 cache.put(project, result);
 
                 return result;
@@ -128,8 +146,7 @@ public class ProjectMetadataInfo {
                 }
                 return "jakarta"; // Other versions of Jakarta EE
             }
-            if (dependency.getGroupId().equals("javax.enterprise")
-                    || dependency.getGroupId().startsWith("javax.")) {
+            if (dependency.getGroupId().startsWith("javax.")) {
                 return "javax"; // Java EE dependencies
             }
         }
@@ -164,31 +181,9 @@ public class ProjectMetadataInfo {
         return null;
     }
 
-    // Helper class to store cached result and its timestamp
-    public static class CachedResult {
-
-        String importPrefix; // "javax" or "jakarta"
-        String eeVersion; // Jakarta EE or Java EE version
-        String jdkVersion; // JDK version used
-        long timestamp; // Timestamp of cache creation
-
-        CachedResult(String importPrefix, String eeVersion, String jdkVersion, long timestamp) {
-            this.importPrefix = importPrefix;
-            this.eeVersion = eeVersion;
-            this.jdkVersion = jdkVersion;
-            this.timestamp = timestamp;
-        }
-
-        public String getImportPrefix() {
-            return importPrefix;
-        }
-
-        public String getEeVersion() {
-            return eeVersion;
-        }
-
-        public String getJdkVersion() {
-            return jdkVersion;
-        }
-    }
+    private record CachedResult(
+        String name, String folder, String type,
+        String importPrefix, String eeVersion, String jdkVersion,
+        long timestamp
+    ) {}
 }

@@ -36,15 +36,22 @@ import org.openide.util.lookup.Lookups;
 public class FileStreamSource extends StreamSource {
 
     public final FileObject fileObject;
+    
+    private final String title;
 
     /**
      * Constructs a FileStreamSource for a given FileObject.
      */
-    public FileStreamSource(FileObject fileObject) {
-        if (fileObject == null) {
+    public FileStreamSource(final FileObject fo, final String title) {
+        if (fo == null) {
             throw new IllegalArgumentException("fileObject can not be null");
         }
-        this.fileObject = fileObject;
+        this.fileObject = fo;
+        this.title = (title == null) ? fo.getNameExt() : title;
+    }
+    
+    public FileStreamSource(final FileObject fo) {
+        this(fo, null);
     }
 
     /**
@@ -79,14 +86,14 @@ public class FileStreamSource extends StreamSource {
 
     /**
      * Retrieves the title for the stream source which for now, defaults to file name and extension.
-     * 
+     * Potential update to include file path relative to project root as per TODO in class description.
      *
      * @return the title of the stream source.
      */
     @Override
+
     public String getTitle() {
-        // TODO: Update to include relative file path.
-        return fileObject.getNameExt();
+        return title;
     }
 
     /**
@@ -130,6 +137,6 @@ public class FileStreamSource extends StreamSource {
      */
     @Override
     public String toString() {
-        return getClass().getCanonicalName() + "[" + fileObject.getPath() + "]";
+        return getClass().getName() + "[" + fileObject.getPath() + "]";
     }
 }

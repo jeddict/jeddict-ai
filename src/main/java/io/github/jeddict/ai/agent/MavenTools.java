@@ -33,6 +33,8 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
+import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READONLY;
+import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READWRITE;
 
 /**
  * Tool to manage dependencies in the pom.xml file.
@@ -42,7 +44,7 @@ import org.xml.sax.SAXException;
  */
 public class MavenTools extends AbstractBuildTool {
 
-    public MavenTools(final String basedir) {
+    public MavenTools(final String basedir) throws IOException {
         super(basedir, "pom.xml");
     }
 
@@ -50,6 +52,7 @@ public class MavenTools extends AbstractBuildTool {
         name = "addMavenDependency",
         value = "Add a dependency to the pom.xml file"
     )
+    @ToolPolicy(READWRITE)
     public String addDependency(String groupId, String artifactId, String version)
     throws Exception {
         progress("Adding dependency: " + groupId + ":" + artifactId + ":" + version);
@@ -60,6 +63,7 @@ public class MavenTools extends AbstractBuildTool {
         name = "addMavenDependencyWithScope",
         value = "Add a dependency with scope to the pom.xml file"
     )
+    @ToolPolicy(READWRITE)
     public String addDependencyWithScope(String groupId, String artifactId, String version, String scope)
     throws Exception {
         progress("Adding dependency with scope: " + groupId + ":" + artifactId + ":" + version + ":" + scope);
@@ -135,6 +139,7 @@ public class MavenTools extends AbstractBuildTool {
         name = "removeMavenDependency",
         value = "Remove a dependency from the pom.xml file"
     )
+    @ToolPolicy(READWRITE)
     public String removeDependency(String groupId, String artifactId) throws Exception {
         progress("Removing dependency " + groupId + ": " + artifactId);
         try {
@@ -175,6 +180,7 @@ public class MavenTools extends AbstractBuildTool {
         name = "MavenListDependenciesTool_listDependencies",
         value = "List all dependencies in the pom.xml file"
     )
+    @ToolPolicy(READWRITE)
     public String listDependencies() throws Exception {
         progress("Listing dependencies");
         try {
@@ -216,6 +222,7 @@ public class MavenTools extends AbstractBuildTool {
         name = "updateMavenDependencyVersion",
         value = "Update the version of an existing dependency in the pom.xml file"
     )
+    @ToolPolicy(READWRITE)
     public String updateDependencyVersion(String groupId, String artifactId, String newVersion)
     throws Exception {
         progress("Updating dependency version: " + groupId + ":" + artifactId + ":" + newVersion);
@@ -258,6 +265,7 @@ public class MavenTools extends AbstractBuildTool {
         name= "mavenDependencyExists",
         value= "Check if a dependency exists in the pom.xml file"
     )
+    @ToolPolicy(READONLY)
     public boolean dependencyExists(String groupId, String artifactId)
     throws Exception {
         progress("Checking dependency existence: " + groupId + ":" + artifactId);

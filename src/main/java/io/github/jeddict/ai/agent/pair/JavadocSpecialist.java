@@ -15,7 +15,6 @@
  */
 package io.github.jeddict.ai.agent.pair;
 
-import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
@@ -52,20 +51,21 @@ import io.github.jeddict.ai.util.AgentUtil;
  *
  */
 public interface JavadocSpecialist extends PairProgrammer {
-    public static final String SYSTEM_MESSAGE = """
-You are a programmer that writes only Javadoc comments for the provided code accordingly to the rules:
-- Generate completely new Javadoc or enahance the existing Javadoc based on user request
-- Generate the Javadoc wrapped with in /** ${javadoc} **/
-- Generate javadoc only for the element (class, methods or members) requested by the user
-- Do not provide any additional text or explanation"
-Take into account the following general rules: {{globalRules}}
-Take into account the following project rules: {{projectRules}}
-""";
-    public static final String USER_MESSAGE = """
-Provide javadoc for the {{element}}
-The code is: {{code}}
-The Javadoc is: {{javadoc}}
-""";
+    public static final String SYSTEM_MESSAGE =
+    """
+    You are a programmer that writes only Javadoc comments for the provided code accordingly to the rules:
+    - Generate completely new Javadoc or enahance the existing Javadoc based on user request
+    - Generate the Javadoc wrapped with in /** ${javadoc} **/
+    - Generate javadoc only for the element (class, methods or members) requested by the user
+    - Do not provide any additional text or explanation"
+    Take into account the following general rules: {{globalRules}}
+    Take into account the following project rules: {{projectRules}}
+    """;
+        public static final String USER_MESSAGE = """
+    Provide javadoc for the {{element}}
+    The code is: {{code}}
+    The Javadoc is: {{javadoc}}
+    """;
 
     public static final String ELEMENT_CLASS = "class";
     public static final String ELEMENT_METHOD = "method";
@@ -74,7 +74,6 @@ The Javadoc is: {{javadoc}}
 
     @SystemMessage(SYSTEM_MESSAGE)
     @UserMessage(USER_MESSAGE)
-    @Agent("Generate or enhance javadoccomments based on the class or class member code")
     String javadoc(
         @V("element") final String element,
         @V("code") final String sourece,

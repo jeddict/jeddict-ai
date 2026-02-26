@@ -13,19 +13,20 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package io.github.jeddict.ai.agent;
+package io.github.jeddict.ai.lang;
 
 /**
  *
  * @author Gaurav Gupta
  */
-public enum AssistantAction {
+public enum InteractionMode {
     ASK("Ask"),
-    BUILD("Agent");
+    AGENT("Agent"),
+    INTERACTIVE("Interactive");
 
     private final String displayName;
 
-    AssistantAction(String displayName) {
+    InteractionMode(String displayName) {
         this.displayName = displayName;
     }
 

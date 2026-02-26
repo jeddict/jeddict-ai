@@ -26,11 +26,18 @@ import static io.github.jeddict.ai.settings.PreferencesManagerTest.WINDOWS;
 import static io.github.jeddict.ai.settings.ReportManager.JEDDICT_STATS;
 import io.github.jeddict.ai.test.TestBase;
 import io.github.jeddict.ai.util.FileUtil;
+import io.github.jeddict.ai.util.JeddictLogFormatter;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.logging.Formatter;
+import java.util.logging.Handler;
+import java.util.logging.Logger;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import static ste.lloop.Loop.on;
 
 /**
  *
@@ -219,5 +226,30 @@ public class JeddictInstallTest extends TestBase {
             then(newStats.getChild("dailyInputTokenStats").toString()).isEqualTo("{\"20335\":81392}");
             then(newStats.getChild("dailyOutputTokenStats").toString()).isEqualTo("{\"20355\":1206}");
         });
+    }
+
+    @Test
+    public void logging_setup() {
+        final String logPrefix = JeddictInstall.class.getPackageName();
+        final Map<Handler, Formatter> formatters = new HashMap();
+        final Logger log = Logger.getLogger(logPrefix);
+        final Handler[] handlers = log.getHandlers();
+
+        on(handlers).loop(h-> formatters.put(h, h.getFormatter()));
+        try {
+            JeddictInstall install = new JeddictInstall();
+            install.configureLogging();
+
+            on(handlers).loop(h-> {
+                then(h.getFormatter()).isInstanceOf(JeddictLogFormatter.class);
+            });
+        } finally {
+            on(handlers).loop(h-> {
+                final Formatter f = formatters.get(h);
+                if (f != null) {
+                    h.setFormatter(f);
+                }
+            });
+        }
     }
 }

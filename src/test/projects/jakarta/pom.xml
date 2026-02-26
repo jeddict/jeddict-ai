@@ -1,0 +1,25 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>groupid</groupId>
+    <artifactId>artifactid</artifactId>
+    <version>0.0.0</version>
+    <name>jakarta</name>
+    <description>description</description>
+    <url>https://somewhere.com/</url>
+
+    <properties>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <junit.jupiter.version>5.9.2</junit.jupiter.version>
+        <assertj.version>3.25.1</assertj.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>jakarta.platform</groupId>
+            <artifactId>jakarta.jakartaee-api</artifactId>
+            <version>10.0.0</version> <!-- Use the version appropriate for your target server, e.g., 10.0.0 for Jakarta EE 10 -->
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+</project>

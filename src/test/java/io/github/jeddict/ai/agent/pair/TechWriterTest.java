@@ -15,8 +15,8 @@
  */
 package io.github.jeddict.ai.agent.pair;
 
-import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import dev.langchain4j.service.AiServices;
 import static io.github.jeddict.ai.agent.pair.TechWriter.ELEMENT_CLASS;
 import static io.github.jeddict.ai.agent.pair.TechWriter.ELEMENT_MEMBER;
 import static io.github.jeddict.ai.agent.pair.TechWriter.ELEMENT_METHOD;
@@ -39,7 +39,7 @@ public class TechWriterTest extends PairProgrammerTestBase {
     public void beforeEach() throws Exception {
         super.beforeEach();
 
-        pair = AgenticServices.agentBuilder(TechWriter.class)
+        pair = AiServices.builder(TechWriter.class)
             .chatModel(model)
             .build();
     }

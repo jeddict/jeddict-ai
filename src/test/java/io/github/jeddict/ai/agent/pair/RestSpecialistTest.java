@@ -15,8 +15,8 @@
  */
 package io.github.jeddict.ai.agent.pair;
 
-import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import dev.langchain4j.service.AiServices;
 import static io.github.jeddict.ai.agent.pair.PairProgrammerTestBase.TEXT;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.Test;
@@ -28,7 +28,7 @@ public class RestSpecialistTest extends PairProgrammerTestBase {
 
     @Test
     public void pair_is_a_PairProgrammer() {
-        final RestSpecialist pair = AgenticServices.agentBuilder(RestSpecialist.class)
+        final RestSpecialist pair = AiServices.builder(RestSpecialist.class)
             .chatModel(model)
             .build();
         then(pair).isInstanceOf(PairProgrammer.class);
@@ -36,7 +36,7 @@ public class RestSpecialistTest extends PairProgrammerTestBase {
 
     @Test
     public void generateEndpointForClass_returns_AI_provided_response_with_and_without_rules() {
-        final RestSpecialist pair = AgenticServices.agentBuilder(RestSpecialist.class)
+        final RestSpecialist pair = AiServices.builder(RestSpecialist.class)
             .chatModel(model)
             .build();
 

@@ -15,18 +15,15 @@
  */
 package io.github.jeddict.ai.agent.pair;
 
-import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import io.github.jeddict.ai.lang.JeddictBrainListener;
+import dev.langchain4j.service.AiServices;
 import java.util.List;
 import static org.assertj.core.api.BDDAssertions.then;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -46,24 +43,6 @@ public class TestSpecialistTest extends PairProgrammerTestBase {
     public void pair_is_a_PairProgrammer() {
         final TestSpecialist pair = pair();
         then(pair).isInstanceOf(PairProgrammer.class);
-    }
-
-    @Disabled
-    public void chat_triggers_the_handler() {
-        final StringBuilder responseBuilder = new StringBuilder();
-        final JeddictBrainListener changeListener = new JeddictBrainListener(null) {
-            @Override
-            public void onCompleteResponse(ChatResponse response) {
-                responseBuilder.append(response.aiMessage().text().trim());
-            }
-        };
-        final TestSpecialist pair = pair();
-        //pair.addPropertyChangeListener(changeListener);
-
-        final String answer = pair.generateTestCase(QUERY, ALL_CLASSES, CLASS, METHOD, PROMPT, SESSION_RULES, List.of());
-
-        then(answer.trim()).isEqualTo("hello world");
-        then(responseBuilder.toString()).isEqualTo("hello world");
     }
 
     @Test
@@ -181,58 +160,10 @@ public class TestSpecialistTest extends PairProgrammerTestBase {
         );
     }
 
-    /*
-    @Test
-    public void generateTestCase_keeps_the_history() {
-        final TestSpecialist pair = pair();
-
-        final Response R1 = new Response(null, "answer1", null);
-        final Response R2 = new Response("query2", "answer2", null);
-
-        //
-        // Without query
-        //
-        pair.generateTestCase(
-            null, ALL_CLASSES, CLASS, METHOD, PROMPT, SESSION_RULES,
-            List.of(R1, R2)
-        );
-
-        List<ChatMessage> messages
-            = listener.lastRequestContext.get().chatRequest().messages();
-
-        //
-        // Note that there is no need of further specifications on first and last
-        // messages as they are provided in the other tests
-        //
-        then(messages).isNotNull().hasSize(6);
-        then(messages.get(0)).isInstanceOf(SystemMessage.class);
-        thenIsUserMessage(messages.get(1), UNSAVED_PROMPT);
-        thenIsAiMessage(messages.get(2), "answer1");
-        thenIsUserMessage(messages.get(3), "query2");
-        thenIsAiMessage(messages.get(4), "answer2");
-        then(messages.get(5)).isInstanceOf(UserMessage.class);
-
-        pair.generateTestCase(
-            QUERY, ALL_CLASSES, CLASS, METHOD, PROMPT, SESSION_RULES,
-            List.of(R1, R2)
-        );
-
-        messages = listener.lastRequestContext.get().chatRequest().messages();
-
-        then(messages).isNotNull().hasSize(6);
-        then(messages.get(0)).isInstanceOf(SystemMessage.class);
-        thenIsUserMessage(messages.get(1), UNSAVED_PROMPT);
-        thenIsAiMessage(messages.get(2), "answer1");
-        thenIsUserMessage(messages.get(3), "query2");
-        thenIsAiMessage(messages.get(4), "answer2");
-        then(messages.get(5)).isInstanceOf(UserMessage.class);
-    }
-*/
-
     // --------------------------------------------------------- private methods
 
     private TestSpecialist pair() {
-        return AgenticServices.agentBuilder(TestSpecialist.class)
+        return AiServices.builder(TestSpecialist.class)
             .chatModel(model)
             .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(2))
             .build();
