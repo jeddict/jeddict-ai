@@ -1,0 +1,5 @@
+This tool throws an exception
+
+```tool:dummyToolError
+```
+

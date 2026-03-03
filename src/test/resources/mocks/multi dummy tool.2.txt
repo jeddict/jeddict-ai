@@ -1,0 +1,6 @@
+This is to execute the DummyTool - second round
+
+```tool:dummyToolWithArgs
+"arg1": "Hello World",
+"arg2": ["Hello Paris", "Hello Delhi", "Hello Rome"]
+```
