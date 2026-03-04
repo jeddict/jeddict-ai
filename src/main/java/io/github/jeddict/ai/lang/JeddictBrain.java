@@ -52,6 +52,7 @@ import static io.github.jeddict.ai.lang.InteractionMode.INTERACTIVE;
 import io.github.jeddict.ai.util.PropertyChangeEmitter;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -228,7 +229,7 @@ public class JeddictBrain implements PropertyChangeEmitter {
 
         builder.hallucinatedToolNameStrategy((exec) -> {
             final ToolExecutionRequest ter = (ToolExecutionRequest)exec;
-            
+
             LOG.finest(() -> "tool hallucination: " + ter.name());
             return ToolExecutionResultMessage.from(
                 ter, "Error: there is no tool called " + ter.name() + " try with a different name"
@@ -290,20 +291,32 @@ public class JeddictBrain implements PropertyChangeEmitter {
         // Otherwise probe the model by trying to trigger the execution of the
         // ToolsProbingTool tool
         //
-        final ToolsProbingTool probeTool = new ToolsProbingTool();
-        final ToolsProber prober = AgenticServices.agentBuilder(ToolsProber.class)
-            .chatModel(model(false))
-            .tools(probeTool)
-            .build();
-        final boolean toolsSupport = prober.probe(probeTool.probeText);
+        try {
+            final ToolsProbingTool probeTool = new ToolsProbingTool();
+            final ToolsProber prober = AgenticServices.agentBuilder(ToolsProber.class)
+                .chatModel(model(false))
+                .tools(probeTool)
+                .build();
 
-        probedModels.put(modelName, toolsSupport);
+            final boolean toolsSupport = prober.probe(probeTool.probeText);
 
-        LOG.info(
-            LOG_MSG.formatted(modelName, (toolsSupport) ? "supports" : "does not support")
-        );
+            probedModels.put(modelName, toolsSupport);
 
-        return toolsSupport;
+            LOG.info(
+                LOG_MSG.formatted(modelName, (toolsSupport) ? "supports" : "does not support")
+            );
+            
+            return toolsSupport;
+        } catch (final Throwable t) {
+            LOG.severe(() ->
+                "error probing tool support, returning false %s\n%s".formatted(
+                    t.toString(),
+                    Arrays.toString(t.getStackTrace())
+                )
+            );
+        }
+
+        return false;
     }
 
 
