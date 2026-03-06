@@ -477,8 +477,13 @@ public class AssistantChatManager extends JavaFix {
         }));
     }
 
+    private void usePluginClassLoader() {
+        Thread.currentThread().setContextClassLoader(getClass().getClassLoader());
+    }
+
     public void openChat(String type, final String query, String fileName, String title, Consumer<String> action) {
         SwingUtilities.invokeLater(() -> {
+            usePluginClassLoader();
             new JeddictUpdateManager().checkForJeddictUpdate();
             ac = createChatInstance(title, type, getProject());
             ac.setLayout(new BorderLayout());
