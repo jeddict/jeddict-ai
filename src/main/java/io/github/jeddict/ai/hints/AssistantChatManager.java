@@ -701,8 +701,7 @@ public class AssistantChatManager extends JavaFix {
                         //
                         final boolean isFirstQuery = (hacker == null);
                         final String fileTree = isFirstQuery ? ProjectMetadataInfo.getFileTree(selectedProject) : "";
-                        final String agentProjectInfo = fileTree.isBlank() ? projectInfo
-                            : projectInfo + "\n- File Tree:\n" + fileTree;
+                        final String agentProjectInfo = buildAgentProjectInfo(projectInfo, fileTree);
                         final Hacker h = hacker(listener, modelName, ac.interactiveMode());
                         if (pm.isStreamEnabled()) {
                             h.hack(listener, question, agentProjectInfo, pm.getGlobalRules(), sessionRules);
@@ -972,6 +971,22 @@ public class AssistantChatManager extends JavaFix {
             Exceptions.printStackTrace(x);
             return List.of();
         }
+    }
+
+    /**
+     * Builds the project info string for agent queries, optionally appending
+     * the file tree. The file tree is appended only when it is non-blank,
+     * which happens on the first query in a session (when {@code hacker} is
+     * still null). On subsequent queries an empty string is passed so the file
+     * tree section is omitted, avoiding unnecessary repetition.
+     *
+     * @param projectInfo base project metadata string
+     * @param fileTree    file tree string; blank when not applicable
+     * @return the project info string, with the file tree section appended
+     *         when {@code fileTree} is non-blank
+     */
+    static String buildAgentProjectInfo(final String projectInfo, final String fileTree) {
+        return fileTree.isBlank() ? projectInfo : projectInfo + "\n- File Tree:\n" + fileTree;
     }
 
     private void async(Supplier<String> answer, final JeddictBrainListener listener) {
