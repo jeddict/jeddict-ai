@@ -18,14 +18,12 @@ package io.github.jeddict.ai.classpath;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
 import org.netbeans.api.java.classpath.ClassPath;
 import org.netbeans.api.project.Project;
 import org.netbeans.api.project.ProjectUtils;
 import org.netbeans.api.project.ui.OpenProjects;
-import org.netbeans.modules.editor.NbEditorUtilities;
 import org.netbeans.spi.editor.completion.CompletionResultSet;
 import org.netbeans.spi.editor.completion.support.AsyncCompletionQuery;
 import org.openide.filesystems.FileObject;
@@ -37,7 +35,6 @@ public class JeddictQueryCompletionQuery extends AsyncCompletionQuery {
     private static long lastScanTimestamp = 0;
     private static final long CACHE_EXPIRY_MS = 60 * 1000;
     public static final String JEDDICT_EDITOR_CALLBACK = "jeddict-editor-callback";
-    public static final String JEDDICT_PROJECT = "jeddict-project";
 
     @Override
     protected void query(CompletionResultSet resultSet, Document doc, int caretOffset) {
@@ -56,24 +53,7 @@ public class JeddictQueryCompletionQuery extends AsyncCompletionQuery {
         }
         if (cachedClassNames == null) {
             cachedClassNames = new ArrayList<>();
-            FileObject file = NbEditorUtilities.getFileObject(doc);
-            boolean found = false;
-            if (file != null) {
-                ClassPath classPath = ClassPath.getClassPath(file, ClassPath.SOURCE);
-                if (classPath != null) {
-                    found = scanClassPathEntries(classPath, cachedClassNames);
-                }
-            }
-
-            if (!found) {
-                Project project = getProjectFromDocument(doc);
-                if (project != null) {
-                    scanProject(project, cachedClassNames);
-                } else {
-                    scanAllProjects(cachedClassNames);
-                }
-            }
-
+            scanAllProjects(cachedClassNames);
             lastScanTimestamp = System.currentTimeMillis();
         }
 
@@ -110,15 +90,6 @@ public class JeddictQueryCompletionQuery extends AsyncCompletionQuery {
             }
         }
         return found;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Project getProjectFromDocument(Document doc) {
-        Object prop = doc.getProperty(JEDDICT_PROJECT);
-        if (prop instanceof Supplier) {
-            return ((Supplier<Project>) prop).get();
-        }
-        return null;
     }
 
     private void scanProject(Project project, List<String> classNames) {

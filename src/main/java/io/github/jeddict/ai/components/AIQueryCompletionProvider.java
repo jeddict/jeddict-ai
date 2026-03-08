@@ -15,7 +15,6 @@
  */
 package io.github.jeddict.ai.components;
 
-import io.github.jeddict.ai.classpath.JeddictQueryCompletionQuery;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
@@ -23,7 +22,6 @@ import java.awt.event.KeyEvent;
 import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
-import java.util.function.Supplier;
 import javax.lang.model.element.TypeElement;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
@@ -104,31 +102,33 @@ public final class AIQueryCompletionProvider implements CompletionProvider {
                     return;
                 }
 
-                Project project = getProject(doc);
-                if (project == null) {
-                    return;
-                }
-
-                ClassIndex index = getClassIndex(project);
-                if (index == null) {
+                Project[] openProjects = OpenProjects.getDefault().getOpenProjects();
+                if (openProjects.length == 0) {
                     return;
                 }
 
                 Set<String> results = new LinkedHashSet<>();
 
-                // Packages
-                results.addAll(
-                        index.getPackageNames(prefix, true, SCOPES)
-                );
+                for (Project project : openProjects) {
+                    ClassIndex index = getClassIndex(project);
+                    if (index == null) {
+                        continue;
+                    }
 
-                // Classes
-                for (ElementHandle<TypeElement> h
-                        : index.getDeclaredTypes(
-                                prefix,
-                                ClassIndex.NameKind.PREFIX,
-                                SCOPES)) {
+                    // Packages
+                    results.addAll(
+                            index.getPackageNames(prefix, true, SCOPES)
+                    );
 
-                    results.add(h.getQualifiedName());
+                    // Classes
+                    for (ElementHandle<TypeElement> h
+                            : index.getDeclaredTypes(
+                                    prefix,
+                                    ClassIndex.NameKind.PREFIX,
+                                    SCOPES)) {
+
+                        results.add(h.getQualifiedName());
+                    }
                 }
 
                 for (String s : results) {
@@ -159,19 +159,6 @@ public final class AIQueryCompletionProvider implements CompletionProvider {
             } catch (BadLocationException ex) {
                 return "";
             }
-        }
-
-        @SuppressWarnings("unchecked")
-        private static Project getProject(Document doc) {
-            Object prop = doc.getProperty(JeddictQueryCompletionQuery.JEDDICT_PROJECT);
-            if (prop instanceof Supplier) {
-                Project project = ((Supplier<Project>) prop).get();
-                if (project != null) {
-                    return project;
-                }
-            }
-            Project[] open = OpenProjects.getDefault().getOpenProjects();
-            return open.length > 0 ? open[0] : null;
         }
 
         private static ClassIndex getClassIndex(Project project) {
