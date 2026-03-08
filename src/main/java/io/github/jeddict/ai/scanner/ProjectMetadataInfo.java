@@ -16,8 +16,14 @@
 package io.github.jeddict.ai.scanner;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Stream;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.model.Plugin;
@@ -179,6 +185,59 @@ public class ProjectMetadataInfo {
 
         // Return null if no JDK version is found
         return null;
+    }
+
+    private static final Set<String> IGNORED_NAMES = Set.of("target", "node_modules", "build");
+
+    /**
+     * Returns the file tree structure of the project directory as a formatted
+     * string. Hidden files/directories and common build output directories
+     * (target, node_modules, build) are excluded.
+     *
+     * @param project the project whose file tree to return
+     * @return the file tree as an indented string, or an empty string if the
+     *         project is null or the tree cannot be read
+     */
+    public static String getFileTree(Project project) {
+        if (project == null) {
+            return "";
+        }
+        try {
+            final Path root = Paths.get(project.getProjectDirectory().getPath());
+            final StringBuilder sb = new StringBuilder();
+            try (Stream<Path> stream = Files.walk(root)) {
+                stream
+                    .filter(path -> !isExcluded(root, path))
+                    .sorted()
+                    .forEach(path -> {
+                        if (path.equals(root)) {
+                            return;
+                        }
+                        final Path relative = root.relativize(path);
+                        final int depth = relative.getNameCount() - 1;
+                        sb.append("  ".repeat(depth))
+                          .append(path.getFileName())
+                          .append(Files.isDirectory(path) ? "/" : "")
+                          .append('\n');
+                    });
+            }
+            return sb.toString().trim();
+        } catch (IOException e) {
+            return "";
+        }
+    }
+
+    private static boolean isExcluded(final Path root, final Path path) {
+        if (path.equals(root)) {
+            return false;
+        }
+        for (final Path component : root.relativize(path)) {
+            final String name = component.toString();
+            if (name.startsWith(".") || IGNORED_NAMES.contains(name)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private record CachedResult(

@@ -693,11 +693,14 @@ public class AssistantChatManager extends JavaFix {
                             ac.selectProject();
                             selectedProject = getProject();
                         }
+                        final String fileTree = ProjectMetadataInfo.getFileTree(selectedProject);
+                        final String agentProjectInfo = fileTree.isBlank() ? projectInfo
+                            : projectInfo + "\n- File Tree:\n" + fileTree;
                         final Hacker h = hacker(listener, modelName, ac.interactiveMode());
                         if (pm.isStreamEnabled()) {
-                            h.hack(listener, question, projectInfo, pm.getGlobalRules(), sessionRules);
+                            h.hack(listener, question, agentProjectInfo, pm.getGlobalRules(), sessionRules);
                         } else {
-                            response = h.hack(question, projectInfo, pm.getGlobalRules(), sessionRules);
+                            response = h.hack(question, agentProjectInfo, pm.getGlobalRules(), sessionRules);
                         }
                     }
                 } else {

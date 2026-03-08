@@ -19,7 +19,6 @@ package io.github.jeddict.ai.scanner;
 import com.github.caciocavallosilano.cacio.ctc.junit.CacioTest;
 import io.github.jeddict.ai.test.TestBase;
 import java.nio.file.Paths;
-import org.apache.commons.io.FilenameUtils;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.Test;
 import org.netbeans.api.project.Project;
@@ -40,5 +39,21 @@ public class ProjectMetadataInfoTest extends TestBase {
             .contains("- folder: " + Paths.get(project.getProjectDirectory().getPath()))
             .contains("- type: maven");
     }
-    
+
+    @Test
+    public void getFileTree_returns_file_tree_for_maven_project() throws Exception {
+        final Project project = project(projectDir);
+
+        final String tree = ProjectMetadataInfo.getFileTree(project);
+        then(tree)
+            .contains("pom.xml")
+            .contains("folder/")
+            .contains("  testfile.txt");
+    }
+
+    @Test
+    public void getFileTree_returns_empty_string_for_null_project() {
+        then(ProjectMetadataInfo.getFileTree(null)).isEmpty();
+    }
+
 }
