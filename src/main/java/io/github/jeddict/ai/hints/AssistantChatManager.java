@@ -693,7 +693,14 @@ public class AssistantChatManager extends JavaFix {
                             ac.selectProject();
                             selectedProject = getProject();
                         }
-                        final String fileTree = ProjectMetadataInfo.getFileTree(selectedProject);
+                        //
+                        // Include the file tree only on the first query to avoid
+                        // repeating it on each subsequent query in the same chat
+                        // session. The hacker field is null before the first query
+                        // and cached afterward, so checking it here is sufficient.
+                        //
+                        final boolean isFirstQuery = (hacker == null);
+                        final String fileTree = isFirstQuery ? ProjectMetadataInfo.getFileTree(selectedProject) : "";
                         final String agentProjectInfo = fileTree.isBlank() ? projectInfo
                             : projectInfo + "\n- File Tree:\n" + fileTree;
                         final Hacker h = hacker(listener, modelName, ac.interactiveMode());
