@@ -15,6 +15,7 @@
  */
 package io.github.jeddict.ai.components;
 
+import io.github.jeddict.ai.classpath.JeddictQueryCompletionQuery;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
@@ -22,6 +23,7 @@ import java.awt.event.KeyEvent;
 import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.function.Supplier;
 import javax.lang.model.element.TypeElement;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
@@ -89,10 +91,7 @@ public final class AIQueryCompletionProvider implements CompletionProvider {
     private static final class Query extends AsyncCompletionQuery {
 
         private static final Set<ClassIndex.SearchScope> SCOPES
-                = EnumSet.of(
-                        ClassIndex.SearchScope.SOURCE,
-                        ClassIndex.SearchScope.DEPENDENCIES
-                );
+                = EnumSet.of(ClassIndex.SearchScope.SOURCE);
 
         @Override
         protected void query(CompletionResultSet rs,
@@ -105,7 +104,7 @@ public final class AIQueryCompletionProvider implements CompletionProvider {
                     return;
                 }
 
-                Project project = getOpenProject();
+                Project project = getProject(doc);
                 if (project == null) {
                     return;
                 }
@@ -162,7 +161,15 @@ public final class AIQueryCompletionProvider implements CompletionProvider {
             }
         }
 
-        private static Project getOpenProject() {
+        @SuppressWarnings("unchecked")
+        private static Project getProject(Document doc) {
+            Object prop = doc.getProperty(JeddictQueryCompletionQuery.JEDDICT_PROJECT);
+            if (prop instanceof Supplier) {
+                Project project = ((Supplier<Project>) prop).get();
+                if (project != null) {
+                    return project;
+                }
+            }
             Project[] open = OpenProjects.getDefault().getOpenProjects();
             return open.length > 0 ? open[0] : null;
         }
