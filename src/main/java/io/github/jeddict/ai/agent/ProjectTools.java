@@ -22,7 +22,8 @@ import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READONLY;
 import java.io.IOException;
 
 /**
- * Tool to return information about the project: jdk version, j2ee version
+ * Tool to return information about the project: jdk version, j2ee version,
+ * and file tree structure.
  */
 public class ProjectTools extends AbstractTool {
 
@@ -42,5 +43,16 @@ public class ProjectTools extends AbstractTool {
     throws Exception {
         progress("Gathering project info: " + project);
         return ProjectMetadataInfo.get(project);
+    }
+
+    @Tool(
+        name = "projectFileTree",
+        value = "Return the file tree structure of the project directory"
+    )
+    @ToolPolicy(READONLY)
+    public String projectFileTree()
+    throws Exception {
+        progress("Gathering project file tree: " + project);
+        return ProjectMetadataInfo.getFileTree(project);
     }
 }

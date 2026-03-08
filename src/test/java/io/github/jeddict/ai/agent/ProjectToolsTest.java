@@ -80,4 +80,15 @@ public class ProjectToolsTest extends TestBase {
         );
     }
 
+    @Test
+    public void projectFileTree_returns_file_tree_as_text()
+    throws Exception {
+        final Path homePath = Paths.get(".").toAbsolutePath().normalize();
+
+        final String projectDir = homePath.resolve("src/test/projects/minimal").toString();
+        final ProjectTools tools = new ProjectTools(project(projectDir));
+        then(tools.projectFileTree())
+            .contains("pom.xml");
+    }
+
 }
