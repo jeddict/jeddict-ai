@@ -3,3 +3,4 @@ This is to execute the DummyTool - first round
 ```tool:dummyTool
 ```
 
+use mock 'multi dummy tool.2.txt'

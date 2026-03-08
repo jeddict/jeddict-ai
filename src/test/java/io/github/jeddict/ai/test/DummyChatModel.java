@@ -63,11 +63,6 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
      */
     private final List<ChatModelListener> listeners;
 
-    /**
-     * The count of the messages exchanged with this istance of DumyChatModel
-     */
-    private int count = 0;
-
     public ToolChoice toolChoice = ToolChoice.AUTO;
 
     public RuntimeException error = null;
@@ -103,34 +98,13 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
     public ChatResponse doChat(final ChatRequest chatRequest) {
         LOG.info(() -> "> " + String.valueOf(chatRequest));
 
-        ++count;
-
         if (error != null) {
             LOG.info(() -> "DummyChatModel instructed to raise " + error);
 
             throw error;
         }
 
-        final StringBuilder bodyBuilder = new StringBuilder();
-
-        //
-        // build a string with the system and last user message, assuming the
-        // system message if provided is always the first one
-        //
-        final List<ChatMessage> messages = chatRequest.messages();
-        if (!messages.isEmpty()) {
-            if (messages.get(0) instanceof SystemMessage sysMsg) {
-                bodyBuilder.append(sysMsg.text()).append('\n');
-            }
-
-            on(messages).step(-1).loop((msg) -> {
-                if (msg instanceof UserMessage userMsg) {
-                    bodyBuilder.append(userMsg.singleText());
-                    _break_();
-                }
-            });
-        }
-        final String body = bodyBuilder.toString();
+        final String mockInstruction = messageWithInstruction(chatRequest.messages());
 
         AiMessage responseMessage = null;
 
@@ -169,7 +143,7 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
                     // does not match)
                     final String regex = "(?i)execute tool " + Pattern.quote(name) + "(?![a-zA-Z])";
 
-                    if (Pattern.compile(regex).matcher(body).find()) {
+                    if (Pattern.compile(regex).matcher(mockInstruction).find()) {
                         _break_(name);
                     }
                 });
@@ -212,7 +186,7 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
             // In case of errors replace the placeholder {{error}} with the error
             // descritpion/message
             //
-            final Matcher matcher = MOCK_INSTRUCTION_PATTERN.matcher(bodyBuilder.toString());
+            final Matcher matcher = MOCK_INSTRUCTION_PATTERN.matcher(mockInstruction);
 
             Path mockPath = Path.of(DEFAULT_MOCK_FILE);
             String mockFile = null;
@@ -230,11 +204,10 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
 
             String errorMessage = "";
             if (!Files.exists(mockPath)) {
-                mockFile = addCountToMockFile(mockFile);
                 mockPath = Path.of("src/test/resources/mocks").resolve(mockFile).normalize();
                 if (!Files.exists(mockPath)) {
                     errorMessage = "Mock file '%s' not found.".formatted(
-                        mockPath.toAbsolutePath().toString().replace("." + count, "[." + count + "]")
+                        mockPath.toAbsolutePath().toString()
                     );
                     mockPath = Path.of(ERROR_MOCK_FILE);
                 }
@@ -337,10 +310,48 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
 
     // --------------------------------------------------------- private methods
 
-    private String addCountToMockFile(final String mockFile) {
-        int ndx = mockFile.lastIndexOf('.');
+    /**
+     *
+     * If the last message is a user message and ontains "use mock" we pick
+     * that message. If not in the user message, let's check the previous
+     * response: if it contains "use mock", we pick the response.
+     * If not in the response let's check the system message if provided
+     * (assuming it is in the first message): if it contains "use mock" we
+     * pick the system message.
+     * If no matches are found, an empty string is returned
+     */
+    private String messageWithInstruction(final List<ChatMessage> messages) {
+        if (messages == null || messages.isEmpty()) {
+            return "";
+        }
 
-        return (ndx < 0) ? (mockFile + '.' + count)
-                         : mockFile.substring(0, ndx) + '.' + count + mockFile.substring(ndx);
+        final int size = messages.size();
+        if (messages.get(size-1) instanceof UserMessage msg) {
+            final String text = msg.singleText();
+            if (doesContainIstruction(text)) {
+                return text;
+            }
+        }
+
+        if ((size > 2) && (messages.get(size-2) instanceof AiMessage msg)) {
+            final String text = msg.text();
+            if (doesContainIstruction(text)) {
+                return text;
+            }
+        }
+
+        if (messages.get(0) instanceof SystemMessage msg) {
+            final String text = msg.text();
+            if (doesContainIstruction(text)) {
+                return text;
+            }
+        }
+
+        return "";
+    }
+
+    private boolean doesContainIstruction(final String text) {
+        return text.contains("use mock")
+            || text.contains("execute tool");
     }
 }

@@ -5,3 +5,4 @@ This tool execution is malformed
 "arg2": {
 ```
 
+use mock 'tool in error.3.txt'

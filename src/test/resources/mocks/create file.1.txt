@@ -16,3 +16,5 @@ tourism reports with differing definitions of visitor arrivals[3].
 To obtain a full ranking of the top 20 cities with specific visitor numbers,
 you would need access to more comprehensive tourism databases such as the
 Euromonitor International's Top 100 City Destinations Index[3].
+
+use mock 'create file.2.txt'

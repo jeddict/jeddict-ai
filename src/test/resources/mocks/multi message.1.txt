@@ -1,1 +1,3 @@
 This is the first message
+
+use mock 'multi message.2.txt'

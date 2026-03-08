@@ -27,6 +27,8 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
@@ -47,6 +49,7 @@ import io.github.jeddict.ai.agent.AbstractTool;
 import io.github.jeddict.ai.agent.HumanInTheMiddleWrapper;
 import io.github.jeddict.ai.agent.ToolsProber;
 import io.github.jeddict.ai.agent.ToolsProbingTool;
+import io.github.jeddict.ai.agent.pair.HackerWithoutTools;
 import io.github.jeddict.ai.agent.pair.PairProgrammer;
 import static io.github.jeddict.ai.lang.InteractionMode.INTERACTIVE;
 import io.github.jeddict.ai.util.PropertyChangeEmitter;
@@ -203,37 +206,60 @@ public class JeddictBrain implements PropertyChangeEmitter {
      * @return an instance of the configured agent
      */
     public <T> T pairProgrammer(PairProgrammer.Specialist specialist) {
+        ChatModel chatModel = null;
+
         if (specialist == PairProgrammer.Specialist.HACKER) {
             if (!probeToolSupport()) {
                 specialist = PairProgrammer.Specialist.HACKER_WITHOUT_TOOLS;
             }
         }
 
+        final ChatModelListener modelListener = (specialist != PairProgrammer.Specialist.HACKER_WITHOUT_TOOLS) ?
+            new ChatModelListener() {
+                    @Override
+                    public void onRequest(ChatModelRequestContext ctx) {
+                        on(listeners).loop((l) -> l.onRequest(ctx.chatRequest()));
+                    }
+
+                    @Override
+                    public void onResponse(ChatModelResponseContext ctx) {
+                        on(listeners).loop((l) -> l.onResponse(ctx.chatRequest(), ctx.chatResponse()));
+                    }
+                }
+            : new HackerWithoutTools.JeddictListenerAdapter(listeners);
+
+
         final AiServices builder = AiServices.builder(specialist.specialistClass);
         if (streaming) {
-            builder.streamingChatModel(model());
+            builder.streamingChatModel(model(modelListener));
         } else {
-            builder.chatModel(model());
+            builder.chatModel(chatModel = model(modelListener));
         }
         if (memorySize > 0) {
             builder.chatMemory(MessageWindowChatMemory.withMaxMessages(memorySize));
         }
         if (specialist == PairProgrammer.Specialist.HACKER) {
             builder.tools(tools.toArray());
+            builder.hallucinatedToolNameStrategy((exec) -> {
+                final ToolExecutionRequest ter = (ToolExecutionRequest)exec;
+
+                LOG.finest(() -> "tool hallucination: " + ter.name());
+                return ToolExecutionResultMessage.from(
+                    ter, "Error: there is no tool called " + ter.name() + " try with a different name"
+                );
+            });
         }
 
         builder.registerListeners(allListeners());
         builder.toolExecutionErrorHandler(this::toolExecutionErrorHandler);
         builder.toolArgumentsErrorHandler(this::toolArgumentsErrorHandler);
 
-        builder.hallucinatedToolNameStrategy((exec) -> {
-            final ToolExecutionRequest ter = (ToolExecutionRequest)exec;
-            
-            LOG.finest(() -> "tool hallucination: " + ter.name());
-            return ToolExecutionResultMessage.from(
-                ter, "Error: there is no tool called " + ter.name() + " try with a different name"
-            );
-        });
+        if (specialist == PairProgrammer.Specialist.HACKER_WITHOUT_TOOLS) {
+            final HackerWithoutTools hacker = new HackerWithoutTools(chatModel, builder, tools);
+            hacker.maxIterations(25);
+
+            return (T) hacker;
+        }
 
         return (T) builder.build();
     }
@@ -292,7 +318,7 @@ public class JeddictBrain implements PropertyChangeEmitter {
         //
         final ToolsProbingTool probeTool = new ToolsProbingTool();
         final ToolsProber prober = AgenticServices.agentBuilder(ToolsProber.class)
-            .chatModel(model(false))
+            .chatModel(model(false, null))
             .tools(probeTool)
             .build();
         final boolean toolsSupport = prober.probe(probeTool.probeText);
@@ -317,8 +343,8 @@ public class JeddictBrain implements PropertyChangeEmitter {
      *
      * @return the model
      */
-    private <T> T model() {
-        return model(streaming);
+    private <T> T model(final ChatModelListener listener) {
+        return model(streaming, listener);
     }
 
     /**
@@ -329,30 +355,19 @@ public class JeddictBrain implements PropertyChangeEmitter {
      *
      * @return the model
      */
-    private <T> T model(final boolean useStreaming) {
+    private <T> T model(final boolean useStreaming, final ChatModelListener listener) {
         //
         // At the moment lanchain4j provides the chat request at an higher level
         // with the event AiServicesResponseEvent. This is fired only once the
         // request has been processed by the model and provides both the request
         // and the response (see https://github.com/langchain4j/langchain4j/issues/4365)
-        // Howver, we want to know when a request starts, so have to use a ChatModelListener
+        // However, we want to know when a request starts, so have to use a ChatModelListener
         //
         final JeddictChatModelBuilder builder =
             new JeddictChatModelBuilder(
                 this.modelName,
-                new ChatModelListener() {
-                    @Override
-                    public void onRequest(ChatModelRequestContext ctx) {
-                        on(listeners).loop((l) -> l.onRequest(ctx.chatRequest()));
-                    }
-
-                    @Override
-                    public void onResponse(ChatModelResponseContext ctx) {
-                        on(listeners).loop((l) -> l.onResponse(ctx.chatRequest(), ctx.chatResponse()));
-                    }
-                }
+                listener
             );
-
 
         return (useStreaming) ? (T)builder.buildStreaming() : (T)builder.build();
     }
@@ -416,6 +431,33 @@ public class JeddictBrain implements PropertyChangeEmitter {
                 }
             }
         );
+    }
+
+    // -------------------------------------------------- JeddictListenerAdapter
+
+    static public class JeddictListenerAdapter implements ChatModelListener {
+
+        final public JeddictBrainListener listener;
+
+        public JeddictListenerAdapter(final JeddictBrainListener listener) {
+            this.listener = listener;
+        }
+
+        @Override
+        public void onRequest(ChatModelRequestContext ctx) {
+            listener.onRequest(ctx.chatRequest());
+        }
+
+        @Override
+        public void onResponse(ChatModelResponseContext ctx) {
+            listener.onResponse(ctx.chatRequest(), ctx.chatResponse());
+        }
+
+        @Override
+        public void onError(ChatModelErrorContext errorContext) {
+            listener.onError(errorContext.error());
+        }
+
     }
 
 }

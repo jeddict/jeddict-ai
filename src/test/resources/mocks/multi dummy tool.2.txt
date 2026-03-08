@@ -4,3 +4,5 @@ This is to execute the DummyTool - second round
 "arg1": "Hello World",
 "arg2": ["Hello Paris", "Hello Delhi", "Hello Rome"]
 ```
+
+use mock 'multi dummy tool.3.txt'

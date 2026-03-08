@@ -50,7 +50,7 @@ public class DummyChatModelTest {
     }
 
     @Test
-    public void doChat_return_the_error_page_if_the_mock_does_not_exist() {
+    public void doChat_returns_the_error_page_if_the_mock_does_not_exist() {
         final DummyChatModel chat = new DummyChatModel();
 
         ChatRequest chatRequest = ChatRequest.builder().messages(
@@ -58,7 +58,7 @@ public class DummyChatModelTest {
         ).build();
 
         then(chat.doChat(chatRequest).aiMessage().text().trim())
-            .startsWith("Oops! Mock file '" + Paths.get("src/test/resources/mocks/none[.1].txt").toAbsolutePath() + "' not found.");
+            .startsWith("Oops! Mock file '" + Paths.get("src/test/resources/mocks/none.txt").toAbsolutePath() + "' not found.");
     }
 
     @Test
@@ -74,12 +74,9 @@ public class DummyChatModelTest {
     }
 
     @Test
-    public void doChat_picks_the_mock_from_system_or_last_message() {
+    public void doChat_picks_the_mock_from_system_message() {
         final DummyChatModel chat = new DummyChatModel();
 
-        //
-        // Mock in system message
-        //
         ChatRequest chatRequest = ChatRequest.builder().messages(
             SystemMessage.from("use mock 'hello world.txt'"),
             UserMessage.from("Hello!")
@@ -87,13 +84,44 @@ public class DummyChatModelTest {
 
         then(chat.doChat(chatRequest).aiMessage().text().trim())
             .isEqualToIgnoringNewLines("hello world");
+    }
+
+    @Test
+    public void doChat_picks_the_mock_from_user_message() {
+        final DummyChatModel chat = new DummyChatModel();
+
+        ChatRequest chatRequest = ChatRequest.builder().messages(
+            SystemMessage.from("System message"),
+            UserMessage.from("use mock 'hello world.txt'")
+        ).build();
+
+        then(chat.doChat(chatRequest).aiMessage().text().trim())
+            .isEqualToIgnoringNewLines("hello world");
+    }
+
+    @Test
+    public void doChat_picks_the_mock_from_response_message() {
+        final DummyChatModel chat = new DummyChatModel();
+
+        ChatRequest chatRequest = ChatRequest.builder().messages(
+            UserMessage.from("this is the first message"),
+            AiMessage.from("this is the response: use mock 'hello world.txt'"),
+            UserMessage.from("this is the last prompt")
+        ).build();
+
+        then(chat.doChat(chatRequest).aiMessage().text().trim())
+            .isEqualToIgnoringNewLines("hello world");
+    }
+
+    @Test
+    public void doChat_picks_the_mock_from_priority() {
+        final DummyChatModel chat = new DummyChatModel();
 
         //
-        // If in both system and user message, user message wins
+        // If in both system and user messages, the latter wins
         //
-        chatRequest = ChatRequest.builder().messages(
+        ChatRequest chatRequest = ChatRequest.builder().messages(
             SystemMessage.from("use mock 'hello world.txt'"),
-            UserMessage.from("Hello!"),
             UserMessage.from("use mock error.txt")
         ).build();
 
@@ -111,6 +139,21 @@ public class DummyChatModelTest {
 
         then(chat.doChat(chatRequest).aiMessage().text().trim())
             .isEqualToIgnoringNewLines("hello world");
+
+        //
+        // Always pick only the last response if not in last user message
+        //
+        chatRequest = ChatRequest.builder().messages(
+            UserMessage.from("use 'multi message.1.txt'"),
+            UserMessage.from("Hello!"),
+            AiMessage.from("this is the response: use mock 'multi message.2.txt'"),
+            UserMessage.from("use mock 'hello world.txt'"),
+            AiMessage.from("this is the response: use mock 'multi message.3.txt'"),
+            UserMessage.from("last message")
+        ).build();
+
+        then(chat.doChat(chatRequest).aiMessage().text().trim())
+            .isEqualToIgnoringNewLines("This is the third message");
     }
 
     @Test
@@ -297,15 +340,6 @@ public class DummyChatModelTest {
         //
         // TODO: add error handling when streaming
         //
-    }
-
-    @Test
-    public void multi_message_chat() {
-        final DummyChatModel chat = new DummyChatModel();
-
-        then(chat.chat("use mock 'multi message.txt'")).isEqualToIgnoringNewLines("This is the first message");
-        then(chat.chat("use mock 'multi message.txt'")).isEqualToIgnoringNewLines("This is the second message");
-        then(chat.chat("use mock 'multi message.txt'")).isEqualToIgnoringNewLines("This is the third message");
     }
 
     // --------------------------------------------------------- private methods
