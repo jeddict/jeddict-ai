@@ -35,7 +35,7 @@ import org.openide.util.NbBundle.Messages;
     displayName = "#CTL_ToolbarAction",
         lazy = true,
         asynchronous = true,
-        iconBase = "icons/logo32.png"
+        iconBase = "icons/logo.png"
 )
 @ActionReferences({
     @ActionReference(path = "Toolbars/Build", position = 100)}
