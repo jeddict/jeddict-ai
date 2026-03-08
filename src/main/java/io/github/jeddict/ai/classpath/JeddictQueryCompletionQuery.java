@@ -18,6 +18,7 @@ package io.github.jeddict.ai.classpath;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
 import org.netbeans.api.java.classpath.ClassPath;
@@ -36,6 +37,7 @@ public class JeddictQueryCompletionQuery extends AsyncCompletionQuery {
     private static long lastScanTimestamp = 0;
     private static final long CACHE_EXPIRY_MS = 60 * 1000;
     public static final String JEDDICT_EDITOR_CALLBACK = "jeddict-editor-callback";
+    public static final String JEDDICT_PROJECT = "jeddict-project";
 
     @Override
     protected void query(CompletionResultSet resultSet, Document doc, int caretOffset) {
@@ -57,20 +59,19 @@ public class JeddictQueryCompletionQuery extends AsyncCompletionQuery {
             FileObject file = NbEditorUtilities.getFileObject(doc);
             boolean found = false;
             if (file != null) {
-                ClassPath classPath = ClassPath.getClassPath(file, ClassPath.COMPILE);
+                ClassPath classPath = ClassPath.getClassPath(file, ClassPath.SOURCE);
                 if (classPath != null) {
-                    for (ClassPath.Entry entry : classPath.entries()) {
-                        FileObject root = entry.getRoot();
-                        if (root != null) {
-                            collectClassNames(root, "", cachedClassNames);
-                            found = true;
-                        }
-                    }
+                    found = scanClassPathEntries(classPath, cachedClassNames);
                 }
             }
 
             if (!found) {
-                scanAllProjects(cachedClassNames);
+                Project project = getProjectFromDocument(doc);
+                if (project != null) {
+                    scanProject(project, cachedClassNames);
+                } else {
+                    scanAllProjects(cachedClassNames);
+                }
             }
 
             lastScanTimestamp = System.currentTimeMillis();
@@ -97,21 +98,41 @@ public class JeddictQueryCompletionQuery extends AsyncCompletionQuery {
         }
     }
 
+    private boolean scanClassPathEntries(ClassPath classPath, List<String> classNames) {
+        boolean found = false;
+        for (ClassPath.Entry entry : classPath.entries()) {
+            FileObject root = entry.getRoot();
+            if (root != null) {
+                for (FileObject child : root.getChildren()) {
+                    collectClassNames(child, "", classNames);
+                }
+                found = true;
+            }
+        }
+        return found;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Project getProjectFromDocument(Document doc) {
+        Object prop = doc.getProperty(JEDDICT_PROJECT);
+        if (prop instanceof Supplier) {
+            return ((Supplier<Project>) prop).get();
+        }
+        return null;
+    }
+
+    private void scanProject(Project project, List<String> classNames) {
+        for (var sourceGroup : ProjectUtils.getSources(project).getSourceGroups("java")) {
+            ClassPath classPath = ClassPath.getClassPath(sourceGroup.getRootFolder(), ClassPath.SOURCE);
+            if (classPath != null) {
+                scanClassPathEntries(classPath, classNames);
+            }
+        }
+    }
+
     private void scanAllProjects(List<String> classNames) {
         for (Project project : OpenProjects.getDefault().getOpenProjects()) {
-            for (var sourceGroup : ProjectUtils.getSources(project).getSourceGroups("java")) {
-                ClassPath classPath = ClassPath.getClassPath(sourceGroup.getRootFolder(), ClassPath.SOURCE);
-                if (classPath != null) {
-                    for (ClassPath.Entry entry : classPath.entries()) {
-                        FileObject root = entry.getRoot();
-                        if (root != null) {
-                            for (FileObject child : root.getChildren()) {
-                                collectClassNames(child, "", classNames);
-                            }
-                        }
-                    }
-                }
-            }
+            scanProject(project, classNames);
         }
     }
 

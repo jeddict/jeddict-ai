@@ -25,6 +25,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import io.github.jeddict.ai.JeddictUpdateManager;
 import io.github.jeddict.ai.lang.InteractionMode;
 import static io.github.jeddict.ai.classpath.JeddictQueryCompletionQuery.JEDDICT_EDITOR_CALLBACK;
+import static io.github.jeddict.ai.classpath.JeddictQueryCompletionQuery.JEDDICT_PROJECT;
 import static io.github.jeddict.ai.components.QueryPane.createIconButton;
 import static io.github.jeddict.ai.components.QueryPane.createStyledComboBox;
 import io.github.jeddict.ai.components.diff.DiffPane;
@@ -91,6 +92,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.prefs.Preferences;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -468,6 +470,7 @@ public abstract class AssistantChat extends TopComponent {
 
         Document doc = questionPane.getDocument();
         doc.putProperty(JEDDICT_EDITOR_CALLBACK, (Consumer<FileObject>) this::addFileTab);
+        doc.putProperty(JEDDICT_PROJECT, (Supplier<Project>) () -> this.project);
 
         questionScrollPane = new JScrollPane(questionPane);
         questionScrollPane.setBorder(BorderFactory.createEmptyBorder());
