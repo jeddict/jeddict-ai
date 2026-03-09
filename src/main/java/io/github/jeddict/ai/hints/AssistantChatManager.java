@@ -694,13 +694,14 @@ public class AssistantChatManager extends JavaFix {
                             selectedProject = getProject();
                         }
                         //
-                        // Include the file tree only on the first query to avoid
-                        // repeating it on each subsequent query in the same chat
-                        // session. The hacker field is null before the first query
-                        // and cached afterward, so checking it here is sufficient.
+                        // Include the minimal directory tree only on the first query to
+                        // avoid repeating it on each subsequent query in the same chat
+                        // session. The hacker field is null before the first query and
+                        // cached afterward, so checking it here is sufficient.
+                        // The full file tree is available via the projectFileTree tool.
                         //
                         final boolean isFirstQuery = (hacker == null);
-                        final String fileTree = isFirstQuery ? ProjectMetadataInfo.getFileTree(selectedProject) : "";
+                        final String fileTree = isFirstQuery ? ProjectMetadataInfo.getMinimalTree(selectedProject) : "";
                         final String agentProjectInfo = buildAgentProjectInfo(projectInfo, fileTree);
                         final Hacker h = hacker(listener, modelName, ac.interactiveMode());
                         if (pm.isStreamEnabled()) {

@@ -91,4 +91,15 @@ public class ProjectToolsTest extends TestBase {
             .contains("pom.xml");
     }
 
+    @Test
+    public void projectMinimalTree_returns_directory_hierarchy_as_text()
+    throws Exception {
+        final Path homePath = Paths.get(".").toAbsolutePath().normalize();
+
+        final String projectDir = homePath.resolve("src/test/projects/minimal").toString();
+        final ProjectTools tools = new ProjectTools(project(projectDir));
+        then(tools.projectMinimalTree())
+            .doesNotContain("pom.xml");
+    }
+
 }

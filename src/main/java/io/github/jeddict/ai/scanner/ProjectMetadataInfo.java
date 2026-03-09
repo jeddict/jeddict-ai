@@ -227,6 +227,47 @@ public class ProjectMetadataInfo {
         }
     }
 
+    /**
+     * Returns the minimal directory hierarchy of the project as a formatted
+     * string. Only directories are included — individual files and classes are
+     * omitted — giving a compact overview of the package structure.
+     * Hidden directories and common build output directories
+     * (target, node_modules, build) are excluded.
+     *
+     * @param project the project whose directory hierarchy to return
+     * @return the directory hierarchy as an indented string, or an empty
+     *         string if the project is null or the tree cannot be read
+     */
+    public static String getMinimalTree(Project project) {
+        if (project == null) {
+            return "";
+        }
+        try {
+            final Path root = Paths.get(project.getProjectDirectory().getPath());
+            final StringBuilder sb = new StringBuilder();
+            try (Stream<Path> stream = Files.walk(root)) {
+                stream
+                    .filter(Files::isDirectory)
+                    .filter(path -> !isExcluded(root, path))
+                    .sorted()
+                    .forEach(path -> {
+                        if (path.equals(root)) {
+                            return;
+                        }
+                        final Path relative = root.relativize(path);
+                        final int depth = relative.getNameCount() - 1;
+                        sb.append("  ".repeat(depth))
+                          .append(path.getFileName())
+                          .append("/")
+                          .append('\n');
+                    });
+            }
+            return sb.toString().trim();
+        } catch (IOException e) {
+            return "";
+        }
+    }
+
     private static boolean isExcluded(final Path root, final Path path) {
         if (path.equals(root)) {
             return false;

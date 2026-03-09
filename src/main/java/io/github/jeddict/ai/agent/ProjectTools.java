@@ -47,12 +47,23 @@ public class ProjectTools extends AbstractTool {
 
     @Tool(
         name = "projectFileTree",
-        value = "Return the file tree structure of the project directory"
+        value = "Return the full file tree structure of the project directory, including all files and subdirectories"
     )
     @ToolPolicy(READONLY)
     public String projectFileTree()
     throws Exception {
         progress("Gathering project file tree: " + project);
         return ProjectMetadataInfo.getFileTree(project);
+    }
+
+    @Tool(
+        name = "projectMinimalTree",
+        value = "Return the minimal directory hierarchy of the project, showing only the package structure without individual files"
+    )
+    @ToolPolicy(READONLY)
+    public String projectMinimalTree()
+    throws Exception {
+        progress("Gathering project minimal tree: " + project);
+        return ProjectMetadataInfo.getMinimalTree(project);
     }
 }
