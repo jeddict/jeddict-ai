@@ -65,6 +65,49 @@ public class FileSystemTools extends AbstractCodeTool {
     }
 
     /**
+     * Reads a range of lines from a file on disk. Line numbers are 1-based and
+     * inclusive. If {@code fromLine} is less than 1, it is treated as 1. If
+     * {@code toLine} exceeds the total number of lines, it is treated as the
+     * last line.
+     *
+     * @param path the file path relative to the project
+     * @param fromLine the first line to read (1-based, inclusive)
+     * @param toLine the last line to read (1-based, inclusive)
+     * @return the requested lines joined by newline characters, or an empty
+     *         string if the range falls outside the file
+     */
+    @Tool("""
+    Read lines from fromLine to toLine (both 1-based and inclusive) of a file
+    by path. If fromLine is less than 1 it is treated as 1. If toLine is
+    greater than the number of lines it is treated as the last line.
+    Returns the selected lines joined by newline characters.
+    """)
+    @ToolPolicy(READONLY)
+    public String readFileLines(final String path, final int fromLine, final int toLine)
+            throws ToolExecutionException {
+        progress("📖 Reading file " + path + " lines " + fromLine + " to " + toLine);
+
+        checkPath(path);
+
+        try {
+            final Path fullPath = fullPath(path);
+            final List<String> lines = Files.readAllLines(fullPath, Charset.defaultCharset());
+
+            final int start = Math.max(1, fromLine);
+            final int end = Math.min(lines.size(), toLine);
+
+            if (start > end) {
+                return "";
+            }
+
+            return String.join("\n", lines.subList(start - 1, end));
+        } catch (IOException e) {
+            progress("❌ Failed to read file: " + e);
+            throw new ToolExecutionException("failed to read file: " + e);
+        }
+    }
+
+    /**
      * Searches for files in the file system given a directory and a regex pattern.
      * The tool scans all folders and subfolders of the given directory.
      *
