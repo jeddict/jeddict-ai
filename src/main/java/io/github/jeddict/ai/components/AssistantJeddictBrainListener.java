@@ -20,6 +20,9 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.AuthenticationException;
 import dev.langchain4j.exception.ModelNotFoundException;
+import dev.langchain4j.exception.RateLimitException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.UndeclaredThrowableException;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import io.github.jeddict.ai.JeddictUpdateManager;
@@ -183,17 +186,29 @@ public class AssistantJeddictBrainListener
         // Log the error with timestamp and thread info
         LOG.log(Level.INFO, "Details:", throwable);
 
-        onProgress(throwable.getMessage());
+        // Unwrap proxy-related wrappers to find the actual cause
+        Throwable cause = throwable;
+        while (cause.getCause() != null
+                && (cause instanceof UndeclaredThrowableException
+                    || cause instanceof InvocationTargetException)) {
+            cause = cause.getCause();
+        }
+
+        final String errorMessage = cause.getMessage() != null ? cause.getMessage() : throwable.getMessage();
+
+        onProgress(errorMessage);
 
         cleanup();
 
-        if (throwable instanceof AuthenticationException) {
+        if (cause instanceof AuthenticationException) {
             confirmApiKey();
-        } else if (throwable instanceof ModelNotFoundException) {
+        } else if (cause instanceof ModelNotFoundException) {
             showError("Invalid model, check assistant settings.");
+        } else if (cause instanceof RateLimitException) {
+            showError("Rate limit exceeded. Please reduce the size of your request or try again later.");
         } else {
             Exceptions.printStackTrace(throwable);
-            showError(String.valueOf(throwable.getMessage()));
+            showError(errorMessage);
         }
     }
 

@@ -710,8 +710,7 @@ public class AssistantChatManager extends JavaFix {
                     }
                 }
             } catch (Exception e) {
-                Exceptions.printStackTrace(e);
-                ac.buttonPanelResized();
+                listener.onError(e);
             }
         });
     }
@@ -978,10 +977,7 @@ public class AssistantChatManager extends JavaFix {
                         AiMessage.from(get())
                     ).build());
                 } catch (InterruptedException | ExecutionException x) {
-                    //
-                    // TODO: better error handler
-                    //
-                    Exceptions.printStackTrace(x);
+                    listener.onError(x);
                 }
             }
         }.execute();
