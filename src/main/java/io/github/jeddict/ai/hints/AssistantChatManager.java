@@ -693,20 +693,11 @@ public class AssistantChatManager extends JavaFix {
                             ac.selectProject();
                             selectedProject = getProject();
                         }
-                        //
-                        // The minimal directory tree is always included in projectInfo
-                        // so that it is part of the system message on every query.
-                        // This gives the model a persistent, compact overview of the
-                        // project's package structure throughout the conversation.
-                        // The full file tree is available via the projectFileTree tool.
-                        //
-                        final String minimalTree = ProjectMetadataInfo.getMinimalTree(selectedProject);
-                        final String agentProjectInfo = buildAgentProjectInfo(projectInfo, minimalTree);
                         final Hacker h = hacker(listener, modelName, ac.interactiveMode());
                         if (pm.isStreamEnabled()) {
-                            h.hack(listener, question, agentProjectInfo, pm.getGlobalRules(), sessionRules);
+                            h.hack(listener, question, projectInfo, pm.getGlobalRules(), sessionRules);
                         } else {
-                            response = h.hack(question, agentProjectInfo, pm.getGlobalRules(), sessionRules);
+                            response = h.hack(question, projectInfo, pm.getGlobalRules(), sessionRules);
                         }
                     }
                 } else {
@@ -971,22 +962,6 @@ public class AssistantChatManager extends JavaFix {
             Exceptions.printStackTrace(x);
             return List.of();
         }
-    }
-
-    /**
-     * Builds the project info string for agent queries, optionally appending
-     * the minimal directory tree. The tree is appended when it is non-blank
-     * so that the combined string becomes part of the system message on every
-     * query. When {@code fileTree} is blank (e.g. when the project is null),
-     * the tree section is omitted.
-     *
-     * @param projectInfo base project metadata string
-     * @param fileTree    minimal directory tree string; blank when not applicable
-     * @return the project info string, with the tree section appended
-     *         when {@code fileTree} is non-blank
-     */
-    static String buildAgentProjectInfo(final String projectInfo, final String fileTree) {
-        return fileTree.isBlank() ? projectInfo : projectInfo + "\n- File Tree:\n" + fileTree;
     }
 
     private void async(Supplier<String> answer, final JeddictBrainListener listener) {

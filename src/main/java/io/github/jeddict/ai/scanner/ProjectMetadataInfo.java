@@ -79,6 +79,11 @@ public class ProjectMetadataInfo {
             sb.append("- Java Version: ").append(cachedResult.jdkVersion()).append("\n");
         }
 
+        final String minimalTree = getMinimalTree(project);
+        if (!minimalTree.isBlank()) {
+            sb.append("- File Tree:\n").append(minimalTree).append("\n");
+        }
+
         return sb.toString().trim();
     }
 
