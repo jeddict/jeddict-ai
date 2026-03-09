@@ -23,9 +23,10 @@ import org.junit.jupiter.api.Test;
 /**
  * Unit tests for {@link AssistantChatManager}.
  *
- * These tests focus on the logic that ensures the project file tree is sent
- * only on the first query in a chat session and not repeated on subsequent
- * queries in the same window.
+ * These tests focus on the logic that builds the project info string which is
+ * injected into the system message on every query. The minimal directory tree
+ * is always included (when non-blank) so the model has a persistent overview
+ * of the project structure throughout the conversation.
  */
 public class AssistantChatManagerTest extends TestBase {
 
@@ -35,8 +36,7 @@ public class AssistantChatManagerTest extends TestBase {
     @Test
     public void buildAgentProjectInfo_includes_file_tree_when_provided() {
         //
-        // On the first query hacker is null, so fileTree is obtained from
-        // ProjectMetadataInfo.getFileTree() and passed in non-blank.
+        // The minimal tree is always passed when a project is selected.
         // Verify that the file tree section is appended to the project info.
         //
         final String result = AssistantChatManager.buildAgentProjectInfo(PROJECT_INFO, FILE_TREE);
@@ -50,9 +50,8 @@ public class AssistantChatManagerTest extends TestBase {
     @Test
     public void buildAgentProjectInfo_excludes_file_tree_and_separator_when_empty() {
         //
-        // On subsequent queries hacker is already cached (non-null), so an
-        // empty string is passed for fileTree. Neither the file tree content
-        // nor the "\n- File Tree:\n" separator must be appended to projectInfo.
+        // When no project is selected, getMinimalTree returns an empty string.
+        // Verify that neither the separator nor an empty tree section is appended.
         //
         final String result = AssistantChatManager.buildAgentProjectInfo(PROJECT_INFO, "");
 
