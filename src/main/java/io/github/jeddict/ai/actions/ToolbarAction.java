@@ -18,10 +18,14 @@ package io.github.jeddict.ai.actions;
 import io.github.jeddict.ai.hints.AssistantChatManager;
 import java.awt.event.ActionEvent;
 import javax.swing.AbstractAction;
+import static javax.swing.Action.LARGE_ICON_KEY;
+import static javax.swing.Action.SMALL_ICON;
+import org.netbeans.api.annotations.common.StaticResource;
 import org.openide.awt.ActionID;
 import org.openide.awt.ActionReference;
 import org.openide.awt.ActionReferences;
 import org.openide.awt.ActionRegistration;
+import org.openide.util.ImageUtilities;
 import org.openide.util.NbBundle.Messages;
 
 /**
@@ -33,9 +37,8 @@ import org.openide.util.NbBundle.Messages;
 )
 @ActionRegistration(
     displayName = "#CTL_ToolbarAction",
-        lazy = true,
-        asynchronous = true,
-        iconBase = "icons/logo.png"
+        lazy = false,
+        asynchronous = true
 )
 @ActionReferences({
     @ActionReference(path = "Toolbars/Build", position = 100)}
@@ -44,6 +47,22 @@ import org.openide.util.NbBundle.Messages;
     {"CTL_ToolbarAction=Jeddict AI Assistant"}
 )
 public final class ToolbarAction extends AbstractAction {
+
+    @StaticResource
+    private static final String ICON_SMALL = "icons/logo.png";
+
+    @StaticResource
+    private static final String ICON_LARGE = "icons/logo24.png";
+
+    /**
+     * Constructs a new ToolbarAction and registers both small (16×16) and
+     * large (24×24) icons so the NetBeans toolbar respects the
+     * "Small Toolbar Icons" preference without pixelation.
+     */
+    public ToolbarAction() {
+        putValue(SMALL_ICON, ImageUtilities.loadImageIcon(ICON_SMALL, false));
+        putValue(LARGE_ICON_KEY, ImageUtilities.loadImageIcon(ICON_LARGE, false));
+    }
 
     /**
      * Opens the AI assistant chat window.
