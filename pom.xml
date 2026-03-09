@@ -45,8 +45,8 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>17</maven.compiler.release>
-        <langchain4j.version>1.11.0</langchain4j.version>
-        <netbeans.version>RELEASE280</netbeans.version>
+        <javalang4j.version>1.10.0</javalang4j.version>
+        <netbeans.version>RELEASE290</netbeans.version>
     </properties>
 
     <build>
@@ -883,10 +883,4 @@
         </dependencies>
     </dependencyManagement>
 
-    <repositories>
-        <repository>
-            <id>orgapachenetbeans</id>
-            <url>https://repository.apache.org/content/repositories/orgapachenetbeans-1149/</url>
-        </repository>
-    </repositories>
 </project>
