@@ -18,7 +18,6 @@ package io.github.jeddict.ai.actions;
 import io.github.jeddict.ai.hints.AssistantChatManager;
 import java.awt.event.ActionEvent;
 import javax.swing.AbstractAction;
-import static javax.swing.Action.LARGE_ICON_KEY;
 import static javax.swing.Action.SMALL_ICON;
 import org.netbeans.api.annotations.common.StaticResource;
 import org.openide.awt.ActionID;
@@ -51,17 +50,22 @@ public final class ToolbarAction extends AbstractAction {
     @StaticResource
     private static final String ICON_SMALL = "icons/logo.png";
 
-    @StaticResource
-    private static final String ICON_LARGE = "icons/logo24.png";
-
     /**
-     * Constructs a new ToolbarAction and registers both small (16×16) and
-     * large (24×24) icons so the NetBeans toolbar respects the
-     * "Small Toolbar Icons" preference without pixelation.
+     * Constructs a new ToolbarAction and sets the {@code "iconBase"} action
+     * value so that NetBeans' {@code Actions$ButtonBridge.updateButtonIcon()}
+     * can load the correct icon variant for the current toolbar size.
+     *
+     * <p>The bridge reads {@code action.getValue("iconBase")} and, when the
+     * button's {@code PreferredIconSize} client property equals 24 (large
+     * toolbar mode), inserts {@code "24"} before the file suffix to load
+     * {@code icons/logo24.png}.  In small toolbar mode it loads the base file
+     * {@code icons/logo.png} directly.  Without {@code "iconBase"} the bridge
+     * falls back to {@code SMALL_ICON} in every mode, causing the 16×16 image
+     * to be scaled up (pixelated) on a large toolbar.
      */
     public ToolbarAction() {
+        putValue("iconBase", ICON_SMALL);
         putValue(SMALL_ICON, ImageUtilities.loadImageIcon(ICON_SMALL, false));
-        putValue(LARGE_ICON_KEY, ImageUtilities.loadImageIcon(ICON_LARGE, false));
     }
 
     /**
