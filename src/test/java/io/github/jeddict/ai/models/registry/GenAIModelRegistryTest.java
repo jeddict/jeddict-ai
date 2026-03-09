@@ -81,12 +81,27 @@ class GenAIModelRegistryTest {
     }
 
     @Test
-    void get_models_returns_empty_map_when_cache_is_empty_and_network_unavailable() throws Exception {
-        // Cache is empty (reset in @BeforeEach) and loadFromHttp() will fail
-        // because it tries to connect to the real openrouter.ai (unavailable in test env).
-        // getModels() must fall back gracefully and return an empty map.
-        Map<String, GenAIModel> result = GenAIModelRegistry.getModels();
-        then(result).isEmpty();
+    void get_models_returns_empty_map_when_cache_is_empty_and_url_is_invalid() throws Exception {
+        // Temporarily point the registry at a guaranteed-invalid URL so that
+        // loadFromHttp() throws, the cache is empty, and getModels() falls back
+        // to an empty map — without depending on external network availability.
+        Field instanceField = GenAIModelRegistry.class.getDeclaredField("REGISTRY_INSTANCE");
+        instanceField.setAccessible(true);
+        GenAIModelRegistry original = (GenAIModelRegistry) instanceField.get(null);
+
+        try {
+            instanceField.set(null, new GenAIModelRegistry() {
+                @Override
+                public String getAPIUrl() {
+                    return "file:///nonexistent/path/that/does/not/exist";
+                }
+            });
+
+            Map<String, GenAIModel> result = GenAIModelRegistry.getModels();
+            then(result).isEmpty();
+        } finally {
+            instanceField.set(null, original);
+        }
     }
 
     @Test
@@ -129,7 +144,7 @@ class GenAIModelRegistryTest {
 
     @Test
     void find_by_name_returns_null_when_not_in_registry() throws Exception {
-        // Cache is empty and no network → returns null
+        // "nonexistent-model" is not present in any known registry, so null is expected.
         GenAIModel found = GenAIModelRegistry.findByName("nonexistent-model");
         then(found).isNull();
     }

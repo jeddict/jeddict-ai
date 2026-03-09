@@ -44,6 +44,9 @@ public class GenAIModelRegistry {
     private static Map<String, GenAIModel> CACHE = new HashMap<>();
     private static long lastLoaded = 0;
 
+    /** Package-private to allow test subclasses to override {@link #getAPIUrl()}. */
+    static GenAIModelRegistry REGISTRY_INSTANCE = new GenAIModelRegistry();
+
     public String getAPIUrl() {
         return API_URL;
     }
@@ -172,7 +175,7 @@ public class GenAIModelRegistry {
     // --------------------------------------------
     private static Map<String, GenAIModel> loadFromHttp() throws Exception {
         HttpURLConnection conn
-                = (HttpURLConnection) new URL(new GenAIModelRegistry().getAPIUrl() + "/models").openConnection();
+                = (HttpURLConnection) new URL(REGISTRY_INSTANCE.getAPIUrl() + "/models").openConnection();
 
         conn.setRequestMethod("GET");
         conn.setConnectTimeout(5000);
