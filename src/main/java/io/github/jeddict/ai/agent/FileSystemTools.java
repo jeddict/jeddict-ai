@@ -89,18 +89,29 @@ public class FileSystemTools extends AbstractCodeTool {
 
         checkPath(path);
 
+        final int start = Math.max(1, fromLine);
+
+        // if toLine is before start (e.g. both < 1) return empty immediately
+        if (toLine < start) {
+            return "";
+        }
+
         try {
             final Path fullPath = fullPath(path);
-            final List<String> lines = Files.readAllLines(fullPath, Charset.defaultCharset());
-
-            final int start = Math.max(1, fromLine);
-            final int end = Math.min(lines.size(), toLine);
-
-            if (start > end) {
-                return "";
+            //
+            // Stream line by line: skip to fromLine then take only the needed
+            // lines. Files.lines() is lazy so we never load the whole file;
+            // limit() naturally stops at EOF when toLine exceeds the file length.
+            //
+            try (Stream<String> stream = Files.lines(fullPath, Charset.defaultCharset())) {
+                // (long) cast ensures the arithmetic is done in 64-bit so there is no
+                // int overflow; start >= 1 and toLine >= start so count >= 1 always.
+                final long count = (long) toLine - start + 1;
+                return stream
+                        .skip(start - 1)
+                        .limit(count)
+                        .collect(Collectors.joining("\n"));
             }
-
-            return String.join("\n", lines.subList(start - 1, end));
         } catch (IOException e) {
             progress("❌ Failed to read file: " + e);
             throw new ToolExecutionException("failed to read file: " + e);
