@@ -89,6 +89,16 @@ public class GradleProjectTools extends ProjectTools implements BuildMetadataRes
     }
 
     @Override
+    public String getProjectType() {
+        return "gradle";
+    }
+
+    @Override
+    public String getBuildFileName() {
+        return gradleFile != null ? gradleFile.getNameExt() : null;
+    }
+
+    @Override
     public Map<String, String> getProjectMetadata() {
         final Map<String, String> metadata = new LinkedHashMap<>();
         final String jdkVersion = getJdkVersion();

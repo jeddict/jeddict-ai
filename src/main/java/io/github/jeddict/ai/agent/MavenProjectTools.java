@@ -85,6 +85,16 @@ public class MavenProjectTools extends ProjectTools implements BuildMetadataReso
     }
 
     @Override
+    public String getProjectType() {
+        return "maven";
+    }
+
+    @Override
+    public String getBuildFileName() {
+        return "pom.xml";
+    }
+
+    @Override
     public Map<String, String> getProjectMetadata() {
         final Map<String, String> metadata = new LinkedHashMap<>();
         final Model model = model();

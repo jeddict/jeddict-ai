@@ -35,11 +35,11 @@ public class ProjectMetadataInfoTest extends TestBase {
         final Project project = project(projectDir);
 
         // Generic path: no BuildMetadataResolver → name comes from the project
-        // directory; EE/JDK fields are absent (they require MavenProjectTools).
+        // directory; type, EE/JDK fields are absent (they require MavenProjectTools).
         final String info = ProjectMetadataInfo.get(project);
         then(info)
             .contains("- folder: " + Paths.get(project.getProjectDirectory().getPath()))
-            .contains("- type: maven")
+            .doesNotContain("- type:")
             .contains("- Source Directory: src/main/java")
             .contains("- Test Source Directory: src/test/java")
             .doesNotContain("- EE Version:")

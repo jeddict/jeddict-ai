@@ -45,6 +45,9 @@ public class ProjectTools extends AbstractTool {
      * <ul>
      *   <li>Maven ({@code pom.xml} present) → {@link MavenProjectTools}</li>
      *   <li>Gradle ({@code build.gradle} or {@code build.gradle.kts}) → {@link GradleProjectTools}</li>
+     *   <li>Ant ({@code build.xml}) → {@link AntProjectTools}</li>
+     *   <li>Node.js ({@code package.json}) → {@link NodeJsProjectTools}</li>
+     *   <li>Python ({@code pyproject.toml}, {@code setup.py}, or {@code requirements.txt}) → {@link PythonProjectTools}</li>
      *   <li>Otherwise → {@link ProjectTools} (generic)</li>
      * </ul>
      */
@@ -56,6 +59,17 @@ public class ProjectTools extends AbstractTool {
         if (dir.getFileObject("build.gradle") != null
                 || dir.getFileObject("build.gradle.kts") != null) {
             return new GradleProjectTools(project);
+        }
+        if (dir.getFileObject("build.xml") != null) {
+            return new AntProjectTools(project);
+        }
+        if (dir.getFileObject("package.json") != null) {
+            return new NodeJsProjectTools(project);
+        }
+        if (dir.getFileObject("pyproject.toml") != null
+                || dir.getFileObject("setup.py") != null
+                || dir.getFileObject("requirements.txt") != null) {
+            return new PythonProjectTools(project);
         }
         return new ProjectTools(project);
     }

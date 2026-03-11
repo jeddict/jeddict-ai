@@ -70,6 +70,20 @@ public class ProjectMetadataInfo {
         String getProjectName();
 
         /**
+         * Returns the build-system type label for this project (e.g. "maven",
+         * "gradle", "ant", "nodejs", "python"). {@code null} means unknown.
+         */
+        String getProjectType();
+
+        /**
+         * Returns the name of the primary build file relative to the project
+         * root (e.g. "pom.xml", "build.gradle", "build.xml"). Used for
+         * cache-invalidation: when the file changes the cached metadata is
+         * discarded. {@code null} means use the project directory mtime.
+         */
+        String getBuildFileName();
+
+        /**
          * Returns an ordered map of project metadata key-value pairs to include
          * in the project info output (e.g. "Java Version" → "11").
          * Implementations should return an empty map when no metadata is
@@ -98,8 +112,11 @@ public class ProjectMetadataInfo {
 
         sb.append("- name: ").append(StringUtils.defaultString(cachedResult.name)).append('\n')
           .append("- folder: ").append(StringUtils.defaultString(cachedResult.folder)).append('\n')
-          .append("- type: ").append(StringUtils.defaultString(cachedResult.type)).append('\n')
         ;
+
+        if (cachedResult.type() != null) {
+            sb.append("- type: ").append(cachedResult.type()).append('\n');
+        }
 
         for (final Map.Entry<String, String> entry : cachedResult.metadata().entrySet()) {
             sb.append("- ").append(entry.getKey()).append(": ").append(entry.getValue()).append('\n');
@@ -125,11 +142,11 @@ public class ProjectMetadataInfo {
     /**
      * Returns (and caches) a {@link CachedResult} for the given project.
      *
-     * <p>When a {@link BuildMetadataResolver} is supplied, extra metadata
-     * key-value pairs and the project name are obtained from it instead of
-     * being read directly from build files. When {@code resolver} is
-     * {@code null} the metadata map is empty — the generic path does not
-     * attempt to parse any build file.</p>
+     * <p>When a {@link BuildMetadataResolver} is supplied, the project type,
+     * build file name, extra metadata key-value pairs, and project name are
+     * all obtained from it. When {@code resolver} is {@code null} type and
+     * metadata are absent — the generic path does not attempt to parse any
+     * build file.</p>
      */
     public static CachedResult getCachedResult(Project project, BuildMetadataResolver resolver) {
         try {
@@ -140,9 +157,12 @@ public class ProjectMetadataInfo {
             final String folder = FilenameUtils.separatorsToSystem(projectDirectory.getPath());
 
             // Use the build file modification time for cache invalidation; fall
-            // back to the project directory mtime for non-standard projects.
-            final FileObject buildFile = firstPresent(projectDirectory,
-                    "pom.xml", "build.gradle", "build.gradle.kts", "build.xml");
+            // back to the project directory mtime when no resolver (or no build
+            // file name) is provided.
+            final String buildFileName = (resolver != null) ? resolver.getBuildFileName() : null;
+            final FileObject buildFile = (buildFileName != null)
+                    ? projectDirectory.getFileObject(buildFileName)
+                    : null;
             final long lastModified = buildFile != null
                     ? new File(buildFile.getPath()).lastModified()
                     : new File(folder).lastModified();
@@ -154,18 +174,16 @@ public class ProjectMetadataInfo {
             // Default project name: directory name.  The resolver may override this.
             String name = projectDirectory.getName();
 
-            // Detect build system from well-known build file names
-            String type = detectProjectType(projectDirectory);
-
-            // Obtain metadata from the resolver (project-type-specific tool).
-            // When no resolver is provided the map is empty — build files are
-            // not parsed directly here.
+            // Project type and metadata come entirely from the resolver.
+            // When no resolver is provided these remain null/empty.
+            String type = null;
             Map<String, String> metadata = Collections.emptyMap();
 
             if (resolver != null) {
                 if (resolver.getProjectName() != null && !resolver.getProjectName().isBlank()) {
                     name = resolver.getProjectName();
                 }
+                type = resolver.getProjectType();
                 final Map<String, String> resolved = resolver.getProjectMetadata();
                 if (resolved != null) {
                     metadata = resolved;
@@ -181,26 +199,6 @@ public class ProjectMetadataInfo {
             LOG.log(Level.WARNING, "Failed to read project metadata", e);
             return null;
         }
-    }
-
-    /** Returns the first of the given filenames that exists under {@code dir}. */
-    private static FileObject firstPresent(FileObject dir, String... names) {
-        for (final String name : names) {
-            final FileObject fo = dir.getFileObject(name);
-            if (fo != null) {
-                return fo;
-            }
-        }
-        return null;
-    }
-
-    /** Detects the build system from well-known build files in the project directory. */
-    public static String detectProjectType(FileObject dir) {
-        if (dir.getFileObject("pom.xml") != null) return "maven";
-        if (dir.getFileObject("build.gradle") != null
-                || dir.getFileObject("build.gradle.kts") != null) return "gradle";
-        if (dir.getFileObject("build.xml") != null) return "ant";
-        return null;
     }
 
     /**
