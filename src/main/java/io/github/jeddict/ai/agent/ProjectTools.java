@@ -45,9 +45,12 @@ public class ProjectTools extends AbstractTool {
      * <ul>
      *   <li>Maven ({@code pom.xml} present) → {@link MavenProjectTools}</li>
      *   <li>Gradle ({@code build.gradle} or {@code build.gradle.kts}) → {@link GradleProjectTools}</li>
+     *   <li>NetBeans Module ({@code nbproject/project.xml}) → {@link NetBeansModuleProjectTools}</li>
      *   <li>Ant ({@code build.xml}) → {@link AntProjectTools}</li>
      *   <li>Node.js ({@code package.json}) → {@link NodeJsProjectTools}</li>
      *   <li>Python ({@code pyproject.toml}, {@code setup.py}, or {@code requirements.txt}) → {@link PythonProjectTools}</li>
+     *   <li>PHP ({@code composer.json}) → {@link PhpProjectTools}</li>
+     *   <li>CMake/Make ({@code CMakeLists.txt}, {@code Makefile}, or {@code makefile}) → {@link MakefileProjectTools}</li>
      *   <li>Otherwise → {@link ProjectTools} (generic)</li>
      * </ul>
      */
@@ -60,6 +63,11 @@ public class ProjectTools extends AbstractTool {
                 || dir.getFileObject("build.gradle.kts") != null) {
             return new GradleProjectTools(project);
         }
+        // NetBeans module projects often also have build.xml; check nbproject/ first
+        final FileObject nbproject = dir.getFileObject("nbproject");
+        if (nbproject != null && nbproject.getFileObject("project.xml") != null) {
+            return new NetBeansModuleProjectTools(project);
+        }
         if (dir.getFileObject("build.xml") != null) {
             return new AntProjectTools(project);
         }
@@ -70,6 +78,14 @@ public class ProjectTools extends AbstractTool {
                 || dir.getFileObject("setup.py") != null
                 || dir.getFileObject("requirements.txt") != null) {
             return new PythonProjectTools(project);
+        }
+        if (dir.getFileObject("composer.json") != null) {
+            return new PhpProjectTools(project);
+        }
+        if (dir.getFileObject("CMakeLists.txt") != null
+                || dir.getFileObject("Makefile") != null
+                || dir.getFileObject("makefile") != null) {
+            return new MakefileProjectTools(project);
         }
         return new ProjectTools(project);
     }

@@ -40,17 +40,24 @@ import org.openide.filesystems.FileObject;
 public class GradleProjectTools extends ProjectTools implements BuildMetadataResolver {
 
     /**
-     * Matches Gradle dependency declarations in both Groovy DSL and Kotlin DSL:
+     * Matches Groovy DSL dependency declarations (unparenthesised):
      * <ul>
      *   <li>{@code implementation 'com.example:lib:1.0'}</li>
-     *   <li>{@code implementation("com.example:lib:1.0")}</li>
-     *   <li>{@code api 'com.example:lib:1.0'}</li>
+     *   <li>{@code implementation "com.example:lib:1.0"}</li>
      * </ul>
      */
-    private static final Pattern DEPENDENCY_DECL =
-            Pattern.compile(
-                "^\\s*(\\w+)\\s*[\\(\"']([\\w.\\-]+:[\\w.\\-]+(?::[\\w.\\-+]+)?)[\"']\\s*\\)?",
-                Pattern.MULTILINE);
+    private static final Pattern DEP_GROOVY =
+            Pattern.compile("^\\s*(\\w+)\\s+[\"']([^\"']+)[\"']", Pattern.MULTILINE);
+
+    /**
+     * Matches Kotlin DSL dependency declarations (parenthesised):
+     * <ul>
+     *   <li>{@code implementation("com.example:lib:1.0")}</li>
+     *   <li>{@code implementation('com.example:lib:1.0')}</li>
+     * </ul>
+     */
+    private static final Pattern DEP_KOTLIN =
+            Pattern.compile("^\\s*(\\w+)\\s*\\([\"']([^\"']+)[\"']\\)", Pattern.MULTILINE);
 
     /** Matches {@code sourceCompatibility = '11'} / {@code = JavaVersion.VERSION_11} etc. */
     private static final Pattern SOURCE_COMPAT =
@@ -148,11 +155,9 @@ public class GradleProjectTools extends ProjectTools implements BuildMetadataRes
         if (content == null) {
             return "Unable to read Gradle build file";
         }
-        final Matcher m = DEPENDENCY_DECL.matcher(content);
         final StringBuilder sb = new StringBuilder();
-        while (m.find()) {
-            sb.append(m.group(1)).append(' ').append(m.group(2)).append('\n');
-        }
+        collectDeps(sb, DEP_GROOVY.matcher(content));
+        collectDeps(sb, DEP_KOTLIN.matcher(content));
         return sb.length() == 0
                 ? "No dependencies declared in Gradle build file"
                 : sb.toString().trim();
@@ -204,5 +209,20 @@ public class GradleProjectTools extends ProjectTools implements BuildMetadataRes
         // Strip surrounding quotes
         raw = raw.replaceAll("['\"]", "").trim();
         return raw.isEmpty() ? null : raw;
+    }
+
+    /**
+     * Appends entries matched by {@code matcher} to {@code sb}.
+     * Only coordinates containing at least one {@code :} (i.e. real
+     * {@code groupId:artifactId[:version]} strings) are included so that
+     * unrelated string literals are silently skipped.
+     */
+    private static void collectDeps(final StringBuilder sb, final Matcher matcher) {
+        while (matcher.find()) {
+            final String coord = matcher.group(2);
+            if (coord.contains(":")) {
+                sb.append(matcher.group(1)).append(' ').append(coord).append('\n');
+            }
+        }
     }
 }
