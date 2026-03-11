@@ -110,9 +110,41 @@ public class NodeJsProjectTools extends ProjectTools implements BuildMetadataRes
         return metadata;
     }
 
+    @Override
+    @Tool(
+        name = "projectDependencies",
+        value = "Return the list of dependencies declared in package.json (dependencies and devDependencies), one per line as name:version (type)"
+    )
+    @ToolPolicy(READONLY)
+    public String projectDependencies() throws Exception {
+        progress("Reading dependencies from package.json");
+        final JSONObject json = json();
+        if (json == null) {
+            return "Unable to read package.json";
+        }
+        final StringBuilder sb = new StringBuilder();
+        appendDeps(sb, json.optJSONObject("dependencies"), "dependency");
+        appendDeps(sb, json.optJSONObject("devDependencies"), "devDependency");
+        return sb.length() == 0
+                ? "No dependencies declared in package.json"
+                : sb.toString().trim();
+    }
+
     // -----------------------------------------------------------------------
     // Internal helpers
     // -----------------------------------------------------------------------
+
+    private static void appendDeps(final StringBuilder sb, final JSONObject deps,
+                                   final String type) {
+        if (deps == null) {
+            return;
+        }
+        for (final String name : deps.keySet()) {
+            sb.append(name).append(':')
+              .append(deps.getString(name))
+              .append(" (").append(type).append(")\n");
+        }
+    }
 
     private JSONObject json() {
         if (!jsonParsed) {

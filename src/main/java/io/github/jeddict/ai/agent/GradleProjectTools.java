@@ -39,6 +39,19 @@ import org.openide.filesystems.FileObject;
  */
 public class GradleProjectTools extends ProjectTools implements BuildMetadataResolver {
 
+    /**
+     * Matches Gradle dependency declarations in both Groovy DSL and Kotlin DSL:
+     * <ul>
+     *   <li>{@code implementation 'com.example:lib:1.0'}</li>
+     *   <li>{@code implementation("com.example:lib:1.0")}</li>
+     *   <li>{@code api 'com.example:lib:1.0'}</li>
+     * </ul>
+     */
+    private static final Pattern DEPENDENCY_DECL =
+            Pattern.compile(
+                "^\\s*(\\w+)\\s*[\\(\"']([\\w.\\-]+:[\\w.\\-]+(?::[\\w.\\-+]+)?)[\"']\\s*\\)?",
+                Pattern.MULTILINE);
+
     /** Matches {@code sourceCompatibility = '11'} / {@code = JavaVersion.VERSION_11} etc. */
     private static final Pattern SOURCE_COMPAT =
             Pattern.compile("sourceCompatibility\\s*=\\s*['\"]?([\\w.]+)['\"]?");
@@ -121,6 +134,28 @@ public class GradleProjectTools extends ProjectTools implements BuildMetadataRes
         progress("Reading JDK version from Gradle build file");
         final String v = getJdkVersion();
         return v != null ? v : "No sourceCompatibility / jvmTarget found in Gradle build file";
+    }
+
+    @Override
+    @Tool(
+        name = "projectDependencies",
+        value = "Return the list of dependencies declared in this Gradle project's build file, one per line as configuration groupId:artifactId:version"
+    )
+    @ToolPolicy(READONLY)
+    public String projectDependencies() throws Exception {
+        progress("Reading dependencies from Gradle build file");
+        final String content = content();
+        if (content == null) {
+            return "Unable to read Gradle build file";
+        }
+        final Matcher m = DEPENDENCY_DECL.matcher(content);
+        final StringBuilder sb = new StringBuilder();
+        while (m.find()) {
+            sb.append(m.group(1)).append(' ').append(m.group(2)).append('\n');
+        }
+        return sb.length() == 0
+                ? "No dependencies declared in Gradle build file"
+                : sb.toString().trim();
     }
 
     // -----------------------------------------------------------------------

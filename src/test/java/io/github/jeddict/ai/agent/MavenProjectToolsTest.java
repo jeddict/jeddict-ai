@@ -106,4 +106,24 @@ public class MavenProjectToolsTest extends TestBase {
         then(tool.eeVersion()).contains("No EE dependency");
     }
 
+    @Test
+    public void projectDependencies_returns_dependency_list_for_jakarta_project()
+    throws Exception {
+        final Path homePath = Paths.get(".").toAbsolutePath().normalize();
+        final String dir = homePath.resolve("src/test/projects/jakarta").toString();
+        final MavenProjectTools tool = new MavenProjectTools(project(dir));
+        then(tool.projectDependencies())
+            .contains("jakarta.platform:jakarta.jakartaee-api:10.0.0")
+            .contains("(provided)");
+    }
+
+    @Test
+    public void projectDependencies_returns_message_when_no_deps()
+    throws Exception {
+        final Path homePath = Paths.get(".").toAbsolutePath().normalize();
+        final String dir = homePath.resolve("src/test/projects/minimal").toString();
+        final MavenProjectTools tool = new MavenProjectTools(project(dir));
+        then(tool.projectDependencies()).contains("No dependencies declared");
+    }
+
 }

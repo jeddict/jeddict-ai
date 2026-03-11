@@ -155,4 +155,15 @@ public class ProjectTools extends AbstractTool {
         progress("Gathering project test resources directory: " + project());
         return ProjectMetadataInfo.getTestResourceDir(project());
     }
+
+    @Tool(
+        name = "projectDependencies",
+        value = "Return the list of dependencies declared in the project's build file"
+    )
+    @ToolPolicy(READONLY)
+    public String projectDependencies()
+    throws Exception {
+        progress("Gathering project dependencies: " + project());
+        return "No dependency information available for this project type";
+    }
 }

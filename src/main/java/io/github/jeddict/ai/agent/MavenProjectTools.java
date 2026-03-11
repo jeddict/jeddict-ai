@@ -151,6 +151,35 @@ public class MavenProjectTools extends ProjectTools implements BuildMetadataReso
         return v != null ? v : "No compiler version found in pom.xml";
     }
 
+    @Override
+    @Tool(
+        name = "projectDependencies",
+        value = "Return the list of Maven dependencies declared in pom.xml, one per line as groupId:artifactId:version (scope)"
+    )
+    @ToolPolicy(READONLY)
+    public String projectDependencies() throws Exception {
+        progress("Reading dependencies from pom.xml");
+        final Model model = model();
+        if (model == null) {
+            return "Unable to read pom.xml";
+        }
+        final List<Dependency> deps = model.getDependencies();
+        if (deps == null || deps.isEmpty()) {
+            return "No dependencies declared in pom.xml";
+        }
+        final StringBuilder sb = new StringBuilder();
+        for (final Dependency dep : deps) {
+            sb.append(dep.getGroupId()).append(':')
+              .append(dep.getArtifactId()).append(':')
+              .append(dep.getVersion() != null ? dep.getVersion() : "(managed)");
+            if (dep.getScope() != null) {
+                sb.append(" (").append(dep.getScope()).append(')');
+            }
+            sb.append('\n');
+        }
+        return sb.toString().trim();
+    }
+
     // -----------------------------------------------------------------------
     // Internal helpers
     // -----------------------------------------------------------------------

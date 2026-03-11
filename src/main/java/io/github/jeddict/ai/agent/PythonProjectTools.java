@@ -40,6 +40,10 @@ import org.openide.filesystems.FileObject;
  */
 public class PythonProjectTools extends ProjectTools implements BuildMetadataResolver {
 
+    /** Matches the start of the {@code [project.dependencies]} or {@code [tool.poetry.dependencies]} TOML section. */
+    private static final Pattern PYPROJECT_DEPS_SECTION =
+            Pattern.compile("(?m)^\\[(?:project|tool\\.poetry)\\.dependencies\\]");
+
     /** Matches {@code name = "my-package"} in pyproject.toml. */
     private static final Pattern PYPROJECT_NAME =
             Pattern.compile("(?m)^name\\s*=\\s*['\"]([^'\"]+)['\"]");
@@ -134,9 +138,62 @@ public class PythonProjectTools extends ProjectTools implements BuildMetadataRes
         return metadata;
     }
 
+    @Override
+    @Tool(
+        name = "projectDependencies",
+        value = "Return the list of dependencies declared in the Python project's build file (requirements.txt, pyproject.toml, or setup.py)"
+    )
+    @ToolPolicy(READONLY)
+    public String projectDependencies() throws Exception {
+        progress("Reading dependencies from " + (buildFileName != null ? buildFileName : "build file"));
+        final String content = content();
+        if (content == null || buildFileName == null) {
+            return "Unable to read Python build file";
+        }
+        return switch (buildFileName) {
+            case "requirements.txt" -> parseRequirementsTxt(content);
+            case "pyproject.toml"   -> parsePyprojectDeps(content);
+            default                 -> "No dependency information available for " + buildFileName;
+        };
+    }
+
     // -----------------------------------------------------------------------
     // Internal helpers
     // -----------------------------------------------------------------------
+
+    private static String parseRequirementsTxt(final String content) {
+        final StringBuilder sb = new StringBuilder();
+        for (final String line : content.split("\\R")) {
+            final String trimmed = line.trim();
+            // Skip blank lines and comments
+            if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+                continue;
+            }
+            sb.append(trimmed).append('\n');
+        }
+        return sb.length() == 0 ? "No dependencies declared in requirements.txt" : sb.toString().trim();
+    }
+
+    private static String parsePyprojectDeps(final String content) {
+        final Matcher sectionMatcher = PYPROJECT_DEPS_SECTION.matcher(content);
+        if (!sectionMatcher.find()) {
+            return "No [project.dependencies] or [tool.poetry.dependencies] section found in pyproject.toml";
+        }
+        // Collect lines after the section header until the next section
+        final String afterSection = content.substring(sectionMatcher.end());
+        final StringBuilder sb = new StringBuilder();
+        for (final String line : afterSection.split("\\R")) {
+            final String trimmed = line.trim();
+            if (trimmed.startsWith("[")) {
+                break; // start of next section
+            }
+            if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+                continue;
+            }
+            sb.append(trimmed).append('\n');
+        }
+        return sb.length() == 0 ? "No dependencies listed in pyproject.toml" : sb.toString().trim();
+    }
 
     private String content() {
         if (!contentRead) {
