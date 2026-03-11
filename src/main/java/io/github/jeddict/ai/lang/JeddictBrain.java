@@ -324,8 +324,8 @@ public class JeddictBrain implements PropertyChangeEmitter {
             .chatModel(model(false, null))
             .tools(probeTool)
             .build();
-        final boolean toolsSupport = prober.probe(probeTool.probeText);
 
+        try {
             final boolean toolsSupport = prober.probe(probeTool.probeText);
 
             probedModels.put(modelName, toolsSupport);
@@ -333,7 +333,7 @@ public class JeddictBrain implements PropertyChangeEmitter {
             LOG.info(
                 LOG_MSG.formatted(modelName, (toolsSupport) ? "supports" : "does not support")
             );
-            
+
             return toolsSupport;
         } catch (final NoClassDefFoundError e) {
             LOG.severe(() ->
