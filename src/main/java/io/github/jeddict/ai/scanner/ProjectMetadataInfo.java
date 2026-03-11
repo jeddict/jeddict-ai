@@ -17,22 +17,29 @@ package io.github.jeddict.ai.scanner;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.model.Plugin;
-import org.apache.maven.model.Resource;
 import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
+import org.netbeans.api.java.project.JavaProjectConstants;
+import org.netbeans.api.java.queries.UnitTestForSourceQuery;
 import org.netbeans.api.project.Project;
+import org.netbeans.api.project.ProjectUtils;
+import org.netbeans.api.project.SourceGroup;
+import org.netbeans.api.project.Sources;
 import org.netbeans.modules.maven.api.NbMavenProject;
+import org.openide.filesystems.FileObject;
+import org.openide.filesystems.URLMapper;
 
 /**
  *
@@ -205,64 +212,167 @@ public class ProjectMetadataInfo {
      * Returns the main Java sources directory path relative to the project
      * root (e.g. {@code src/main/java}).
      *
+     * <p>Uses the NetBeans {@link Sources} API first so that any project type
+     * (Gradle, Ant, …) is handled uniformly. Falls back to the Maven
+     * {@code NbMavenProject} API when the generic API returns no groups (e.g.
+     * when the Maven NetBeans module is not fully initialised). Returns an
+     * empty string for non-Java and non-Maven projects.</p>
+     *
      * @param project the project to query
      * @return the relative path, or an empty string if not determinable
      */
     public static String getSrcDir(Project project) {
-        final MavenProject mp = getMavenProject(project);
-        return mp == null ? "" : relativize(project, mp.getBuild().getSourceDirectory());
+        if (project == null) {
+            return "";
+        }
+        final SourceGroup[] groups = ProjectUtils.getSources(project)
+                .getSourceGroups(JavaProjectConstants.SOURCES_TYPE_JAVA);
+        if (groups.length > 0) {
+            final Set<FileObject> testRoots = findTestRoots(groups);
+            for (final SourceGroup sg : groups) {
+                if (!testRoots.contains(sg.getRootFolder())) {
+                    return relativize(project, sg.getRootFolder().getPath());
+                }
+            }
+        }
+        final NbMavenProject nbMaven = project.getLookup().lookup(NbMavenProject.class);
+        if (nbMaven != null) {
+            return relativize(project, nbMaven.getMavenProject().getBuild().getSourceDirectory());
+        }
+        return "";
     }
 
     /**
      * Returns the main resources directory path relative to the project root
      * (e.g. {@code src/main/resources}).
      *
+     * <p>Uses the NetBeans {@link Sources} API first so that any project type
+     * (Gradle, Ant, …) is handled uniformly. Falls back to the Maven
+     * {@code NbMavenProject} API when no resource source groups are registered.
+     * Returns an empty string for projects with no resource roots.</p>
+     *
      * @param project the project to query
      * @return the relative path, or an empty string if not determinable
      */
     public static String getSrcResourceDir(Project project) {
-        final MavenProject mp = getMavenProject(project);
-        if (mp == null) {
+        if (project == null) {
             return "";
         }
-        final List<Resource> resources = mp.getBuild().getResources();
-        return resources.isEmpty() ? "" : relativize(project, resources.get(0).getDirectory());
+        final SourceGroup[] groups = ProjectUtils.getSources(project)
+                .getSourceGroups("resources");
+        if (groups.length > 0) {
+            final Set<FileObject> testRoots = findTestRoots(groups);
+            for (final SourceGroup sg : groups) {
+                if (!testRoots.contains(sg.getRootFolder())) {
+                    return relativize(project, sg.getRootFolder().getPath());
+                }
+            }
+        }
+        final NbMavenProject nbMaven = project.getLookup().lookup(NbMavenProject.class);
+        if (nbMaven != null) {
+            final var resources = nbMaven.getMavenProject().getBuild().getResources();
+            if (!resources.isEmpty()) {
+                return relativize(project, resources.get(0).getDirectory());
+            }
+        }
+        return "";
     }
 
     /**
      * Returns the test Java sources directory path relative to the project
      * root (e.g. {@code src/test/java}).
      *
+     * <p>Uses the NetBeans {@link Sources} API first so that any project type
+     * (Gradle, Ant, …) is handled uniformly. Falls back to the Maven
+     * {@code NbMavenProject} API when the generic API returns no groups.
+     * Returns an empty string for non-Java and non-Maven projects.</p>
+     *
      * @param project the project to query
      * @return the relative path, or an empty string if not determinable
      */
     public static String getTestDir(Project project) {
-        final MavenProject mp = getMavenProject(project);
-        return mp == null ? "" : relativize(project, mp.getBuild().getTestSourceDirectory());
+        if (project == null) {
+            return "";
+        }
+        final SourceGroup[] groups = ProjectUtils.getSources(project)
+                .getSourceGroups(JavaProjectConstants.SOURCES_TYPE_JAVA);
+        if (groups.length > 0) {
+            final Set<FileObject> testRoots = findTestRoots(groups);
+            for (final SourceGroup sg : groups) {
+                if (testRoots.contains(sg.getRootFolder())) {
+                    return relativize(project, sg.getRootFolder().getPath());
+                }
+            }
+        }
+        final NbMavenProject nbMaven = project.getLookup().lookup(NbMavenProject.class);
+        if (nbMaven != null) {
+            return relativize(project, nbMaven.getMavenProject().getBuild().getTestSourceDirectory());
+        }
+        return "";
     }
 
     /**
      * Returns the test resources directory path relative to the project root
      * (e.g. {@code src/test/resources}).
      *
+     * <p>Uses the NetBeans {@link Sources} API first so that any project type
+     * (Gradle, Ant, …) is handled uniformly. Falls back to the Maven
+     * {@code NbMavenProject} API when no test resource source groups are
+     * registered. Returns an empty string for projects with no test resource
+     * roots.</p>
+     *
      * @param project the project to query
      * @return the relative path, or an empty string if not determinable
      */
     public static String getTestResourceDir(Project project) {
-        final MavenProject mp = getMavenProject(project);
-        if (mp == null) {
+        if (project == null) {
             return "";
         }
-        final List<Resource> resources = mp.getBuild().getTestResources();
-        return resources.isEmpty() ? "" : relativize(project, resources.get(0).getDirectory());
+        final SourceGroup[] groups = ProjectUtils.getSources(project)
+                .getSourceGroups("resources");
+        if (groups.length > 0) {
+            final Set<FileObject> testRoots = findTestRoots(groups);
+            for (final SourceGroup sg : groups) {
+                if (testRoots.contains(sg.getRootFolder())) {
+                    return relativize(project, sg.getRootFolder().getPath());
+                }
+            }
+        }
+        final NbMavenProject nbMaven = project.getLookup().lookup(NbMavenProject.class);
+        if (nbMaven != null) {
+            final var resources = nbMaven.getMavenProject().getBuild().getTestResources();
+            if (!resources.isEmpty()) {
+                return relativize(project, resources.get(0).getDirectory());
+            }
+        }
+        return "";
     }
 
-    private static MavenProject getMavenProject(Project project) {
-        if (project == null) {
-            return null;
+    /**
+     * Identifies which roots among {@code groups} are test roots.
+     *
+     * <p>For each source group the NetBeans {@link UnitTestForSourceQuery} is
+     * asked for its associated unit-test roots. Any root that appears as a
+     * test-target of another group in the same set is considered a test root.
+     * This mirrors the logic in {@code ProjectUtil.getTestSourceGroups} but
+     * operates purely on a pre-fetched array and returns {@link FileObject}
+     * roots for O(1) lookup.</p>
+     */
+    private static Set<FileObject> findTestRoots(final SourceGroup[] groups) {
+        final Map<FileObject, Boolean> folderIndex = new HashMap<>();
+        for (final SourceGroup sg : groups) {
+            folderIndex.put(sg.getRootFolder(), Boolean.FALSE);
         }
-        final NbMavenProject nbMavenProject = project.getLookup().lookup(NbMavenProject.class);
-        return nbMavenProject == null ? null : nbMavenProject.getMavenProject();
+        final Set<FileObject> testRoots = new HashSet<>();
+        for (final SourceGroup sg : groups) {
+            for (final URL url : UnitTestForSourceQuery.findUnitTests(sg.getRootFolder())) {
+                final FileObject fo = URLMapper.findFileObject(url);
+                if (fo != null && folderIndex.containsKey(fo)) {
+                    testRoots.add(fo);
+                }
+            }
+        }
+        return testRoots;
     }
 
     private static String relativize(Project project, String absolutePath) {
@@ -276,7 +386,7 @@ public class ProjectMetadataInfo {
                 return projectRoot.relativize(absolute).toString();
             }
             return absolutePath;
-        } catch (Exception e) {
+        } catch (final IllegalArgumentException e) {
             return absolutePath;
         }
     }
