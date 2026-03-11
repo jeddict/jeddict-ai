@@ -16,7 +16,7 @@
 package io.github.jeddict.ai.models.registry;
 
 /**
- * Class representing GenAI models used in AI analysis.
+ * Immutable record representing a GenAI model used in AI analysis.
  *
  * <p>
  * Notes:
@@ -30,59 +30,30 @@ package io.github.jeddict.ai.models.registry;
  *
  * Author: Shiwani Gupta, Gaurav Gupta
  */
-public class GenAIModel {
+public record GenAIModel(
+        GenAIProvider provider,
+        String name,
+        String description,
+        double inputPrice,
+        double outputPrice) {
 
     public static String DEFAULT_MODEL = "gpt-5-nano";
-    private final GenAIProvider provider;
-    private final String name;
-    private final String description;
-    private final double inputPrice;
-    private final double outputPrice;
-
-    public GenAIModel(
-            GenAIProvider provider,
-            String name,
-            String description,
-            double inputPrice,
-            double outputPrice
-    ) {
-        this.provider = provider;
-        this.name = normalizeName(name);
-        this.description = description;
-        this.inputPrice = inputPrice;
-        this.outputPrice = outputPrice;
-    }
 
     /**
-     * Ensures model name never contains provider prefix. Examples: -
-     * openai/gpt-5-nano → gpt-5-nano - mistralai/devstral-2512 → devstral-2512
+     * Compact constructor that normalizes the model name by removing the
+     * provider prefix. Examples: openai/gpt-5-nano → gpt-5-nano,
+     * mistralai/devstral-2512 → devstral-2512
      */
+    public GenAIModel {
+        name = normalizeName(name);
+    }
+
     private static String normalizeName(String rawName) {
         if (rawName == null) {
             return null;
         }
         int idx = rawName.lastIndexOf('/');
         return idx >= 0 ? rawName.substring(idx + 1) : rawName;
-    }
-
-    public GenAIProvider getProvider() {
-        return provider;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public double getInputPrice() {
-        return inputPrice;
-    }
-
-    public double getOutputPrice() {
-        return outputPrice;
     }
 
     @Override
