@@ -17,6 +17,7 @@
 package io.github.jeddict.ai.scanner;
 
 import com.github.caciocavallosilano.cacio.ctc.junit.CacioTest;
+import io.github.jeddict.ai.agent.MavenProjectTools;
 import io.github.jeddict.ai.test.TestBase;
 import java.nio.file.Paths;
 import static org.assertj.core.api.BDDAssertions.then;
@@ -32,10 +33,28 @@ public class ProjectMetadataInfoTest extends TestBase {
     @Test
     public void get_returns_basic_info_for_maven_project() throws Exception {
         final Project project = project(projectDir);
-        
+
+        // Generic path: no BuildMetadataResolver → name comes from the project
+        // directory; EE/JDK fields are absent (they require MavenProjectTools).
         final String info = ProjectMetadataInfo.get(project);
         then(info)
-            .contains("- name: name")
+            .contains("- folder: " + Paths.get(project.getProjectDirectory().getPath()))
+            .contains("- type: maven")
+            .contains("- Source Directory: src/main/java")
+            .contains("- Test Source Directory: src/test/java")
+            .doesNotContain("- EE Version:")
+            .doesNotContain("- Java Version:");
+    }
+
+    @Test
+    public void get_with_resolver_returns_maven_metadata() throws Exception {
+        final Project project = project(projectDir);
+
+        // MavenProjectTools acts as the BuildMetadataResolver: reads pom.xml.
+        final MavenProjectTools resolver = new MavenProjectTools(project);
+        final String info = ProjectMetadataInfo.get(project, resolver);
+        then(info)
+            .contains("- name: name")        // <name> from pom.xml
             .contains("- folder: " + Paths.get(project.getProjectDirectory().getPath()))
             .contains("- type: maven")
             .contains("- Source Directory: src/main/java")

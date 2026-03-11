@@ -20,10 +20,14 @@ import io.github.jeddict.ai.scanner.ProjectMetadataInfo;
 import org.netbeans.api.project.Project;
 import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READONLY;
 import java.io.IOException;
+import org.openide.filesystems.FileObject;
 
 /**
  * Tool to return information about the project: jdk version, j2ee version,
  * and file tree structure.
+ *
+ * <p>This is the generic base class. Use {@link #forProject(Project)} to
+ * obtain the most specific subclass for the project's build system.</p>
  */
 public class ProjectTools extends AbstractTool {
 
@@ -34,6 +38,33 @@ public class ProjectTools extends AbstractTool {
         this.project = project;
     }
 
+    /**
+     * Factory method that returns the most specific {@link ProjectTools}
+     * subclass for the given project's build system.
+     *
+     * <ul>
+     *   <li>Maven ({@code pom.xml} present) → {@link MavenProjectTools}</li>
+     *   <li>Gradle ({@code build.gradle} or {@code build.gradle.kts}) → {@link GradleProjectTools}</li>
+     *   <li>Otherwise → {@link ProjectTools} (generic)</li>
+     * </ul>
+     */
+    public static ProjectTools forProject(final Project project) throws IOException {
+        final FileObject dir = project.getProjectDirectory();
+        if (dir.getFileObject("pom.xml") != null) {
+            return new MavenProjectTools(project);
+        }
+        if (dir.getFileObject("build.gradle") != null
+                || dir.getFileObject("build.gradle.kts") != null) {
+            return new GradleProjectTools(project);
+        }
+        return new ProjectTools(project);
+    }
+
+    /** Returns the NB {@link Project} this tool is bound to. */
+    protected Project project() {
+        return project;
+    }
+
     @Tool(
         name = "projectInfo",
         value = "Return information about the project: jdk version, j2ee version"
@@ -41,8 +72,8 @@ public class ProjectTools extends AbstractTool {
     @ToolPolicy(READONLY)
     public String projectInfo()
     throws Exception {
-        progress("Gathering project info: " + project);
-        return ProjectMetadataInfo.get(project);
+        progress("Gathering project info: " + project());
+        return ProjectMetadataInfo.get(project());
     }
 
     @Tool(
@@ -52,8 +83,8 @@ public class ProjectTools extends AbstractTool {
     @ToolPolicy(READONLY)
     public String projectFileTree()
     throws Exception {
-        progress("Gathering project file tree: " + project);
-        return ProjectMetadataInfo.getFileTree(project);
+        progress("Gathering project file tree: " + project());
+        return ProjectMetadataInfo.getFileTree(project());
     }
 
     @Tool(
@@ -63,8 +94,8 @@ public class ProjectTools extends AbstractTool {
     @ToolPolicy(READONLY)
     public String projectMinimalTree()
     throws Exception {
-        progress("Gathering project minimal tree: " + project);
-        return ProjectMetadataInfo.getMinimalTree(project);
+        progress("Gathering project minimal tree: " + project());
+        return ProjectMetadataInfo.getMinimalTree(project());
     }
 
     @Tool(
@@ -74,8 +105,8 @@ public class ProjectTools extends AbstractTool {
     @ToolPolicy(READONLY)
     public String projectSrcDir()
     throws Exception {
-        progress("Gathering project source directory: " + project);
-        return ProjectMetadataInfo.getSrcDir(project);
+        progress("Gathering project source directory: " + project());
+        return ProjectMetadataInfo.getSrcDir(project());
     }
 
     @Tool(
@@ -85,8 +116,8 @@ public class ProjectTools extends AbstractTool {
     @ToolPolicy(READONLY)
     public String projectSrcResourceDir()
     throws Exception {
-        progress("Gathering project source resources directory: " + project);
-        return ProjectMetadataInfo.getSrcResourceDir(project);
+        progress("Gathering project source resources directory: " + project());
+        return ProjectMetadataInfo.getSrcResourceDir(project());
     }
 
     @Tool(
@@ -96,8 +127,8 @@ public class ProjectTools extends AbstractTool {
     @ToolPolicy(READONLY)
     public String projectTestDir()
     throws Exception {
-        progress("Gathering project test directory: " + project);
-        return ProjectMetadataInfo.getTestDir(project);
+        progress("Gathering project test directory: " + project());
+        return ProjectMetadataInfo.getTestDir(project());
     }
 
     @Tool(
@@ -107,7 +138,7 @@ public class ProjectTools extends AbstractTool {
     @ToolPolicy(READONLY)
     public String projectTestResourceDir()
     throws Exception {
-        progress("Gathering project test resources directory: " + project);
-        return ProjectMetadataInfo.getTestResourceDir(project);
+        progress("Gathering project test resources directory: " + project());
+        return ProjectMetadataInfo.getTestResourceDir(project());
     }
 }

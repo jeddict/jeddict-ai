@@ -17,14 +17,12 @@ package io.github.jeddict.ai.scanner;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
@@ -33,10 +31,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.maven.model.Model;
-import org.apache.maven.model.Plugin;
-import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
-import org.codehaus.plexus.util.xml.Xpp3Dom;
 import io.github.jeddict.ai.settings.PreferencesManager;
 import org.netbeans.api.java.project.JavaProjectConstants;
 import org.netbeans.api.java.queries.UnitTestForSourceQuery;
@@ -62,12 +56,35 @@ public class ProjectMetadataInfo {
 
     private static final Map<Project, CachedResult> cache = new HashMap<>();
 
+    /**
+     * Optional hook that project-type-specific tools (e.g. MavenProjectTools,
+     * GradleProjectTools) implement so that {@link ProjectMetadataInfo} can
+     * obtain metadata without parsing build files directly.
+     *
+     * <p>This interface lives here (scanner package) so that the agent package
+     * can depend on scanner — not the other way round.</p>
+     */
+    public interface BuildMetadataResolver {
+        /** Returns the project display name, or {@code null} to keep the default. */
+        String getProjectName();
+
+        /** Returns the EE version string (e.g. "jakarta", "javax") or {@code null}. */
+        String getEeVersion();
+
+        /** Returns the JDK/compiler source version string or {@code null}. */
+        String getJdkVersion();
+    }
+
     public static String get(Project project) {
+        return get(project, null);
+    }
+
+    public static String get(Project project, BuildMetadataResolver resolver) {
         if (project == null) {
             return "";
         }
 
-        final CachedResult cachedResult = getCachedResult(project);
+        final CachedResult cachedResult = getCachedResult(project, resolver);
 
         // Check if cachedResult is null and handle accordingly
         if (cachedResult == null) {
@@ -110,6 +127,19 @@ public class ProjectMetadataInfo {
     }
 
     public static CachedResult getCachedResult(Project project) {
+        return getCachedResult(project, null);
+    }
+
+    /**
+     * Returns (and caches) a {@link CachedResult} for the given project.
+     *
+     * <p>When a {@link BuildMetadataResolver} is supplied, EE version, JDK
+     * version, and project name are obtained from it instead of being read
+     * directly from build files. When {@code resolver} is {@code null} those
+     * fields are left as {@code null} — the generic path does not attempt to
+     * parse any build file.</p>
+     */
+    public static CachedResult getCachedResult(Project project, BuildMetadataResolver resolver) {
         try {
             // Check if the project is cached
             CachedResult cachedResult = cache.get(project);
@@ -129,38 +159,31 @@ public class ProjectMetadataInfo {
                 return cachedResult;
             }
 
-            // Project name: read from the build file when available so we don't
-            // depend on the NB global Lookup (which is not initialized in unit tests).
-            // For Maven projects, use the <name> element (or artifactId as fallback).
-            // For other project types, use the project directory name as a sensible default.
+            // Default project name: directory name.  The resolver may override this.
             String name = projectDirectory.getName();
 
             // Detect build system from well-known build file names
             String type = detectProjectType(projectDirectory);
 
+            // Obtain EE/JDK metadata from the resolver (project-type-specific tool).
+            // When no resolver is provided these values remain null — build files
+            // are not parsed directly here any more.
             String eeVersion = null;
             String jdkVersion = null;
             String importPrefix = null;
 
-            // Parse pom.xml directly (MavenXpp3Reader, no NbMavenProject)
-            if (buildFile != null && "pom.xml".equals(buildFile.getNameExt())) {
-                final MavenXpp3Reader reader = new MavenXpp3Reader();
-                try (final InputStream in = buildFile.getInputStream()) {
-                    final Model model = reader.read(in);
-                    if (model.getName() != null && !model.getName().isBlank()) {
-                        name = model.getName();
+            if (resolver != null) {
+                if (resolver.getProjectName() != null && !resolver.getProjectName().isBlank()) {
+                    name = resolver.getProjectName();
+                }
+                eeVersion = resolver.getEeVersion();
+                jdkVersion = resolver.getJdkVersion();
+                if (eeVersion != null) {
+                    if (eeVersion.startsWith("jakarta")) {
+                        importPrefix = eeVersion.equals("jakarta-8.0.0") ? "javax" : "jakarta";
+                    } else if (eeVersion.startsWith("javax")) {
+                        importPrefix = "javax";
                     }
-                    eeVersion = getEEVersionFromDependencies(model.getDependencies());
-                    jdkVersion = getJdkVersionFromModel(model);
-                    if (eeVersion != null) {
-                        if (eeVersion.startsWith("jakarta")) {
-                            importPrefix = eeVersion.equals("jakarta-8.0.0") ? "javax" : "jakarta";
-                        } else if (eeVersion.startsWith("javax")) {
-                            importPrefix = "javax";
-                        }
-                    }
-                } catch (Exception ex) {
-                    LOG.log(Level.WARNING, "Failed to parse pom.xml for project metadata in: " + folder, ex);
                 }
             }
 
@@ -173,7 +196,7 @@ public class ProjectMetadataInfo {
             return result;
 
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.log(Level.WARNING, "Failed to read project metadata", e);
             return null;
         }
     }
@@ -190,57 +213,11 @@ public class ProjectMetadataInfo {
     }
 
     /** Detects the build system from well-known build files in the project directory. */
-    private static String detectProjectType(FileObject dir) {
+    public static String detectProjectType(FileObject dir) {
         if (dir.getFileObject("pom.xml") != null) return "maven";
         if (dir.getFileObject("build.gradle") != null
                 || dir.getFileObject("build.gradle.kts") != null) return "gradle";
         if (dir.getFileObject("build.xml") != null) return "ant";
-        return null;
-    }
-
-    private static String getEEVersionFromDependencies(List<org.apache.maven.model.Dependency> dependencies) {
-        // Look for Jakarta EE or Java EE dependencies
-        for (org.apache.maven.model.Dependency dependency : dependencies) {
-            if (dependency.getGroupId().equals("jakarta.platform")) {
-                if (dependency.getVersion() != null && dependency.getVersion().startsWith("8.0")) {
-                    return "jakarta-8.0.0"; // Special case for Jakarta EE 8
-                }
-                return "jakarta"; // Other versions of Jakarta EE
-            }
-            if (dependency.getGroupId().startsWith("javax.")) {
-                return "javax"; // Java EE dependencies
-            }
-        }
-        return null; // Return null if no matching dependencies are found
-    }
-
-    private static String getJdkVersionFromModel(Model model) {
-        // Check for JDK version in Maven properties
-        String source = model.getProperties().getProperty("maven.compiler.source");
-        String target = model.getProperties().getProperty("maven.compiler.target");
-
-        // Return source version if available; fallback to target
-        if (source != null) {
-            return source;
-        }
-        if (target != null) {
-            return target;
-        }
-        if (model.getBuild() != null) {
-            for (Plugin plugin : model.getBuild().getPlugins()) {
-                if ("maven-compiler-plugin".equals(plugin.getArtifactId())) {
-                    Object configuration = plugin.getConfiguration();
-                    if (configuration instanceof Xpp3Dom dom) {
-                        Xpp3Dom sourceNode = dom.getChild("source");
-                        if (sourceNode != null) {
-                            return sourceNode.getValue();
-                        }
-                    }
-                }
-            }
-        }
-
-        // Return null if no JDK version is found
         return null;
     }
 

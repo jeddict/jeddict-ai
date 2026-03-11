@@ -32,7 +32,7 @@ public class ProjectToolsTest extends TestBase {
         Path homePath = Paths.get(".").toAbsolutePath().normalize();
         
         String projectDir = homePath.resolve("src/test/projects/minimal").toString();
-        ProjectTools tools = new ProjectTools(project(projectDir));
+        ProjectTools tools = ProjectTools.forProject(project(projectDir));
         then(tools.projectInfo()).isEqualToIgnoringNewLines(
             """
             - name: name
@@ -45,7 +45,7 @@ public class ProjectToolsTest extends TestBase {
 
         
         projectDir = homePath.resolve("src/test/projects/jdk").toString();
-        tools = new ProjectTools(project(projectDir));
+        tools = ProjectTools.forProject(project(projectDir));
         then(tools.projectInfo()).isEqualToIgnoringNewLines(
             """
             - name: jdk
@@ -58,7 +58,7 @@ public class ProjectToolsTest extends TestBase {
         );
 
         projectDir = homePath.resolve("src/test/projects/jakarta").toString();
-        tools = new ProjectTools(project(projectDir));
+        tools = ProjectTools.forProject(project(projectDir));
         then(tools.projectInfo()).isEqualToIgnoringNewLines(
             """
             - name: jakarta
@@ -73,7 +73,7 @@ public class ProjectToolsTest extends TestBase {
         );
 
         projectDir = homePath.resolve("src/test/projects/javax").toString();
-        tools = new ProjectTools(project(projectDir));
+        tools = ProjectTools.forProject(project(projectDir));
         then(tools.projectInfo()).isEqualToIgnoringNewLines(
             """
             - name: javax
@@ -94,7 +94,7 @@ public class ProjectToolsTest extends TestBase {
         final Path homePath = Paths.get(".").toAbsolutePath().normalize();
 
         final String projectDir = homePath.resolve("src/test/projects/minimal").toString();
-        final ProjectTools tools = new ProjectTools(project(projectDir));
+        final ProjectTools tools = ProjectTools.forProject(project(projectDir));
         then(tools.projectFileTree())
             .contains("pom.xml");
     }
@@ -105,7 +105,7 @@ public class ProjectToolsTest extends TestBase {
         final Path homePath = Paths.get(".").toAbsolutePath().normalize();
 
         final String projectDir = homePath.resolve("src/test/projects/minimal").toString();
-        final ProjectTools tools = new ProjectTools(project(projectDir));
+        final ProjectTools tools = ProjectTools.forProject(project(projectDir));
         then(tools.projectMinimalTree())
             .doesNotContain("pom.xml");
     }
@@ -115,7 +115,7 @@ public class ProjectToolsTest extends TestBase {
     throws Exception {
         final Path homePath = Paths.get(".").toAbsolutePath().normalize();
         final String projectDir = homePath.resolve("src/test/projects/minimal").toString();
-        final ProjectTools tools = new ProjectTools(project(projectDir));
+        final ProjectTools tools = ProjectTools.forProject(project(projectDir));
         then(tools.projectSrcDir()).isEqualTo("src/main/java");
     }
 
@@ -124,7 +124,7 @@ public class ProjectToolsTest extends TestBase {
     throws Exception {
         final Path homePath = Paths.get(".").toAbsolutePath().normalize();
         final String projectDir = homePath.resolve("src/test/projects/minimal").toString();
-        final ProjectTools tools = new ProjectTools(project(projectDir));
+        final ProjectTools tools = ProjectTools.forProject(project(projectDir));
         then(tools.projectSrcResourceDir()).isEqualTo("src/main/resources");
     }
 
@@ -133,7 +133,7 @@ public class ProjectToolsTest extends TestBase {
     throws Exception {
         final Path homePath = Paths.get(".").toAbsolutePath().normalize();
         final String projectDir = homePath.resolve("src/test/projects/minimal").toString();
-        final ProjectTools tools = new ProjectTools(project(projectDir));
+        final ProjectTools tools = ProjectTools.forProject(project(projectDir));
         then(tools.projectTestDir()).isEqualTo("src/test/java");
     }
 
@@ -142,7 +142,7 @@ public class ProjectToolsTest extends TestBase {
     throws Exception {
         final Path homePath = Paths.get(".").toAbsolutePath().normalize();
         final String projectDir = homePath.resolve("src/test/projects/minimal").toString();
-        final ProjectTools tools = new ProjectTools(project(projectDir));
+        final ProjectTools tools = ProjectTools.forProject(project(projectDir));
         then(tools.projectTestResourceDir()).isEqualTo("src/test/resources");
     }
 
