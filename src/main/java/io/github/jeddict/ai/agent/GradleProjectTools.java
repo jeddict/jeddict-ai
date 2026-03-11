@@ -117,11 +117,11 @@ public class GradleProjectTools extends ProjectTools implements BuildMetadataRes
     // -----------------------------------------------------------------------
 
     @Tool(
-        name = "gradleJdkVersion",
+        name = "jdkVersion",
         value = "Return the Java source compatibility version configured in this Gradle project's build file"
     )
     @ToolPolicy(READONLY)
-    public String gradleJdkVersion() throws Exception {
+    public String jdkVersion() throws Exception {
         progress("Reading JDK version from Gradle build file");
         final String v = getJdkVersion();
         return v != null ? v : "No sourceCompatibility / jvmTarget found in Gradle build file";

@@ -80,30 +80,30 @@ public class MavenProjectToolsTest extends TestBase {
     }
 
     @Test
-    public void mavenEeVersion_returns_jakarta_for_jakarta_project()
+    public void eeVersion_returns_jakarta_for_jakarta_project()
     throws Exception {
         final Path homePath = Paths.get(".").toAbsolutePath().normalize();
         final String dir = homePath.resolve("src/test/projects/jakarta").toString();
         final MavenProjectTools tool = new MavenProjectTools(project(dir));
-        then(tool.mavenEeVersion()).isEqualTo("jakarta");
+        then(tool.eeVersion()).isEqualTo("jakarta");
     }
 
     @Test
-    public void mavenJdkVersion_returns_version_from_pom_xml()
+    public void jdkVersion_returns_version_from_pom_xml()
     throws Exception {
         final Path homePath = Paths.get(".").toAbsolutePath().normalize();
         final String dir = homePath.resolve("src/test/projects/jdk").toString();
         final MavenProjectTools tool = new MavenProjectTools(project(dir));
-        then(tool.mavenJdkVersion()).isEqualTo("11");
+        then(tool.jdkVersion()).isEqualTo("11");
     }
 
     @Test
-    public void mavenEeVersion_returns_message_when_no_ee_dep()
+    public void eeVersion_returns_message_when_no_ee_dep()
     throws Exception {
         final Path homePath = Paths.get(".").toAbsolutePath().normalize();
         final String dir = homePath.resolve("src/test/projects/jdk").toString();
         final MavenProjectTools tool = new MavenProjectTools(project(dir));
-        then(tool.mavenEeVersion()).contains("No EE dependency");
+        then(tool.eeVersion()).contains("No EE dependency");
     }
 
 }

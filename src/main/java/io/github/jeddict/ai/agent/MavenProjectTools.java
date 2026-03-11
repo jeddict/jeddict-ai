@@ -102,22 +102,22 @@ public class MavenProjectTools extends ProjectTools implements BuildMetadataReso
     // -----------------------------------------------------------------------
 
     @Tool(
-        name = "mavenEeVersion",
+        name = "eeVersion",
         value = "Return the Jakarta EE or Java EE version used by this Maven project (e.g. 'jakarta', 'javax')"
     )
     @ToolPolicy(READONLY)
-    public String mavenEeVersion() throws Exception {
+    public String eeVersion() throws Exception {
         progress("Reading EE version from pom.xml");
         final String v = getEeVersion();
         return v != null ? v : "No EE dependency found in pom.xml";
     }
 
     @Tool(
-        name = "mavenJdkVersion",
+        name = "jdkVersion",
         value = "Return the Java compiler source version configured in this Maven project's pom.xml"
     )
     @ToolPolicy(READONLY)
-    public String mavenJdkVersion() throws Exception {
+    public String jdkVersion() throws Exception {
         progress("Reading JDK version from pom.xml");
         final String v = getJdkVersion();
         return v != null ? v : "No compiler version found in pom.xml";
