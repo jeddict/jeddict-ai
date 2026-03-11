@@ -66,4 +66,48 @@ public class ProjectTools extends AbstractTool {
         progress("Gathering project minimal tree: " + project);
         return ProjectMetadataInfo.getMinimalTree(project);
     }
+
+    @Tool(
+        name = "projectSrcDir",
+        value = "Return the path of the main Java sources directory (e.g. src/main/java)"
+    )
+    @ToolPolicy(READONLY)
+    public String projectSrcDir()
+    throws Exception {
+        progress("Gathering project source directory: " + project);
+        return ProjectMetadataInfo.getSrcDir(project);
+    }
+
+    @Tool(
+        name = "projectSrcResourceDir",
+        value = "Return the path of the main resources directory (e.g. src/main/resources)"
+    )
+    @ToolPolicy(READONLY)
+    public String projectSrcResourceDir()
+    throws Exception {
+        progress("Gathering project source resources directory: " + project);
+        return ProjectMetadataInfo.getSrcResourceDir(project);
+    }
+
+    @Tool(
+        name = "projectTestDir",
+        value = "Return the path of the test Java sources directory (e.g. src/test/java)"
+    )
+    @ToolPolicy(READONLY)
+    public String projectTestDir()
+    throws Exception {
+        progress("Gathering project test directory: " + project);
+        return ProjectMetadataInfo.getTestDir(project);
+    }
+
+    @Tool(
+        name = "projectTestResourceDir",
+        value = "Return the path of the test resources directory (e.g. src/test/resources)"
+    )
+    @ToolPolicy(READONLY)
+    public String projectTestResourceDir()
+    throws Exception {
+        progress("Gathering project test resources directory: " + project);
+        return ProjectMetadataInfo.getTestResourceDir(project);
+    }
 }

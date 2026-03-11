@@ -21,12 +21,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.model.Plugin;
+import org.apache.maven.model.Resource;
 import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 import org.netbeans.api.project.Project;
@@ -79,9 +81,14 @@ public class ProjectMetadataInfo {
             sb.append("- Java Version: ").append(cachedResult.jdkVersion()).append("\n");
         }
 
-        final String minimalTree = getMinimalTree(project);
-        if (!minimalTree.isBlank()) {
-            sb.append("- File Tree:\n").append(minimalTree).append("\n");
+        final String srcDir = getSrcDir(project);
+        if (!srcDir.isBlank()) {
+            sb.append("- Source Directory: ").append(srcDir).append("\n");
+        }
+
+        final String testDir = getTestDir(project);
+        if (!testDir.isBlank()) {
+            sb.append("- Test Source Directory: ").append(testDir).append("\n");
         }
 
         return sb.toString().trim();
@@ -193,6 +200,86 @@ public class ProjectMetadataInfo {
     }
 
     private static final Set<String> IGNORED_NAMES = Set.of("target", "node_modules", "build");
+
+    /**
+     * Returns the main Java sources directory path relative to the project
+     * root (e.g. {@code src/main/java}).
+     *
+     * @param project the project to query
+     * @return the relative path, or an empty string if not determinable
+     */
+    public static String getSrcDir(Project project) {
+        final MavenProject mp = getMavenProject(project);
+        return mp == null ? "" : relativize(project, mp.getBuild().getSourceDirectory());
+    }
+
+    /**
+     * Returns the main resources directory path relative to the project root
+     * (e.g. {@code src/main/resources}).
+     *
+     * @param project the project to query
+     * @return the relative path, or an empty string if not determinable
+     */
+    public static String getSrcResourceDir(Project project) {
+        final MavenProject mp = getMavenProject(project);
+        if (mp == null) {
+            return "";
+        }
+        final List<Resource> resources = mp.getBuild().getResources();
+        return resources.isEmpty() ? "" : relativize(project, resources.get(0).getDirectory());
+    }
+
+    /**
+     * Returns the test Java sources directory path relative to the project
+     * root (e.g. {@code src/test/java}).
+     *
+     * @param project the project to query
+     * @return the relative path, or an empty string if not determinable
+     */
+    public static String getTestDir(Project project) {
+        final MavenProject mp = getMavenProject(project);
+        return mp == null ? "" : relativize(project, mp.getBuild().getTestSourceDirectory());
+    }
+
+    /**
+     * Returns the test resources directory path relative to the project root
+     * (e.g. {@code src/test/resources}).
+     *
+     * @param project the project to query
+     * @return the relative path, or an empty string if not determinable
+     */
+    public static String getTestResourceDir(Project project) {
+        final MavenProject mp = getMavenProject(project);
+        if (mp == null) {
+            return "";
+        }
+        final List<Resource> resources = mp.getBuild().getTestResources();
+        return resources.isEmpty() ? "" : relativize(project, resources.get(0).getDirectory());
+    }
+
+    private static MavenProject getMavenProject(Project project) {
+        if (project == null) {
+            return null;
+        }
+        final NbMavenProject nbMavenProject = project.getLookup().lookup(NbMavenProject.class);
+        return nbMavenProject == null ? null : nbMavenProject.getMavenProject();
+    }
+
+    private static String relativize(Project project, String absolutePath) {
+        if (absolutePath == null || absolutePath.isBlank()) {
+            return "";
+        }
+        try {
+            final Path projectRoot = Paths.get(project.getProjectDirectory().getPath());
+            final Path absolute = Paths.get(absolutePath);
+            if (absolute.startsWith(projectRoot)) {
+                return projectRoot.relativize(absolute).toString();
+            }
+            return absolutePath;
+        } catch (Exception e) {
+            return absolutePath;
+        }
+    }
 
     /**
      * Returns the file tree structure of the project directory as a formatted

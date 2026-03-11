@@ -38,6 +38,8 @@ public class ProjectToolsTest extends TestBase {
             - name: name
             - folder: %s
             - type: maven
+            - Source Directory: src/main/java
+            - Test Source Directory: src/test/java
             """.formatted(projectDir)
         );
 
@@ -50,6 +52,8 @@ public class ProjectToolsTest extends TestBase {
             - folder: %s
             - type: maven
             - Java Version: 11
+            - Source Directory: src/main/java
+            - Test Source Directory: src/test/java
             """.formatted(projectDir)
         );
 
@@ -63,6 +67,8 @@ public class ProjectToolsTest extends TestBase {
             - EE Version: jakarta
             - EE Import Prefix: jakarta
             - Java Version: 21
+            - Source Directory: src/main/java
+            - Test Source Directory: src/test/java
             """.formatted(projectDir)
         );
 
@@ -76,6 +82,8 @@ public class ProjectToolsTest extends TestBase {
             - EE Version: javax
             - EE Import Prefix: javax
             - Java Version: 11
+            - Source Directory: src/main/java
+            - Test Source Directory: src/test/java
             """.formatted(projectDir)
         );
     }
@@ -100,6 +108,42 @@ public class ProjectToolsTest extends TestBase {
         final ProjectTools tools = new ProjectTools(project(projectDir));
         then(tools.projectMinimalTree())
             .doesNotContain("pom.xml");
+    }
+
+    @Test
+    public void projectSrcDir_returns_relative_path()
+    throws Exception {
+        final Path homePath = Paths.get(".").toAbsolutePath().normalize();
+        final String projectDir = homePath.resolve("src/test/projects/minimal").toString();
+        final ProjectTools tools = new ProjectTools(project(projectDir));
+        then(tools.projectSrcDir()).isEqualTo("src/main/java");
+    }
+
+    @Test
+    public void projectSrcResourceDir_returns_relative_path()
+    throws Exception {
+        final Path homePath = Paths.get(".").toAbsolutePath().normalize();
+        final String projectDir = homePath.resolve("src/test/projects/minimal").toString();
+        final ProjectTools tools = new ProjectTools(project(projectDir));
+        then(tools.projectSrcResourceDir()).isEqualTo("src/main/resources");
+    }
+
+    @Test
+    public void projectTestDir_returns_relative_path()
+    throws Exception {
+        final Path homePath = Paths.get(".").toAbsolutePath().normalize();
+        final String projectDir = homePath.resolve("src/test/projects/minimal").toString();
+        final ProjectTools tools = new ProjectTools(project(projectDir));
+        then(tools.projectTestDir()).isEqualTo("src/test/java");
+    }
+
+    @Test
+    public void projectTestResourceDir_returns_relative_path()
+    throws Exception {
+        final Path homePath = Paths.get(".").toAbsolutePath().normalize();
+        final String projectDir = homePath.resolve("src/test/projects/minimal").toString();
+        final ProjectTools tools = new ProjectTools(project(projectDir));
+        then(tools.projectTestResourceDir()).isEqualTo("src/test/resources");
     }
 
 }

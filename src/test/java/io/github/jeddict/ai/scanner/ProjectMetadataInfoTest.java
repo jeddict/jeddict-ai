@@ -38,8 +38,8 @@ public class ProjectMetadataInfoTest extends TestBase {
             .contains("- name: name")
             .contains("- folder: " + Paths.get(project.getProjectDirectory().getPath()))
             .contains("- type: maven")
-            .contains("- File Tree:")
-            .contains("folder/");
+            .contains("- Source Directory: src/main/java")
+            .contains("- Test Source Directory: src/test/java");
     }
 
     @Test
@@ -67,6 +67,40 @@ public class ProjectMetadataInfoTest extends TestBase {
     @Test
     public void getMinimalTree_returns_empty_string_for_null_project() {
         then(ProjectMetadataInfo.getMinimalTree(null)).isEmpty();
+    }
+
+    @Test
+    public void getSrcDir_returns_src_main_java_for_maven_project() throws Exception {
+        final Project project = project(projectDir);
+        then(ProjectMetadataInfo.getSrcDir(project)).isEqualTo("src/main/java");
+    }
+
+    @Test
+    public void getSrcResourceDir_returns_src_main_resources_for_maven_project() throws Exception {
+        final Project project = project(projectDir);
+        then(ProjectMetadataInfo.getSrcResourceDir(project)).isEqualTo("src/main/resources");
+    }
+
+    @Test
+    public void getTestDir_returns_src_test_java_for_maven_project() throws Exception {
+        final Project project = project(projectDir);
+        then(ProjectMetadataInfo.getTestDir(project)).isEqualTo("src/test/java");
+    }
+
+    @Test
+    public void getTestResourceDir_returns_src_test_resources_for_maven_project() throws Exception {
+        final Project project = project(projectDir);
+        then(ProjectMetadataInfo.getTestResourceDir(project)).isEqualTo("src/test/resources");
+    }
+
+    @Test
+    public void getSrcDir_returns_empty_string_for_null_project() {
+        then(ProjectMetadataInfo.getSrcDir(null)).isEmpty();
+    }
+
+    @Test
+    public void getTestDir_returns_empty_string_for_null_project() {
+        then(ProjectMetadataInfo.getTestDir(null)).isEmpty();
     }
 
 }
