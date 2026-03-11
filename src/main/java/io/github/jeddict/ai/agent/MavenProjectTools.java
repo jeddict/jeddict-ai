@@ -101,19 +101,20 @@ public class MavenProjectTools extends ProjectTools implements BuildMetadataReso
         if (model == null) {
             return metadata;
         }
-        final String eeVersion = parseEeVersion(model.getDependencies());
-        if (eeVersion != null) {
-            metadata.put("EE Version", eeVersion);
-            final String importPrefix;
-            if (eeVersion.startsWith("jakarta")) {
-                importPrefix = eeVersion.equals("jakarta-8.0.0") ? "javax" : "jakarta";
-            } else if (eeVersion.startsWith("javax")) {
-                importPrefix = "javax";
-            } else {
-                importPrefix = null;
-            }
-            if (importPrefix != null) {
+        final String framework = parseFramework(model.getDependencies());
+        if (framework != null) {
+            if (framework.startsWith("jakarta") || framework.startsWith("javax")) {
+                // Keep EE-specific keys for backward compatibility
+                metadata.put("EE Version", framework);
+                final String importPrefix;
+                if (framework.startsWith("jakarta")) {
+                    importPrefix = framework.equals("jakarta-8.0.0") ? "javax" : "jakarta";
+                } else {
+                    importPrefix = "javax";
+                }
                 metadata.put("EE Import Prefix", importPrefix);
+            } else {
+                metadata.put("Framework", framework);
             }
         }
         final String jdkVersion = parseJdkVersion(model);
@@ -128,15 +129,15 @@ public class MavenProjectTools extends ProjectTools implements BuildMetadataReso
     // -----------------------------------------------------------------------
 
     @Tool(
-        name = "eeVersion",
-        value = "Return the Jakarta EE or Java EE version used by this Maven project (e.g. 'jakarta', 'javax')"
+        name = "frameworkVersion",
+        value = "Return the primary framework or platform used by this Maven project (e.g. 'jakarta', 'javax', 'spring-boot', 'quarkus', 'micronaut', 'helidon')"
     )
     @ToolPolicy(READONLY)
-    public String eeVersion() throws Exception {
-        progress("Reading EE version from pom.xml");
+    public String frameworkVersion() throws Exception {
+        progress("Reading framework/platform from pom.xml");
         final Model model = model();
-        final String v = model != null ? parseEeVersion(model.getDependencies()) : null;
-        return v != null ? v : "No EE dependency found in pom.xml";
+        final String v = model != null ? parseFramework(model.getDependencies()) : null;
+        return v != null ? v : "No known framework dependency found in pom.xml";
     }
 
     @Tool(
@@ -198,16 +199,35 @@ public class MavenProjectTools extends ProjectTools implements BuildMetadataReso
         return cachedModel;
     }
 
-    private static String parseEeVersion(List<Dependency> dependencies) {
+    /**
+     * Detects the primary framework or platform used in this project from its Maven dependencies.
+     *
+     * <p>Returns the first recognised framework encountered in the dependency list.
+     * For the full dependency list, use {@link #projectDependencies()}.</p>
+     */
+    private static String parseFramework(final List<Dependency> dependencies) {
         for (final Dependency dep : dependencies) {
-            if ("jakarta.platform".equals(dep.getGroupId())) {
+            final String groupId = dep.getGroupId();
+            if ("jakarta.platform".equals(groupId)) {
                 if (dep.getVersion() != null && dep.getVersion().startsWith("8.0")) {
                     return "jakarta-8.0.0";
                 }
                 return "jakarta";
             }
-            if (dep.getGroupId().startsWith("javax.")) {
+            if (groupId.startsWith("javax.")) {
                 return "javax";
+            }
+            if ("org.springframework.boot".equals(groupId)) {
+                return "spring-boot";
+            }
+            if ("io.quarkus".equals(groupId) || groupId.startsWith("io.quarkus.")) {
+                return "quarkus";
+            }
+            if ("io.micronaut".equals(groupId) || groupId.startsWith("io.micronaut.")) {
+                return "micronaut";
+            }
+            if ("io.helidon".equals(groupId) || groupId.startsWith("io.helidon.")) {
+                return "helidon";
             }
         }
         return null;

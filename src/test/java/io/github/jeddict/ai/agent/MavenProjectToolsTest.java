@@ -80,12 +80,12 @@ public class MavenProjectToolsTest extends TestBase {
     }
 
     @Test
-    public void eeVersion_returns_jakarta_for_jakarta_project()
+    public void frameworkVersion_returns_jakarta_for_jakarta_project()
     throws Exception {
         final Path homePath = Paths.get(".").toAbsolutePath().normalize();
         final String dir = homePath.resolve("src/test/projects/jakarta").toString();
         final MavenProjectTools tool = new MavenProjectTools(project(dir));
-        then(tool.eeVersion()).isEqualTo("jakarta");
+        then(tool.frameworkVersion()).isEqualTo("jakarta");
     }
 
     @Test
@@ -98,12 +98,32 @@ public class MavenProjectToolsTest extends TestBase {
     }
 
     @Test
-    public void eeVersion_returns_message_when_no_ee_dep()
+    public void frameworkVersion_returns_message_when_no_framework_dep()
     throws Exception {
         final Path homePath = Paths.get(".").toAbsolutePath().normalize();
         final String dir = homePath.resolve("src/test/projects/jdk").toString();
         final MavenProjectTools tool = new MavenProjectTools(project(dir));
-        then(tool.eeVersion()).contains("No EE dependency");
+        then(tool.frameworkVersion()).contains("No known framework dependency");
+    }
+
+    @Test
+    public void frameworkVersion_returns_spring_boot_for_springboot_project()
+    throws Exception {
+        final Path homePath = Paths.get(".").toAbsolutePath().normalize();
+        final String dir = homePath.resolve("src/test/projects/springboot").toString();
+        final MavenProjectTools tool = new MavenProjectTools(project(dir));
+        then(tool.frameworkVersion()).isEqualTo("spring-boot");
+    }
+
+    @Test
+    public void projectInfo_includes_framework_for_springboot_project()
+    throws Exception {
+        final Path homePath = Paths.get(".").toAbsolutePath().normalize();
+        final String dir = homePath.resolve("src/test/projects/springboot").toString();
+        final MavenProjectTools tool = new MavenProjectTools(project(dir));
+        then(tool.projectInfo())
+            .contains("- Framework: spring-boot")
+            .contains("- Java Version: 17");
     }
 
     @Test
