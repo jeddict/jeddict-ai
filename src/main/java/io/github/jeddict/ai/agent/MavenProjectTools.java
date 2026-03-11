@@ -20,7 +20,9 @@ import io.github.jeddict.ai.scanner.ProjectMetadataInfo;
 import io.github.jeddict.ai.scanner.ProjectMetadataInfo.BuildMetadataResolver;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Model;
@@ -83,18 +85,32 @@ public class MavenProjectTools extends ProjectTools implements BuildMetadataReso
     }
 
     @Override
-    public String getEeVersion() {
+    public Map<String, String> getProjectMetadata() {
+        final Map<String, String> metadata = new LinkedHashMap<>();
         final Model model = model();
         if (model == null) {
-            return null;
+            return metadata;
         }
-        return parseEeVersion(model.getDependencies());
-    }
-
-    @Override
-    public String getJdkVersion() {
-        final Model model = model();
-        return model != null ? parseJdkVersion(model) : null;
+        final String eeVersion = parseEeVersion(model.getDependencies());
+        if (eeVersion != null) {
+            metadata.put("EE Version", eeVersion);
+            final String importPrefix;
+            if (eeVersion.startsWith("jakarta")) {
+                importPrefix = eeVersion.equals("jakarta-8.0.0") ? "javax" : "jakarta";
+            } else if (eeVersion.startsWith("javax")) {
+                importPrefix = "javax";
+            } else {
+                importPrefix = null;
+            }
+            if (importPrefix != null) {
+                metadata.put("EE Import Prefix", importPrefix);
+            }
+        }
+        final String jdkVersion = parseJdkVersion(model);
+        if (jdkVersion != null) {
+            metadata.put("Java Version", jdkVersion);
+        }
+        return metadata;
     }
 
     // -----------------------------------------------------------------------
@@ -108,7 +124,8 @@ public class MavenProjectTools extends ProjectTools implements BuildMetadataReso
     @ToolPolicy(READONLY)
     public String eeVersion() throws Exception {
         progress("Reading EE version from pom.xml");
-        final String v = getEeVersion();
+        final Model model = model();
+        final String v = model != null ? parseEeVersion(model.getDependencies()) : null;
         return v != null ? v : "No EE dependency found in pom.xml";
     }
 
@@ -119,7 +136,8 @@ public class MavenProjectTools extends ProjectTools implements BuildMetadataReso
     @ToolPolicy(READONLY)
     public String jdkVersion() throws Exception {
         progress("Reading JDK version from pom.xml");
-        final String v = getJdkVersion();
+        final Model model = model();
+        final String v = model != null ? parseJdkVersion(model) : null;
         return v != null ? v : "No compiler version found in pom.xml";
     }
 

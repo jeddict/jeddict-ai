@@ -19,6 +19,8 @@ import dev.langchain4j.agent.tool.Tool;
 import io.github.jeddict.ai.scanner.ProjectMetadataInfo;
 import io.github.jeddict.ai.scanner.ProjectMetadataInfo.BuildMetadataResolver;
 import java.io.IOException;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -87,29 +89,13 @@ public class GradleProjectTools extends ProjectTools implements BuildMetadataRes
     }
 
     @Override
-    public String getEeVersion() {
-        // Gradle projects typically declare their EE dependency in a variety of
-        // ways (plugins, BOM imports, etc.).  A robust extraction would require
-        // a full Groovy/Kotlin parser, so we intentionally return null here and
-        // let the LLM call the dedicated tool if it needs this information.
-        return null;
-    }
-
-    @Override
-    public String getJdkVersion() {
-        final String content = content();
-        if (content == null) {
-            return null;
+    public Map<String, String> getProjectMetadata() {
+        final Map<String, String> metadata = new LinkedHashMap<>();
+        final String jdkVersion = getJdkVersion();
+        if (jdkVersion != null) {
+            metadata.put("Java Version", jdkVersion);
         }
-        Matcher m = SOURCE_COMPAT.matcher(content);
-        if (m.find()) {
-            return normalizeVersion(m.group(1));
-        }
-        m = JVM_TARGET.matcher(content);
-        if (m.find()) {
-            return normalizeVersion(m.group(1));
-        }
-        return null;
+        return metadata;
     }
 
     // -----------------------------------------------------------------------
@@ -130,6 +116,22 @@ public class GradleProjectTools extends ProjectTools implements BuildMetadataRes
     // -----------------------------------------------------------------------
     // Internal helpers
     // -----------------------------------------------------------------------
+
+    private String getJdkVersion() {
+        final String content = content();
+        if (content == null) {
+            return null;
+        }
+        Matcher m = SOURCE_COMPAT.matcher(content);
+        if (m.find()) {
+            return normalizeVersion(m.group(1));
+        }
+        m = JVM_TARGET.matcher(content);
+        if (m.find()) {
+            return normalizeVersion(m.group(1));
+        }
+        return null;
+    }
 
     private String content() {
         if (!contentRead) {

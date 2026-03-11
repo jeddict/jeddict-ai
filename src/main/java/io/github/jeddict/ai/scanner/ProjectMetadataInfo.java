@@ -21,6 +21,7 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -68,11 +69,13 @@ public class ProjectMetadataInfo {
         /** Returns the project display name, or {@code null} to keep the default. */
         String getProjectName();
 
-        /** Returns the EE version string (e.g. "jakarta", "javax") or {@code null}. */
-        String getEeVersion();
-
-        /** Returns the JDK/compiler source version string or {@code null}. */
-        String getJdkVersion();
+        /**
+         * Returns an ordered map of project metadata key-value pairs to include
+         * in the project info output (e.g. "Java Version" → "11").
+         * Implementations should return an empty map when no metadata is
+         * available; returning {@code null} is treated the same as an empty map.
+         */
+        Map<String, String> getProjectMetadata();
     }
 
     public static String get(Project project) {
@@ -98,19 +101,8 @@ public class ProjectMetadataInfo {
           .append("- type: ").append(StringUtils.defaultString(cachedResult.type)).append('\n')
         ;
 
-        // Append EE Version with appropriate label if importPrefix is "jakarta
-        if (cachedResult.eeVersion() != null) {
-            if ("- jakarta".equals(cachedResult.importPrefix())) {
-                sb.append("- EE Version: ").append(cachedResult.eeVersion()).append("\n");
-            } else {
-                sb.append("- EE Version: ").append(cachedResult.eeVersion()).append("\n");
-            }
-        }
-        if (cachedResult.importPrefix() != null) {
-            sb.append("- EE Import Prefix: ").append(cachedResult.importPrefix()).append("\n");
-        }
-        if (cachedResult.jdkVersion() != null) {
-            sb.append("- Java Version: ").append(cachedResult.jdkVersion()).append("\n");
+        for (final Map.Entry<String, String> entry : cachedResult.metadata().entrySet()) {
+            sb.append("- ").append(entry.getKey()).append(": ").append(entry.getValue()).append('\n');
         }
 
         final String srcDir = getSrcDir(project);
@@ -133,11 +125,11 @@ public class ProjectMetadataInfo {
     /**
      * Returns (and caches) a {@link CachedResult} for the given project.
      *
-     * <p>When a {@link BuildMetadataResolver} is supplied, EE version, JDK
-     * version, and project name are obtained from it instead of being read
-     * directly from build files. When {@code resolver} is {@code null} those
-     * fields are left as {@code null} — the generic path does not attempt to
-     * parse any build file.</p>
+     * <p>When a {@link BuildMetadataResolver} is supplied, extra metadata
+     * key-value pairs and the project name are obtained from it instead of
+     * being read directly from build files. When {@code resolver} is
+     * {@code null} the metadata map is empty — the generic path does not
+     * attempt to parse any build file.</p>
      */
     public static CachedResult getCachedResult(Project project, BuildMetadataResolver resolver) {
         try {
@@ -165,33 +157,23 @@ public class ProjectMetadataInfo {
             // Detect build system from well-known build file names
             String type = detectProjectType(projectDirectory);
 
-            // Obtain EE/JDK metadata from the resolver (project-type-specific tool).
-            // When no resolver is provided these values remain null — build files
-            // are not parsed directly here any more.
-            String eeVersion = null;
-            String jdkVersion = null;
-            String importPrefix = null;
+            // Obtain metadata from the resolver (project-type-specific tool).
+            // When no resolver is provided the map is empty — build files are
+            // not parsed directly here.
+            Map<String, String> metadata = Collections.emptyMap();
 
             if (resolver != null) {
                 if (resolver.getProjectName() != null && !resolver.getProjectName().isBlank()) {
                     name = resolver.getProjectName();
                 }
-                eeVersion = resolver.getEeVersion();
-                jdkVersion = resolver.getJdkVersion();
-                if (eeVersion != null) {
-                    if (eeVersion.startsWith("jakarta")) {
-                        importPrefix = eeVersion.equals("jakarta-8.0.0") ? "javax" : "jakarta";
-                    } else if (eeVersion.startsWith("javax")) {
-                        importPrefix = "javax";
-                    }
+                final Map<String, String> resolved = resolver.getProjectMetadata();
+                if (resolved != null) {
+                    metadata = resolved;
                 }
             }
 
             // Cache the result
-            final CachedResult result = new CachedResult(
-                name, folder, type,
-                importPrefix, eeVersion, jdkVersion, lastModified
-            );
+            final CachedResult result = new CachedResult(name, folder, type, metadata, lastModified);
             cache.put(project, result);
             return result;
 
@@ -585,7 +567,7 @@ public class ProjectMetadataInfo {
 
     private record CachedResult(
         String name, String folder, String type,
-        String importPrefix, String eeVersion, String jdkVersion,
+        Map<String, String> metadata,
         long timestamp
     ) {}
 }
