@@ -232,36 +232,55 @@ public class FileSystemToolsTest extends TestBase {
         thenProgressContains(listener.collector.get(0), "\n📖 Reading file " + path + " lines 2 to 4");
 
         //
-        // success: fromLine clamped to 1 when < 1
-        //
-        listener.collector.clear();
-        then(tools.readFileLines(path, 0, 2)).isEqualTo("line one\nline two");
-        thenProgressContains(listener.collector.get(0), "\n📖 Reading file " + path + " lines 0 to 2");
-
-        //
-        // success: toLine clamped to last line when > total
-        //
-        listener.collector.clear();
-        then(tools.readFileLines(path, 4, 100)).isEqualTo("line four\nline five");
-        thenProgressContains(listener.collector.get(0), "\n📖 Reading file " + path + " lines 4 to 100");
-
-        //
         // success: single line
         //
         listener.collector.clear();
         then(tools.readFileLines(path, 3, 3)).isEqualTo("line three");
 
         //
-        // success: out-of-range (start beyond end of file)
+        // success: toLine beyond EOF is silently truncated to last line (LLM cannot know file length)
+        //
+        listener.collector.clear();
+        then(tools.readFileLines(path, 4, 100)).isEqualTo("line four\nline five");
+        thenProgressContains(listener.collector.get(0), "\n📖 Reading file " + path + " lines 4 to 100");
+
+        //
+        // success: fromLine beyond end of file returns empty (valid params, file just too short)
         //
         listener.collector.clear();
         then(tools.readFileLines(path, 10, 20)).isEqualTo("");
 
         //
-        // success: both fromLine and toLine below 1 (entire range before start)
+        // failure: fromLine < 1 (must not be silently clamped)
         //
         listener.collector.clear();
-        then(tools.readFileLines(path, -5, -1)).isEqualTo("");
+        thenThrownBy(() -> tools.readFileLines(path, 0, 2))
+            .isInstanceOf(ToolExecutionException.class)
+            .hasMessageContaining("fromLine must be >= 1, got: 0");
+
+        //
+        // failure: toLine < 1
+        //
+        listener.collector.clear();
+        thenThrownBy(() -> tools.readFileLines(path, 1, 0))
+            .isInstanceOf(ToolExecutionException.class)
+            .hasMessageContaining("toLine must be >= 1, got: 0");
+
+        //
+        // failure: both fromLine and toLine below 1
+        //
+        listener.collector.clear();
+        thenThrownBy(() -> tools.readFileLines(path, -5, -1))
+            .isInstanceOf(ToolExecutionException.class)
+            .hasMessageContaining("fromLine must be >= 1, got: -5");
+
+        //
+        // failure: fromLine > toLine (inverted range)
+        //
+        listener.collector.clear();
+        thenThrownBy(() -> tools.readFileLines(path, 4, 2))
+            .isInstanceOf(ToolExecutionException.class)
+            .hasMessageContaining("fromLine (4) must be <= toLine (2)");
 
         //
         // failure: file does not exist

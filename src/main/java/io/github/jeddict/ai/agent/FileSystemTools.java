@@ -66,21 +66,27 @@ public class FileSystemTools extends AbstractCodeTool {
 
     /**
      * Reads a range of lines from a file on disk. Line numbers are 1-based and
-     * inclusive. If {@code fromLine} is less than 1, it is treated as 1. If
-     * {@code toLine} exceeds the total number of lines, it is treated as the
-     * last line.
+     * inclusive. {@code fromLine} and {@code toLine} must both be &ge; 1 and
+     * {@code fromLine} must be &le; {@code toLine}; otherwise a
+     * {@link ToolExecutionException} is thrown so the caller can correct the
+     * parameters. If {@code toLine} exceeds the total number of lines the
+     * result is silently truncated to the last line (the caller cannot know the
+     * file length in advance).
      *
      * @param path the file path relative to the project
-     * @param fromLine the first line to read (1-based, inclusive)
-     * @param toLine the last line to read (1-based, inclusive)
+     * @param fromLine the first line to read (1-based, inclusive, must be &ge; 1)
+     * @param toLine the last line to read (1-based, inclusive, must be &ge; fromLine)
      * @return the requested lines joined by newline characters, or an empty
-     *         string if the range falls outside the file
+     *         string if {@code fromLine} is beyond the end of the file
+     * @throws ToolExecutionException if {@code fromLine} or {@code toLine} is
+     *         less than 1, or if {@code fromLine} is greater than {@code toLine}
      */
     @Tool("""
     Read lines from fromLine to toLine (both 1-based and inclusive) of a file
-    by path. If fromLine is less than 1 it is treated as 1. If toLine is
-    greater than the number of lines it is treated as the last line.
-    Returns the selected lines joined by newline characters.
+    by path. Both fromLine and toLine must be >= 1 and fromLine must be <=
+    toLine; otherwise an error is returned. If toLine is greater than the
+    number of lines in the file, only the lines up to the end of the file are
+    returned. Returns the selected lines joined by newline characters.
     """)
     @ToolPolicy(READONLY)
     public String readFileLines(final String path, final int fromLine, final int toLine)
@@ -89,11 +95,17 @@ public class FileSystemTools extends AbstractCodeTool {
 
         checkPath(path);
 
-        final int start = Math.max(1, fromLine);
-
-        // if toLine is before start (e.g. both < 1) return empty immediately
-        if (toLine < start) {
-            return "";
+        if (fromLine < 1) {
+            throw new ToolExecutionException(
+                    "fromLine must be >= 1, got: " + fromLine);
+        }
+        if (toLine < 1) {
+            throw new ToolExecutionException(
+                    "toLine must be >= 1, got: " + toLine);
+        }
+        if (fromLine > toLine) {
+            throw new ToolExecutionException(
+                    "fromLine (" + fromLine + ") must be <= toLine (" + toLine + ")");
         }
 
         try {
@@ -105,10 +117,10 @@ public class FileSystemTools extends AbstractCodeTool {
             //
             try (Stream<String> stream = Files.lines(fullPath, Charset.defaultCharset())) {
                 // (long) cast ensures the arithmetic is done in 64-bit so there is no
-                // int overflow; start >= 1 and toLine >= start so count >= 1 always.
-                final long count = (long) toLine - start + 1;
+                // int overflow; fromLine >= 1 and toLine >= fromLine so count >= 1.
+                final long count = (long) toLine - fromLine + 1;
                 return stream
-                        .skip(start - 1)
+                        .skip(fromLine - 1)
                         .limit(count)
                         .collect(Collectors.joining("\n"));
             }
