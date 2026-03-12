@@ -17,11 +17,14 @@ package io.github.jeddict.ai.agent;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.exception.ToolExecutionException;
-import io.github.jeddict.ai.scanner.ProjectMetadataInfo;
+import io.github.jeddict.ai.settings.PreferencesManager;
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.*;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -66,7 +69,7 @@ public class FileSystemTools extends AbstractCodeTool {
     @ToolPolicy(READONLY)
     public String fileTree(String path, int depth) {
         progress("📂 Gathering file tree" + (path != null && !path.isBlank() ? " for " + path : ""));
-        return ProjectMetadataInfo.getFileTree(basepath, path, depth);
+        return getFileTree(basepath, path, depth);
     }
 
     /**
@@ -86,7 +89,7 @@ public class FileSystemTools extends AbstractCodeTool {
     @ToolPolicy(READONLY)
     public String dirTree() {
         progress("📂 Gathering directory tree");
-        return ProjectMetadataInfo.getDirTree(basepath);
+        return getDirTree(basepath);
     }
 
     /**
@@ -449,5 +452,148 @@ public class FileSystemTools extends AbstractCodeTool {
             progress("❌ Directory deletion failed: " + e.getMessage() + " in " + path);
             throw new ToolExecutionException(e);
         }
+    }
+
+    // --------------------------------------------------------- static tree builders
+
+    /**
+     * Returns the file tree structure rooted at the given base directory,
+     * limited to the specified depth. Directories configured in
+     * {@link PreferencesManager#getExcludeDirs()}, hidden entries, and files
+     * whose extension is not in
+     * {@link PreferencesManager#getFileExtensionListToInclude()} are excluded.
+     *
+     * @param projectRoot the absolute path of the project root (used as the
+     *                    security boundary for path-traversal checks)
+     * @param subPath     a path relative to {@code projectRoot} to use as the
+     *                    tree root; {@code null} or blank means the whole tree
+     * @param maxDepth    the maximum number of directory levels to descend;
+     *                    values {@code <= 0} mean unlimited depth
+     * @return the file tree as an indented string, or an empty string when the
+     *         tree cannot be read
+     */
+    public static String getFileTree(Path projectRoot, String subPath, int maxDepth) {
+        if (projectRoot == null) {
+            return "";
+        }
+        try {
+            final Path root;
+            if (subPath != null && !subPath.isBlank()) {
+                root = projectRoot.resolve(subPath).normalize();
+                if (!root.startsWith(projectRoot)) {
+                    // Prevent path traversal outside the project
+                    return "Path is outside the project directory: " + subPath;
+                }
+                if (!Files.isDirectory(root)) {
+                    return "Not a directory: " + subPath;
+                }
+            } else {
+                root = projectRoot;
+            }
+            final Set<String> allowedExtensions = new HashSet<>(
+                    PreferencesManager.getInstance().getFileExtensionListToInclude());
+            final StringBuilder sb = new StringBuilder();
+            final Stream<Path> stream = (maxDepth > 0)
+                    ? Files.walk(root, maxDepth)
+                    : Files.walk(root);
+            try (stream) {
+                stream
+                    .filter(path -> !isExcluded(projectRoot, path))
+                    .filter(path -> Files.isDirectory(path)
+                            || allowedExtensions.contains(getExtension(path)))
+                    .sorted()
+                    .forEach(path -> {
+                        if (path.equals(root)) {
+                            return;
+                        }
+                        final Path relative = root.relativize(path);
+                        final int depth = relative.getNameCount() - 1;
+                        sb.append("  ".repeat(depth))
+                          .append(path.getFileName())
+                          .append(Files.isDirectory(path) ? "/" : "")
+                          .append('\n');
+                    });
+            }
+            return sb.toString().trim();
+        } catch (IOException e) {
+            return "";
+        }
+    }
+
+    /**
+     * Returns the directory hierarchy rooted at the given base path as a
+     * formatted string. Only directories are included — individual files and
+     * classes are omitted — giving a compact overview of the package structure.
+     * Hidden directories and directories configured in
+     * {@link PreferencesManager#getExcludeDirs()} are excluded.
+     *
+     * @param root the absolute path to use as the tree root
+     * @return the directory hierarchy as an indented string, or an empty
+     *         string if the root is null or the tree cannot be read
+     */
+    public static String getDirTree(Path root) {
+        if (root == null) {
+            return "";
+        }
+        try {
+            final StringBuilder sb = new StringBuilder();
+            try (Stream<Path> stream = Files.walk(root)) {
+                stream
+                    .filter(Files::isDirectory)
+                    .filter(path -> !isExcluded(root, path))
+                    .sorted()
+                    .forEach(path -> {
+                        if (path.equals(root)) {
+                            return;
+                        }
+                        final Path relative = root.relativize(path);
+                        final int depth = relative.getNameCount() - 1;
+                        sb.append("  ".repeat(depth))
+                          .append(path.getFileName())
+                          .append("/")
+                          .append('\n');
+                    });
+            }
+            return sb.toString().trim();
+        } catch (IOException e) {
+            return "";
+        }
+    }
+
+    /** Returns the file extension (without the dot) for the given path, or an empty string. */
+    private static String getExtension(Path path) {
+        final String name = path.getFileName().toString();
+        final int dot = name.lastIndexOf('.');
+        return dot >= 0 ? name.substring(dot + 1) : "";
+    }
+
+    /**
+     * Returns {@code true} when the given {@code path} should be excluded from
+     * the file/directory tree.
+     *
+     * <p>A path is excluded when any of its components starts with {@code .}
+     * (hidden files) <em>or</em> when its relative representation starts with
+     * any of the directory/file prefixes returned by
+     * {@link PreferencesManager#getExcludeDirs()}.  The comparison uses
+     * forward slashes so that it is consistent with the Unix-style paths
+     * stored in the settings regardless of the host OS.</p>
+     */
+    private static boolean isExcluded(final Path root, final Path path) {
+        if (path.equals(root)) {
+            return false;
+        }
+        // Always exclude hidden entries (any path component starting with '.')
+        for (final Path component : root.relativize(path)) {
+            if (component.toString().startsWith(".")) {
+                return true;
+            }
+        }
+        // Apply the user-configured exclude list (prefix match on the
+        // forward-slash relative path, same logic as ProjectUtil.collectFiles)
+        final String relativePath = root.relativize(path).toString()
+                .replace(File.separatorChar, '/');
+        return PreferencesManager.getInstance().getExcludeDirs().stream()
+                .filter(s -> !s.isBlank())
+                .anyMatch(relativePath::startsWith);
     }
 }
