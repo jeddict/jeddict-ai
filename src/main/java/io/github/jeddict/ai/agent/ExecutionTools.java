@@ -110,15 +110,16 @@ public class ExecutionTools extends AbstractTool {
             int exitCode = process.waitFor();
             String result = (exitCode == 0 ? actionLabel + " successful"
                     : actionLabel + " failed with exit code " + exitCode);
-            progress(actionLabel + " finished " + result);
+            progress(result);
             fullLog.append(result).append("\n");
 
         } catch (Exception e) {
             String error = actionLabel + " failed: " + e.getMessage();
-            progress(actionLabel + " error " + error);
+            progress(error);
             fullLog.append(error).append("\n");
         }
 
+        progress("");
         return fullLog.toString();
     }
 
