@@ -17,8 +17,6 @@ package io.github.jeddict.ai.scanner;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -26,7 +24,6 @@ import java.util.logging.Logger;
 import java.util.logging.Level;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
-import io.github.jeddict.ai.agent.FileSystemTools;
 import org.netbeans.api.project.Project;
 import org.openide.filesystems.FileObject;
 
@@ -177,64 +174,6 @@ public class ProjectMetadataInfo {
             LOG.log(Level.WARNING, "Failed to read project metadata", e);
             return null;
         }
-    }
-
-    /**
-     * Returns the file tree structure of the project directory as a formatted
-     * string. Directories configured in {@link PreferencesManager#getExcludeDirs()},
-     * hidden entries (those whose path component starts with {@code .}), and
-     * files whose extension is not in {@link PreferencesManager#getFileExtensionListToInclude()}
-     * are excluded.
-     *
-     * @param project the project whose file tree to return
-     * @return the file tree as an indented string, or an empty string if the
-     *         project is null or the tree cannot be read
-     */
-    public static String getFileTree(Project project) {
-        return getFileTree(project, null, 0);
-    }
-
-    /**
-     * Returns the file tree structure rooted at the given sub-path inside the
-     * project, limited to the specified depth. Directories configured in
-     * {@link PreferencesManager#getExcludeDirs()}, hidden entries, and files
-     * whose extension is not in
-     * {@link PreferencesManager#getFileExtensionListToInclude()} are excluded.
-     *
-     * @param project  the project whose file tree to return
-     * @param subPath  a path relative to the project root to use as the tree
-     *                 root (e.g. {@code "src/main/java"}); {@code null} or blank
-     *                 means the entire project directory
-     * @param maxDepth the maximum number of directory levels to descend;
-     *                 values {@code <= 0} mean unlimited depth
-     * @return the file tree as an indented string, or an empty string if the
-     *         project is null or the tree cannot be read
-     */
-    public static String getFileTree(Project project, String subPath, int maxDepth) {
-        if (project == null) {
-            return "";
-        }
-        final Path projectRoot = Paths.get(project.getProjectDirectory().getPath());
-        return FileSystemTools.getFileTree(projectRoot, subPath, maxDepth);
-    }
-
-    /**
-     * Returns the directory hierarchy of the project as a formatted string.
-     * Only directories are included — individual files and classes are omitted
-     * — giving a compact overview of the package structure. Hidden directories
-     * and directories configured in {@link io.github.jeddict.ai.settings.PreferencesManager#getExcludeDirs()}
-     * are excluded.
-     *
-     * @param project the project whose directory hierarchy to return
-     * @return the directory hierarchy as an indented string, or an empty
-     *         string if the project is null or the tree cannot be read
-     */
-    public static String getDirTree(Project project) {
-        if (project == null) {
-            return "";
-        }
-        final Path root = Paths.get(project.getProjectDirectory().getPath());
-        return FileSystemTools.getDirTree(root);
     }
 
     private record CachedResult(

@@ -517,6 +517,57 @@ public class FileSystemToolsTest extends TestBase {
             .doesNotContain("testfile.txt");
     }
 
+    @Test
+    public void getFileTree_static_returns_file_tree_for_project_root() throws Exception {
+        final String tree = FileSystemTools.getFileTree(projectPath, null, 0);
+        then(tree)
+            .contains("pom.xml")
+            .contains("folder/")
+            .contains("testfile.txt");
+    }
+
+    @Test
+    public void getFileTree_static_with_sub_path_returns_subtree() throws Exception {
+        final String tree = FileSystemTools.getFileTree(projectPath, "folder", 0);
+        then(tree)
+            .contains("testfile.txt")
+            .doesNotContain("pom.xml");
+    }
+
+    @Test
+    public void getFileTree_static_with_depth_limits_traversal() throws Exception {
+        final String tree = FileSystemTools.getFileTree(projectPath, null, 1);
+        then(tree)
+            .contains("pom.xml")
+            .contains("src/")
+            .doesNotContain("main/");
+    }
+
+    @Test
+    public void getFileTree_static_with_path_outside_project_returns_error() throws Exception {
+        final String result = FileSystemTools.getFileTree(projectPath, "../../../etc", 0);
+        then(result).contains("outside the project");
+    }
+
+    @Test
+    public void getFileTree_static_returns_empty_for_null_root() {
+        then(FileSystemTools.getFileTree(null, null, 0)).isEmpty();
+    }
+
+    @Test
+    public void getDirTree_static_returns_directory_hierarchy() throws Exception {
+        final String tree = FileSystemTools.getDirTree(projectPath);
+        then(tree)
+            .contains("folder/")
+            .doesNotContain("pom.xml")
+            .doesNotContain("testfile.txt");
+    }
+
+    @Test
+    public void getDirTree_static_returns_empty_for_null_root() {
+        then(FileSystemTools.getDirTree(null)).isEmpty();
+    }
+
     private void thenTriedFileOutsideProjectFolder(final Runnable exec) {
         thenThrownBy(() -> exec.run())
         .isInstanceOf(ToolExecutionException.class)
