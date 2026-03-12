@@ -31,8 +31,8 @@ import java.io.IOException;
  *
  * Usage:
  * - Create an instance with the target project and a stream handler.
- * - Invoke buildProject() to run the build command.
- * - Invoke testProject() to run the test command.
+ * - Invoke executeBuild() to run the build command.
+ * - Invoke executeTest() to run the test command.
  *
  * @author Gaurav Gupta
  */
@@ -55,15 +55,15 @@ public class ExecutionTools extends AbstractTool {
         log = new LogPrinter(projectName);
     }
 
-    @Tool("Build the project and return full log")
+    @Tool("Build the project using the configured build command and return full log")
     @ToolPolicy(READWRITE)
-    public String buildProject() {
+    public String executeBuild() {
         return runCommand(buildCommand, "Building");
     }
 
-    @Tool("Run project tests and return full log")
+    @Tool("Run project tests using the configured test command and return full log")
     @ToolPolicy(READWRITE)
-    public String testProject() {
+    public String executeTest() {
         return runCommand(testCommand, "Testing");
     }
 
