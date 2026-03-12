@@ -187,15 +187,59 @@ public class GradleProjectTools extends JvmProjectTools implements BuildMetadata
      * @return the shell command string (never {@code null})
      */
     String resolveRunCommand(final String mainClass) {
+        return resolveWrapper() + " run --main-class=" + mainClass;
+    }
+
+    @Override
+    @Tool(
+        name = "buildProject",
+        value = "Build the Gradle project using 'gradle build' (or the Gradle wrapper) and return the full log"
+    )
+    @ToolPolicy(READWRITE)
+    public String buildProject() {
+        return runCommand(resolveBuildCommand(), "Building");
+    }
+
+    /**
+     * Returns the Gradle command to build the project ({@code gradle[w] build}).
+     *
+     * @return the shell command string (never {@code null})
+     */
+    String resolveBuildCommand() {
+        return resolveWrapper() + " build";
+    }
+
+    @Override
+    @Tool(
+        name = "testProject",
+        value = "Run the Gradle project's test suite using 'gradle test' (or the Gradle wrapper) and return the full log"
+    )
+    @ToolPolicy(READWRITE)
+    public String testProject() {
+        return runCommand(resolveTestCommand(), "Testing");
+    }
+
+    /**
+     * Returns the Gradle command to run the project's tests ({@code gradle[w] test}).
+     *
+     * @return the shell command string (never {@code null})
+     */
+    String resolveTestCommand() {
+        return resolveWrapper() + " test";
+    }
+
+    /**
+     * Returns the Gradle executable to use: the Gradle wrapper ({@code ./gradlew}
+     * or {@code gradlew.bat}) when present, otherwise the system {@code gradle}.
+     */
+    private String resolveWrapper() {
         final boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
         final File basedirFile = new File(basedir);
-        final String gradle;
         if (isWindows) {
-            gradle = new File(basedirFile, "gradlew.bat").exists() ? "gradlew.bat" : "gradle";
+            return new File(basedirFile, "gradlew.bat").exists() ? "gradlew.bat" : "gradle";
         } else {
-            gradle = new File(basedirFile, "gradlew").exists() ? "./gradlew" : "gradle";
+            return new File(basedirFile, "gradlew").exists() ? "./gradlew" : "gradle";
         }
-        return gradle + " run --main-class=" + mainClass;
     }
 
     // -----------------------------------------------------------------------

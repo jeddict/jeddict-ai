@@ -205,15 +205,59 @@ public class MavenProjectTools extends JvmProjectTools implements BuildMetadataR
      * @return the shell command string (never {@code null})
      */
     String resolveRunCommand(final String mainClass) {
+        return resolveWrapper() + " exec:java -Dexec.mainClass=" + mainClass;
+    }
+
+    @Override
+    @Tool(
+        name = "buildProject",
+        value = "Build the Maven project using 'mvn clean install' (or the Maven wrapper) and return the full log"
+    )
+    @ToolPolicy(READWRITE)
+    public String buildProject() {
+        return runCommand(resolveBuildCommand(), "Building");
+    }
+
+    /**
+     * Returns the Maven command to build the project ({@code mvn[w] clean install}).
+     *
+     * @return the shell command string (never {@code null})
+     */
+    String resolveBuildCommand() {
+        return resolveWrapper() + " clean install";
+    }
+
+    @Override
+    @Tool(
+        name = "testProject",
+        value = "Run the Maven project's test suite using 'mvn test' (or the Maven wrapper) and return the full log"
+    )
+    @ToolPolicy(READWRITE)
+    public String testProject() {
+        return runCommand(resolveTestCommand(), "Testing");
+    }
+
+    /**
+     * Returns the Maven command to run the project's tests ({@code mvn[w] test}).
+     *
+     * @return the shell command string (never {@code null})
+     */
+    String resolveTestCommand() {
+        return resolveWrapper() + " test";
+    }
+
+    /**
+     * Returns the Maven executable to use: the Maven wrapper ({@code ./mvnw}
+     * or {@code mvnw.cmd}) when present, otherwise the system {@code mvn}.
+     */
+    private String resolveWrapper() {
         final boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
         final File basedirFile = new File(basedir);
-        final String mvn;
         if (isWindows) {
-            mvn = new File(basedirFile, "mvnw.cmd").exists() ? "mvnw.cmd" : "mvn";
+            return new File(basedirFile, "mvnw.cmd").exists() ? "mvnw.cmd" : "mvn";
         } else {
-            mvn = new File(basedirFile, "mvnw").exists() ? "./mvnw" : "mvn";
+            return new File(basedirFile, "mvnw").exists() ? "./mvnw" : "mvn";
         }
-        return mvn + " exec:java -Dexec.mainClass=" + mainClass;
     }
 
     // -----------------------------------------------------------------------

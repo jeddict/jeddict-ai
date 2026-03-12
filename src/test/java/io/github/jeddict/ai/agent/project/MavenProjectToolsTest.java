@@ -175,4 +175,34 @@ public class MavenProjectToolsTest extends TestBase {
             .isEqualTo("./mvnw exec:java -Dexec.mainClass=com.example.App");
     }
 
+    @Test
+    public void resolveBuildCommand_uses_mvn_when_no_wrapper_present()
+    throws Exception {
+        final MavenProjectTools tool = new MavenProjectTools(project(projectDir));
+        then(tool.resolveBuildCommand()).isEqualTo("mvn clean install");
+    }
+
+    @Test
+    public void resolveBuildCommand_uses_mvnw_when_wrapper_present()
+    throws Exception {
+        java.nio.file.Files.createFile(projectPath.resolve("mvnw"));
+        final MavenProjectTools tool = new MavenProjectTools(project(projectDir));
+        then(tool.resolveBuildCommand()).isEqualTo("./mvnw clean install");
+    }
+
+    @Test
+    public void resolveTestCommand_uses_mvn_when_no_wrapper_present()
+    throws Exception {
+        final MavenProjectTools tool = new MavenProjectTools(project(projectDir));
+        then(tool.resolveTestCommand()).isEqualTo("mvn test");
+    }
+
+    @Test
+    public void resolveTestCommand_uses_mvnw_when_wrapper_present()
+    throws Exception {
+        java.nio.file.Files.createFile(projectPath.resolve("mvnw"));
+        final MavenProjectTools tool = new MavenProjectTools(project(projectDir));
+        then(tool.resolveTestCommand()).isEqualTo("./mvnw test");
+    }
+
 }

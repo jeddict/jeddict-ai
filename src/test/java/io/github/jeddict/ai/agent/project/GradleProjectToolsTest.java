@@ -42,4 +42,34 @@ public class GradleProjectToolsTest extends TestBase {
             .isEqualTo("./gradlew run --main-class=com.example.App");
     }
 
+    @Test
+    public void resolveBuildCommand_uses_gradle_when_no_wrapper_present()
+    throws Exception {
+        final GradleProjectTools tool = new GradleProjectTools(project(projectDir));
+        then(tool.resolveBuildCommand()).isEqualTo("gradle build");
+    }
+
+    @Test
+    public void resolveBuildCommand_uses_gradlew_when_wrapper_present()
+    throws Exception {
+        Files.createFile(projectPath.resolve("gradlew"));
+        final GradleProjectTools tool = new GradleProjectTools(project(projectDir));
+        then(tool.resolveBuildCommand()).isEqualTo("./gradlew build");
+    }
+
+    @Test
+    public void resolveTestCommand_uses_gradle_when_no_wrapper_present()
+    throws Exception {
+        final GradleProjectTools tool = new GradleProjectTools(project(projectDir));
+        then(tool.resolveTestCommand()).isEqualTo("gradle test");
+    }
+
+    @Test
+    public void resolveTestCommand_uses_gradlew_when_wrapper_present()
+    throws Exception {
+        Files.createFile(projectPath.resolve("gradlew"));
+        final GradleProjectTools tool = new GradleProjectTools(project(projectDir));
+        then(tool.resolveTestCommand()).isEqualTo("./gradlew test");
+    }
+
 }

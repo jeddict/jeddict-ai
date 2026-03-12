@@ -68,4 +68,30 @@ public abstract class JvmProjectTools extends ProjectTools {
     )
     @ToolPolicy(READWRITE)
     public abstract String runJavaClass(String mainClass) throws Exception;
+
+    /**
+     * Builds the project using the project's build tool and returns the full output.
+     *
+     * @return the combined stdout/stderr output of the build command followed
+     *         by a status line
+     */
+    @Tool(
+        name = "buildProject",
+        value = "Build the project using its native build tool (Maven/Gradle) and return the full log"
+    )
+    @ToolPolicy(READWRITE)
+    public abstract String buildProject() throws Exception;
+
+    /**
+     * Runs the project's test suite using its build tool and returns the full output.
+     *
+     * @return the combined stdout/stderr output of the test command followed by
+     *         a status line
+     */
+    @Tool(
+        name = "testProject",
+        value = "Run the project's test suite using its native build tool (Maven/Gradle) and return the full log"
+    )
+    @ToolPolicy(READWRITE)
+    public abstract String testProject() throws Exception;
 }
