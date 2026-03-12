@@ -444,7 +444,7 @@ public class ProjectTools extends AbstractTool {
             final Path projectRoot = Paths.get(project.getProjectDirectory().getPath());
             final Path absolute = Paths.get(absolutePath);
             if (absolute.startsWith(projectRoot)) {
-                return projectRoot.relativize(absolute).toString();
+                return projectRoot.relativize(absolute).toString().replace(File.separatorChar, '/');
             }
             return absolutePath;
         } catch (final IllegalArgumentException e) {

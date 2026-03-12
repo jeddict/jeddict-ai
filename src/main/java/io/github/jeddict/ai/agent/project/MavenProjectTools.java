@@ -254,7 +254,9 @@ public class MavenProjectTools extends JvmProjectTools implements BuildMetadataR
         final boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
         final File basedirFile = new File(basedir);
         if (isWindows) {
-            return new File(basedirFile, "mvnw.cmd").exists() ? "mvnw.cmd" : "mvn";
+            if (new File(basedirFile, "mvnw.cmd").exists()) return "mvnw.cmd";
+            if (new File(basedirFile, "mvnw").exists()) return "./mvnw";
+            return "mvn";
         } else {
             return new File(basedirFile, "mvnw").exists() ? "./mvnw" : "mvn";
         }

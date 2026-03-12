@@ -236,7 +236,9 @@ public class GradleProjectTools extends JvmProjectTools implements BuildMetadata
         final boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
         final File basedirFile = new File(basedir);
         if (isWindows) {
-            return new File(basedirFile, "gradlew.bat").exists() ? "gradlew.bat" : "gradle";
+            if (new File(basedirFile, "gradlew.bat").exists()) return "gradlew.bat";
+            if (new File(basedirFile, "gradlew").exists()) return "./gradlew";
+            return "gradle";
         } else {
             return new File(basedirFile, "gradlew").exists() ? "./gradlew" : "gradle";
         }
