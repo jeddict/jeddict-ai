@@ -76,7 +76,8 @@ public class ExecutionTools extends AbstractTool {
      * "Testing", etc.)
      * @return full log of the Maven command
      */
-    private String runCommand(String goals, String actionLabel) {
+    @Override
+    protected String runCommand(String goals, String actionLabel) {
         progress(actionLabel + " " + projectName);
         StringBuilder fullLog = new StringBuilder();
 

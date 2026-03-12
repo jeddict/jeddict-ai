@@ -20,6 +20,7 @@ import java.io.IOException;
 import org.netbeans.api.project.Project;
 import io.github.jeddict.ai.agent.ToolPolicy;
 import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READONLY;
+import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READWRITE;
 
 /**
  * Shared base class for JVM-based project tools (Maven and Gradle).
@@ -51,4 +52,20 @@ public abstract class JvmProjectTools extends ProjectTools {
     )
     @ToolPolicy(READONLY)
     public abstract String jdkVersion() throws Exception;
+
+    /**
+     * Runs a Java class by its fully qualified name using the project's build
+     * tool and returns the full output.
+     *
+     * @param mainClass the fully qualified name of the class to run
+     * @return the combined stdout/stderr output of the command followed by a
+     *         status line
+     */
+    @Tool(
+        name = "runJavaClass",
+        value = "Run a Java class by its fully qualified class name and return the full output. "
+            + "Use this to execute any Java application or main class in the project."
+    )
+    @ToolPolicy(READWRITE)
+    public abstract String runJavaClass(String mainClass) throws Exception;
 }

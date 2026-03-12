@@ -18,6 +18,7 @@ package io.github.jeddict.ai.agent.project;
 import dev.langchain4j.agent.tool.Tool;
 import io.github.jeddict.ai.scanner.ProjectMetadataInfo;
 import io.github.jeddict.ai.scanner.ProjectMetadataInfo.BuildMetadataResolver;
+import java.io.File;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -27,6 +28,7 @@ import java.util.regex.Pattern;
 import org.netbeans.api.project.Project;
 import io.github.jeddict.ai.agent.ToolPolicy;
 import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READONLY;
+import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READWRITE;
 import org.openide.filesystems.FileObject;
 
 /**
@@ -163,6 +165,37 @@ public class GradleProjectTools extends JvmProjectTools implements BuildMetadata
         return sb.length() == 0
                 ? "No dependencies declared in Gradle build file"
                 : sb.toString().trim();
+    }
+
+    @Override
+    @Tool(
+        name = "runJavaClass",
+        value = "Run a Java class by its fully qualified class name using the Gradle application "
+            + "plugin and return the full output"
+    )
+    @ToolPolicy(READWRITE)
+    public String runJavaClass(final String mainClass) {
+        return runCommand(resolveRunCommand(mainClass), "Running " + mainClass);
+    }
+
+    /**
+     * Builds the Gradle command to run {@code mainClass}, preferring the
+     * Gradle wrapper ({@code gradlew} / {@code gradlew.bat}) when it is
+     * present in the project directory.
+     *
+     * @param mainClass the fully qualified name of the class to run
+     * @return the shell command string (never {@code null})
+     */
+    String resolveRunCommand(final String mainClass) {
+        final boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
+        final File basedirFile = new File(basedir);
+        final String gradle;
+        if (isWindows) {
+            gradle = new File(basedirFile, "gradlew.bat").exists() ? "gradlew.bat" : "gradle";
+        } else {
+            gradle = new File(basedirFile, "gradlew").exists() ? "./gradlew" : "gradle";
+        }
+        return gradle + " run --main-class=" + mainClass;
     }
 
     // -----------------------------------------------------------------------

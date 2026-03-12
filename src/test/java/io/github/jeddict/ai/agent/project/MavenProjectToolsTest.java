@@ -155,4 +155,24 @@ public class MavenProjectToolsTest extends TestBase {
         then(tool.projectDependencies()).contains("No dependencies declared");
     }
 
+    @Test
+    public void resolveRunCommand_uses_mvn_when_no_wrapper_present()
+    throws Exception {
+        final Path homePath = Paths.get(".").toAbsolutePath().normalize();
+        final String dir = homePath.resolve("src/test/projects/minimal").toString();
+        final MavenProjectTools tool = new MavenProjectTools(project(dir));
+        then(tool.resolveRunCommand("com.example.Main"))
+            .isEqualTo("mvn exec:java -Dexec.mainClass=com.example.Main");
+    }
+
+    @Test
+    public void resolveRunCommand_uses_mvnw_when_wrapper_present()
+    throws Exception {
+        // Use a temp copy so we don't pollute the test project directory
+        final MavenProjectTools tool = new MavenProjectTools(project(projectDir));
+        java.nio.file.Files.createFile(projectPath.resolve("mvnw"));
+        then(tool.resolveRunCommand("com.example.App"))
+            .isEqualTo("./mvnw exec:java -Dexec.mainClass=com.example.App");
+    }
+
 }

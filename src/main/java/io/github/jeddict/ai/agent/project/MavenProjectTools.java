@@ -18,6 +18,7 @@ package io.github.jeddict.ai.agent.project;
 import dev.langchain4j.agent.tool.Tool;
 import io.github.jeddict.ai.scanner.ProjectMetadataInfo;
 import io.github.jeddict.ai.scanner.ProjectMetadataInfo.BuildMetadataResolver;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.LinkedHashMap;
@@ -32,6 +33,7 @@ import org.codehaus.plexus.util.xml.Xpp3Dom;
 import org.netbeans.api.project.Project;
 import io.github.jeddict.ai.agent.ToolPolicy;
 import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READONLY;
+import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READWRITE;
 import org.openide.filesystems.FileObject;
 
 /**
@@ -181,6 +183,37 @@ public class MavenProjectTools extends JvmProjectTools implements BuildMetadataR
             sb.append('\n');
         }
         return sb.toString().trim();
+    }
+
+    @Override
+    @Tool(
+        name = "runJavaClass",
+        value = "Run a Java class by its fully qualified class name using the Maven exec plugin "
+            + "and return the full output"
+    )
+    @ToolPolicy(READWRITE)
+    public String runJavaClass(final String mainClass) {
+        return runCommand(resolveRunCommand(mainClass), "Running " + mainClass);
+    }
+
+    /**
+     * Builds the Maven command to run {@code mainClass}, preferring the Maven
+     * wrapper ({@code mvnw} / {@code mvnw.cmd}) when it is present in the
+     * project directory.
+     *
+     * @param mainClass the fully qualified name of the class to run
+     * @return the shell command string (never {@code null})
+     */
+    String resolveRunCommand(final String mainClass) {
+        final boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
+        final File basedirFile = new File(basedir);
+        final String mvn;
+        if (isWindows) {
+            mvn = new File(basedirFile, "mvnw.cmd").exists() ? "mvnw.cmd" : "mvn";
+        } else {
+            mvn = new File(basedirFile, "mvnw").exists() ? "./mvnw" : "mvn";
+        }
+        return mvn + " exec:java -Dexec.mainClass=" + mainClass;
     }
 
     // -----------------------------------------------------------------------
