@@ -47,10 +47,14 @@ public class ProjectTools extends AbstractTool {
      *   <li>Gradle ({@code build.gradle} or {@code build.gradle.kts}) → {@link GradleProjectTools}</li>
      *   <li>NetBeans Module ({@code nbproject/project.xml}) → {@link NetBeansModuleProjectTools}</li>
      *   <li>Ant ({@code build.xml}) → {@link AntProjectTools}</li>
+     *   <li>Frontend ({@code package.json} + framework config) → {@link FrontendProjectTools}</li>
      *   <li>Node.js ({@code package.json}) → {@link NodeJsProjectTools}</li>
      *   <li>Python ({@code pyproject.toml}, {@code setup.py}, or {@code requirements.txt}) → {@link PythonProjectTools}</li>
      *   <li>PHP ({@code composer.json}) → {@link PhpProjectTools}</li>
      *   <li>CMake/Make ({@code CMakeLists.txt}, {@code Makefile}, or {@code makefile}) → {@link MakefileProjectTools}</li>
+     *   <li>Rust ({@code Cargo.toml}) → {@link RustProjectTools}</li>
+     *   <li>Go ({@code go.mod}) → {@link GoProjectTools}</li>
+     *   <li>Docker ({@code Dockerfile} or {@code docker-compose.yml}) → {@link DockerProjectTools}</li>
      *   <li>Otherwise → {@link ProjectTools} (generic)</li>
      * </ul>
      */
@@ -71,6 +75,10 @@ public class ProjectTools extends AbstractTool {
         if (dir.getFileObject("build.xml") != null) {
             return new AntProjectTools(project);
         }
+        // Check for a frontend framework config before plain package.json
+        if (dir.getFileObject("package.json") != null && hasFrontendFrameworkConfig(dir)) {
+            return new FrontendProjectTools(project);
+        }
         if (dir.getFileObject("package.json") != null) {
             return new NodeJsProjectTools(project);
         }
@@ -86,6 +94,18 @@ public class ProjectTools extends AbstractTool {
                 || dir.getFileObject("Makefile") != null
                 || dir.getFileObject("makefile") != null) {
             return new MakefileProjectTools(project);
+        }
+        if (dir.getFileObject("Cargo.toml") != null) {
+            return new RustProjectTools(project);
+        }
+        if (dir.getFileObject("go.mod") != null) {
+            return new GoProjectTools(project);
+        }
+        if (dir.getFileObject("Dockerfile") != null
+                || dir.getFileObject("dockerfile") != null
+                || dir.getFileObject("docker-compose.yml") != null
+                || dir.getFileObject("docker-compose.yaml") != null) {
+            return new DockerProjectTools(project);
         }
         return new ProjectTools(project);
     }
@@ -159,5 +179,26 @@ public class ProjectTools extends AbstractTool {
     throws Exception {
         progress("Gathering project dependencies: " + project());
         return "No dependency information available for this project type";
+    }
+
+    // -----------------------------------------------------------------------
+    // Internal helpers
+    // -----------------------------------------------------------------------
+
+    /**
+     * Returns {@code true} when the given project directory contains at least
+     * one well-known frontend framework configuration file (Angular, Next.js,
+     * Vite, or Webpack).
+     */
+    private static boolean hasFrontendFrameworkConfig(final FileObject dir) {
+        return dir.getFileObject("angular.json") != null
+                || dir.getFileObject("next.config.js") != null
+                || dir.getFileObject("next.config.mjs") != null
+                || dir.getFileObject("next.config.ts") != null
+                || dir.getFileObject("vite.config.js") != null
+                || dir.getFileObject("vite.config.ts") != null
+                || dir.getFileObject("vite.config.mjs") != null
+                || dir.getFileObject("webpack.config.js") != null
+                || dir.getFileObject("webpack.config.ts") != null;
     }
 }
