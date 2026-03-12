@@ -52,7 +52,7 @@ public class DummyChatModelTest extends TestBase {
     }
 
     @Test
-    public void doChat_returns_the_error_page_if_the_mock_does_not_exist() {
+    public void doChat_return_the_error_page_if_the_mock_does_not_exist() {
         final DummyChatModel chat = new DummyChatModel();
 
         ChatRequest chatRequest = ChatRequest.builder().messages(
