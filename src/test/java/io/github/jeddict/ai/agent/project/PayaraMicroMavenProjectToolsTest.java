@@ -18,6 +18,7 @@ package io.github.jeddict.ai.agent.project;
 
 import com.github.caciocavallosilano.cacio.ctc.junit.CacioTest;
 import io.github.jeddict.ai.test.TestBase;
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -45,22 +46,35 @@ public class PayaraMicroMavenProjectToolsTest extends TestBase {
         then(tool).isInstanceOf(MavenProjectTools.class);
     }
 
+    // buildProject and resolveBuildCommand are NOT overridden: standard mvn clean install is used
+
     @Test
-    public void resolveBuildCommand_uses_payara_micro_bundle()
+    public void resolveBuildCommand_uses_standard_mvn_clean_install()
     throws Exception {
         final Path homePath = Paths.get(".").toAbsolutePath().normalize();
         final String dir = homePath.resolve("src/test/projects/payara-micro").toString();
         final PayaraMicroMavenProjectTools tool = new PayaraMicroMavenProjectTools(project(dir));
-        then(tool.resolveBuildCommand()).isEqualTo("mvn payara-micro:bundle");
+        then(tool.resolveBuildCommand()).isEqualTo("mvn clean install");
     }
 
     @Test
-    public void resolveRunCommand_uses_payara_micro_start()
+    public void resolveBuildCommand_uses_mvnw_when_wrapper_present()
+    throws Exception {
+        Files.createFile(projectPath.resolve("mvnw"));
+        final PayaraMicroMavenProjectTools tool = new PayaraMicroMavenProjectTools(project(projectDir));
+        then(tool.resolveBuildCommand()).isEqualTo("./mvnw clean install");
+    }
+
+    // runJavaClass and resolveRunCommand are NOT overridden: standard exec:java is used
+
+    @Test
+    public void resolveRunCommand_uses_standard_exec_java()
     throws Exception {
         final Path homePath = Paths.get(".").toAbsolutePath().normalize();
         final String dir = homePath.resolve("src/test/projects/payara-micro").toString();
         final PayaraMicroMavenProjectTools tool = new PayaraMicroMavenProjectTools(project(dir));
-        then(tool.resolveRunCommand("com.example.Main")).isEqualTo("mvn payara-micro:start");
+        then(tool.resolveRunCommand("com.example.Main"))
+            .isEqualTo("mvn exec:java -Dexec.mainClass=com.example.Main");
     }
 
     @Test
@@ -73,26 +87,37 @@ public class PayaraMicroMavenProjectToolsTest extends TestBase {
     }
 
     @Test
-    public void resolveBuildCommand_uses_mvnw_when_wrapper_present()
-    throws Exception {
-        Files.createFile(projectPath.resolve("mvnw"));
-        final PayaraMicroMavenProjectTools tool = new PayaraMicroMavenProjectTools(project(projectDir));
-        then(tool.resolveBuildCommand()).isEqualTo("./mvnw payara-micro:bundle");
-    }
-
-    @Test
-    public void resolveRunCommand_uses_mvnw_when_wrapper_present()
-    throws Exception {
-        Files.createFile(projectPath.resolve("mvnw"));
-        final PayaraMicroMavenProjectTools tool = new PayaraMicroMavenProjectTools(project(projectDir));
-        then(tool.resolveRunCommand("com.example.App")).isEqualTo("./mvnw payara-micro:start");
-    }
-
-    @Test
     public void resolveTestCommand_uses_mvnw_when_wrapper_present()
     throws Exception {
         Files.createFile(projectPath.resolve("mvnw"));
         final PayaraMicroMavenProjectTools tool = new PayaraMicroMavenProjectTools(project(projectDir));
         then(tool.resolveTestCommand()).isEqualTo("./mvnw test");
+    }
+
+    // Payara Micro-specific method names
+
+    @Test
+    public void bundleMicro_method_exists() throws Exception {
+        final Method m = PayaraMicroMavenProjectTools.class.getMethod("bundleMicro");
+        then(m).isNotNull();
+    }
+
+    @Test
+    public void startMicro_method_exists() throws Exception {
+        final Method m = PayaraMicroMavenProjectTools.class.getMethod("startMicro");
+        then(m).isNotNull();
+    }
+
+    @Test
+    public void stopMicro_method_exists() throws Exception {
+        final Method m = PayaraMicroMavenProjectTools.class.getMethod("stopMicro");
+        then(m).isNotNull();
+    }
+
+    @Test
+    public void stopServer_method_does_not_exist() {
+        then(PayaraMicroMavenProjectTools.class.getMethods())
+            .extracting(Method::getName)
+            .doesNotContain("stopServer");
     }
 }

@@ -26,14 +26,16 @@ import org.netbeans.api.project.Project;
  * <a href="https://github.com/payara/ecosystem-maven">Payara Micro Maven Plugin</a>
  * ({@code fish.payara.maven.plugins:payara-micro-maven-plugin}).
  *
- * <p>Overrides the generic Maven build/run commands with Payara Micro-specific
- * goals, and exposes additional tools for the full lifecycle:</p>
+ * <p>Inherits the standard Maven {@code buildProject} ({@code mvn clean install})
+ * and {@code runJavaClass} goals from {@link MavenProjectTools}, and exposes
+ * additional tools for the Payara Micro lifecycle:</p>
  * <ul>
- *   <li><b>bundle</b> – create an Uber JAR ({@code payara-micro:bundle})</li>
- *   <li><b>start</b> – start Payara Micro ({@code payara-micro:start})</li>
- *   <li><b>stop</b>  – stop the running instance ({@code payara-micro:stop})</li>
- *   <li><b>reload</b> – redeploy without restarting ({@code payara-micro:reload})</li>
- *   <li><b>dev</b>   – development mode with live reload ({@code payara-micro:dev})</li>
+ *   <li><b>bundleMicro</b> – create an Uber JAR ({@code payara-micro:bundle})</li>
+ *   <li><b>startMicro</b> – start Payara Micro ({@code payara-micro:start})</li>
+ *   <li><b>stopMicro</b>  – stop the running instance ({@code payara-micro:stop})</li>
+ *   <li><b>reloadApplication</b> – redeploy without restarting ({@code payara-micro:reload})</li>
+ *   <li><b>devMode</b>   – development mode with live reload ({@code payara-micro:dev});
+ *       <em>always prefer this over {@code startMicro} during development</em></li>
  * </ul>
  */
 public class PayaraMicroMavenProjectTools extends MavenProjectTools {
@@ -43,61 +45,37 @@ public class PayaraMicroMavenProjectTools extends MavenProjectTools {
     }
 
     // -----------------------------------------------------------------------
-    // Overrides – build / run / test
-    // -----------------------------------------------------------------------
-
-    @Override
-    @Tool(
-        name = "buildProject",
-        value = "Build the Payara Micro project by creating an Uber JAR "
-            + "using 'mvn payara-micro:bundle' (or the Maven wrapper) and return the full log"
-    )
-    @ToolPolicy(READWRITE)
-    public String buildProject() {
-        return runCommand(resolveBuildCommand(), "Bundling");
-    }
-
-    /**
-     * Returns the command to bundle the Payara Micro Uber JAR
-     * ({@code mvn[w] payara-micro:bundle}).
-     */
-    @Override
-    String resolveBuildCommand() {
-        return resolveWrapper() + " payara-micro:bundle";
-    }
-
-    @Override
-    @Tool(
-        name = "runJavaClass",
-        value = "Start the Payara Micro server using 'mvn payara-micro:start' "
-            + "(or the Maven wrapper) and return the full output"
-    )
-    @ToolPolicy(READWRITE)
-    public String runJavaClass(final String mainClass) {
-        return runCommand(resolveRunCommand(mainClass), "Starting Payara Micro");
-    }
-
-    /**
-     * Returns the Payara Micro start command ({@code mvn[w] payara-micro:start}).
-     * The {@code mainClass} parameter is not used because Payara Micro manages
-     * deployment through its own plugin configuration.
-     */
-    @Override
-    String resolveRunCommand(final String mainClass) {
-        return resolveWrapper() + " payara-micro:start";
-    }
-
-    // -----------------------------------------------------------------------
     // Payara Micro-specific tools
     // -----------------------------------------------------------------------
 
     @Tool(
-        name = "stopServer",
+        name = "bundleMicro",
+        value = "Create a Payara Micro Uber JAR (application + server) "
+            + "using 'mvn payara-micro:bundle' (or the Maven wrapper) and return the full log"
+    )
+    @ToolPolicy(READWRITE)
+    public String bundleMicro() {
+        return runCommand(resolveWrapper() + " payara-micro:bundle", "Bundling Payara Micro Uber JAR");
+    }
+
+    @Tool(
+        name = "startMicro",
+        value = "Start the Payara Micro server using 'mvn payara-micro:start' "
+            + "(or the Maven wrapper) and return the full output. "
+            + "Prefer devMode over startMicro for development workflows."
+    )
+    @ToolPolicy(READWRITE)
+    public String startMicro() {
+        return runCommand(resolveWrapper() + " payara-micro:start", "Starting Payara Micro");
+    }
+
+    @Tool(
+        name = "stopMicro",
         value = "Stop the running Payara Micro instance using 'mvn payara-micro:stop' "
             + "(or the Maven wrapper)"
     )
     @ToolPolicy(READWRITE)
-    public String stopServer() {
+    public String stopMicro() {
         return runCommand(resolveWrapper() + " payara-micro:stop", "Stopping Payara Micro");
     }
 
@@ -111,10 +89,18 @@ public class PayaraMicroMavenProjectTools extends MavenProjectTools {
         return runCommand(resolveWrapper() + " payara-micro:reload", "Reloading Payara Micro");
     }
 
+    /**
+     * Starts Payara Micro in development mode (auto deploy + live reload).
+     *
+     * <p><b>Always prefer this over {@link #startMicro()}</b> during active
+     * development: {@code dev} automatically enables hot-deploy, browser
+     * live-reload, and session persistence without a server restart.</p>
+     */
     @Tool(
         name = "devMode",
         value = "Start Payara Micro in development mode with auto deploy and live reload "
-            + "using 'mvn payara-micro:dev' (or the Maven wrapper)"
+            + "using 'mvn payara-micro:dev' (or the Maven wrapper). "
+            + "Always prefer devMode over startMicro for development workflows."
     )
     @ToolPolicy(READWRITE)
     public String devMode() {
