@@ -94,7 +94,7 @@ public class MakefileProjectTools extends ProjectTools implements BuildMetadataR
     @ToolPolicy(READONLY)
     public String projectInfo() throws Exception {
         progress("Gathering Makefile/CMake project info: " + project());
-        return ProjectMetadataInfo.get(project(), this);
+        return appendSourceDirs(ProjectMetadataInfo.get(project(), this));
     }
 
     // -----------------------------------------------------------------------

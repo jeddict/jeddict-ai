@@ -17,29 +17,18 @@ package io.github.jeddict.ai.scanner;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URL;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.logging.Logger;
 import java.util.logging.Level;
-import java.util.regex.Pattern;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import io.github.jeddict.ai.agent.FileSystemTools;
-import org.netbeans.api.java.project.JavaProjectConstants;
-import org.netbeans.api.java.queries.UnitTestForSourceQuery;
 import org.netbeans.api.project.Project;
-import org.netbeans.api.project.ProjectUtils;
-import org.netbeans.api.project.SourceGroup;
-import org.netbeans.api.project.Sources;
 import org.openide.filesystems.FileObject;
-import org.openide.filesystems.URLMapper;
 
 /**
  *
@@ -121,16 +110,6 @@ public class ProjectMetadataInfo {
             sb.append("- ").append(entry.getKey()).append(": ").append(entry.getValue()).append('\n');
         }
 
-        final String srcDir = getSrcDir(project);
-        if (!srcDir.isBlank()) {
-            sb.append("- Source Directory: ").append(srcDir).append("\n");
-        }
-
-        final String testDir = getTestDir(project);
-        if (!testDir.isBlank()) {
-            sb.append("- Test Source Directory: ").append(testDir).append("\n");
-        }
-
         return sb.toString().trim();
     }
 
@@ -197,246 +176,6 @@ public class ProjectMetadataInfo {
         } catch (Exception e) {
             LOG.log(Level.WARNING, "Failed to read project metadata", e);
             return null;
-        }
-    }
-
-    /**
-     * Returns the main Java sources directory path relative to the project
-     * root (e.g. {@code src/main/java}).
-     *
-     * <p>Uses the NetBeans {@link Sources} API, which is project-type-agnostic
-     * and works for Maven, Gradle, Ant, and any other project that registers
-     * Java source groups. Returns an empty string when no non-test Java source
-     * root is registered or the project is {@code null}.</p>
-     *
-     * @param project the project to query
-     * @return the relative path, or an empty string if not determinable
-     */
-    public static String getSrcDir(Project project) {
-        if (project == null) {
-            return "";
-        }
-        final SourceGroup[] groups = ProjectUtils.getSources(project)
-                .getSourceGroups(JavaProjectConstants.SOURCES_TYPE_JAVA);
-        final Set<FileObject> testRoots = findTestRoots(groups);
-        for (final SourceGroup sg : groups) {
-            if (!testRoots.contains(sg.getRootFolder())) {
-                return relativize(project, sg.getRootFolder().getPath());
-            }
-        }
-        return "";
-    }
-
-    /**
-     * Returns the main resources directory path relative to the project root
-     * (e.g. {@code src/main/resources}).
-     *
-     * <p>Uses the NetBeans {@link Sources} API with the {@code "resources"}
-     * source group type. Falls back to deriving the path from the main Java
-     * source directory by convention (replacing the {@code java} segment with
-     * {@code resources}) when no resource source group is registered.</p>
-     *
-     * @param project the project to query
-     * @return the relative path, or an empty string if not determinable
-     */
-    public static String getSrcResourceDir(Project project) {
-        if (project == null) {
-            return "";
-        }
-        final SourceGroup[] groups = ProjectUtils.getSources(project)
-                .getSourceGroups("resources");
-        if (groups.length > 0) {
-            final Set<FileObject> testRoots = findTestRoots(groups);
-            for (final SourceGroup sg : groups) {
-                if (!testRoots.contains(sg.getRootFolder())) {
-                    return relativize(project, sg.getRootFolder().getPath());
-                }
-            }
-        }
-        // Fallback: derive from the main Java source directory by convention
-        final String srcJavaDir = getSrcDir(project);
-        if (!srcJavaDir.isBlank()) {
-            final String candidate = replaceJavaSegment(srcJavaDir, "resources");
-            if (candidate != null) {
-                final Path resourcePath = Paths.get(project.getProjectDirectory().getPath())
-                        .resolve(candidate);
-                if (Files.isDirectory(resourcePath)) {
-                    return candidate;
-                }
-            }
-        }
-        return "";
-    }
-
-    /**
-     * Returns the test Java sources directory path relative to the project
-     * root (e.g. {@code src/test/java}).
-     *
-     * <p>Uses the NetBeans {@link Sources} API, which is project-type-agnostic
-     * and works for Maven, Gradle, Ant, and any other project that registers
-     * Java source groups. Returns an empty string when no test Java source
-     * root is registered or the project is {@code null}.</p>
-     *
-     * @param project the project to query
-     * @return the relative path, or an empty string if not determinable
-     */
-    public static String getTestDir(Project project) {
-        if (project == null) {
-            return "";
-        }
-        final SourceGroup[] groups = ProjectUtils.getSources(project)
-                .getSourceGroups(JavaProjectConstants.SOURCES_TYPE_JAVA);
-        final Set<FileObject> testRoots = findTestRoots(groups);
-        for (final SourceGroup sg : groups) {
-            if (testRoots.contains(sg.getRootFolder())) {
-                return relativize(project, sg.getRootFolder().getPath());
-            }
-        }
-        return "";
-    }
-
-    /**
-     * Returns the test resources directory path relative to the project root
-     * (e.g. {@code src/test/resources}).
-     *
-     * <p>Uses the NetBeans {@link Sources} API with the {@code "resources"}
-     * source group type. Falls back to deriving the path from the test Java
-     * source directory by convention (replacing the {@code java} segment with
-     * {@code resources}) when no test resource source group is registered.</p>
-     *
-     * @param project the project to query
-     * @return the relative path, or an empty string if not determinable
-     */
-    public static String getTestResourceDir(Project project) {
-        if (project == null) {
-            return "";
-        }
-        final SourceGroup[] groups = ProjectUtils.getSources(project)
-                .getSourceGroups("resources");
-        if (groups.length > 0) {
-            final Set<FileObject> testRoots = findTestRoots(groups);
-            for (final SourceGroup sg : groups) {
-                if (testRoots.contains(sg.getRootFolder())) {
-                    return relativize(project, sg.getRootFolder().getPath());
-                }
-            }
-        }
-        // Fallback: derive from the test Java source directory by convention
-        final String testJavaDir = getTestDir(project);
-        if (!testJavaDir.isBlank()) {
-            final String candidate = replaceJavaSegment(testJavaDir, "resources");
-            if (candidate != null) {
-                final Path resourcePath = Paths.get(project.getProjectDirectory().getPath())
-                        .resolve(candidate);
-                if (Files.isDirectory(resourcePath)) {
-                    return candidate;
-                }
-            }
-        }
-        return "";
-    }
-
-    // Matches path segments that represent test source roots: "test", "tests",
-    // "test-java", "test-resources" etc. — but not unrelated words like "latest".
-    private static final Pattern TEST_SEGMENT_PATTERN =
-            Pattern.compile("^tests?(?:[^a-zA-Z].*)?$", Pattern.CASE_INSENSITIVE);
-
-    /**
-     * Identifies which roots among {@code groups} are test roots.
-     *
-     * <p>First tries {@link UnitTestForSourceQuery}, which is the canonical
-     * NB API. If that query is unavailable (e.g. because the NB module system
-     * is not running in the current test environment), falls back to a
-     * path-based heuristic: the common ancestor of all source roots is found,
-     * and any root whose path relative to that ancestor begins with a segment
-     * that contains {@code "test"} (case-insensitive) is treated as a test
-     * root. Using the common ancestor avoids false positives caused by
-     * {@code "test"} appearing in parent directories of the project.</p>
-     */
-    private static Set<FileObject> findTestRoots(final SourceGroup[] groups) {
-        final Map<FileObject, Boolean> folderIndex = new HashMap<>();
-        for (final SourceGroup sg : groups) {
-            folderIndex.put(sg.getRootFolder(), Boolean.FALSE);
-        }
-        final Set<FileObject> testRoots = new HashSet<>();
-        boolean queryAvailable = true;
-        for (final SourceGroup sg : groups) {
-            if (!queryAvailable) {
-                break;
-            }
-            try {
-                for (final URL url : UnitTestForSourceQuery.findUnitTests(sg.getRootFolder())) {
-                    final FileObject fo = URLMapper.findFileObject(url);
-                    if (fo != null && folderIndex.containsKey(fo)) {
-                        testRoots.add(fo);
-                    }
-                }
-            } catch (ExceptionInInitializerError | NoClassDefFoundError e) {
-                // NB module system not fully initialized (e.g. in unit tests).
-                // Fall back to common-ancestor path detection below.
-                LOG.log(Level.FINE, "UnitTestForSourceQuery unavailable; using path-based test-root detection", e);
-                queryAvailable = false;
-            }
-        }
-        if (!queryAvailable && testRoots.isEmpty() && !folderIndex.isEmpty()) {
-            // Find the common ancestor of all source roots so we can compute
-            // paths relative to the project, avoiding false "/test/" hits in
-            // parent directories of the project itself.
-            Path commonAncestor = null;
-            for (final FileObject fo : folderIndex.keySet()) {
-                final Path p = Paths.get(fo.getPath());
-                if (commonAncestor == null) {
-                    commonAncestor = p.getParent();
-                } else {
-                    while (commonAncestor != null && !p.startsWith(commonAncestor)) {
-                        commonAncestor = commonAncestor.getParent();
-                    }
-                }
-            }
-            if (commonAncestor != null) {
-                for (final FileObject fo : folderIndex.keySet()) {
-                    final Path relative = commonAncestor.relativize(Paths.get(fo.getPath()));
-                    if (relative.getNameCount() > 0
-                            && TEST_SEGMENT_PATTERN.matcher(relative.getName(0).toString()).matches()) {
-                        testRoots.add(fo);
-                    }
-                }
-            }
-        }
-        return testRoots;
-    }
-
-    /**
-     * Replaces the last path segment that is exactly {@code "java"} with
-     * {@code replacement}. Returns {@code null} when no such segment exists,
-     * preventing unintended substring substitutions (e.g. in
-     * {@code "javascript/main/java"}).
-     */
-    private static String replaceJavaSegment(String relPath, String replacement) {
-        final String sep = relPath.contains("/") ? "/" : File.separator;
-        final String[] parts = relPath.split(Pattern.quote(sep), -1);
-        for (int i = parts.length - 1; i >= 0; i--) {
-            if ("java".equals(parts[i])) {
-                parts[i] = replacement;
-                return String.join(sep, parts);
-            }
-        }
-        return null;
-    }
-
-    private static String relativize(Project project, String absolutePath) {
-        if (absolutePath == null || absolutePath.isBlank()) {
-            return "";
-        }
-        try {
-            final Path projectRoot = Paths.get(project.getProjectDirectory().getPath());
-            final Path absolute = Paths.get(absolutePath);
-            if (absolute.startsWith(projectRoot)) {
-                return projectRoot.relativize(absolute).toString();
-            }
-            return absolutePath;
-        } catch (final IllegalArgumentException e) {
-            return absolutePath;
         }
     }
 

@@ -61,7 +61,7 @@ public class NodeJsProjectTools extends ProjectTools implements BuildMetadataRes
     @ToolPolicy(READONLY)
     public String projectInfo() throws Exception {
         progress("Gathering Node.js project info: " + project());
-        return ProjectMetadataInfo.get(project(), this);
+        return appendSourceDirs(ProjectMetadataInfo.get(project(), this));
     }
 
     // -----------------------------------------------------------------------

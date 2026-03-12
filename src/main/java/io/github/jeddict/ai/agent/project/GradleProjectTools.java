@@ -95,7 +95,7 @@ public class GradleProjectTools extends JvmProjectTools implements BuildMetadata
     @ToolPolicy(READONLY)
     public String projectInfo() throws Exception {
         progress("Gathering Gradle project info: " + project());
-        return ProjectMetadataInfo.get(project(), this);
+        return appendSourceDirs(ProjectMetadataInfo.get(project(), this));
     }
 
     // -----------------------------------------------------------------------

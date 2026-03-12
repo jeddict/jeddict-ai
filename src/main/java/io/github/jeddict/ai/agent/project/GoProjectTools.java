@@ -70,7 +70,7 @@ public class GoProjectTools extends ProjectTools implements BuildMetadataResolve
     @ToolPolicy(READONLY)
     public String projectInfo() throws Exception {
         progress("Gathering Go project info: " + project());
-        return ProjectMetadataInfo.get(project(), this);
+        return appendSourceDirs(ProjectMetadataInfo.get(project(), this));
     }
 
     // -----------------------------------------------------------------------

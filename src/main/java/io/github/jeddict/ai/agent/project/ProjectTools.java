@@ -19,10 +19,27 @@ import dev.langchain4j.agent.tool.Tool;
 import io.github.jeddict.ai.agent.AbstractTool;
 import io.github.jeddict.ai.agent.ToolPolicy;
 import io.github.jeddict.ai.scanner.ProjectMetadataInfo;
-import org.netbeans.api.project.Project;
-import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READONLY;
+import java.io.File;
 import java.io.IOException;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.regex.Pattern;
+import org.netbeans.api.java.project.JavaProjectConstants;
+import org.netbeans.api.java.queries.UnitTestForSourceQuery;
+import org.netbeans.api.project.Project;
+import org.netbeans.api.project.ProjectUtils;
+import org.netbeans.api.project.SourceGroup;
+import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READONLY;
 import org.openide.filesystems.FileObject;
+import org.openide.filesystems.URLMapper;
 
 /**
  * Tool to return information about the project: jdk version, j2ee version,
@@ -32,6 +49,8 @@ import org.openide.filesystems.FileObject;
  * obtain the most specific subclass for the project's build system.</p>
  */
 public class ProjectTools extends AbstractTool {
+
+    private static final Logger LOG = Logger.getLogger(ProjectTools.class.getName());
 
     private final Project project;
 
@@ -125,7 +144,7 @@ public class ProjectTools extends AbstractTool {
     public String projectInfo()
     throws Exception {
         progress("Gathering project info: " + project());
-        return ProjectMetadataInfo.get(project());
+        return appendSourceDirs(ProjectMetadataInfo.get(project()));
     }
 
     @Tool(
@@ -136,7 +155,7 @@ public class ProjectTools extends AbstractTool {
     public String projectSrcDir()
     throws Exception {
         progress("Gathering project source directory: " + project());
-        return ProjectMetadataInfo.getSrcDir(project());
+        return getSrcDir(project());
     }
 
     @Tool(
@@ -147,7 +166,7 @@ public class ProjectTools extends AbstractTool {
     public String projectSrcResourceDir()
     throws Exception {
         progress("Gathering project source resources directory: " + project());
-        return ProjectMetadataInfo.getSrcResourceDir(project());
+        return getSrcResourceDir(project());
     }
 
     @Tool(
@@ -158,7 +177,7 @@ public class ProjectTools extends AbstractTool {
     public String projectTestDir()
     throws Exception {
         progress("Gathering project test directory: " + project());
-        return ProjectMetadataInfo.getTestDir(project());
+        return getTestDir(project());
     }
 
     @Tool(
@@ -169,7 +188,7 @@ public class ProjectTools extends AbstractTool {
     public String projectTestResourceDir()
     throws Exception {
         progress("Gathering project test resources directory: " + project());
-        return ProjectMetadataInfo.getTestResourceDir(project());
+        return getTestResourceDir(project());
     }
 
     @Tool(
@@ -181,6 +200,147 @@ public class ProjectTools extends AbstractTool {
     throws Exception {
         progress("Gathering project dependencies: " + project());
         return "No dependency information available for this project type";
+    }
+
+    // -----------------------------------------------------------------------
+    // Source / test directory helpers
+    // -----------------------------------------------------------------------
+
+    /**
+     * Appends the main source directory and test source directory lines to the
+     * given project-info string (which is typically produced by
+     * {@link ProjectMetadataInfo#get}).
+     *
+     * @param info the base project info string
+     * @return info extended with source/test directory lines
+     */
+    protected final String appendSourceDirs(final String info) {
+        final StringBuilder sb = new StringBuilder(info);
+        final String srcDir = getSrcDir(project());
+        if (!srcDir.isBlank()) {
+            sb.append('\n').append("- Source Directory: ").append(srcDir);
+        }
+        final String testDir = getTestDir(project());
+        if (!testDir.isBlank()) {
+            sb.append('\n').append("- Test Source Directory: ").append(testDir);
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Returns the main Java sources directory path relative to the project
+     * root (e.g. {@code src/main/java}).
+     *
+     * @param project the project to query
+     * @return the relative path, or an empty string if not determinable
+     */
+    public static String getSrcDir(Project project) {
+        if (project == null) {
+            return "";
+        }
+        final SourceGroup[] groups = ProjectUtils.getSources(project)
+                .getSourceGroups(JavaProjectConstants.SOURCES_TYPE_JAVA);
+        final Set<FileObject> testRoots = findTestRoots(groups);
+        for (final SourceGroup sg : groups) {
+            if (!testRoots.contains(sg.getRootFolder())) {
+                return relativize(project, sg.getRootFolder().getPath());
+            }
+        }
+        return "";
+    }
+
+    /**
+     * Returns the main resources directory path relative to the project root
+     * (e.g. {@code src/main/resources}).
+     *
+     * @param project the project to query
+     * @return the relative path, or an empty string if not determinable
+     */
+    public static String getSrcResourceDir(Project project) {
+        if (project == null) {
+            return "";
+        }
+        final SourceGroup[] groups = ProjectUtils.getSources(project)
+                .getSourceGroups("resources");
+        if (groups.length > 0) {
+            final Set<FileObject> testRoots = findTestRoots(groups);
+            for (final SourceGroup sg : groups) {
+                if (!testRoots.contains(sg.getRootFolder())) {
+                    return relativize(project, sg.getRootFolder().getPath());
+                }
+            }
+        }
+        // Fallback: derive from the main Java source directory by convention
+        final String srcJavaDir = getSrcDir(project);
+        if (!srcJavaDir.isBlank()) {
+            final String candidate = replaceJavaSegment(srcJavaDir, "resources");
+            if (candidate != null) {
+                final Path resourcePath = Paths.get(project.getProjectDirectory().getPath())
+                        .resolve(candidate);
+                if (Files.isDirectory(resourcePath)) {
+                    return candidate;
+                }
+            }
+        }
+        return "";
+    }
+
+    /**
+     * Returns the test Java sources directory path relative to the project
+     * root (e.g. {@code src/test/java}).
+     *
+     * @param project the project to query
+     * @return the relative path, or an empty string if not determinable
+     */
+    public static String getTestDir(Project project) {
+        if (project == null) {
+            return "";
+        }
+        final SourceGroup[] groups = ProjectUtils.getSources(project)
+                .getSourceGroups(JavaProjectConstants.SOURCES_TYPE_JAVA);
+        final Set<FileObject> testRoots = findTestRoots(groups);
+        for (final SourceGroup sg : groups) {
+            if (testRoots.contains(sg.getRootFolder())) {
+                return relativize(project, sg.getRootFolder().getPath());
+            }
+        }
+        return "";
+    }
+
+    /**
+     * Returns the test resources directory path relative to the project root
+     * (e.g. {@code src/test/resources}).
+     *
+     * @param project the project to query
+     * @return the relative path, or an empty string if not determinable
+     */
+    public static String getTestResourceDir(Project project) {
+        if (project == null) {
+            return "";
+        }
+        final SourceGroup[] groups = ProjectUtils.getSources(project)
+                .getSourceGroups("resources");
+        if (groups.length > 0) {
+            final Set<FileObject> testRoots = findTestRoots(groups);
+            for (final SourceGroup sg : groups) {
+                if (testRoots.contains(sg.getRootFolder())) {
+                    return relativize(project, sg.getRootFolder().getPath());
+                }
+            }
+        }
+        // Fallback: derive from the test Java source directory by convention
+        final String testJavaDir = getTestDir(project);
+        if (!testJavaDir.isBlank()) {
+            final String candidate = replaceJavaSegment(testJavaDir, "resources");
+            if (candidate != null) {
+                final Path resourcePath = Paths.get(project.getProjectDirectory().getPath())
+                        .resolve(candidate);
+                if (Files.isDirectory(resourcePath)) {
+                    return candidate;
+                }
+            }
+        }
+        return "";
     }
 
     // -----------------------------------------------------------------------
@@ -202,5 +362,93 @@ public class ProjectTools extends AbstractTool {
                 || dir.getFileObject("vite.config.mjs") != null
                 || dir.getFileObject("webpack.config.js") != null
                 || dir.getFileObject("webpack.config.ts") != null;
+    }
+
+    // Matches path segments that represent test source roots: "test", "tests",
+    // "test-java", "test-resources" etc. — but not unrelated words like "latest".
+    private static final Pattern TEST_SEGMENT_PATTERN =
+            Pattern.compile("^tests?(?:[^a-zA-Z].*)?$", Pattern.CASE_INSENSITIVE);
+
+    /**
+     * Identifies which roots among {@code groups} are test roots.
+     */
+    private static Set<FileObject> findTestRoots(final SourceGroup[] groups) {
+        final Map<FileObject, Boolean> folderIndex = new HashMap<>();
+        for (final SourceGroup sg : groups) {
+            folderIndex.put(sg.getRootFolder(), Boolean.FALSE);
+        }
+        final Set<FileObject> testRoots = new HashSet<>();
+        boolean queryAvailable = true;
+        for (final SourceGroup sg : groups) {
+            if (!queryAvailable) {
+                break;
+            }
+            try {
+                for (final URL url : UnitTestForSourceQuery.findUnitTests(sg.getRootFolder())) {
+                    final FileObject fo = URLMapper.findFileObject(url);
+                    if (fo != null && folderIndex.containsKey(fo)) {
+                        testRoots.add(fo);
+                    }
+                }
+            } catch (ExceptionInInitializerError | NoClassDefFoundError e) {
+                LOG.log(Level.FINE, "UnitTestForSourceQuery unavailable; using path-based test-root detection", e);
+                queryAvailable = false;
+            }
+        }
+        if (!queryAvailable && testRoots.isEmpty() && !folderIndex.isEmpty()) {
+            Path commonAncestor = null;
+            for (final FileObject fo : folderIndex.keySet()) {
+                final Path p = Paths.get(fo.getPath());
+                if (commonAncestor == null) {
+                    commonAncestor = p.getParent();
+                } else {
+                    while (commonAncestor != null && !p.startsWith(commonAncestor)) {
+                        commonAncestor = commonAncestor.getParent();
+                    }
+                }
+            }
+            if (commonAncestor != null) {
+                for (final FileObject fo : folderIndex.keySet()) {
+                    final Path relative = commonAncestor.relativize(Paths.get(fo.getPath()));
+                    if (relative.getNameCount() > 0
+                            && TEST_SEGMENT_PATTERN.matcher(relative.getName(0).toString()).matches()) {
+                        testRoots.add(fo);
+                    }
+                }
+            }
+        }
+        return testRoots;
+    }
+
+    /**
+     * Replaces the last path segment that is exactly {@code "java"} with
+     * {@code replacement}.
+     */
+    private static String replaceJavaSegment(String relPath, String replacement) {
+        final String sep = relPath.contains("/") ? "/" : File.separator;
+        final String[] parts = relPath.split(Pattern.quote(sep), -1);
+        for (int i = parts.length - 1; i >= 0; i--) {
+            if ("java".equals(parts[i])) {
+                parts[i] = replacement;
+                return String.join(sep, parts);
+            }
+        }
+        return null;
+    }
+
+    private static String relativize(Project project, String absolutePath) {
+        if (absolutePath == null || absolutePath.isBlank()) {
+            return "";
+        }
+        try {
+            final Path projectRoot = Paths.get(project.getProjectDirectory().getPath());
+            final Path absolute = Paths.get(absolutePath);
+            if (absolute.startsWith(projectRoot)) {
+                return projectRoot.relativize(absolute).toString();
+            }
+            return absolutePath;
+        } catch (final IllegalArgumentException e) {
+            return absolutePath;
+        }
     }
 }

@@ -66,7 +66,7 @@ public class FrontendProjectTools extends NodeJsProjectTools {
     @ToolPolicy(READONLY)
     public String projectInfo() throws Exception {
         progress("Gathering frontend project info (" + framework + "): " + project());
-        return ProjectMetadataInfo.get(project(), this);
+        return appendSourceDirs(ProjectMetadataInfo.get(project(), this));
     }
 
     // -----------------------------------------------------------------------

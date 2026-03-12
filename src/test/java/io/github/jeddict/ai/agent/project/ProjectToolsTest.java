@@ -124,4 +124,34 @@ public class ProjectToolsTest extends TestBase {
         then(tools.projectTestResourceDir()).isEqualTo("src/test/resources");
     }
 
+    @Test
+    public void getSrcDir_returns_src_main_java_for_maven_project() throws Exception {
+        then(ProjectTools.getSrcDir(project(projectDir))).isEqualTo("src/main/java");
+    }
+
+    @Test
+    public void getSrcResourceDir_returns_src_main_resources_for_maven_project() throws Exception {
+        then(ProjectTools.getSrcResourceDir(project(projectDir))).isEqualTo("src/main/resources");
+    }
+
+    @Test
+    public void getTestDir_returns_src_test_java_for_maven_project() throws Exception {
+        then(ProjectTools.getTestDir(project(projectDir))).isEqualTo("src/test/java");
+    }
+
+    @Test
+    public void getTestResourceDir_returns_src_test_resources_for_maven_project() throws Exception {
+        then(ProjectTools.getTestResourceDir(project(projectDir))).isEqualTo("src/test/resources");
+    }
+
+    @Test
+    public void getSrcDir_returns_empty_string_for_null_project() {
+        then(ProjectTools.getSrcDir(null)).isEmpty();
+    }
+
+    @Test
+    public void getTestDir_returns_empty_string_for_null_project() {
+        then(ProjectTools.getTestDir(null)).isEmpty();
+    }
+
 }

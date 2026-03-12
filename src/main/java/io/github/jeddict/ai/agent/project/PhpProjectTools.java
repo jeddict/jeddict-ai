@@ -61,7 +61,7 @@ public class PhpProjectTools extends ProjectTools implements BuildMetadataResolv
     @ToolPolicy(READONLY)
     public String projectInfo() throws Exception {
         progress("Gathering PHP project info: " + project());
-        return ProjectMetadataInfo.get(project(), this);
+        return appendSourceDirs(ProjectMetadataInfo.get(project(), this));
     }
 
     // -----------------------------------------------------------------------

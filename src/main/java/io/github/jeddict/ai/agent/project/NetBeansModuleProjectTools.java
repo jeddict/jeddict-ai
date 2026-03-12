@@ -79,7 +79,7 @@ public class NetBeansModuleProjectTools extends ProjectTools implements BuildMet
     @ToolPolicy(READONLY)
     public String projectInfo() throws Exception {
         progress("Gathering NetBeans module project info: " + project());
-        return ProjectMetadataInfo.get(project(), this);
+        return appendSourceDirs(ProjectMetadataInfo.get(project(), this));
     }
 
     // -----------------------------------------------------------------------

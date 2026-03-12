@@ -85,7 +85,7 @@ public class DockerProjectTools extends ProjectTools implements BuildMetadataRes
     @ToolPolicy(READONLY)
     public String projectInfo() throws Exception {
         progress("Gathering Docker project info: " + project());
-        return ProjectMetadataInfo.get(project(), this);
+        return appendSourceDirs(ProjectMetadataInfo.get(project(), this));
     }
 
     // -----------------------------------------------------------------------

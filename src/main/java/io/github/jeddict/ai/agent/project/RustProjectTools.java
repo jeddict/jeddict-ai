@@ -78,7 +78,7 @@ public class RustProjectTools extends ProjectTools implements BuildMetadataResol
     @ToolPolicy(READONLY)
     public String projectInfo() throws Exception {
         progress("Gathering Rust project info: " + project());
-        return ProjectMetadataInfo.get(project(), this);
+        return appendSourceDirs(ProjectMetadataInfo.get(project(), this));
     }
 
     // -----------------------------------------------------------------------

@@ -68,7 +68,7 @@ public class MavenProjectTools extends JvmProjectTools implements BuildMetadataR
     @ToolPolicy(READONLY)
     public String projectInfo() throws Exception {
         progress("Gathering Maven project info: " + project());
-        return ProjectMetadataInfo.get(project(), this);
+        return appendSourceDirs(ProjectMetadataInfo.get(project(), this));
     }
 
     // -----------------------------------------------------------------------

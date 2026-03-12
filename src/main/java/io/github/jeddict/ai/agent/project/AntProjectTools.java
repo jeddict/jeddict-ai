@@ -66,7 +66,7 @@ public class AntProjectTools extends ProjectTools implements BuildMetadataResolv
     @ToolPolicy(READONLY)
     public String projectInfo() throws Exception {
         progress("Gathering Ant project info: " + project());
-        return ProjectMetadataInfo.get(project(), this);
+        return appendSourceDirs(ProjectMetadataInfo.get(project(), this));
     }
 
     // -----------------------------------------------------------------------
