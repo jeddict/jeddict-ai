@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ContentType;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -327,9 +328,20 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
 
         final int size = messages.size();
         if (messages.get(size-1) instanceof UserMessage msg) {
-            final String text = msg.singleText();
-            if (doesContainIstruction(text)) {
-                return text;
+            if (msg.hasSingleText() && doesContainIstruction(msg.singleText())) {
+                return msg.singleText();
+            } else {
+                final String contentText = on(msg.contents()).loop((content) -> {
+                   if (content.type() == ContentType.TEXT) {
+                       final String text = content.toString();
+                       if (doesContainIstruction(text)) {
+                            _break_(text);
+                        }
+                   }
+                });
+                if (contentText != null) {
+                    return contentText;
+                }
             }
         }
 
@@ -351,7 +363,11 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
     }
 
     private boolean doesContainIstruction(final String text) {
-        return text.contains("use mock")
-            || text.contains("execute tool");
+        if (text == null) {
+            return false;
+        }
+        final String lowerText = text.toLowerCase();
+        return lowerText.toLowerCase().contains("use mock")
+            || lowerText.toLowerCase().contains("execute tool");
     }
 }
