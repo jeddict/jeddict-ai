@@ -42,7 +42,7 @@ import org.openide.filesystems.FileObject;
  * so that {@link ProjectMetadataInfo} can obtain this data without parsing
  * build files itself.</p>
  */
-public class MavenProjectTools extends ProjectTools implements BuildMetadataResolver {
+public class MavenProjectTools extends JvmProjectTools implements BuildMetadataResolver {
 
     private final FileObject pomFile;
 
@@ -140,6 +140,7 @@ public class MavenProjectTools extends ProjectTools implements BuildMetadataReso
         return v != null ? v : "No known framework dependency found in pom.xml";
     }
 
+    @Override
     @Tool(
         name = "jdkVersion",
         value = "Return the Java compiler source version configured in this Maven project's pom.xml"

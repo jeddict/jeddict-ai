@@ -36,6 +36,15 @@ public class MavenProjectToolsTest extends TestBase {
     }
 
     @Test
+    public void mavenProjectTools_is_instance_of_JvmProjectTools()
+    throws Exception {
+        final Path homePath = Paths.get(".").toAbsolutePath().normalize();
+        final String dir = homePath.resolve("src/test/projects/minimal").toString();
+        final ProjectTools tool = ProjectTools.forProject(project(dir));
+        then(tool).isInstanceOf(JvmProjectTools.class);
+    }
+
+    @Test
     public void projectInfo_includes_name_from_pom_xml()
     throws Exception {
         final Path homePath = Paths.get(".").toAbsolutePath().normalize();

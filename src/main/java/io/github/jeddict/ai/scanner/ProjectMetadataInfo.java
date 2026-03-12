@@ -453,17 +453,53 @@ public class ProjectMetadataInfo {
      *         project is null or the tree cannot be read
      */
     public static String getFileTree(Project project) {
+        return getFileTree(project, null, 0);
+    }
+
+    /**
+     * Returns the file tree structure rooted at the given sub-path inside the
+     * project, limited to the specified depth. Directories configured in
+     * {@link PreferencesManager#getExcludeDirs()}, hidden entries, and files
+     * whose extension is not in
+     * {@link PreferencesManager#getFileExtensionListToInclude()} are excluded.
+     *
+     * @param project  the project whose file tree to return
+     * @param subPath  a path relative to the project root to use as the tree
+     *                 root (e.g. {@code "src/main/java"}); {@code null} or blank
+     *                 means the entire project directory
+     * @param maxDepth the maximum number of directory levels to descend;
+     *                 values {@code <= 0} mean unlimited depth
+     * @return the file tree as an indented string, or an empty string if the
+     *         project is null or the tree cannot be read
+     */
+    public static String getFileTree(Project project, String subPath, int maxDepth) {
         if (project == null) {
             return "";
         }
         try {
-            final Path root = Paths.get(project.getProjectDirectory().getPath());
+            final Path projectRoot = Paths.get(project.getProjectDirectory().getPath());
+            final Path root;
+            if (subPath != null && !subPath.isBlank()) {
+                root = projectRoot.resolve(subPath).normalize();
+                if (!root.startsWith(projectRoot)) {
+                    // Prevent path traversal outside the project
+                    return "Path is outside the project directory: " + subPath;
+                }
+                if (!Files.isDirectory(root)) {
+                    return "Not a directory: " + subPath;
+                }
+            } else {
+                root = projectRoot;
+            }
             final Set<String> allowedExtensions = new HashSet<>(
                     PreferencesManager.getInstance().getFileExtensionListToInclude());
             final StringBuilder sb = new StringBuilder();
-            try (Stream<Path> stream = Files.walk(root)) {
+            final Stream<Path> stream = (maxDepth > 0)
+                    ? Files.walk(root, maxDepth)
+                    : Files.walk(root);
+            try (stream) {
                 stream
-                    .filter(path -> !isExcluded(root, path))
+                    .filter(path -> !isExcluded(projectRoot, path))
                     .filter(path -> Files.isDirectory(path)
                             || allowedExtensions.contains(getExtension(path)))
                     .sorted()

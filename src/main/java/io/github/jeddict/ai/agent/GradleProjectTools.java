@@ -37,7 +37,7 @@ import org.openide.filesystems.FileObject;
  * {@link BuildMetadataResolver} so that {@link ProjectMetadataInfo} can obtain
  * this data without parsing build files directly.</p>
  */
-public class GradleProjectTools extends ProjectTools implements BuildMetadataResolver {
+public class GradleProjectTools extends JvmProjectTools implements BuildMetadataResolver {
 
     /**
      * Matches Groovy DSL dependency declarations (unparenthesised):
@@ -132,6 +132,7 @@ public class GradleProjectTools extends ProjectTools implements BuildMetadataRes
     // Additional @Tool methods exposed to the LLM agent
     // -----------------------------------------------------------------------
 
+    @Override
     @Tool(
         name = "jdkVersion",
         value = "Return the Java source compatibility version configured in this Gradle project's build file"

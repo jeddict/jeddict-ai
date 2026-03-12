@@ -73,6 +73,36 @@ public class ProjectMetadataInfoTest extends TestBase {
     }
 
     @Test
+    public void getFileTree_with_sub_path_returns_subtree() throws Exception {
+        final Project project = project(projectDir);
+
+        final String tree = ProjectMetadataInfo.getFileTree(project, "folder", 0);
+        then(tree)
+            .contains("testfile.txt")
+            .doesNotContain("pom.xml");
+    }
+
+    @Test
+    public void getFileTree_with_depth_limits_traversal() throws Exception {
+        final Project project = project(projectDir);
+
+        // depth=1: only direct children of project root
+        final String tree = ProjectMetadataInfo.getFileTree(project, null, 1);
+        then(tree)
+            .contains("pom.xml")
+            .contains("src/")
+            .doesNotContain("main/");
+    }
+
+    @Test
+    public void getFileTree_with_path_outside_project_returns_error() throws Exception {
+        final Project project = project(projectDir);
+
+        final String result = ProjectMetadataInfo.getFileTree(project, "../../../etc", 0);
+        then(result).contains("outside the project");
+    }
+
+    @Test
     public void getMinimalTree_returns_directory_hierarchy_for_maven_project() throws Exception {
         final Project project = project(projectDir);
 

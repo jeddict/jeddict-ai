@@ -108,13 +108,16 @@ public class ProjectTools extends AbstractTool {
 
     @Tool(
         name = "projectFileTree",
-        value = "Return the full file tree structure of the project directory, including all files and subdirectories"
+        value = "Return the file tree structure of a project directory. "
+            + "Use 'path' to restrict the tree to a sub-directory (e.g. 'src/main/java'); "
+            + "leave blank to show the full project. "
+            + "Use 'depth' to limit traversal depth (e.g. 3); 0 means unlimited."
     )
     @ToolPolicy(READONLY)
-    public String projectFileTree()
+    public String projectFileTree(String path, int depth)
     throws Exception {
         progress("Gathering project file tree: " + project());
-        return ProjectMetadataInfo.getFileTree(project());
+        return ProjectMetadataInfo.getFileTree(project(), path, depth);
     }
 
     @Tool(
