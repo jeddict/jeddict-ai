@@ -17,7 +17,7 @@
 package io.github.jeddict.ai.scanner;
 
 import com.github.caciocavallosilano.cacio.ctc.junit.CacioTest;
-import io.github.jeddict.ai.agent.MavenProjectTools;
+import io.github.jeddict.ai.agent.project.MavenProjectTools;
 import io.github.jeddict.ai.test.TestBase;
 import java.nio.file.Paths;
 import static org.assertj.core.api.BDDAssertions.then;

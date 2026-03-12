@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package io.github.jeddict.ai.agent;
+package io.github.jeddict.ai.agent.project;
 
 import dev.langchain4j.agent.tool.Tool;
 import io.github.jeddict.ai.scanner.ProjectMetadataInfo;
@@ -24,28 +24,29 @@ import java.util.Map;
 import java.util.logging.Level;
 import org.json.JSONObject;
 import org.netbeans.api.project.Project;
+import io.github.jeddict.ai.agent.ToolPolicy;
 import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READONLY;
 import org.openide.filesystems.FileObject;
 
 /**
- * Project-tool specialisation for PHP projects managed with Composer.
+ * Project-tool specialisation for Node.js projects.
  *
- * <p>Extends the generic {@link ProjectTools} with PHP-specific metadata by
- * inspecting {@code composer.json}. It implements {@link BuildMetadataResolver}
- * so that {@link ProjectMetadataInfo} can obtain the project type and name
- * without parsing build files directly.</p>
+ * <p>Extends the generic {@link ProjectTools} with Node.js-specific metadata
+ * by inspecting {@code package.json}.  It implements
+ * {@link BuildMetadataResolver} so that {@link ProjectMetadataInfo} can obtain
+ * the project type and name without parsing build files directly.</p>
  */
-public class PhpProjectTools extends ProjectTools implements BuildMetadataResolver {
+public class NodeJsProjectTools extends ProjectTools implements BuildMetadataResolver {
 
-    private final FileObject composerJson;
+    private final FileObject packageJson;
 
     /** Lazily parsed JSON; {@code null} until first access. */
     private JSONObject parsedJson;
     private boolean jsonParsed = false;
 
-    public PhpProjectTools(final Project project) throws IOException {
+    public NodeJsProjectTools(final Project project) throws IOException {
         super(project);
-        this.composerJson = project.getProjectDirectory().getFileObject("composer.json");
+        this.packageJson = project.getProjectDirectory().getFileObject("package.json");
     }
 
     // -----------------------------------------------------------------------
@@ -55,11 +56,11 @@ public class PhpProjectTools extends ProjectTools implements BuildMetadataResolv
     @Override
     @Tool(
         name = "projectInfo",
-        value = "Return information about the project: php version, package name"
+        value = "Return information about the project: nodejs version, package name"
     )
     @ToolPolicy(READONLY)
     public String projectInfo() throws Exception {
-        progress("Gathering PHP project info: " + project());
+        progress("Gathering Node.js project info: " + project());
         return ProjectMetadataInfo.get(project(), this);
     }
 
@@ -70,7 +71,7 @@ public class PhpProjectTools extends ProjectTools implements BuildMetadataResolv
     @Override
     public String getProjectName() {
         final JSONObject json = json();
-        if (json == null) {
+        if (json == null || !json.has("name")) {
             return null;
         }
         final String name = json.optString("name", null);
@@ -79,12 +80,12 @@ public class PhpProjectTools extends ProjectTools implements BuildMetadataResolv
 
     @Override
     public String getProjectType() {
-        return "php";
+        return "nodejs";
     }
 
     @Override
     public String getBuildFileName() {
-        return "composer.json";
+        return "package.json";
     }
 
     @Override
@@ -94,14 +95,15 @@ public class PhpProjectTools extends ProjectTools implements BuildMetadataResolv
         if (json == null) {
             return metadata;
         }
-        // PHP engine version requirement from the "require" block
-        final JSONObject require = json.optJSONObject("require");
-        if (require != null) {
-            final String phpVersion = require.optString("php", null);
-            if (phpVersion != null && !phpVersion.isBlank()) {
-                metadata.put("PHP Version", phpVersion);
+        // Expose the declared Node engine version, if present
+        final JSONObject engines = json.optJSONObject("engines");
+        if (engines != null) {
+            final String nodeVersion = engines.optString("node", null);
+            if (nodeVersion != null && !nodeVersion.isBlank()) {
+                metadata.put("Node Version", nodeVersion);
             }
         }
+        // Expose the package version
         final String version = json.optString("version", null);
         if (version != null && !version.isBlank()) {
             metadata.put("Package Version", version);
@@ -109,27 +111,23 @@ public class PhpProjectTools extends ProjectTools implements BuildMetadataResolv
         return metadata;
     }
 
-    // -----------------------------------------------------------------------
-    // Additional @Tool methods exposed to the LLM agent
-    // -----------------------------------------------------------------------
-
     @Override
     @Tool(
         name = "projectDependencies",
-        value = "Return the list of PHP dependencies from composer.json (require and require-dev), one per line as package:version (type)"
+        value = "Return the list of dependencies declared in package.json (dependencies and devDependencies), one per line as name:version (type)"
     )
     @ToolPolicy(READONLY)
     public String projectDependencies() throws Exception {
-        progress("Reading dependencies from composer.json");
+        progress("Reading dependencies from package.json");
         final JSONObject json = json();
         if (json == null) {
-            return "Unable to read composer.json";
+            return "Unable to read package.json";
         }
         final StringBuilder sb = new StringBuilder();
-        appendDeps(sb, json.optJSONObject("require"), "require");
-        appendDeps(sb, json.optJSONObject("require-dev"), "require-dev");
+        appendDeps(sb, json.optJSONObject("dependencies"), "dependency");
+        appendDeps(sb, json.optJSONObject("devDependencies"), "devDependency");
         return sb.length() == 0
-                ? "No dependencies declared in composer.json"
+                ? "No dependencies declared in package.json"
                 : sb.toString().trim();
     }
 
@@ -152,11 +150,11 @@ public class PhpProjectTools extends ProjectTools implements BuildMetadataResolv
     private JSONObject json() {
         if (!jsonParsed) {
             jsonParsed = true;
-            if (composerJson != null) {
+            if (packageJson != null) {
                 try {
-                    parsedJson = new JSONObject(composerJson.asText());
+                    parsedJson = new JSONObject(packageJson.asText());
                 } catch (Exception ex) {
-                    log.log(Level.WARNING, "Failed to parse composer.json", ex);
+                    log.log(Level.WARNING, "Failed to parse package.json", ex);
                 }
             }
         }

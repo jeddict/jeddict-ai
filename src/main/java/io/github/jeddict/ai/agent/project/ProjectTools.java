@@ -13,9 +13,11 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package io.github.jeddict.ai.agent;
+package io.github.jeddict.ai.agent.project;
 
 import dev.langchain4j.agent.tool.Tool;
+import io.github.jeddict.ai.agent.AbstractTool;
+import io.github.jeddict.ai.agent.ToolPolicy;
 import io.github.jeddict.ai.scanner.ProjectMetadataInfo;
 import org.netbeans.api.project.Project;
 import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READONLY;

@@ -14,7 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package io.github.jeddict.ai.agent;
+package io.github.jeddict.ai.agent.project;
 
 import com.github.caciocavallosilano.cacio.ctc.junit.CacioTest;
 import io.github.jeddict.ai.test.TestBase;

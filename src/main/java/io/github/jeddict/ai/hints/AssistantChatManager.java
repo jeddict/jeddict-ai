@@ -34,7 +34,7 @@ import io.github.jeddict.ai.agent.ExplorationTools;
 import io.github.jeddict.ai.agent.FileSystemTools;
 import io.github.jeddict.ai.agent.GradleTools;
 import io.github.jeddict.ai.agent.MavenTools;
-import io.github.jeddict.ai.agent.ProjectTools;
+import io.github.jeddict.ai.agent.project.ProjectTools;
 import io.github.jeddict.ai.agent.RefactoringTools;
 import io.github.jeddict.ai.agent.pair.Assistant;
 import io.github.jeddict.ai.agent.pair.DBSpecialist;
