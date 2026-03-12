@@ -82,6 +82,17 @@ public class ProjectTools extends AbstractTool {
     public static ProjectTools forProject(final Project project) throws IOException {
         final FileObject dir = project.getProjectDirectory();
         if (dir.getFileObject("pom.xml") != null) {
+            try {
+                final String pomContent = dir.getFileObject("pom.xml").asText();
+                if (pomContent.contains("payara-micro-maven-plugin")) {
+                    return new PayaraMicroMavenProjectTools(project);
+                }
+                if (pomContent.contains("payara-server-maven-plugin")) {
+                    return new PayaraServerMavenProjectTools(project);
+                }
+            } catch (final IOException ignored) {
+                // fall through to the generic MavenProjectTools
+            }
             return new MavenProjectTools(project);
         }
         if (dir.getFileObject("build.gradle") != null

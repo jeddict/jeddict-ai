@@ -250,7 +250,7 @@ public class MavenProjectTools extends JvmProjectTools implements BuildMetadataR
      * Returns the Maven executable to use: the Maven wrapper ({@code ./mvnw}
      * or {@code mvnw.cmd}) when present, otherwise the system {@code mvn}.
      */
-    private String resolveWrapper() {
+    protected String resolveWrapper() {
         final boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
         final File basedirFile = new File(basedir);
         if (isWindows) {
