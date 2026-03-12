@@ -597,10 +597,10 @@ public class FileSystemTools extends AbstractCodeTool {
                 .anyMatch(relativePath::startsWith);
     }
 
-    @Tool("Run a Java class by its fully qualified class name and return the full output. "
+    @Tool("Execute a Java class by its fully qualified class name and return the full output. "
             + "Use this to execute any Java application or main class in the project.")
     @ToolPolicy(READWRITE)
-    public String runJavaClass(String mainClass) {
+    public String executeJavaClass(String mainClass) {
         String command = resolveRunCommand(mainClass);
         if (command == null) {
             return "Cannot run " + mainClass + ": no supported build system (Maven/Gradle) "
