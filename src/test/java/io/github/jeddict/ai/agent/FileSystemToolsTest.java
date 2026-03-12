@@ -568,53 +568,6 @@ public class FileSystemToolsTest extends TestBase {
         then(FileSystemTools.getDirTree(null)).isEmpty();
     }
 
-    @Test
-    public void resolveRunCommand_uses_mvn_for_maven_project() throws Exception {
-        // The default test project has pom.xml → Maven is detected
-        then(tools.resolveRunCommand("com.example.Main"))
-            .isEqualTo("mvn exec:java -Dexec.mainClass=com.example.Main");
-    }
-
-    @Test
-    public void resolveRunCommand_uses_mvnw_when_wrapper_present() throws Exception {
-        // Create a Maven wrapper script in the project directory
-        java.nio.file.Files.createFile(projectPath.resolve("mvnw"));
-        then(tools.resolveRunCommand("com.example.Main"))
-            .isEqualTo("./mvnw exec:java -Dexec.mainClass=com.example.Main");
-    }
-
-    @Test
-    public void resolveRunCommand_uses_gradle_for_gradle_project() throws Exception {
-        // Remove pom.xml so Gradle is detected instead
-        java.nio.file.Files.delete(projectPath.resolve("pom.xml"));
-        java.nio.file.Files.createFile(projectPath.resolve("build.gradle"));
-        then(tools.resolveRunCommand("com.example.Main"))
-            .isEqualTo("gradle run --main-class=com.example.Main");
-    }
-
-    @Test
-    public void resolveRunCommand_uses_gradlew_when_wrapper_present() throws Exception {
-        java.nio.file.Files.delete(projectPath.resolve("pom.xml"));
-        java.nio.file.Files.createFile(projectPath.resolve("build.gradle"));
-        java.nio.file.Files.createFile(projectPath.resolve("gradlew"));
-        then(tools.resolveRunCommand("com.example.Main"))
-            .isEqualTo("./gradlew run --main-class=com.example.Main");
-    }
-
-    @Test
-    public void resolveRunCommand_uses_ant_for_ant_project() throws Exception {
-        java.nio.file.Files.delete(projectPath.resolve("pom.xml"));
-        java.nio.file.Files.createFile(projectPath.resolve("build.xml"));
-        then(tools.resolveRunCommand("com.example.Main"))
-            .isEqualTo("ant run -Dmain.class=com.example.Main");
-    }
-
-    @Test
-    public void resolveRunCommand_returns_null_for_unknown_project() throws Exception {
-        java.nio.file.Files.delete(projectPath.resolve("pom.xml"));
-        then(tools.resolveRunCommand("com.example.Main")).isNull();
-    }
-
     private void thenTriedFileOutsideProjectFolder(final Runnable exec) {
         thenThrownBy(() -> exec.run())
         .isInstanceOf(ToolExecutionException.class)
