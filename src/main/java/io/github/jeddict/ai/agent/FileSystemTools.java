@@ -17,6 +17,7 @@ package io.github.jeddict.ai.agent;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.exception.ToolExecutionException;
+import io.github.jeddict.ai.scanner.ProjectMetadataInfo;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.*;
@@ -43,7 +44,52 @@ public class FileSystemTools extends AbstractCodeTool {
     }
 
     /**
-     * Reads the raw content of a file on disk.
+     * Returns the full file tree of the project (or a sub-directory) as a
+     * formatted, indented string. Files and directories excluded by
+     * {@code PreferencesManager} (exclude-dirs and allowed extensions) are
+     * automatically filtered out.
+     *
+     * @param path  sub-directory path relative to the project root to use as
+     *              the tree root (e.g. {@code "src/main/java"}); leave blank
+     *              to show the full project tree
+     * @param depth maximum number of directory levels to descend;
+     *              {@code 0} means unlimited depth
+     * @return indented file tree string
+     */
+    @Tool(
+        name = "fileTree",
+        value = "Return the file tree structure of the project or a sub-directory. "
+            + "Use 'path' to restrict the tree to a sub-directory (e.g. 'src/main/java'); "
+            + "leave blank to show the full project. "
+            + "Use 'depth' to limit traversal depth (e.g. 3); 0 means unlimited."
+    )
+    @ToolPolicy(READONLY)
+    public String fileTree(String path, int depth) {
+        progress("📂 Gathering file tree" + (path != null && !path.isBlank() ? " for " + path : ""));
+        return ProjectMetadataInfo.getFileTree(basepath, path, depth);
+    }
+
+    /**
+     * Returns the directory hierarchy of the project as a compact, indented
+     * string. Only directories are listed — individual files are omitted —
+     * giving a quick overview of the package/module structure. Excluded
+     * directories (as configured in {@code PreferencesManager}) are filtered
+     * out automatically.
+     *
+     * @return indented directory tree string
+     */
+    @Tool(
+        name = "dirTree",
+        value = "Return the directory hierarchy of the project, showing only the folder "
+            + "structure without individual files"
+    )
+    @ToolPolicy(READONLY)
+    public String dirTree() {
+        progress("📂 Gathering directory tree");
+        return ProjectMetadataInfo.getDirTree(basepath);
+    }
+
+    /**
      *
      * @param path the file path relative to the project
      * @return the file content, or an error message if it could not be read

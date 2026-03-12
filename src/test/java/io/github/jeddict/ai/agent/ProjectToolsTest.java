@@ -89,53 +89,6 @@ public class ProjectToolsTest extends TestBase {
     }
 
     @Test
-    public void projectFileTree_returns_file_tree_as_text()
-    throws Exception {
-        final Path homePath = Paths.get(".").toAbsolutePath().normalize();
-
-        final String projectDir = homePath.resolve("src/test/projects/minimal").toString();
-        final ProjectTools tools = ProjectTools.forProject(project(projectDir));
-        then(tools.projectFileTree("", 0))
-            .contains("pom.xml");
-    }
-
-    @Test
-    public void projectFileTree_with_sub_path_returns_subtree()
-    throws Exception {
-        // src/test/projects/minimal has src/main/java (via .gitkeep)
-        final Path homePath = Paths.get(".").toAbsolutePath().normalize();
-        final String projectDir = homePath.resolve("src/test/projects/minimal").toString();
-        final ProjectTools tools = ProjectTools.forProject(project(projectDir));
-        // Should NOT contain pom.xml when rooted at src/main/java
-        then(tools.projectFileTree("src/main", 0))
-            .doesNotContain("pom.xml");
-    }
-
-    @Test
-    public void projectFileTree_with_depth_limits_output()
-    throws Exception {
-        final Path homePath = Paths.get(".").toAbsolutePath().normalize();
-        final String projectDir = homePath.resolve("src/test/projects/minimal").toString();
-        final ProjectTools tools = ProjectTools.forProject(project(projectDir));
-        // depth=1 means only entries directly under the root
-        final String tree = tools.projectFileTree("", 1);
-        then(tree).contains("src/").contains("pom.xml");
-        // src/main/java should be excluded at depth=1 (it's 2 levels down)
-        then(tree).doesNotContain("main/");
-    }
-
-    @Test
-    public void projectMinimalTree_returns_directory_hierarchy_as_text()
-    throws Exception {
-        final Path homePath = Paths.get(".").toAbsolutePath().normalize();
-
-        final String projectDir = homePath.resolve("src/test/projects/minimal").toString();
-        final ProjectTools tools = ProjectTools.forProject(project(projectDir));
-        then(tools.projectMinimalTree())
-            .doesNotContain("pom.xml");
-    }
-
-    @Test
     public void projectSrcDir_returns_relative_path()
     throws Exception {
         final Path homePath = Paths.get(".").toAbsolutePath().normalize();

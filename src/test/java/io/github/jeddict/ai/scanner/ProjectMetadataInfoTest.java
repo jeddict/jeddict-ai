@@ -103,10 +103,10 @@ public class ProjectMetadataInfoTest extends TestBase {
     }
 
     @Test
-    public void getMinimalTree_returns_directory_hierarchy_for_maven_project() throws Exception {
+    public void getDirTree_returns_directory_hierarchy_for_maven_project() throws Exception {
         final Project project = project(projectDir);
 
-        final String tree = ProjectMetadataInfo.getMinimalTree(project);
+        final String tree = ProjectMetadataInfo.getDirTree(project);
         then(tree)
             .contains("folder/")
             .doesNotContain("pom.xml")
@@ -114,8 +114,8 @@ public class ProjectMetadataInfoTest extends TestBase {
     }
 
     @Test
-    public void getMinimalTree_returns_empty_string_for_null_project() {
-        then(ProjectMetadataInfo.getMinimalTree(null)).isEmpty();
+    public void getDirTree_returns_empty_string_for_null_project() {
+        then(ProjectMetadataInfo.getDirTree((Project) null)).isEmpty();
     }
 
     @Test

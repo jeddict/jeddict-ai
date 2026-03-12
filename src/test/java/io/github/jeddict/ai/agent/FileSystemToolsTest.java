@@ -481,6 +481,42 @@ public class FileSystemToolsTest extends TestBase {
 
     // --------------------------------------------------------- private methods
 
+    @Test
+    public void fileTree_returns_full_tree_for_project_root() throws Exception {
+        final String tree = tools.fileTree("", 0);
+        then(tree)
+            .contains("pom.xml")
+            .contains("folder/")
+            .contains("testfile.txt");
+    }
+
+    @Test
+    public void fileTree_with_sub_path_returns_subtree() throws Exception {
+        final String tree = tools.fileTree("folder", 0);
+        then(tree)
+            .contains("testfile.txt")
+            .doesNotContain("pom.xml");
+    }
+
+    @Test
+    public void fileTree_with_depth_limits_traversal() throws Exception {
+        // depth=1: only direct children of project root are included
+        final String tree = tools.fileTree("", 1);
+        then(tree)
+            .contains("pom.xml")
+            .contains("src/")
+            .doesNotContain("main/");
+    }
+
+    @Test
+    public void dirTree_returns_only_directories() throws Exception {
+        final String tree = tools.dirTree();
+        then(tree)
+            .contains("folder/")
+            .doesNotContain("pom.xml")
+            .doesNotContain("testfile.txt");
+    }
+
     private void thenTriedFileOutsideProjectFolder(final Runnable exec) {
         thenThrownBy(() -> exec.run())
         .isInstanceOf(ToolExecutionException.class)

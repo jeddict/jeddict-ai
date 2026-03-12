@@ -476,8 +476,31 @@ public class ProjectMetadataInfo {
         if (project == null) {
             return "";
         }
+        final Path projectRoot = Paths.get(project.getProjectDirectory().getPath());
+        return getFileTree(projectRoot, subPath, maxDepth);
+    }
+
+    /**
+     * Returns the file tree structure rooted at the given base directory,
+     * limited to the specified depth. Directories configured in
+     * {@link PreferencesManager#getExcludeDirs()}, hidden entries, and files
+     * whose extension is not in
+     * {@link PreferencesManager#getFileExtensionListToInclude()} are excluded.
+     *
+     * @param projectRoot the absolute path of the project root (used as the
+     *                    security boundary for path-traversal checks)
+     * @param subPath     a path relative to {@code projectRoot} to use as the
+     *                    tree root; {@code null} or blank means the whole tree
+     * @param maxDepth    the maximum number of directory levels to descend;
+     *                    values {@code <= 0} mean unlimited depth
+     * @return the file tree as an indented string, or an empty string when the
+     *         tree cannot be read
+     */
+    public static String getFileTree(Path projectRoot, String subPath, int maxDepth) {
+        if (projectRoot == null) {
+            return "";
+        }
         try {
-            final Path projectRoot = Paths.get(project.getProjectDirectory().getPath());
             final Path root;
             if (subPath != null && !subPath.isBlank()) {
                 root = projectRoot.resolve(subPath).normalize();
@@ -529,22 +552,40 @@ public class ProjectMetadataInfo {
     }
 
     /**
-     * Returns the minimal directory hierarchy of the project as a formatted
-     * string. Only directories are included — individual files and classes are
-     * omitted — giving a compact overview of the package structure.
-     * Hidden directories and directories configured in
-     * {@link PreferencesManager#getExcludeDirs()} are excluded.
+     * Returns the directory hierarchy of the project as a formatted string.
+     * Only directories are included — individual files and classes are omitted
+     * — giving a compact overview of the package structure. Hidden directories
+     * and directories configured in {@link PreferencesManager#getExcludeDirs()}
+     * are excluded.
      *
      * @param project the project whose directory hierarchy to return
      * @return the directory hierarchy as an indented string, or an empty
      *         string if the project is null or the tree cannot be read
      */
-    public static String getMinimalTree(Project project) {
+    public static String getDirTree(Project project) {
         if (project == null) {
             return "";
         }
+        final Path root = Paths.get(project.getProjectDirectory().getPath());
+        return getDirTree(root);
+    }
+
+    /**
+     * Returns the directory hierarchy rooted at the given base path as a
+     * formatted string. Only directories are included — individual files and
+     * classes are omitted — giving a compact overview of the package structure.
+     * Hidden directories and directories configured in
+     * {@link PreferencesManager#getExcludeDirs()} are excluded.
+     *
+     * @param root the absolute path to use as the tree root
+     * @return the directory hierarchy as an indented string, or an empty
+     *         string if the root is null or the tree cannot be read
+     */
+    public static String getDirTree(Path root) {
+        if (root == null) {
+            return "";
+        }
         try {
-            final Path root = Paths.get(project.getProjectDirectory().getPath());
             final StringBuilder sb = new StringBuilder();
             try (Stream<Path> stream = Files.walk(root)) {
                 stream
