@@ -1,5 +1,5 @@
 /**
- * Copyright 2025 the original author or authors from the Jeddict project (https://jeddict.github.io/).
+ * Copyright 2025-26 the original author or authors from the Jeddict project (https://jeddict.github.io/).
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -61,6 +61,7 @@ import static io.github.jeddict.ai.review.ReviewUtil.convertReviewsToHtml;
 import static io.github.jeddict.ai.review.ReviewUtil.parseReviewsFromYaml;
 import io.github.jeddict.ai.scanner.ProjectMetadataInfo;
 import io.github.jeddict.ai.settings.PreferencesManager;
+import io.github.jeddict.ai.util.ClassLoaderUtil;
 import io.github.jeddict.ai.util.ColorUtil;
 import static io.github.jeddict.ai.util.ContextHelper.getFilesContextList;
 import static io.github.jeddict.ai.util.ContextHelper.getImageFilesContext;
@@ -477,13 +478,9 @@ public class AssistantChatManager extends JavaFix {
         }));
     }
 
-    private void usePluginClassLoader() {
-        Thread.currentThread().setContextClassLoader(getClass().getClassLoader());
-    }
-
     public void openChat(String type, final String query, String fileName, String title, Consumer<String> action) {
         SwingUtilities.invokeLater(() -> {
-            usePluginClassLoader();
+            ClassLoaderUtil.usePluginClassLoaderIfNeeded(getClass());
             new JeddictUpdateManager().checkForJeddictUpdate();
             ac = createChatInstance(title, type, getProject());
             ac.setLayout(new BorderLayout());

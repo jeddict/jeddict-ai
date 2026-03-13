@@ -1,5 +1,5 @@
 /**
- * Copyright 2025 the original author or authors from the Jeddict project (https://jeddict.github.io/).
+ * Copyright 2025-26 the original author or authors from the Jeddict project (https://jeddict.github.io/).
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -49,6 +49,7 @@ import io.github.jeddict.ai.agent.ToolsProber;
 import io.github.jeddict.ai.agent.ToolsProbingTool;
 import io.github.jeddict.ai.agent.pair.PairProgrammer;
 import static io.github.jeddict.ai.lang.InteractionMode.INTERACTIVE;
+import io.github.jeddict.ai.util.ClassLoaderUtil;
 import io.github.jeddict.ai.util.PropertyChangeEmitter;
 import java.lang.reflect.InvocationTargetException;
 import org.openide.DialogDisplayer;
@@ -309,18 +310,23 @@ public class JeddictBrain implements PropertyChangeEmitter {
             );
             
             return toolsSupport;
-        } catch (final NoClassDefFoundError e) {
-            LOG.severe(() ->
-                "error probing tool support (conflicting classpath), returning false %s\n%s".formatted(
-                    e.toString(),
-                    Arrays.toString(e.getStackTrace())
-                )
+        } catch (final NoClassDefFoundError | java.util.ServiceConfigurationError e) {
+
+            LOG.severe(()
+                    -> "Error probing tool support (likely classloader conflict), returning false %s\n%s".formatted(
+                            e.toString(),
+                            Arrays.toString(e.getStackTrace())
+                    )
             );
+
+            ClassLoaderUtil.enablePluginClassLoaderFallback();
+
             final NotifyDescriptor nd = new NotifyDescriptor.Message(
-                "AI tool support probe failed due to a conflicting classpath issue: " + e.toString(),
-                NotifyDescriptor.ERROR_MESSAGE
+                    "AI tool support probe failed due to a classpath conflict: " + e.toString(),
+                    NotifyDescriptor.ERROR_MESSAGE
             );
             DialogDisplayer.getDefault().notify(nd);
+
         } catch (final Throwable t) {
             LOG.severe(() ->
                 "error probing tool support, returning false %s\n%s".formatted(
