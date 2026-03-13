@@ -35,7 +35,6 @@ import org.netbeans.api.project.Project;
  *   <li><b>stopMicro</b>  – stop the running instance ({@code payara-micro:stop})</li>
  *   <li><b>reloadApplication</b> – redeploy without restarting ({@code payara-micro:reload})</li>
  *   <li><b>devMode</b>   – development mode with live reload ({@code payara-micro:dev});
- *       <em>always prefer this over {@code startMicro} during development</em></li>
  * </ul>
  */
 public class PayaraMicroMavenProjectTools extends MavenProjectTools {
@@ -50,7 +49,7 @@ public class PayaraMicroMavenProjectTools extends MavenProjectTools {
 
     @Tool(
         name = "bundleMicro",
-        value = "Create a Payara Micro Uber JAR (application + server) "
+        value = "Create a Payara Micro Uber JAR (application + micro) "
             + "using 'mvn payara-micro:bundle' (or the Maven wrapper) and return the full log"
     )
     @ToolPolicy(READWRITE)
@@ -60,7 +59,7 @@ public class PayaraMicroMavenProjectTools extends MavenProjectTools {
 
     @Tool(
         name = "startMicro",
-        value = "Start the Payara Micro server using 'mvn payara-micro:start' "
+        value = "Start the Payara Micro using 'mvn payara-micro:start' "
             + "(or the Maven wrapper) and return the full output. "
             + "Prefer devMode over startMicro for development workflows."
     )
@@ -94,7 +93,7 @@ public class PayaraMicroMavenProjectTools extends MavenProjectTools {
      *
      * <p><b>Always prefer this over {@link #startMicro()}</b> during active
      * development: {@code dev} automatically enables hot-deploy, browser
-     * live-reload, and session persistence without a server restart.</p>
+     * live-reload, and session persistence without a micro restart.</p>
      */
     @Tool(
         name = "devMode",
