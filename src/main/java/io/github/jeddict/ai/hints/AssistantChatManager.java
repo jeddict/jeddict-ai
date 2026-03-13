@@ -34,8 +34,10 @@ import io.github.jeddict.ai.agent.ExplorationTools;
 import io.github.jeddict.ai.agent.FileSystemTools;
 import io.github.jeddict.ai.agent.GradleTools;
 import io.github.jeddict.ai.agent.MavenTools;
+import io.github.jeddict.ai.agent.project.JakartaEEAdvisorMavenProjectTools;
 import io.github.jeddict.ai.agent.project.ProjectTools;
 import io.github.jeddict.ai.agent.RefactoringTools;
+import io.github.jeddict.ai.scanner.ProjectMetadataInfo.BuildMetadataResolver;
 import io.github.jeddict.ai.agent.pair.Assistant;
 import io.github.jeddict.ai.agent.pair.DBSpecialist;
 import io.github.jeddict.ai.agent.pair.DiffSpecialist;
@@ -969,7 +971,18 @@ public class AssistantChatManager extends JavaFix {
             toolsList.add(new ExplorationTools(basedir, project.getLookup()));
             // Add the project-type-specific tool (Maven, Gradle, or generic)
             // so the agent can query project metadata via @Tool methods.
-            toolsList.add(ProjectTools.forProject(project));
+            final ProjectTools projectTools = ProjectTools.forProject(project);
+            toolsList.add(projectTools);
+            // Add Jakarta EE Advisor tools when the project uses a jakarta framework
+            if (projectTools instanceof BuildMetadataResolver resolver) {
+                final java.util.Map<String, String> metadata = resolver.getProjectMetadata();
+                if (metadata != null) {
+                    final String eeVersion = metadata.get("EE Version");
+                    if (eeVersion != null && eeVersion.startsWith("jakarta")) {
+                        toolsList.add(new JakartaEEAdvisorMavenProjectTools(basedir));
+                    }
+                }
+            }
             toolsList.add(new GradleTools(basedir));
             toolsList.add(new MavenTools(basedir));
             toolsList.add(new RefactoringTools(basedir));
