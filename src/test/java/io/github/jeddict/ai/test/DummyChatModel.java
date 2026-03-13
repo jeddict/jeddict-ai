@@ -206,13 +206,10 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
 
             String errorMessage = "";
             if (!Files.exists(mockPath)) {
-                mockPath = Path.of("src/test/resources/mocks").resolve(mockFile).normalize();
-                if (!Files.exists(mockPath)) {
-                    errorMessage = "Mock file '%s' not found.".formatted(
-                        mockPath.toAbsolutePath()
-                    );
-                    mockPath = Path.of(ERROR_MOCK_FILE);
-                }
+                errorMessage = "Mock file '%s' not found.".formatted(
+                    mockPath.toAbsolutePath().toString().replace('\\', '/')
+                );
+                mockPath = Path.of(ERROR_MOCK_FILE);
             }
 
             String mockContent;

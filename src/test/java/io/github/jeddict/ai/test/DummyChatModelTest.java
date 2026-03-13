@@ -58,7 +58,11 @@ public class DummyChatModelTest {
         ).build();
 
         then(chat.doChat(chatRequest).aiMessage().text().trim())
-            .startsWith("Oops! Mock file '" + Paths.get("src/test/resources/mocks/none.txt").toAbsolutePath() + "' not found.");
+            .startsWith(
+                "Oops! Mock file '" +
+                Paths.get("src/test/resources/mocks/none.txt").toAbsolutePath().toString().replace('\\', '/') +
+                "' not found."
+            );
     }
 
     @Test
