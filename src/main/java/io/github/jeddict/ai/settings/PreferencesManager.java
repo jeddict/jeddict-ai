@@ -367,11 +367,11 @@ public class PreferencesManager {
         JSONArray jsonArray = new JSONArray();
         for (GenAIModel model : models) {
             JSONObject modelJson = new JSONObject();
-            modelJson.put("provider", model.getProvider().name());
-            modelJson.put("name", model.getName());
-            modelJson.put("description", model.getDescription());
-            modelJson.put("inputPrice", model.getInputPrice());
-            modelJson.put("outputPrice", model.getOutputPrice());
+            modelJson.put("provider", model.provider().name());
+            modelJson.put("name", model.name());
+            modelJson.put("description", model.description());
+            modelJson.put("inputPrice", model.inputPrice());
+            modelJson.put("outputPrice", model.outputPrice());
             jsonArray.put(modelJson);
         }
         preferences.put(MODEL_PREFERENCE_LIST+"_"+providerName, jsonArray.toString());
@@ -394,7 +394,7 @@ public class PreferencesManager {
                 GenAIModel model = new GenAIModel(provider, name, description, inputPrice, outputPrice);
                 models.add(model);
             } catch (Exception e) {
-                System.err.println("Errore nel caricamento del modello: " + e.getMessage());
+                System.err.println("Error loading model: " + e.getMessage());
             }
         }
         return models;
@@ -403,7 +403,7 @@ public class PreferencesManager {
     public GenAIModel getGenAIModelByName(String providerName, String modelName) {
         List<GenAIModel> models = getGenAIModelList(providerName);
         return models.stream()
-                .filter(model -> model.getName().equals(modelName))
+                .filter(model -> model.name().equals(modelName))
                 .findFirst()
                 .orElse(null);
     }
@@ -423,9 +423,9 @@ public class PreferencesManager {
                 double outputPrice = modelJson.getDouble("outputPrice");
 
                 GenAIModel model = new GenAIModel(provider, name, description, inputPrice, outputPrice);
-                models.put(model.getName(),model);
+                models.put(model.name(),model);
             } catch (Exception e) {
-                System.err.println("Errore nel caricamento del modello: " + e.getMessage());
+                System.err.println("Error loading model: " + e.getMessage());
             }
         }
         return models;

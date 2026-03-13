@@ -15,28 +15,49 @@
  */
 package io.github.jeddict.ai.models.registry;
 
+import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.json.JSONTokener;
 
 /**
  *
  * @author Gaurav Gupta
  */
-final class OpenRouterModelParser {
+class OpenRouterModelParser {
 
-    static Map<String, GenAIModel> parse(String json) {
+    /**
+     * Parses model data from the given JSON string.
+     *
+     * @param json JSON string containing model data
+     * @return map of model id to {@link GenAIModel}
+     */
+    Map<String, GenAIModel> parse(String json) {
+        return parseRoot(new JSONObject(json));
+    }
+
+    /**
+     * Parses model data directly from an input stream, avoiding the need to
+     * buffer the entire response as a string first.
+     *
+     * @param is input stream with JSON content
+     * @return map of model id to {@link GenAIModel}
+     */
+    Map<String, GenAIModel> parse(InputStream is) {
+        return parseRoot(new JSONObject(new JSONTokener(is)));
+    }
+
+    private Map<String, GenAIModel> parseRoot(JSONObject root) {
         Map<String, GenAIModel> models = new HashMap<>();
 
-        JSONObject root = new JSONObject(json);
         JSONArray data = root.getJSONArray("data");
 
         for (int i = 0; i < data.length(); i++) {
             JSONObject m = data.getJSONObject(i);
 
             String id = m.getString("id");
-            String name = m.optString("name", id);
             String desc = m.optString("description", "");
 
             JSONObject pricing = m.optJSONObject("pricing");
@@ -55,8 +76,5 @@ final class OpenRouterModelParser {
             );
         }
         return models;
-    }
-
-    private OpenRouterModelParser() {
     }
 }

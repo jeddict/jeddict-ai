@@ -77,6 +77,31 @@ class GenAIModelTest {
                 2.0
         );
 
-        then(model.getName()).isEqualTo("gpt-5-nano");
+        then(model.name()).isEqualTo("gpt-5-nano");
+    }
+
+    @Test
+    void record_accessors_return_correct_values() {
+        GenAIModel model = new GenAIModel(
+                GenAIProvider.GOOGLE,
+                "google/gemini-pro",
+                "Gemini Pro model",
+                1.5,
+                3.0
+        );
+
+        then(model.provider()).isEqualTo(GenAIProvider.GOOGLE);
+        then(model.name()).isEqualTo("gemini-pro");
+        then(model.description()).isEqualTo("Gemini Pro model");
+        then(model.inputPrice()).isEqualTo(1.5);
+        then(model.outputPrice()).isEqualTo(3.0);
+    }
+
+    @Test
+    void records_with_same_values_are_equal() {
+        GenAIModel model1 = new GenAIModel(GenAIProvider.OPEN_AI, "openai/gpt-4", "desc", 10.0, 30.0);
+        GenAIModel model2 = new GenAIModel(GenAIProvider.OPEN_AI, "gpt-4", "desc", 10.0, 30.0);
+
+        then(model1).isEqualTo(model2);
     }
 }

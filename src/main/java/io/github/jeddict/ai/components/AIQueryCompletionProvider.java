@@ -89,10 +89,7 @@ public final class AIQueryCompletionProvider implements CompletionProvider {
     private static final class Query extends AsyncCompletionQuery {
 
         private static final Set<ClassIndex.SearchScope> SCOPES
-                = EnumSet.of(
-                        ClassIndex.SearchScope.SOURCE,
-                        ClassIndex.SearchScope.DEPENDENCIES
-                );
+                = EnumSet.of(ClassIndex.SearchScope.SOURCE);
 
         @Override
         protected void query(CompletionResultSet rs,
@@ -105,31 +102,33 @@ public final class AIQueryCompletionProvider implements CompletionProvider {
                     return;
                 }
 
-                Project project = getOpenProject();
-                if (project == null) {
-                    return;
-                }
-
-                ClassIndex index = getClassIndex(project);
-                if (index == null) {
+                Project[] openProjects = OpenProjects.getDefault().getOpenProjects();
+                if (openProjects.length == 0) {
                     return;
                 }
 
                 Set<String> results = new LinkedHashSet<>();
 
-                // Packages
-                results.addAll(
-                        index.getPackageNames(prefix, true, SCOPES)
-                );
+                for (Project project : openProjects) {
+                    ClassIndex index = getClassIndex(project);
+                    if (index == null) {
+                        continue;
+                    }
 
-                // Classes
-                for (ElementHandle<TypeElement> h
-                        : index.getDeclaredTypes(
-                                prefix,
-                                ClassIndex.NameKind.PREFIX,
-                                SCOPES)) {
+                    // Packages
+                    results.addAll(
+                            index.getPackageNames(prefix, true, SCOPES)
+                    );
 
-                    results.add(h.getQualifiedName());
+                    // Classes
+                    for (ElementHandle<TypeElement> h
+                            : index.getDeclaredTypes(
+                                    prefix,
+                                    ClassIndex.NameKind.PREFIX,
+                                    SCOPES)) {
+
+                        results.add(h.getQualifiedName());
+                    }
                 }
 
                 for (String s : results) {
@@ -160,11 +159,6 @@ public final class AIQueryCompletionProvider implements CompletionProvider {
             } catch (BadLocationException ex) {
                 return "";
             }
-        }
-
-        private static Project getOpenProject() {
-            Project[] open = OpenProjects.getDefault().getOpenProjects();
-            return open.length > 0 ? open[0] : null;
         }
 
         private static ClassIndex getClassIndex(Project project) {
