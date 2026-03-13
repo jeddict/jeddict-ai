@@ -654,7 +654,7 @@ public class AssistantChatManager extends JavaFix {
                     // project rules; the agent is instructed to gather the
                     // information it requires using tools
                     //
-                    final String projectInfo = projectInfoFor(selectedProject);
+                    String projectInfo = projectInfoFor(selectedProject);
                     if (!agentEnabled) {
                         final Set<FileObject> mainSessionContext;
                         final String sessionScopeContent;
