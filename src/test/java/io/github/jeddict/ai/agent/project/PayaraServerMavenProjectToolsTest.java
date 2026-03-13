@@ -18,6 +18,7 @@ package io.github.jeddict.ai.agent.project;
 
 import com.github.caciocavallosilano.cacio.ctc.junit.CacioTest;
 import io.github.jeddict.ai.test.TestBase;
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -45,6 +46,8 @@ public class PayaraServerMavenProjectToolsTest extends TestBase {
         then(tool).isInstanceOf(MavenProjectTools.class);
     }
 
+    // buildProject is NOT overridden: standard mvn clean install is used
+
     @Test
     public void resolveBuildCommand_uses_mvn_clean_install()
     throws Exception {
@@ -55,12 +58,23 @@ public class PayaraServerMavenProjectToolsTest extends TestBase {
     }
 
     @Test
-    public void resolveRunCommand_uses_payara_server_start()
+    public void resolveBuildCommand_uses_mvnw_when_wrapper_present()
+    throws Exception {
+        Files.createFile(projectPath.resolve("mvnw"));
+        final PayaraServerMavenProjectTools tool = new PayaraServerMavenProjectTools(project(projectDir));
+        then(tool.resolveBuildCommand()).isEqualTo("./mvnw clean install");
+    }
+
+    // runJavaClass and resolveRunCommand are NOT overridden: standard exec:java is used
+
+    @Test
+    public void resolveRunCommand_uses_standard_exec_java()
     throws Exception {
         final Path homePath = Paths.get(".").toAbsolutePath().normalize();
         final String dir = homePath.resolve("src/test/projects/payara-server").toString();
         final PayaraServerMavenProjectTools tool = new PayaraServerMavenProjectTools(project(dir));
-        then(tool.resolveRunCommand("com.example.Main")).isEqualTo("mvn payara-server:start");
+        then(tool.resolveRunCommand("com.example.Main"))
+            .isEqualTo("mvn exec:java -Dexec.mainClass=com.example.Main");
     }
 
     @Test
@@ -73,26 +87,32 @@ public class PayaraServerMavenProjectToolsTest extends TestBase {
     }
 
     @Test
-    public void resolveBuildCommand_uses_mvnw_when_wrapper_present()
-    throws Exception {
-        Files.createFile(projectPath.resolve("mvnw"));
-        final PayaraServerMavenProjectTools tool = new PayaraServerMavenProjectTools(project(projectDir));
-        then(tool.resolveBuildCommand()).isEqualTo("./mvnw clean install");
-    }
-
-    @Test
-    public void resolveRunCommand_uses_mvnw_when_wrapper_present()
-    throws Exception {
-        Files.createFile(projectPath.resolve("mvnw"));
-        final PayaraServerMavenProjectTools tool = new PayaraServerMavenProjectTools(project(projectDir));
-        then(tool.resolveRunCommand("com.example.App")).isEqualTo("./mvnw payara-server:start");
-    }
-
-    @Test
     public void resolveTestCommand_uses_mvnw_when_wrapper_present()
     throws Exception {
         Files.createFile(projectPath.resolve("mvnw"));
         final PayaraServerMavenProjectTools tool = new PayaraServerMavenProjectTools(project(projectDir));
         then(tool.resolveTestCommand()).isEqualTo("./mvnw test");
+    }
+
+    // Payara Server-specific method names
+
+    @Test
+    public void startServer_method_exists() throws Exception {
+        final Method m = PayaraServerMavenProjectTools.class.getMethod("startServer");
+        then(m).isNotNull();
+    }
+
+    @Test
+    public void stopServer_method_exists() throws Exception {
+        final Method m = PayaraServerMavenProjectTools.class.getMethod("stopServer");
+        then(m).isNotNull();
+    }
+
+    @Test
+    public void runJavaClass_is_not_overridden_in_PayaraServerMavenProjectTools() throws Exception {
+        // runJavaClass must be declared in a parent class, not in PayaraServerMavenProjectTools itself
+        final Method m = PayaraServerMavenProjectTools.class
+            .getMethod("runJavaClass", String.class);
+        then(m.getDeclaringClass()).isNotEqualTo(PayaraServerMavenProjectTools.class);
     }
 }

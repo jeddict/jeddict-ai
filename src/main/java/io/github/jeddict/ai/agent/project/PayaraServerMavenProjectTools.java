@@ -26,18 +26,19 @@ import org.netbeans.api.project.Project;
  * <a href="https://github.com/payara/ecosystem-maven">Payara Server Maven Plugin</a>
  * ({@code fish.payara.maven.plugins:payara-server-maven-plugin}).
  *
- * <p>Overrides the generic Maven run command with Payara Server-specific
- * goals, and exposes additional tools for the full lifecycle:</p>
+ * <p>Inherits the standard Maven {@code buildProject} ({@code mvn clean install}),
+ * {@code runJavaClass} ({@code mvn exec:java}), and {@code testProject}
+ * ({@code mvn test}) goals from {@link MavenProjectTools}, and exposes
+ * additional tools for the Payara Server lifecycle:</p>
  * <ul>
- *   <li><b>start</b> – start Payara Server and deploy the application
+ *   <li><b>startServer</b> – start Payara Server and deploy the application
  *       ({@code payara-server:start})</li>
- *   <li><b>dev</b>   – development mode with auto deploy and live reload
- *       ({@code payara-server:dev})</li>
+ *   <li><b>stopServer</b>  – stop the running instance
+ *       ({@code payara-server:stop})</li>
+ *   <li><b>devMode</b>     – development mode with auto deploy and live reload
+ *       ({@code payara-server:dev});
+ *       <em>always prefer this over {@code startServer} during development</em></li>
  * </ul>
- *
- * <p>The standard {@code buildProject()} ({@code mvn clean install}) and
- * {@code testProject()} ({@code mvn test}) goals are inherited from
- * {@link MavenProjectTools} unchanged.</p>
  */
 public class PayaraServerMavenProjectTools extends MavenProjectTools {
 
@@ -46,38 +47,42 @@ public class PayaraServerMavenProjectTools extends MavenProjectTools {
     }
 
     // -----------------------------------------------------------------------
-    // Overrides – run
-    // -----------------------------------------------------------------------
-
-    @Override
-    @Tool(
-        name = "runJavaClass",
-        value = "Start Payara Server and deploy the application using 'mvn payara-server:start' "
-            + "(or the Maven wrapper) and return the full output"
-    )
-    @ToolPolicy(READWRITE)
-    public String runJavaClass(final String mainClass) {
-        return runCommand(resolveRunCommand(mainClass), "Starting Payara Server");
-    }
-
-    /**
-     * Returns the Payara Server start command ({@code mvn[w] payara-server:start}).
-     * The {@code mainClass} parameter is not used because Payara Server manages
-     * deployment through its own plugin configuration.
-     */
-    @Override
-    String resolveRunCommand(final String mainClass) {
-        return resolveWrapper() + " payara-server:start";
-    }
-
-    // -----------------------------------------------------------------------
     // Payara Server-specific tools
     // -----------------------------------------------------------------------
 
     @Tool(
+        name = "startServer",
+        value = "Start Payara Server and deploy the application using 'mvn payara-server:start' "
+            + "(or the Maven wrapper) and return the full output. "
+            + "Always prefer devMode over startServer for development workflows."
+    )
+    @ToolPolicy(READWRITE)
+    public String startServer() {
+        return runCommand(resolveWrapper() + " payara-server:start", "Starting Payara Server");
+    }
+
+    @Tool(
+        name = "stopServer",
+        value = "Stop the running Payara Server instance using 'mvn payara-server:stop' "
+            + "(or the Maven wrapper)"
+    )
+    @ToolPolicy(READWRITE)
+    public String stopServer() {
+        return runCommand(resolveWrapper() + " payara-server:stop", "Stopping Payara Server");
+    }
+
+    /**
+     * Starts Payara Server in development mode (auto deploy + live reload).
+     *
+     * <p><b>Always prefer this over {@link #startServer()}</b> during active
+     * development: {@code dev} automatically enables hot-deploy, browser
+     * live-reload, and session persistence without a server restart.</p>
+     */
+    @Tool(
         name = "devMode",
         value = "Start Payara Server in development mode with auto deploy and live reload "
-            + "using 'mvn payara-server:dev' (or the Maven wrapper)"
+            + "using 'mvn payara-server:dev' (or the Maven wrapper). "
+            + "Always prefer devMode over startServer for development workflows."
     )
     @ToolPolicy(READWRITE)
     public String devMode() {
