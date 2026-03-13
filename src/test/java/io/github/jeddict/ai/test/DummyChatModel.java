@@ -44,6 +44,7 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ToolChoice;
+import java.nio.file.Paths;
 import static ste.lloop.Loop._break_;
 import static ste.lloop.Loop.on;
 
@@ -200,7 +201,7 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
             }
 
             if (mockFile != null) {
-                mockPath = Path.of("src/test/resources/mocks").resolve(mockFile).normalize();
+                mockPath = Paths.get("src/test/resources/mocks").resolve(mockFile).normalize();
             }
 
             String errorMessage = "";
@@ -208,7 +209,7 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
                 mockPath = Path.of("src/test/resources/mocks").resolve(mockFile).normalize();
                 if (!Files.exists(mockPath)) {
                     errorMessage = "Mock file '%s' not found.".formatted(
-                        mockPath.toUri().getPath()  // not elegant but cross platform...
+                        mockPath.toAbsolutePath()
                     );
                     mockPath = Path.of(ERROR_MOCK_FILE);
                 }
