@@ -44,12 +44,12 @@ import java.io.IOException;
  *       ({@code :microprofile-advise} goal; default target version: {@code 6})</li>
  * </ul>
  */
-public class JakartaEEAdvisorMavenProjectTools extends AbstractTool {
+public class JakartaEEAdvisorMavenPluginTools extends AbstractTool {
 
     /** Full Maven coordinates for the advisor plugin. */
     static final String PLUGIN = "fish.payara.advisor:advisor-maven-plugin:2.0";
 
-    public JakartaEEAdvisorMavenProjectTools(final String basedir) throws IOException {
+    public JakartaEEAdvisorMavenPluginTools(final String basedir) throws IOException {
         super(basedir);
     }
 

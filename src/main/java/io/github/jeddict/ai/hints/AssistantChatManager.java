@@ -34,7 +34,7 @@ import io.github.jeddict.ai.agent.ExplorationTools;
 import io.github.jeddict.ai.agent.FileSystemTools;
 import io.github.jeddict.ai.agent.GradleTools;
 import io.github.jeddict.ai.agent.MavenTools;
-import io.github.jeddict.ai.agent.project.JakartaEEAdvisorMavenProjectTools;
+import io.github.jeddict.ai.agent.project.JakartaEEAdvisorMavenPluginTools;
 import io.github.jeddict.ai.agent.project.ProjectTools;
 import io.github.jeddict.ai.agent.RefactoringTools;
 import io.github.jeddict.ai.scanner.ProjectMetadataInfo.BuildMetadataResolver;
@@ -979,7 +979,7 @@ public class AssistantChatManager extends JavaFix {
                 if (metadata != null) {
                     final String eeVersion = metadata.get("EE Version");
                     if (eeVersion != null && eeVersion.startsWith("jakarta")) {
-                        toolsList.add(new JakartaEEAdvisorMavenProjectTools(basedir));
+                        toolsList.add(new JakartaEEAdvisorMavenPluginTools(basedir));
                     }
                 }
             }

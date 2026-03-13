@@ -25,10 +25,10 @@ import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests for {@link JakartaEEAdvisorMavenProjectTools}.
+ * Tests for {@link JakartaEEAdvisorMavenPluginTools}.
  */
 @CacioTest
-public class JakartaEEAdvisorMavenProjectToolsTest extends TestBase {
+public class JakartaEEAdvisorMavenPluginToolsTest extends TestBase {
 
     // -----------------------------------------------------------------------
     // resolveWrapper
@@ -37,8 +37,8 @@ public class JakartaEEAdvisorMavenProjectToolsTest extends TestBase {
     @Test
     public void resolveWrapper_uses_mvn_when_no_wrapper_present()
     throws Exception {
-        final JakartaEEAdvisorMavenProjectTools tool =
-            new JakartaEEAdvisorMavenProjectTools(projectDir);
+        final JakartaEEAdvisorMavenPluginTools tool =
+            new JakartaEEAdvisorMavenPluginTools(projectDir);
         then(tool.resolveWrapper()).isEqualTo("mvn");
     }
 
@@ -46,8 +46,8 @@ public class JakartaEEAdvisorMavenProjectToolsTest extends TestBase {
     public void resolveWrapper_uses_mvnw_when_wrapper_present()
     throws Exception {
         Files.createFile(projectPath.resolve("mvnw"));
-        final JakartaEEAdvisorMavenProjectTools tool =
-            new JakartaEEAdvisorMavenProjectTools(projectDir);
+        final JakartaEEAdvisorMavenPluginTools tool =
+            new JakartaEEAdvisorMavenPluginTools(projectDir);
         then(tool.resolveWrapper()).isEqualTo("./mvnw");
     }
 
@@ -58,15 +58,15 @@ public class JakartaEEAdvisorMavenProjectToolsTest extends TestBase {
     @Test
     public void jakartaEEAdvise_uses_full_plugin_coordinates()
     throws Exception {
-        then(JakartaEEAdvisorMavenProjectTools.PLUGIN)
+        then(JakartaEEAdvisorMavenPluginTools.PLUGIN)
             .isEqualTo("fish.payara.advisor:advisor-maven-plugin:2.0");
     }
 
     @Test
     public void jakartaEEAdvise_defaults_to_version_10_when_null()
     throws Exception {
-        final JakartaEEAdvisorMavenProjectTools tool =
-            new JakartaEEAdvisorMavenProjectTools(projectDir);
+        final JakartaEEAdvisorMavenPluginTools tool =
+            new JakartaEEAdvisorMavenPluginTools(projectDir);
         then(tool.resolveAdviseCommand(null))
             .isEqualTo("mvn fish.payara.advisor:advisor-maven-plugin:2.0:advise -DadviseVersion=10");
     }
@@ -74,8 +74,8 @@ public class JakartaEEAdvisorMavenProjectToolsTest extends TestBase {
     @Test
     public void jakartaEEAdvise_defaults_to_version_10_when_blank()
     throws Exception {
-        final JakartaEEAdvisorMavenProjectTools tool =
-            new JakartaEEAdvisorMavenProjectTools(projectDir);
+        final JakartaEEAdvisorMavenPluginTools tool =
+            new JakartaEEAdvisorMavenPluginTools(projectDir);
         then(tool.resolveAdviseCommand(""))
             .isEqualTo("mvn fish.payara.advisor:advisor-maven-plugin:2.0:advise -DadviseVersion=10");
     }
@@ -83,8 +83,8 @@ public class JakartaEEAdvisorMavenProjectToolsTest extends TestBase {
     @Test
     public void jakartaEEAdvise_uses_supplied_version_11()
     throws Exception {
-        final JakartaEEAdvisorMavenProjectTools tool =
-            new JakartaEEAdvisorMavenProjectTools(projectDir);
+        final JakartaEEAdvisorMavenPluginTools tool =
+            new JakartaEEAdvisorMavenPluginTools(projectDir);
         then(tool.resolveAdviseCommand("11"))
             .isEqualTo("mvn fish.payara.advisor:advisor-maven-plugin:2.0:advise -DadviseVersion=11");
     }
@@ -93,8 +93,8 @@ public class JakartaEEAdvisorMavenProjectToolsTest extends TestBase {
     public void jakartaEEAdvise_uses_mvnw_in_command_when_wrapper_present()
     throws Exception {
         Files.createFile(projectPath.resolve("mvnw"));
-        final JakartaEEAdvisorMavenProjectTools tool =
-            new JakartaEEAdvisorMavenProjectTools(projectDir);
+        final JakartaEEAdvisorMavenPluginTools tool =
+            new JakartaEEAdvisorMavenPluginTools(projectDir);
         then(tool.resolveAdviseCommand("10"))
             .isEqualTo("./mvnw fish.payara.advisor:advisor-maven-plugin:2.0:advise -DadviseVersion=10");
     }
@@ -106,8 +106,8 @@ public class JakartaEEAdvisorMavenProjectToolsTest extends TestBase {
     @Test
     public void microprofileAdvise_defaults_to_version_6_command()
     throws Exception {
-        final JakartaEEAdvisorMavenProjectTools tool =
-            new JakartaEEAdvisorMavenProjectTools(projectDir);
+        final JakartaEEAdvisorMavenPluginTools tool =
+            new JakartaEEAdvisorMavenPluginTools(projectDir);
         then(tool.resolveMicroprofileAdviseCommand(null))
             .isEqualTo("mvn fish.payara.advisor:advisor-maven-plugin:2.0:microprofile-advise -DadviseVersion=6");
     }
@@ -116,8 +116,8 @@ public class JakartaEEAdvisorMavenProjectToolsTest extends TestBase {
     public void microprofileAdvise_uses_mvnw_in_command_when_wrapper_present()
     throws Exception {
         Files.createFile(projectPath.resolve("mvnw"));
-        final JakartaEEAdvisorMavenProjectTools tool =
-            new JakartaEEAdvisorMavenProjectTools(projectDir);
+        final JakartaEEAdvisorMavenPluginTools tool =
+            new JakartaEEAdvisorMavenPluginTools(projectDir);
         then(tool.resolveMicroprofileAdviseCommand("6"))
             .isEqualTo("./mvnw fish.payara.advisor:advisor-maven-plugin:2.0:microprofile-advise -DadviseVersion=6");
     }
