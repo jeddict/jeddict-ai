@@ -695,6 +695,7 @@ public class AssistantChatManager extends JavaFix {
                         if (agentEnabled && (selectedProject == null)) {
                             ac.selectProject();
                             selectedProject = getProject();
+                            projectInfo = ProjectMetadataInfo.get(selectedProject);
                         }
                         final Hacker h = hacker(listener, modelName, ac.interactiveMode());
                         if (pm.isStreamEnabled()) {

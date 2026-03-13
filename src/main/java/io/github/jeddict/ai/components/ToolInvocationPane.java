@@ -98,7 +98,7 @@ public class ToolInvocationPane extends JPanel {
         argumentsPanel.removeAll();
         final JSONObject arguments = new JSONObject(execution.arguments());
         on(arguments.keySet()).loop((key) -> {
-            argumentsPanel.add(new ArgumentChip(key, arguments.getString(key)));
+            argumentsPanel.add(new ArgumentChip(key, String.valueOf(arguments.get(key))));
         });
     }
 }

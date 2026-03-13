@@ -51,6 +51,8 @@ import io.github.jeddict.ai.agent.pair.PairProgrammer;
 import static io.github.jeddict.ai.lang.InteractionMode.INTERACTIVE;
 import io.github.jeddict.ai.util.PropertyChangeEmitter;
 import java.lang.reflect.InvocationTargetException;
+import org.openide.DialogDisplayer;
+import org.openide.NotifyDescriptor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -307,6 +309,18 @@ public class JeddictBrain implements PropertyChangeEmitter {
             );
             
             return toolsSupport;
+        } catch (final NoClassDefFoundError e) {
+            LOG.severe(() ->
+                "error probing tool support (conflicting classpath), returning false %s\n%s".formatted(
+                    e.toString(),
+                    Arrays.toString(e.getStackTrace())
+                )
+            );
+            final NotifyDescriptor nd = new NotifyDescriptor.Message(
+                "AI tool support probe failed due to a conflicting classpath issue: " + e.toString(),
+                NotifyDescriptor.ERROR_MESSAGE
+            );
+            DialogDisplayer.getDefault().notify(nd);
         } catch (final Throwable t) {
             LOG.severe(() ->
                 "error probing tool support, returning false %s\n%s".formatted(
