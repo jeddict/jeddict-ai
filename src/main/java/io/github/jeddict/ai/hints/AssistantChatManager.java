@@ -61,7 +61,6 @@ import static io.github.jeddict.ai.review.ReviewUtil.convertReviewsToHtml;
 import static io.github.jeddict.ai.review.ReviewUtil.parseReviewsFromYaml;
 import io.github.jeddict.ai.scanner.ProjectMetadataInfo;
 import io.github.jeddict.ai.settings.PreferencesManager;
-import io.github.jeddict.ai.util.ClassLoaderUtil;
 import io.github.jeddict.ai.util.ColorUtil;
 import static io.github.jeddict.ai.util.ContextHelper.getFilesContextList;
 import static io.github.jeddict.ai.util.ContextHelper.getImageFilesContext;
@@ -480,7 +479,6 @@ public class AssistantChatManager extends JavaFix {
 
     public void openChat(String type, final String query, String fileName, String title, Consumer<String> action) {
         SwingUtilities.invokeLater(() -> {
-            ClassLoaderUtil.usePluginClassLoaderIfNeeded(getClass());
             new JeddictUpdateManager().checkForJeddictUpdate();
             ac = createChatInstance(title, type, getProject());
             ac.setLayout(new BorderLayout());

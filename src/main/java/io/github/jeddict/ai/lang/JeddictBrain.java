@@ -207,6 +207,8 @@ public class JeddictBrain implements PropertyChangeEmitter {
      * @return an instance of the configured agent
      */
     public <T> T pairProgrammer(PairProgrammer.Specialist specialist) {
+        ClassLoaderUtil.usePluginClassLoaderIfNeeded(getClass());
+
         if (specialist == PairProgrammer.Specialist.HACKER) {
             if (!probeToolSupport()) {
                 specialist = PairProgrammer.Specialist.HACKER_WITHOUT_TOOLS;
