@@ -218,6 +218,7 @@
                     <reuseForks>false</reuseForks>
                     <!-- JVM options required for headless testing -->
                     <argLine>
+                        @{argLine}
                         --add-opens=java.base/java.net=ALL-UNNAMED
                         --add-opens=java.desktop/sun.awt=ALL-UNNAMED
                         --add-opens=java.desktop/sun.awt.X11=ALL-UNNAMED
@@ -241,6 +242,25 @@
                         <java.awt.headless>false</java.awt.headless>
                     </systemPropertyVariables>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.12</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
