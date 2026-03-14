@@ -115,9 +115,21 @@ public class PayaraMicroMavenProjectToolsTest extends TestBase {
     }
 
     @Test
+    public void reloadApplication_method_exists() throws Exception {
+        final java.lang.reflect.Method m = PayaraMicroMavenProjectTools.class.getMethod("reloadApplication");
+        then(m).isNotNull();
+    }
+
+    @Test
+    public void devMode_method_exists() throws Exception {
+        final java.lang.reflect.Method m = PayaraMicroMavenProjectTools.class.getMethod("devMode");
+        then(m).isNotNull();
+    }
+
+    @Test
     public void stopServer_method_does_not_exist() {
         then(PayaraMicroMavenProjectTools.class.getMethods())
-            .extracting(Method::getName)
+            .extracting(java.lang.reflect.Method::getName)
             .doesNotContain("stopServer");
     }
 }

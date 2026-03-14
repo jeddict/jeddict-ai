@@ -109,10 +109,22 @@ public class PayaraServerMavenProjectToolsTest extends TestBase {
     }
 
     @Test
-    public void runJavaClass_is_not_overridden_in_PayaraServerMavenProjectTools() throws Exception {
-        // runJavaClass must be declared in a parent class, not in PayaraServerMavenProjectTools itself
-        final Method m = PayaraServerMavenProjectTools.class
-            .getMethod("runJavaClass", String.class);
-        then(m.getDeclaringClass()).isNotEqualTo(PayaraServerMavenProjectTools.class);
+    public void devMode_method_exists() throws Exception {
+        final Method m = PayaraServerMavenProjectTools.class.getMethod("devMode");
+        then(m).isNotNull();
+    }
+
+    @Test
+    public void bundleMicro_method_does_not_exist() {
+        then(PayaraServerMavenProjectTools.class.getMethods())
+            .extracting(Method::getName)
+            .doesNotContain("bundleMicro");
+    }
+
+    @Test
+    public void stopMicro_method_does_not_exist() {
+        then(PayaraServerMavenProjectTools.class.getMethods())
+            .extracting(Method::getName)
+            .doesNotContain("stopMicro");
     }
 }

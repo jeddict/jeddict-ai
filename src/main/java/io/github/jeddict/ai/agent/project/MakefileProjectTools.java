@@ -51,7 +51,7 @@ public class MakefileProjectTools extends ProjectTools implements BuildMetadataR
 
     /** Matches the first {@code project(MyProject ...)} call; captures the project name. */
     private static final Pattern CMAKE_PROJECT_NAME =
-            Pattern.compile("\\bproject\\s*\\(\\s*(\\S+)", Pattern.CASE_INSENSITIVE);
+            Pattern.compile("\\bproject\\s*\\(\\s*([^\\s)]+)", Pattern.CASE_INSENSITIVE);
 
     /**
      * Matches {@code find_package(OpenCV REQUIRED)} and optionally a version:
