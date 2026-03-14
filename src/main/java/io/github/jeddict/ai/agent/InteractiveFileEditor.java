@@ -15,6 +15,7 @@
  */
 package io.github.jeddict.ai.agent;
 
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.exception.ToolExecutionException;
 import static io.github.jeddict.ai.agent.ToolPolicy.Policy.INTERACTIVE;
@@ -54,8 +55,12 @@ public class InteractiveFileEditor extends AbstractTool {
     """
     )
     @ToolPolicy(INTERACTIVE)
-    public String editFile(final String path, final String content)
-    throws ToolExecutionException {
+    public String editFile(
+        @P("the filesystem path of the file to be changed")
+        final String path,
+        @P("the proposed new content for the file")
+        final String content
+    ) throws ToolExecutionException {
         if (StringUtils.isBlank(path)) {
             throw new ToolExecutionException("path can not be null or empty");
         }

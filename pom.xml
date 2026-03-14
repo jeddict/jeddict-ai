@@ -45,7 +45,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>17</maven.compiler.release>
-        <javalang4j.version>1.10.0</javalang4j.version>
+        <langchain4j.version>1.11.0</langchain4j.version>
         <netbeans.version>RELEASE290</netbeans.version>
     </properties>
 
@@ -287,48 +287,48 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-open-ai</artifactId>
-            <version>${javalang4j.version}</version>
+            <version>${langchain4j.version}</version>
         </dependency>
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-ollama</artifactId>
-            <version>${javalang4j.version}</version>
+            <version>${langchain4j.version}</version>
         </dependency>
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-local-ai</artifactId>
-            <version>${javalang4j.version}-beta18</version>
+            <version>${langchain4j.version}-beta19</version>
         </dependency>
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-mistral-ai</artifactId>
-            <version>${javalang4j.version}</version>
+            <version>${langchain4j.version}</version>
         </dependency>
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-anthropic</artifactId>
-            <version>${javalang4j.version}</version>
+            <version>${langchain4j.version}</version>
         </dependency>
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-google-ai-gemini</artifactId>
-            <version>${javalang4j.version}</version>
+            <version>${langchain4j.version}</version>
         </dependency>
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-agentic</artifactId>
-            <version>${javalang4j.version}-beta18</version>
+            <version>${langchain4j.version}-beta19</version>
             <type>jar</type>
         </dependency>
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>${javalang4j.version}</version>
+            <version>${langchain4j.version}</version>
         </dependency>
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-http-client-jdk</artifactId>
-            <version>${javalang4j.version}</version>
+            <version>${langchain4j.version}</version>
         </dependency>
         <dependency>
             <groupId>com.knuddels</groupId>
@@ -338,13 +338,38 @@
         <dependency>
             <groupId>org.commonmark</groupId>
             <artifactId>commonmark</artifactId>
-            <version>0.27.0</version>
+            <version>0.27.1</version>
         </dependency>
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
-            <version>20240303</version>
+            <version>20251224</version>
         </dependency>
+        <dependency>
+        <!--
+            TOON
+        -->
+        <groupId>tools.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>3.1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>tools.jackson.module</groupId>
+            <artifactId>jackson-module-afterburner</artifactId>
+            <version>3.1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+            <version>2.21</version>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.toonformat</groupId>
+            <artifactId>jtoon</artifactId>
+            <version>1.0.8</version>
+        </dependency>
+        <!-- -->
         <dependency>
             <groupId>org.jfree</groupId>
             <artifactId>jfreechart</artifactId>
@@ -691,7 +716,7 @@
         <dependency>
             <groupId>com.github.stefanofornari</groupId>
             <artifactId>lambda-loop</artifactId>
-            <version>0.5.0</version>
+            <version>0.6.1</version>
         </dependency>
         <dependency>
             <groupId>net.bytebuddy</groupId>
