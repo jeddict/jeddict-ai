@@ -177,49 +177,20 @@ public class FileSystemToolsTest extends TestBase {
         final String nonExistingDir = "nonexistingdir";
         final String emptyDir = "newfolder";
 
-        then(tools.listFilesInDirectory(existingDir, 1)).contains("testfile.txt");
+        then(tools.listFilesInDirectory(existingDir)).contains("testfile.txt");
         thenProgressContains(listener.collector.get(0), "\n📂 Listing content of directory " + existingDir);
 
         listener.collector.clear();
         Files.createDirectory(projectPath.resolve(emptyDir));
-        then(tools.listFilesInDirectory(emptyDir, 1)).isEqualTo("(empty)");
+        then(tools.listFilesInDirectory(emptyDir)).isEqualTo("(empty)");
         thenProgressContains(listener.collector.get(0), "\n📂 Listing content of directory " + emptyDir);
 
         listener.collector.clear();
-        thenThrownBy(() -> tools.listFilesInDirectory(nonExistingDir, 1))
+        thenThrownBy(() -> tools.listFilesInDirectory(nonExistingDir))
             .isInstanceOf(ToolExecutionException.class)
             .hasMessage(nonExistingDir + " does not exist");
         thenProgressContains(listener.collector.get(0), "\n📂 Listing content of directory " + nonExistingDir);
         thenProgressContains(listener.collector.get(1), "\n❌ " + nonExistingDir + " does not exist");
-    }
-
-    @Test
-    public void listFilesInDirectory_tree_mode_unlimited_depth() throws Exception {
-        // depth=0 → unlimited recursive tree (same behaviour as old fileTree("", 0))
-        final String tree = tools.listFilesInDirectory("", 0);
-        then(tree)
-            .contains("pom.xml")
-            .contains("folder/")
-            .contains("testfile.txt");
-    }
-
-    @Test
-    public void listFilesInDirectory_tree_mode_limited_depth() throws Exception {
-        // depth=2 → two levels deep from the project root (direct children + their children)
-        final String tree = tools.listFilesInDirectory("", 2);
-        then(tree)
-            .contains("src/")
-            .contains("main/") // main/ is at level 2 (child of src/), so it IS included
-            .doesNotContain("java/"); // java/ is at level 3, beyond depth 2
-    }
-
-    @Test
-    public void listFilesInDirectory_tree_mode_sub_path() throws Exception {
-        // depth=0 + sub-path → tree rooted at sub-directory
-        final String tree = tools.listFilesInDirectory("folder", 0);
-        then(tree)
-            .contains("testfile.txt")
-            .doesNotContain("pom.xml");
     }
 
     @Test
@@ -229,7 +200,7 @@ public class FileSystemToolsTest extends TestBase {
         //
         final String abs = HOME.resolve("folder").toAbsolutePath().toString();
 
-        thenTriedFileOutsideProjectFolder(() -> tools.listFilesInDirectory(abs, 1));
+        thenTriedFileOutsideProjectFolder(() -> tools.listFilesInDirectory(abs));
         thenProgressContains(listener.collector.get(0), "\n📂 Listing content of directory " + abs);
 
         //
@@ -239,7 +210,7 @@ public class FileSystemToolsTest extends TestBase {
 
         final String rel = projectDir + File.separator + "../outside";
 
-        thenTriedFileOutsideProjectFolder(() -> tools.listFilesInDirectory(rel, 1));
+        thenTriedFileOutsideProjectFolder(() -> tools.listFilesInDirectory(rel));
         thenProgressContains(listener.collector.get(0), "\n📂 Listing content of directory " + rel);
     }
 
