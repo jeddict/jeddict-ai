@@ -52,6 +52,11 @@ public class FileSystemTools extends AbstractCodeTool {
      * {@code PreferencesManager} (exclude-dirs and allowed extensions) are
      * automatically filtered out.
      *
+     * <p>This method is no longer annotated with {@code @Tool}; its
+     * functionality has been merged into
+     * {@link #listFilesInDirectory(String, int)}. The implementation is kept
+     * for backward-compatibility and internal use.</p>
+     *
      * @param path  sub-directory path relative to the project root to use as
      *              the tree root (e.g. {@code "src/main/java"}); leave blank
      *              to show the full project tree
@@ -59,14 +64,6 @@ public class FileSystemTools extends AbstractCodeTool {
      *              {@code 0} means unlimited depth
      * @return indented file tree string
      */
-    @Tool(
-        name = "fileTree",
-        value = "Return the file tree structure of the project or a sub-directory. "
-            + "Use 'path' to restrict the tree to a sub-directory (e.g. 'src/main/java'); "
-            + "leave blank to show the full project. "
-            + "Use 'depth' to limit traversal depth (e.g. 3); 0 means unlimited."
-    )
-    @ToolPolicy(READONLY)
     public String fileTree(String path, int depth) {
         progress("📂 Gathering file tree" + (path != null && !path.isBlank() ? " for " + path : ""));
         return getFileTree(basepath, path, depth);
@@ -346,25 +343,51 @@ public class FileSystemTools extends AbstractCodeTool {
     }
 
     /**
-     * Lists all files and directories in a directory.
+     * Lists the contents of a directory.
      *
-     * @param path the directory path relative to the project
-     * @return a list of files and directories, or an error message
+     * <p>When {@code depth} is {@code 1} (direct children only) the output is
+     * a flat, human-readable list — one entry per line — where directories are
+     * distinguished by a trailing slash ({@code /}).  When {@code depth} is
+     * {@code 0} (unlimited) or any value greater than {@code 1} the directory
+     * is traversed recursively and the result is formatted as an indented file
+     * tree, identical to what the old {@code fileTree} tool used to produce.
+     * Files whose extension is not in the allowed-extensions list (configured
+     * in {@link PreferencesManager}) are excluded from the recursive output;
+     * the flat listing always shows all entries.</p>
+     *
+     * @param path  directory path relative to the project; leave blank to
+     *              target the project root (only available in tree mode)
+     * @param depth {@code 1} = list direct children only (flat format);
+     *              {@code 0} = unlimited recursive tree;
+     *              {@code N > 1} = recursive tree up to {@code N} levels deep
+     * @return the directory listing or file tree as a string
      */
     @Tool(
-        """
-        List all files and directories inside a given path one on each line.
-        If an element of the list is a directory, the pathname will end with
-        a slash ('/')
-        If the path does not exist or is not a directory, it returns
-        "<directory> does not exist".
-        If the directory is empty (empty) is returned.
-        """
+        name = "listFilesInDirectory",
+        value = """
+            List the contents of a directory.
+            Use 'depth=1' to list only direct children (one per line; directories end with '/').
+            Use 'depth=0' for an unlimited recursive file tree, or 'depth=N' (N > 1) to limit
+            the tree to N levels deep.
+            Leave 'path' blank (in tree mode) to target the project root.
+            Returns "(empty)" when the directory is empty in flat mode.
+            Returns an error when the path does not exist or is not a directory.
+            """
     )
     @ToolPolicy(READONLY)
-    public String listFilesInDirectory(final String path) throws ToolExecutionException {
+    public String listFilesInDirectory(final String path, final int depth) throws ToolExecutionException {
         progress("📂 Listing content of directory " + path);
 
+        if (depth != 1) {
+            // Tree mode: delegate to the getFileTree logic.
+            // Allow blank path (interpreted as project root by getFileTree).
+            if (path != null && !path.isBlank()) {
+                checkPath(path);
+            }
+            return getFileTree(basepath, path, depth);
+        }
+
+        // Flat mode (depth == 1): list direct children, all files/dirs shown.
         checkPath(path);
 
         final Path dirPath = fullPath(path);
