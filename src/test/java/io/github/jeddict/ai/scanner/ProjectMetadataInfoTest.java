@@ -18,6 +18,7 @@ package io.github.jeddict.ai.scanner;
 
 import com.github.caciocavallosilano.cacio.ctc.junit.CacioTest;
 import io.github.jeddict.ai.agent.project.MavenProjectTools;
+import io.github.jeddict.ai.scanner.ProjectMetadataInfo.BuildMetadataResolver;
 import io.github.jeddict.ai.test.TestBase;
 import java.nio.file.Paths;
 import static org.assertj.core.api.BDDAssertions.then;
@@ -51,7 +52,7 @@ public class ProjectMetadataInfoTest extends TestBase {
         final Project project = project(projectDir);
 
         // MavenProjectTools acts as the BuildMetadataResolver: reads pom.xml.
-        final MavenProjectTools resolver = new MavenProjectTools(project);
+        final BuildMetadataResolver resolver = new MavenProjectTools(project);
         final String info = ProjectMetadataInfo.get(project, resolver);
         then(info)
             .contains("- name: name")        // <name> from pom.xml

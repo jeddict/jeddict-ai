@@ -474,7 +474,7 @@ public class FileSystemTools extends AbstractCodeTool {
      */
     public static String getFileTree(Path projectRoot, String subPath, int maxDepth) {
         if (projectRoot == null) {
-            return "";
+            throw new ToolExecutionException("project root is not set");
         }
         try {
             final Path root;
@@ -533,7 +533,7 @@ public class FileSystemTools extends AbstractCodeTool {
      */
     public static String getDirTree(Path root) {
         if (root == null) {
-            return "";
+            throw new ToolExecutionException("project root is not set");
         }
         try {
             final StringBuilder sb = new StringBuilder();

@@ -479,8 +479,6 @@ public class FileSystemToolsTest extends TestBase {
         thenProgressContains(listener.collector.get(0), "\n🔄 Replacing content in " + rel);
     }
 
-    // --------------------------------------------------------- private methods
-
     @Test
     public void fileTree_returns_full_tree_for_project_root() throws Exception {
         final String tree = tools.fileTree("", 0);
@@ -550,8 +548,10 @@ public class FileSystemToolsTest extends TestBase {
     }
 
     @Test
-    public void getFileTree_static_returns_empty_for_null_root() {
-        then(FileSystemTools.getFileTree(null, null, 0)).isEmpty();
+    public void getFileTree_static_returns_exception_for_null_root() {
+        thenThrownBy(() -> FileSystemTools.getFileTree(null, null, 0))
+            .isInstanceOf(ToolExecutionException.class)
+            .hasMessageContaining("project root is not set");
     }
 
     @Test
@@ -564,9 +564,13 @@ public class FileSystemToolsTest extends TestBase {
     }
 
     @Test
-    public void getDirTree_static_returns_empty_for_null_root() {
-        then(FileSystemTools.getDirTree(null)).isEmpty();
+    public void getDirTree_static_returns_exception_for_null_root() {
+        thenThrownBy(() -> FileSystemTools.getDirTree(null))
+            .isInstanceOf(ToolExecutionException.class)
+            .hasMessageContaining("project root is not set");
     }
+
+    // --------------------------------------------------------- private methods
 
     private void thenTriedFileOutsideProjectFolder(final Runnable exec) {
         thenThrownBy(() -> exec.run())
