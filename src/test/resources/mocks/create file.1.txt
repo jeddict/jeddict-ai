@@ -1,0 +1,20 @@
+This is a response that shall create a new file cities.txt with the 5 most
+visited cities in the world.
+
+```tool
+{
+  "name": "createFile",
+  "arg1": "cities.txt",
+  "arg2": "1. Bangkok, Thailand – 30.3 million arrivals\\n2. Hong Kong – 23.2 million arrivals\\n3. London, United Kingdom – 22.7 million arrivals\\n4. Macau – 20.4 million arrivals\\n5. Istanbul, Turkey – 19.7 million arrivals"
+}
+```
+The search results provide confirmed data for the top 10 cities[3]. However, the
+available sources do not include a complete ranking with visitor numbers for
+cities ranked 11-20[3]. The data shows that beyond the top 10, many counts are
+estimates based on extended data tables, and some cities appear in multiple
+tourism reports with differing definitions of visitor arrivals[3].
+To obtain a full ranking of the top 20 cities with specific visitor numbers,
+you would need access to more comprehensive tourism databases such as the
+Euromonitor International's Top 100 City Destinations Index[3].
+
+use mock 'create file.2.txt'

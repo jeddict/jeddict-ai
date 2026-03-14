@@ -15,6 +15,7 @@
  */
 package io.github.jeddict.ai.agent;
 
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.exception.ToolExecutionException;
 import io.github.jeddict.ai.settings.PreferencesManager;
@@ -96,7 +97,10 @@ public class FileSystemTools extends AbstractCodeTool {
      */
     @Tool("Read the content of a file by path")
     @ToolPolicy(READONLY)
-    public String readFile(final String path) throws ToolExecutionException {
+    public String readFile(
+        @P("path of the file to read")
+        final String path
+    ) throws ToolExecutionException {
         progress("📖 Reading file " + path);
 
         checkPath(path);
@@ -126,7 +130,12 @@ public class FileSystemTools extends AbstractCodeTool {
     path does not exist. If the pattern is empty, it matches all files.
     """)
     @ToolPolicy(READONLY)
-    public String findFiles(String path, String regexPattern) throws Exception {
+    public String findFiles(
+        @P("root folder path")
+        final String path,
+        @P("regex pattern matched against the path of each file found.")
+        final String regexPattern
+    ) throws Exception {
         progress("🔎 Searching for files matching '" + regexPattern + "' in directory '" + path + "'");
         Path startDir = fullPath(path);
 
@@ -177,7 +186,12 @@ public class FileSystemTools extends AbstractCodeTool {
      */
     @Tool("Search for a regex pattern in a file by path")
     @ToolPolicy(READONLY)
-    public String searchInFile(String path, String pattern) throws ToolExecutionException {
+    public String searchInFile(
+            @P("the file pathname")
+            final String path,
+            @P("the pattern to match")
+            final String pattern
+    ) throws ToolExecutionException {
         progress("🔎 Looking for '" + pattern + "' inside '" + path + "'");
 
         checkPath(path);
@@ -211,8 +225,14 @@ public class FileSystemTools extends AbstractCodeTool {
     with no user interaction. Special regex characters are escaped.
     """)
     @ToolPolicy(READWRITE)
-    public String replaceSnippetByLiteral(String path, String literalText, String replacement)
-            throws Exception {
+    public String replaceSnippetByLiteral(
+        @P("the file pathname")
+        final String path,
+        @P("text to replace")
+        final String literalText,
+        @P("replacement text")
+        final String replacement
+    ) throws Exception {
         return replaceSnippetByRegex(path, Pattern.quote(literalText), replacement);
     }
 
@@ -228,9 +248,13 @@ public class FileSystemTools extends AbstractCodeTool {
     @Tool("Replace parts of a file content matching a regex pattern with replacement text  with no user interaction")
     @ToolPolicy(READWRITE)
     public String replaceSnippetByRegex(
-        final String path, final String regexPattern, final String replacement
-    )
-    throws ToolExecutionException {
+        @P("the file pathname")
+        final String path,
+        @P("regexp pattern to match and replace")
+        final String regexPattern,
+        @P("replacement text")
+        final String replacement
+    ) throws ToolExecutionException {
         progress("🔄 Replacing text matching regex '" + regexPattern + "' in " + path);
 
         checkPath(path);
@@ -264,8 +288,12 @@ public class FileSystemTools extends AbstractCodeTool {
      */
     @Tool("Replace the full content of a file by path with new text with no user interaction")
     @ToolPolicy(READWRITE)
-    public String replaceFileContent(final String path, final String newContent)
-    throws ToolExecutionException {
+    public String replaceFileContent(
+        @P("the file pathname")
+        final String path,
+        @P("new content")
+        final String newContent
+    ) throws ToolExecutionException {
         progress("🔄 Replacing content in " + path);
 
         checkPath(path);
@@ -289,7 +317,12 @@ public class FileSystemTools extends AbstractCodeTool {
      */
     @Tool("Create a new file at the given path with optional content with no user interaction")
     @ToolPolicy(READWRITE)
-    public String createFile(String path, String content) throws ToolExecutionException {
+    public String createFile(
+        @P("the pathname of the file to create")
+        final String path,
+        @P("the file content")
+        final String content
+    ) throws ToolExecutionException {
         progress("📄 Creating file " + path);
 
         checkPath(path);
@@ -321,7 +354,10 @@ public class FileSystemTools extends AbstractCodeTool {
      */
     @Tool("Delete a file at the given path")
     @ToolPolicy(READWRITE)
-    public String deleteFile(String path) throws ToolExecutionException {
+    public String deleteFile(
+        @P("the pathname of the file to delete")
+        final String path
+    ) throws ToolExecutionException {
         progress("🗑️ Deleting file " + path);
 
         checkPath(path);
@@ -375,7 +411,11 @@ public class FileSystemTools extends AbstractCodeTool {
             """
     )
     @ToolPolicy(READONLY)
-    public String listFilesInDirectory(final String path, final int depth) throws ToolExecutionException {
+    public String listFilesInDirectory(
+        @P("the directory to list") final String path,
+        @P("depth of listing: 1 = direct children only, 0 = unlimited recursive tree, N > 1 = recursive tree up to N levels")
+        final int depth
+    ) throws ToolExecutionException {
         progress("📂 Listing content of directory " + path);
 
         if (depth != 1) {
@@ -421,7 +461,10 @@ public class FileSystemTools extends AbstractCodeTool {
      */
     @Tool("Create a new directory at the given path")
     @ToolPolicy(READWRITE)
-    public String createDirectory(String path) throws ToolExecutionException {
+    public String createDirectory(
+        @P("the pathname of the directory to create")
+        final String path
+    ) throws ToolExecutionException {
         progress("📂 Creating new directory " + path);
 
         checkPath(path);
@@ -451,7 +494,10 @@ public class FileSystemTools extends AbstractCodeTool {
      */
     @Tool("Delete a directory at the given path (must be empty)")
     @ToolPolicy(READWRITE)
-    public String deleteDirectory(final String path) throws ToolExecutionException {
+    public String deleteDirectory(
+        @P("the pathname of the directory to delete")
+        final String path
+    ) throws ToolExecutionException {
         progress("🗑️ Deleting directory " + path);
 
         checkPath(path);

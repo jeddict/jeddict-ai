@@ -1,0 +1,6 @@
+This is to execute the DummyTool
+
+```tool:dummyToolWithArgs
+"arg1":"val1", "arg2":["val2"]
+```
+

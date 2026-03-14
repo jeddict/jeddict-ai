@@ -15,6 +15,7 @@
  */
 package io.github.jeddict.ai.agent;
 
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import java.io.IOException;
 import java.io.InputStream;
@@ -53,8 +54,14 @@ public class MavenTools extends AbstractBuildTool {
         value = "Add a dependency to the pom.xml file"
     )
     @ToolPolicy(READWRITE)
-    public String addDependency(String groupId, String artifactId, String version)
-    throws Exception {
+    public String addDependency(
+        @P("group id")
+        final String groupId,
+        @P("artifact id")
+        final String artifactId,
+        @P("version")
+        final String version
+    ) throws Exception {
         progress("Adding dependency: " + groupId + ":" + artifactId + ":" + version);
         return addDependency(groupId, artifactId, version, null);
     }
@@ -64,8 +71,16 @@ public class MavenTools extends AbstractBuildTool {
         value = "Add a dependency with scope to the pom.xml file"
     )
     @ToolPolicy(READWRITE)
-    public String addDependencyWithScope(String groupId, String artifactId, String version, String scope)
-    throws Exception {
+    public String addDependencyWithScope(
+        @P("group id")
+        final String groupId,
+        @P("artifact id")
+        final String artifactId,
+        @P("version")
+        final String version,
+        @P("scope")
+        final String scope
+    ) throws Exception {
         progress("Adding dependency with scope: " + groupId + ":" + artifactId + ":" + version + ":" + scope);
         return addDependency(groupId, artifactId, version, scope);
     }
@@ -140,7 +155,12 @@ public class MavenTools extends AbstractBuildTool {
         value = "Remove a dependency from the pom.xml file"
     )
     @ToolPolicy(READWRITE)
-    public String removeDependency(String groupId, String artifactId) throws Exception {
+    public String removeDependency(
+        @P("group id")
+        final String groupId,
+        @P("artifact id")
+        final String artifactId
+    ) throws Exception {
         progress("Removing dependency " + groupId + ": " + artifactId);
         try {
             final FileObject pomFile = buildFile();
@@ -223,8 +243,14 @@ public class MavenTools extends AbstractBuildTool {
         value = "Update the version of an existing dependency in the pom.xml file"
     )
     @ToolPolicy(READWRITE)
-    public String updateDependencyVersion(String groupId, String artifactId, String newVersion)
-    throws Exception {
+    public String updateDependencyVersion(
+        @P("group id")
+        final String groupId,
+        @P("artifact id")
+        final String artifactId,
+        @P("new version")
+        final String newVersion
+    ) throws Exception {
         progress("Updating dependency version: " + groupId + ":" + artifactId + ":" + newVersion);
         try {
             final FileObject pomFile = buildFile();
@@ -266,8 +292,12 @@ public class MavenTools extends AbstractBuildTool {
         value= "Check if a dependency exists in the pom.xml file"
     )
     @ToolPolicy(READONLY)
-    public boolean dependencyExists(String groupId, String artifactId)
-    throws Exception {
+    public boolean dependencyExists(
+        @P("group id")
+        final String groupId,
+        @P("artifact id")
+        final String artifactId
+    ) throws Exception {
         progress("Checking dependency existence: " + groupId + ":" + artifactId);
         try {
             final FileObject pomFile = buildFile();

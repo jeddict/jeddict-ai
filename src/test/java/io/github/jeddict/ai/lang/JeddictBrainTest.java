@@ -25,9 +25,11 @@ import io.github.jeddict.ai.agent.AbstractTool;
 import io.github.jeddict.ai.agent.pair.Assistant;
 import io.github.jeddict.ai.agent.pair.Hacker;
 import io.github.jeddict.ai.agent.pair.HackerWithTools;
+import io.github.jeddict.ai.agent.pair.HackerWithoutTools;
 import io.github.jeddict.ai.agent.pair.PairProgrammer;
 import static io.github.jeddict.ai.agent.pair.PairProgrammer.Specialist.ASSISTANT;
 import static io.github.jeddict.ai.agent.pair.PairProgrammer.Specialist.HACKER;
+import static io.github.jeddict.ai.agent.pair.PairProgrammer.Specialist.HACKER_WITHOUT_TOOLS;
 import static io.github.jeddict.ai.agent.pair.PairProgrammer.Specialist.TEST;
 import io.github.jeddict.ai.agent.pair.Shakespeare;
 import io.github.jeddict.ai.settings.PreferencesManager;
@@ -344,12 +346,20 @@ public class JeddictBrainTest extends TestBase {
             final Object pair2 = brain.pairProgrammer(s);
 
             then(pair1).isNotNull(); then(pair2).isNotNull();
-            if (s == TEST) {
-                then(pair1).isInstanceOf(s.specialistClass);
-                then(pair2).isInstanceOf(s.specialistClass);
-            } else {
-                then(pair1.getClass().getInterfaces()).contains(s.specialistClass);
-                then(pair2.getClass().getInterfaces()).contains(s.specialistClass);
+            switch (s) {
+                case TEST -> {
+                    then(pair1).isInstanceOf(s.specialistClass);
+                    then(pair2).isInstanceOf(s.specialistClass);
+                }
+                case HACKER_WITHOUT_TOOLS -> {
+                    then(pair1).isInstanceOf(HackerWithoutTools.class);
+                    then(pair2).isInstanceOf(HackerWithoutTools.class);
+                    then(((HackerWithoutTools)pair1).maxIterations()).isEqualTo(25);
+                }
+                default -> {
+                    then(pair1.getClass().getInterfaces()).contains(s.specialistClass);
+                    then(pair2.getClass().getInterfaces()).contains(s.specialistClass);
+                }
             }
             then(pair2).isNotSameAs(pair1);  // create a new pair every call
         }
