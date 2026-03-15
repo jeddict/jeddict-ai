@@ -177,20 +177,49 @@ public class FileSystemToolsTest extends TestBase {
         final String nonExistingDir = "nonexistingdir";
         final String emptyDir = "newfolder";
 
-        then(tools.listFilesInDirectory(existingDir)).contains("testfile.txt");
+        then(tools.listFilesInDirectory(existingDir, 1)).contains("testfile.txt");
         thenProgressContains(listener.collector.get(0), "\n📂 Listing content of directory " + existingDir);
 
         listener.collector.clear();
         Files.createDirectory(projectPath.resolve(emptyDir));
-        then(tools.listFilesInDirectory(emptyDir)).isEqualTo("(empty)");
+        then(tools.listFilesInDirectory(emptyDir, 1)).isEqualTo("(empty)");
         thenProgressContains(listener.collector.get(0), "\n📂 Listing content of directory " + emptyDir);
 
         listener.collector.clear();
-        thenThrownBy(() -> tools.listFilesInDirectory(nonExistingDir))
+        thenThrownBy(() -> tools.listFilesInDirectory(nonExistingDir, 1))
             .isInstanceOf(ToolExecutionException.class)
             .hasMessage(nonExistingDir + " does not exist");
         thenProgressContains(listener.collector.get(0), "\n📂 Listing content of directory " + nonExistingDir);
         thenProgressContains(listener.collector.get(1), "\n❌ " + nonExistingDir + " does not exist");
+    }
+
+    @Test
+    public void listFilesInDirectory_tree_mode_unlimited_depth() throws Exception {
+        // depth=0 → unlimited recursive tree (same behaviour as old fileTree("", 0))
+        final String tree = tools.listFilesInDirectory("", 0);
+        then(tree)
+            .contains("pom.xml")
+            .contains("folder/")
+            .contains("testfile.txt");
+    }
+
+    @Test
+    public void listFilesInDirectory_tree_mode_limited_depth() throws Exception {
+        // depth=2 → two levels deep from the project root (direct children + their children)
+        final String tree = tools.listFilesInDirectory("", 2);
+        then(tree)
+            .contains("src/")
+            .contains("main/") // main/ is at level 2 (child of src/), so it IS included
+            .doesNotContain("java/"); // java/ is at level 3, beyond depth 2
+    }
+
+    @Test
+    public void listFilesInDirectory_tree_mode_sub_path() throws Exception {
+        // depth=0 + sub-path → tree rooted at sub-directory
+        final String tree = tools.listFilesInDirectory("folder", 0);
+        then(tree)
+            .contains("testfile.txt")
+            .doesNotContain("pom.xml");
     }
 
     @Test
@@ -200,7 +229,7 @@ public class FileSystemToolsTest extends TestBase {
         //
         final String abs = HOME.resolve("folder").toAbsolutePath().toString();
 
-        thenTriedFileOutsideProjectFolder(() -> tools.listFilesInDirectory(abs));
+        thenTriedFileOutsideProjectFolder(() -> tools.listFilesInDirectory(abs, 1));
         thenProgressContains(listener.collector.get(0), "\n📂 Listing content of directory " + abs);
 
         //
@@ -210,7 +239,7 @@ public class FileSystemToolsTest extends TestBase {
 
         final String rel = projectDir + File.separator + "../outside";
 
-        thenTriedFileOutsideProjectFolder(() -> tools.listFilesInDirectory(rel));
+        thenTriedFileOutsideProjectFolder(() -> tools.listFilesInDirectory(rel, 1));
         thenProgressContains(listener.collector.get(0), "\n📂 Listing content of directory " + rel);
     }
 
@@ -583,6 +612,97 @@ public class FileSystemToolsTest extends TestBase {
         );
 
         thenProgressContains(listener.collector.get(0), "\n🔄 Replacing content in " + rel);
+    }
+
+    @Test
+    public void fileTree_returns_full_tree_for_project_root() throws Exception {
+        final String tree = tools.fileTree("", 0);
+        then(tree)
+            .contains("pom.xml")
+            .contains("folder/")
+            .contains("testfile.txt");
+    }
+
+    @Test
+    public void fileTree_with_sub_path_returns_subtree() throws Exception {
+        final String tree = tools.fileTree("folder", 0);
+        then(tree)
+            .contains("testfile.txt")
+            .doesNotContain("pom.xml");
+    }
+
+    @Test
+    public void fileTree_with_depth_limits_traversal() throws Exception {
+        // depth=1: only direct children of project root are included
+        final String tree = tools.fileTree("", 1);
+        then(tree)
+            .contains("pom.xml")
+            .contains("src/")
+            .doesNotContain("main/");
+    }
+
+    @Test
+    public void dirTree_returns_only_directories() throws Exception {
+        final String tree = tools.dirTree();
+        then(tree)
+            .contains("folder/")
+            .doesNotContain("pom.xml")
+            .doesNotContain("testfile.txt");
+    }
+
+    @Test
+    public void getFileTree_static_returns_file_tree_for_project_root() throws Exception {
+        final String tree = FileSystemTools.getFileTree(projectPath, null, 0);
+        then(tree)
+            .contains("pom.xml")
+            .contains("folder/")
+            .contains("testfile.txt");
+    }
+
+    @Test
+    public void getFileTree_static_with_sub_path_returns_subtree() throws Exception {
+        final String tree = FileSystemTools.getFileTree(projectPath, "folder", 0);
+        then(tree)
+            .contains("testfile.txt")
+            .doesNotContain("pom.xml");
+    }
+
+    @Test
+    public void getFileTree_static_with_depth_limits_traversal() throws Exception {
+        final String tree = FileSystemTools.getFileTree(projectPath, null, 1);
+        then(tree)
+            .contains("pom.xml")
+            .contains("src/")
+            .doesNotContain("main/");
+    }
+
+    @Test
+    public void getFileTree_static_with_path_outside_project_returns_error() throws Exception {
+        final String result = FileSystemTools.getFileTree(projectPath, "../../../etc", 0);
+        then(result).contains("outside the project");
+    }
+
+    @Test
+    public void getFileTree_static_returns_exception_for_null_root() {
+        thenThrownBy(() -> FileSystemTools.getFileTree(null, null, 0))
+            .isInstanceOf(ToolExecutionException.class)
+            .hasMessageContaining("project root is not set");
+    }
+
+    @Test
+    public void getDirTree_static_returns_directory_hierarchy() throws Exception {
+        final String tree = FileSystemTools.getDirTree(projectPath);
+        then(tree)
+            .contains("folder/")
+            .doesNotContain("pom.xml")
+            .doesNotContain("testfile.txt");
+    }
+
+    @Test
+    public void getDirTree_static_returns_exception_for_null_root() {
+        thenThrownBy(() -> FileSystemTools.getDirTree(null))
+            .isInstanceOf(ToolExecutionException.class)
+            .hasMessageContaining("project root is not set");
     }
 
     // --------------------------------------------------------- private methods
