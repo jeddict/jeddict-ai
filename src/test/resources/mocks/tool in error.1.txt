@@ -1,0 +1,6 @@
+This tool throws an exception
+
+```tool:dummyToolError
+```
+
+use mock 'tool in error.2.txt'

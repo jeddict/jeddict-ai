@@ -651,7 +651,7 @@ public class AssistantChatManager extends JavaFix {
                     // project rules; the agent is instructed to gather the
                     // information it requires using tools
                     //
-                    final String projectInfo = ProjectMetadataInfo.get(selectedProject);
+                    String projectInfo = ProjectMetadataInfo.get(selectedProject);
                     if (!agentEnabled) {
                         final Set<FileObject> mainSessionContext;
                         final String sessionScopeContent;
@@ -692,6 +692,7 @@ public class AssistantChatManager extends JavaFix {
                         if (agentEnabled && (selectedProject == null)) {
                             ac.selectProject();
                             selectedProject = getProject();
+                            projectInfo = ProjectMetadataInfo.get(selectedProject);
                         }
                         final Hacker h = hacker(listener, modelName, ac.interactiveMode());
                         if (pm.isStreamEnabled()) {

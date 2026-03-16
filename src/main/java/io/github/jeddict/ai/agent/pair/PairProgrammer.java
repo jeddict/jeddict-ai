@@ -35,7 +35,7 @@ public interface PairProgrammer {
         DIFF(DiffSpecialist.class),
         GHOSTWRITER(Ghostwriter.class),
         HACKER(HackerWithTools.class),
-        HACKER_WITHOUT_TOOLS(HackerWithoutTools.class),
+        HACKER_WITHOUT_TOOLS(ToolifiedAiService.class),
         TECHWRITER(TechWriter.class),
         REFACTOR(RefactorSpecialist.class),
         REST(RestSpecialist.class),

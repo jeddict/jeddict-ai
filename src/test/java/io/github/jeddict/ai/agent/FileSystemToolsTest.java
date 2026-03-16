@@ -215,6 +215,112 @@ public class FileSystemToolsTest extends TestBase {
     }
 
     @Test
+    public void readFileLines_success_and_failure() throws Exception {
+        //
+        // create a multi-line file for testing
+        //
+        final String path = "folder/multiline.txt";
+        final String content = "line one\nline two\nline three\nline four\nline five";
+        tools.createFile(path, content);
+        listener.collector.clear();
+
+        //
+        // success: read a range in the middle
+        //
+        then(tools.readFileLines(path, 2, 4)).isEqualTo("line two\nline three\nline four");
+        then(listener.collector).hasSize(1);
+        thenProgressContains(listener.collector.get(0), "\n📖 Reading file " + path + " lines 2 to 4");
+
+        //
+        // success: single line
+        //
+        listener.collector.clear();
+        then(tools.readFileLines(path, 3, 3)).isEqualTo("line three");
+
+        //
+        // success: toLine beyond EOF is silently truncated to last line (LLM cannot know file length)
+        //
+        listener.collector.clear();
+        then(tools.readFileLines(path, 4, 100)).isEqualTo("line four\nline five");
+        thenProgressContains(listener.collector.get(0), "\n📖 Reading file " + path + " lines 4 to 100");
+
+        //
+        // success: fromLine beyond end of file returns empty (valid params, file just too short)
+        //
+        listener.collector.clear();
+        then(tools.readFileLines(path, 10, 20)).isEqualTo("");
+
+        //
+        // failure: fromLine < 1 (must not be silently clamped)
+        //
+        listener.collector.clear();
+        thenThrownBy(() -> tools.readFileLines(path, 0, 2))
+            .isInstanceOf(ToolExecutionException.class)
+            .hasMessageContaining("fromLine must be >= 1, got: 0");
+
+        //
+        // failure: toLine < 1
+        //
+        listener.collector.clear();
+        thenThrownBy(() -> tools.readFileLines(path, 1, 0))
+            .isInstanceOf(ToolExecutionException.class)
+            .hasMessageContaining("toLine must be >= 1, got: 0");
+
+        //
+        // failure: both fromLine and toLine below 1
+        //
+        listener.collector.clear();
+        thenThrownBy(() -> tools.readFileLines(path, -5, -1))
+            .isInstanceOf(ToolExecutionException.class)
+            .hasMessageContaining("fromLine must be >= 1, got: -5");
+
+        //
+        // failure: fromLine > toLine (inverted range)
+        //
+        listener.collector.clear();
+        thenThrownBy(() -> tools.readFileLines(path, 4, 2))
+            .isInstanceOf(ToolExecutionException.class)
+            .hasMessageContaining("fromLine (4) must be <= toLine (2)");
+
+        //
+        // failure: file does not exist
+        //
+        final String pathKO = "nowhere.txt";
+        listener.collector.clear();
+        thenThrownBy(() -> tools.readFileLines(pathKO, 1, 3))
+            .isInstanceOf(ToolExecutionException.class)
+            .hasMessageContaining("failed to read file: java.nio.file.NoSuchFileException: ");
+        then(listener.collector).hasSize(2);
+        thenProgressContains(listener.collector.get(0), "\n📖 Reading file " + pathKO + " lines 1 to 3");
+        thenProgressContains(listener.collector.get(1), "\n❌ Failed to read file:");
+    }
+
+    @Test
+    public void readFileLines_fails_on_paths_outside_project_folder() throws Exception {
+        final Path abs = HOME.resolve("jeddict.json").toAbsolutePath().normalize();
+
+        //
+        // absolute path
+        //
+        thenTriedFileOutsideProjectFolder(() ->
+            tools.readFileLines(abs.toString(), 1, 5)
+        );
+        thenProgressContains(listener.collector.get(0), "\n📖 Reading file " + abs + " lines 1 to 5");
+
+        //
+        // relative path
+        //
+        listener.collector.clear();
+
+        final String rel = projectDir + File.separator + "../outside.txt";
+
+        thenTriedFileOutsideProjectFolder(() ->
+            tools.readFileLines(rel, 1, 5)
+        );
+        thenProgressContains(listener.collector.get(0), "\n📖 Reading file " + rel + " lines 1 to 5");
+    }
+
+    @Test
     public void readFile_success_and_failure() throws Exception {
         final String pathOK = TESTFILE;
         final Path fullPathOK = Paths.get(projectDir, pathOK).toAbsolutePath().toRealPath();

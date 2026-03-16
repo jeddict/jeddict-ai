@@ -15,6 +15,7 @@
  */
 package io.github.jeddict.ai.agent;
 
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import java.io.IOException;
 import java.util.regex.Pattern;
@@ -39,8 +40,14 @@ public class EditorTools extends AbstractCodeTool {
      * @return a status message
      */
     @Tool("Insert a line of code at a given line number (0-based) in a file by path")
-    public String insertLineInFile(String path, int lineNumber, String lineText)
-            throws Exception {
+    public String insertLineInFile(
+        @P("the file path relative to the project")
+        final String path,
+        @P("the line number (0-based) where to insert the text")
+        final int lineNumber,
+        @P("the line to insert")
+        final String lineText
+    ) throws Exception {
         progress("✏️ Inserting line at " + lineNumber + " in file: " + path);
 
         return withDocument(path, doc -> {
@@ -77,8 +84,14 @@ public class EditorTools extends AbstractCodeTool {
      * @return status message
      */
     @Tool("Insert a line of code at a given line number (0-based) in a file by path")
-    public String insertLineAfterMethod(String path, String methodName, String lineText)
-            throws Exception {
+    public String insertLineAfterMethod(
+        @P("the file path relative to the project")
+        final String path,
+        @P("the method or constructor name where to insert after")
+        final String methodName,
+        @P("the text to insert as a new line")
+        final String lineText
+    ) throws Exception {
         progress("✏️ Inserting line after method '" + methodName + "' in file: " + path);
         String content = withDocument(path, doc -> doc.getText(0, doc.getLength()), false);
         if (content.startsWith("Could not")) {
