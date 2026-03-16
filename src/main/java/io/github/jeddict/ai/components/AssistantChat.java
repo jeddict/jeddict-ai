@@ -1400,6 +1400,7 @@ public abstract class AssistantChat extends TopComponent {
                         NotifyDescriptor.INFORMATION_MESSAGE
                 )
             );
+            return project;
         } else if (openProjects.length > 1) {
             JComboBox<Project> projectComboBox = new JComboBox<>(openProjects);
             projectComboBox.setRenderer(new javax.swing.ListCellRenderer<>() {

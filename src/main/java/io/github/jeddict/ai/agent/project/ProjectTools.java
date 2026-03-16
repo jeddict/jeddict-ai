@@ -55,8 +55,15 @@ public class ProjectTools extends AbstractTool {
     private final Project project;
 
     public ProjectTools(final Project project) throws IOException  {
-        super(project.getProjectDirectory().getPath());
+        super(basedirOf(project));
         this.project = project;
+    }
+
+    private static String basedirOf(final Project project) {
+        if (project == null) {
+            throw new IllegalArgumentException("project cannot be null");
+        }
+        return project.getProjectDirectory().getPath();
     }
 
     /**
@@ -80,6 +87,9 @@ public class ProjectTools extends AbstractTool {
      * </ul>
      */
     public static ProjectTools forProject(final Project project) throws IOException {
+        if (project == null) {
+            throw new IllegalArgumentException("project cannot be null");
+        }
         final FileObject dir = project.getProjectDirectory();
         if (dir.getFileObject("pom.xml") != null) {
             try {

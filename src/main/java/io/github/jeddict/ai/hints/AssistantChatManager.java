@@ -168,6 +168,7 @@ public class AssistantChatManager extends JavaFix {
     private Assistant assistant = null;
     private Assistant projectAssistant = null;
     private Hacker hacker = null;
+    private InteractionMode hackerMode = null;
 
     private Project getProject() {
         Project project = null;
@@ -896,7 +897,13 @@ public class AssistantChatManager extends JavaFix {
         final String modelName,
         final InteractionMode mode
     ) {
-        if (hacker != null) return hacker;
+        if (hacker != null && mode == hackerMode) return hacker;
+
+        // Reset the cached hacker when the interaction mode changes so that
+        // the correct set of tools (e.g. InteractiveFileEditor for INTERACTIVE)
+        // is registered with the new brain instance.
+        hacker = null;
+        hackerMode = mode;
 
         int memorySize = pm.getConversationContext();
 

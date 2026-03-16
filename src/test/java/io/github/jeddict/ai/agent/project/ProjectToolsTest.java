@@ -20,6 +20,7 @@ import com.github.caciocavallosilano.cacio.ctc.junit.CacioTest;
 import io.github.jeddict.ai.test.TestBase;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.Test;
 
@@ -152,6 +153,20 @@ public class ProjectToolsTest extends TestBase {
     @Test
     public void getTestDir_returns_empty_string_for_null_project() {
         then(ProjectTools.getTestDir(null)).isEmpty();
+    }
+
+    @Test
+    public void forProject_throws_exception_for_null_project() {
+        assertThatThrownBy(() -> ProjectTools.forProject(null))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("project cannot be null");
+    }
+
+    @Test
+    public void constructor_throws_exception_for_null_project() {
+        assertThatThrownBy(() -> new ProjectTools(null))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("project cannot be null");
     }
 
 }
