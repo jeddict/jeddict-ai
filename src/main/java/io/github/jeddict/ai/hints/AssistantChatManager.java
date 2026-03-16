@@ -81,6 +81,7 @@ import java.awt.Color;
 import java.awt.EventQueue;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -424,7 +425,10 @@ public class AssistantChatManager extends JavaFix {
                 if (projectContext != null) {
                     projectRootDir = projectContext.getProjectDirectory().getPath();
                 } else if (!fileObjects.isEmpty()) {
-                    projectRootDir = FileOwnerQuery.getOwner(fileObjects.iterator().next()).getProjectDirectory().getPath();
+                    final Project owner = FileOwnerQuery.getOwner(fileObjects.iterator().next());
+                    if (owner != null) {
+                        projectRootDir = owner.getProjectDirectory().getPath();
+                    }
                 }
 
                 boolean enableRules = true;
@@ -702,6 +706,13 @@ public class AssistantChatManager extends JavaFix {
                         if (agentEnabled && (selectedProject == null)) {
                             ac.selectProject();
                             selectedProject = getProject();
+                            if (selectedProject == null) {
+                                // User cancelled project selection or no projects
+                                // are open; we cannot run in agent mode without a
+                                // project, so bail out gracefully.
+                                LOG.warning("agent mode requested but no project available; aborting");
+                                return;
+                            }
                             projectInfo = ProjectMetadataInfo.get(selectedProject);
                         }
                         final Hacker h = hacker(listener, modelName, ac.interactiveMode());
@@ -957,12 +968,14 @@ public class AssistantChatManager extends JavaFix {
         // TODO: make this automatic with some discoverability approach (maybe
         // NB lookup registration?)
         //
-        final String basedir =
-            FileUtil.toPath(project.getProjectDirectory())
-            .toAbsolutePath().normalize()
-            .toString();
-
         try {
+            final Path projectDirPath = FileUtil.toPath(project.getProjectDirectory());
+            if (projectDirPath == null) {
+                LOG.warning("project directory is not on a local filesystem, cannot build tools list");
+                return List.of();
+            }
+            final String basedir = projectDirPath.toAbsolutePath().normalize().toString();
+
             final List<AbstractTool> toolsList = new ArrayList();
 
             //
