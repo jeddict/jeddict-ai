@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Level;
 import javax.swing.SwingUtilities;
 import org.apache.commons.lang3.StringUtils;
 
@@ -75,15 +76,21 @@ public class InteractiveFileEditor extends AbstractTool {
         final AtomicReference<String> newContent = new AtomicReference();
         final AtomicBoolean accepted = new AtomicBoolean(true);
         SwingUtilities.invokeLater(() -> {
-            final DiffPane diffPane = assistantChat.createDiffPane(path, content);
-            diffPane.onDone((action) -> {
-                if (action == DiffPaneController.UserAction.ACCEPT) {
-                    newContent.set(diffPane.ctrl.modified());
-                } else {
-                    accepted.set(false);
-                }
+            try {
+                final DiffPane diffPane = assistantChat.createDiffPane(path, content);
+                diffPane.onDone((action) -> {
+                    if (action == DiffPaneController.UserAction.ACCEPT) {
+                        newContent.set(diffPane.ctrl.modified());
+                    } else {
+                        accepted.set(false);
+                    }
+                    done.countDown();
+                });
+            } catch (Exception e) {
+                log.log(Level.SEVERE, "error creating diff pane", e);
+                accepted.set(false);
                 done.countDown();
-            });
+            }
         });
 
         try {

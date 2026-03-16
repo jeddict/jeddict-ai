@@ -171,17 +171,23 @@ public class AssistantChatManager extends JavaFix {
     private InteractionMode hackerMode = null;
 
     private Project getProject() {
+        if (projectContext != null) {
+            LOG.finest(() -> "returning project from projectContext: " + projectContext);
+            return projectContext;
+        }
+
         Project project = null;
 
-        if (projectContext != null) {
-            project = projectContext;
-        } else if (sessionContext != null && !sessionContext.isEmpty()) {
+        if (sessionContext != null && !sessionContext.isEmpty()) {
             project = FileOwnerQuery.getOwner(sessionContext.toArray(FileObject[]::new)[0]);
-        } else if (fileObject != null) {
+        }
+        if (project == null && fileObject != null) {
             project = FileOwnerQuery.getOwner(fileObject);
-        } else if (messageContext != null && !messageContext.isEmpty()) {
+        }
+        if (project == null && messageContext != null && !messageContext.isEmpty()) {
             project = FileOwnerQuery.getOwner(messageContext.toArray(FileObject[]::new)[0]);
-        } else if (ac != null) {
+        }
+        if (project == null && ac != null) {
             project = ac.getProject();
         }
 
@@ -1001,7 +1007,7 @@ public class AssistantChatManager extends JavaFix {
             toolsList.forEach((tool) -> tool.addListener(listener));
 
             return toolsList;
-        } catch (IOException x) {
+        } catch (IOException | IllegalArgumentException x) {
             Exceptions.printStackTrace(x);
             return List.of();
         }
