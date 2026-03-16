@@ -34,7 +34,10 @@ import io.github.jeddict.ai.agent.ExplorationTools;
 import io.github.jeddict.ai.agent.FileSystemTools;
 import io.github.jeddict.ai.agent.GradleTools;
 import io.github.jeddict.ai.agent.MavenTools;
+import io.github.jeddict.ai.agent.project.JakartaEEAdvisorMavenPluginTools;
+import io.github.jeddict.ai.agent.project.ProjectTools;
 import io.github.jeddict.ai.agent.RefactoringTools;
+import io.github.jeddict.ai.scanner.ProjectMetadataInfo.BuildMetadataResolver;
 import io.github.jeddict.ai.agent.pair.Assistant;
 import io.github.jeddict.ai.agent.pair.DBSpecialist;
 import io.github.jeddict.ai.agent.pair.DiffSpecialist;
@@ -651,7 +654,7 @@ public class AssistantChatManager extends JavaFix {
                     // project rules; the agent is instructed to gather the
                     // information it requires using tools
                     //
-                    String projectInfo = ProjectMetadataInfo.get(selectedProject);
+                    String projectInfo = projectInfoFor(selectedProject);
                     if (!agentEnabled) {
                         final Set<FileObject> mainSessionContext;
                         final String sessionScopeContent;
@@ -703,7 +706,7 @@ public class AssistantChatManager extends JavaFix {
                     }
                 } else {
                     final Assistant a = assistant(listener, modelName);
-                    final String projectInfo = ProjectMetadataInfo.get(getProject());
+                    final String projectInfo = projectInfoFor(getProject());
                     if (pm.isStreamEnabled()) {
                         a.chat(listener, question, treePath, projectInfo, globalRules, sessionRules);
                     } else {
@@ -904,6 +907,24 @@ public class AssistantChatManager extends JavaFix {
     }
 
     /**
+     * Returns the project info string for the given project by delegating to
+     * the most specific {@link ProjectTools} subclass (Maven, Gradle, or
+     * generic). Falls back to a plain {@link ProjectMetadataInfo#get} call if
+     * the project is null or an error occurs.
+     */
+    private String projectInfoFor(final Project project) {
+        if (project == null) {
+            return ProjectMetadataInfo.get(null);
+        }
+        try {
+            return ProjectTools.forProject(project).projectInfo();
+        } catch (Exception ex) {
+            Exceptions.printStackTrace(ex);
+            return ProjectMetadataInfo.get(project);
+        }
+    }
+
+    /**
      * Buildes the tool list to be given to JeddictBrain for agentic interactions
      *
      * @param project instance of the project attached to the chat
@@ -949,6 +970,20 @@ public class AssistantChatManager extends JavaFix {
                 )
             );
             toolsList.add(new ExplorationTools(basedir, project.getLookup()));
+            // Add the project-type-specific tool (Maven, Gradle, or generic)
+            // so the agent can query project metadata via @Tool methods.
+            final ProjectTools projectTools = ProjectTools.forProject(project);
+            toolsList.add(projectTools);
+            // Add Jakarta EE Advisor tools when the project uses a jakarta framework
+            if (projectTools instanceof BuildMetadataResolver resolver) {
+                final java.util.Map<String, String> metadata = resolver.getProjectMetadata();
+                if (metadata != null) {
+                    final String eeVersion = metadata.get("EE Version");
+                    if (eeVersion != null && eeVersion.startsWith("jakarta")) {
+                        toolsList.add(new JakartaEEAdvisorMavenPluginTools(basedir));
+                    }
+                }
+            }
             toolsList.add(new GradleTools(basedir));
             toolsList.add(new MavenTools(basedir));
             toolsList.add(new RefactoringTools(basedir));
