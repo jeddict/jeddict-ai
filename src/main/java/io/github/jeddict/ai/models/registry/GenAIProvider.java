@@ -121,8 +121,8 @@ public enum GenAIProvider {
 
         for (GenAIProvider provider : getConfiguredGenAIProviders()) {
             for (GenAIModel model : models.values()) {
-                if (model.getProvider() == provider) {
-                    modelsByProvider.put(model.getName(), provider);
+                if (model.provider() == provider) {
+                    modelsByProvider.put(model.name(), provider);
                 }
             }
         }
@@ -143,7 +143,7 @@ public enum GenAIProvider {
         if (preferred != null && !preferred.isEmpty()) {
             Set<String> models = new TreeSet<>();
             for (GenAIModel model : preferred) {
-                models.add(model.getName());
+                models.add(model.name());
             }
             return models;
         }
@@ -151,8 +151,8 @@ public enum GenAIProvider {
         // 2️⃣ Registry fallback (HTTP cached)
         Set<String> models = new TreeSet<>();
         for (GenAIModel model : GenAIModelRegistry.getModels().values()) {
-            if (model.getProvider() == provider) {
-                models.add(model.getName());
+            if (model.provider() == provider) {
+                models.add(model.name());
             }
         }
         return models;

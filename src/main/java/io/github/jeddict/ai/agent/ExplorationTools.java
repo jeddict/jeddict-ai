@@ -16,6 +16,7 @@
  */
 package io.github.jeddict.ai.agent;
 
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import java.util.List;
 import java.util.Set;
@@ -94,7 +95,7 @@ public class ExplorationTools extends AbstractCodeTool {
      * listClassesInFile("src/main/java/com/example/MyClass.java");
      * // -> "Class: com.example.MyClass"
      * </pre>
-     * 
+     *
      * <p><b>Output format:</b></p>
      * <pre>
      * Class: fully.qualified.ClassName
@@ -110,7 +111,10 @@ public class ExplorationTools extends AbstractCodeTool {
      */
     @Tool("JAVA ONLY: List all classes declared in a given Java file by path")
     @ToolPolicy(READONLY)
-    public String listClassesInFile(String path) throws Exception {
+    public String listClassesInFile(
+        @P("the file path relative to the project")
+        final String path
+    ) throws Exception {
 
         if (!isJavaFile(path)) {
             return "Not a Java source file: " + path;
@@ -143,7 +147,7 @@ public class ExplorationTools extends AbstractCodeTool {
      * listMethodsInFile("src/main/java/com/example/MyClass.java");
      * // -> "Method: public void sayHello()"
      * </pre>
-     * 
+     *
      * <p><b>Output format:</b></p>
      * <pre>
      * Method: methodSignature
@@ -159,7 +163,10 @@ public class ExplorationTools extends AbstractCodeTool {
      */
     @Tool("JAVA ONLY: List all methods of a class in a given Java file by path")
     @ToolPolicy(READONLY)
-    public String listMethodsInFile(String path) throws Exception {
+    public String listMethodsInFile(
+        @P("the file path relative to the project")
+        final String path
+    ) throws Exception {
 
         if (!isJavaFile(path)) {
             return "Not a Java source file: " + path;
@@ -206,7 +213,7 @@ public class ExplorationTools extends AbstractCodeTool {
      * </ul>
      * </li>
      * </ol>
-     * 
+     *
      * <p>
      * The search is performed using the symbol's <b>simple name</b> only. Fully
      * qualified names are not required and are not matched directly.</p>
@@ -220,7 +227,7 @@ public class ExplorationTools extends AbstractCodeTool {
      * <li>Overloaded methods are returned by name only, without signature
      * differentiation.</li>
      * </ul>
-     * 
+     *
      * <p>
      * <b>Examples:</b></p>
      * <pre>
@@ -228,7 +235,7 @@ public class ExplorationTools extends AbstractCodeTool {
      * searchSymbol("findUser");      // Method: com.example.service.UserService.findUser
      * searchSymbol("userRepository");// Field: com.example.service.UserService.userRepository
      * </pre>
-     * 
+     *
      * <p><b>Output format:</b></p>
      * <pre>
      * Class:  fully.qualified.ClassName
@@ -254,8 +261,10 @@ public class ExplorationTools extends AbstractCodeTool {
       "If no symbol is found, returns 'No matches found.'. " +
       "If the project has no Java sources, returns an explanatory message.")
     @ToolPolicy(READONLY)
-    public String searchSymbol(String symbolName)
-    throws Exception {
+    public String searchSymbol(
+        @P("simple name of the Java class, method, or field to search for")
+        final String symbolName
+    ) throws Exception {
         progress("Searching symbol " + symbolName);
 
         Sources sources = lookup.lookup(Sources.class);
@@ -353,7 +362,7 @@ public class ExplorationTools extends AbstractCodeTool {
      * NetBeans {@code WhereUsedQuery}.
      * If no usages are found, {@code "No usages found."} is returned.
      * </p>
-     * 
+     *
      * @param path relative path to a .java file
      * @param symbolName Java symbol name
      * @return formatted usage list
@@ -365,8 +374,12 @@ public class ExplorationTools extends AbstractCodeTool {
             + "If no usages are found, returns 'No usages found.'."
     )
     @ToolPolicy(READONLY)
-    public String findUsages(String path, String symbolName)
-    throws Exception {
+    public String findUsages(
+        @P("path relative path to a .java file")
+        final String path,
+        @P("symbolName Java symbol name")
+        final String symbolName
+    ) throws Exception {
        if (!isJavaFile(path)) {
             return "Not a Java source file: " + path;
         }

@@ -15,12 +15,17 @@
  */
 package io.github.jeddict.ai.agent;
 
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.exception.ToolExecutionException;
+import io.github.jeddict.ai.settings.PreferencesManager;
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.*;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -43,14 +48,59 @@ public class FileSystemTools extends AbstractCodeTool {
     }
 
     /**
-     * Reads the raw content of a file on disk.
+     * Returns the full file tree of the project (or a sub-directory) as a
+     * formatted, indented string. Files and directories excluded by
+     * {@code PreferencesManager} (exclude-dirs and allowed extensions) are
+     * automatically filtered out.
+     *
+     * <p>This method is no longer annotated with {@code @Tool}; its
+     * functionality has been merged into
+     * {@link #listFilesInDirectory(String, int)}. The implementation is kept
+     * for backward-compatibility and internal use.</p>
+     *
+     * @param path  sub-directory path relative to the project root to use as
+     *              the tree root (e.g. {@code "src/main/java"}); leave blank
+     *              to show the full project tree
+     * @param depth maximum number of directory levels to descend;
+     *              {@code 0} means unlimited depth
+     * @return indented file tree string
+     */
+    public String fileTree(String path, int depth) {
+        progress("📂 Gathering file tree" + (path != null && !path.isBlank() ? " for " + path : ""));
+        return getFileTree(basepath, path, depth);
+    }
+
+    /**
+     * Returns the directory hierarchy of the project as a compact, indented
+     * string. Only directories are listed — individual files are omitted —
+     * giving a quick overview of the package/module structure. Excluded
+     * directories (as configured in {@code PreferencesManager}) are filtered
+     * out automatically.
+     *
+     * @return indented directory tree string
+     */
+    @Tool(
+        name = "dirTree",
+        value = "Return the directory hierarchy of the project, showing only the folder "
+            + "structure without individual files"
+    )
+    @ToolPolicy(READONLY)
+    public String dirTree() {
+        progress("📂 Gathering directory tree");
+        return getDirTree(basepath);
+    }
+
+    /**
      *
      * @param path the file path relative to the project
      * @return the file content, or an error message if it could not be read
      */
     @Tool("Read the content of a file by path")
     @ToolPolicy(READONLY)
-    public String readFile(final String path) throws ToolExecutionException {
+    public String readFile(
+        @P("path of the file to read")
+        final String path
+    ) throws ToolExecutionException {
         progress("📖 Reading file " + path);
 
         checkPath(path);
@@ -58,6 +108,72 @@ public class FileSystemTools extends AbstractCodeTool {
         try {
             final Path fullPath = fullPath(path);
             return Files.readString(fullPath, Charset.defaultCharset());
+        } catch (IOException e) {
+            progress("❌ Failed to read file: " + e);
+            throw new ToolExecutionException("failed to read file: " + e);
+        }
+    }
+
+    /**
+     * Reads a range of lines from a file on disk. Line numbers are 1-based and
+     * inclusive. {@code fromLine} and {@code toLine} must both be &ge; 1 and
+     * {@code fromLine} must be &le; {@code toLine}; otherwise a
+     * {@link ToolExecutionException} is thrown so the caller can correct the
+     * parameters. If {@code toLine} exceeds the total number of lines the
+     * result is silently truncated to the last line (the caller cannot know the
+     * file length in advance).
+     *
+     * @param path the file path relative to the project
+     * @param fromLine the first line to read (1-based, inclusive, must be &ge; 1)
+     * @param toLine the last line to read (1-based, inclusive, must be &ge; fromLine)
+     * @return the requested lines joined by newline characters, or an empty
+     *         string if {@code fromLine} is beyond the end of the file
+     * @throws ToolExecutionException if {@code fromLine} or {@code toLine} is
+     *         less than 1, or if {@code fromLine} is greater than {@code toLine}
+     */
+    @Tool("""
+    Read lines from fromLine to toLine (both 1-based and inclusive) of a file
+    by path. Both fromLine and toLine must be >= 1 and fromLine must be <=
+    toLine; otherwise an error is returned. If toLine is greater than the
+    number of lines in the file, only the lines up to the end of the file are
+    returned. Returns the selected lines joined by newline characters.
+    """)
+    @ToolPolicy(READONLY)
+    public String readFileLines(final String path, final int fromLine, final int toLine)
+            throws ToolExecutionException {
+        progress("📖 Reading file " + path + " lines " + fromLine + " to " + toLine);
+
+        checkPath(path);
+
+        if (fromLine < 1) {
+            throw new ToolExecutionException(
+                    "fromLine must be >= 1, got: " + fromLine);
+        }
+        if (toLine < 1) {
+            throw new ToolExecutionException(
+                    "toLine must be >= 1, got: " + toLine);
+        }
+        if (fromLine > toLine) {
+            throw new ToolExecutionException(
+                    "fromLine (" + fromLine + ") must be <= toLine (" + toLine + ")");
+        }
+
+        try {
+            final Path fullPath = fullPath(path);
+            //
+            // Stream line by line: skip to fromLine then take only the needed
+            // lines. Files.lines() is lazy so we never load the whole file;
+            // limit() naturally stops at EOF when toLine exceeds the file length.
+            //
+            try (Stream<String> stream = Files.lines(fullPath, Charset.defaultCharset())) {
+                // (long) cast ensures the arithmetic is done in 64-bit so there is no
+                // int overflow; fromLine >= 1 and toLine >= fromLine so count >= 1.
+                final long count = (long) toLine - fromLine + 1;
+                return stream
+                        .skip(fromLine - 1)
+                        .limit(count)
+                        .collect(Collectors.joining("\n"));
+            }
         } catch (IOException e) {
             progress("❌ Failed to read file: " + e);
             throw new ToolExecutionException("failed to read file: " + e);
@@ -80,7 +196,12 @@ public class FileSystemTools extends AbstractCodeTool {
     path does not exist. If the pattern is empty, it matches all files.
     """)
     @ToolPolicy(READONLY)
-    public String findFiles(String path, String regexPattern) throws Exception {
+    public String findFiles(
+        @P("root folder path")
+        final String path,
+        @P("regex pattern matched against the path of each file found.")
+        final String regexPattern
+    ) throws Exception {
         progress("🔎 Searching for files matching '" + regexPattern + "' in directory '" + path + "'");
         Path startDir = fullPath(path);
 
@@ -131,7 +252,12 @@ public class FileSystemTools extends AbstractCodeTool {
      */
     @Tool("Search for a regex pattern in a file by path")
     @ToolPolicy(READONLY)
-    public String searchInFile(String path, String pattern) throws ToolExecutionException {
+    public String searchInFile(
+            @P("the file pathname")
+            final String path,
+            @P("the pattern to match")
+            final String pattern
+    ) throws ToolExecutionException {
         progress("🔎 Looking for '" + pattern + "' inside '" + path + "'");
 
         checkPath(path);
@@ -165,8 +291,14 @@ public class FileSystemTools extends AbstractCodeTool {
     with no user interaction. Special regex characters are escaped.
     """)
     @ToolPolicy(READWRITE)
-    public String replaceSnippetByLiteral(String path, String literalText, String replacement)
-            throws Exception {
+    public String replaceSnippetByLiteral(
+        @P("the file pathname")
+        final String path,
+        @P("text to replace")
+        final String literalText,
+        @P("replacement text")
+        final String replacement
+    ) throws Exception {
         return replaceSnippetByRegex(path, Pattern.quote(literalText), replacement);
     }
 
@@ -182,9 +314,13 @@ public class FileSystemTools extends AbstractCodeTool {
     @Tool("Replace parts of a file content matching a regex pattern with replacement text  with no user interaction")
     @ToolPolicy(READWRITE)
     public String replaceSnippetByRegex(
-        final String path, final String regexPattern, final String replacement
-    )
-    throws ToolExecutionException {
+        @P("the file pathname")
+        final String path,
+        @P("regexp pattern to match and replace")
+        final String regexPattern,
+        @P("replacement text")
+        final String replacement
+    ) throws ToolExecutionException {
         progress("🔄 Replacing text matching regex '" + regexPattern + "' in " + path);
 
         checkPath(path);
@@ -218,8 +354,12 @@ public class FileSystemTools extends AbstractCodeTool {
      */
     @Tool("Replace the full content of a file by path with new text with no user interaction")
     @ToolPolicy(READWRITE)
-    public String replaceFileContent(final String path, final String newContent)
-    throws ToolExecutionException {
+    public String replaceFileContent(
+        @P("the file pathname")
+        final String path,
+        @P("new content")
+        final String newContent
+    ) throws ToolExecutionException {
         progress("🔄 Replacing content in " + path);
 
         checkPath(path);
@@ -243,7 +383,12 @@ public class FileSystemTools extends AbstractCodeTool {
      */
     @Tool("Create a new file at the given path with optional content with no user interaction")
     @ToolPolicy(READWRITE)
-    public String createFile(String path, String content) throws ToolExecutionException {
+    public String createFile(
+        @P("the pathname of the file to create")
+        final String path,
+        @P("the file content")
+        final String content
+    ) throws ToolExecutionException {
         progress("📄 Creating file " + path);
 
         checkPath(path);
@@ -275,7 +420,10 @@ public class FileSystemTools extends AbstractCodeTool {
      */
     @Tool("Delete a file at the given path")
     @ToolPolicy(READWRITE)
-    public String deleteFile(String path) throws ToolExecutionException {
+    public String deleteFile(
+        @P("the pathname of the file to delete")
+        final String path
+    ) throws ToolExecutionException {
         progress("🗑️ Deleting file " + path);
 
         checkPath(path);
@@ -297,25 +445,55 @@ public class FileSystemTools extends AbstractCodeTool {
     }
 
     /**
-     * Lists all files and directories in a directory.
+     * Lists the contents of a directory.
      *
-     * @param path the directory path relative to the project
-     * @return a list of files and directories, or an error message
+     * <p>When {@code depth} is {@code 1} (direct children only) the output is
+     * a flat, human-readable list — one entry per line — where directories are
+     * distinguished by a trailing slash ({@code /}).  When {@code depth} is
+     * {@code 0} (unlimited) or any value greater than {@code 1} the directory
+     * is traversed recursively and the result is formatted as an indented file
+     * tree, identical to what the old {@code fileTree} tool used to produce.
+     * Files whose extension is not in the allowed-extensions list (configured
+     * in {@link PreferencesManager}) are excluded from the recursive output;
+     * the flat listing always shows all entries.</p>
+     *
+     * @param path  directory path relative to the project; leave blank to
+     *              target the project root (only available in tree mode)
+     * @param depth {@code 1} = list direct children only (flat format);
+     *              {@code 0} = unlimited recursive tree;
+     *              {@code N > 1} = recursive tree up to {@code N} levels deep
+     * @return the directory listing or file tree as a string
      */
     @Tool(
-        """
-        List all files and directories inside a given path one on each line.
-        If an element of the list is a directory, the pathname will end with
-        a slash ('/')
-        If the path does not exist or is not a directory, it returns
-        "<directory> does not exist".
-        If the directory is empty (empty) is returned.
-        """
+        name = "listFilesInDirectory",
+        value = """
+            List the contents of a directory.
+            Use 'depth=1' to list only direct children (one per line; directories end with '/').
+            Use 'depth=0' for an unlimited recursive file tree, or 'depth=N' (N > 1) to limit
+            the tree to N levels deep.
+            Leave 'path' blank (in tree mode) to target the project root.
+            Returns "(empty)" when the directory is empty in flat mode.
+            Returns an error when the path does not exist or is not a directory.
+            """
     )
     @ToolPolicy(READONLY)
-    public String listFilesInDirectory(final String path) throws ToolExecutionException {
+    public String listFilesInDirectory(
+        @P("the directory to list") final String path,
+        @P("depth of listing: 1 = direct children only, 0 = unlimited recursive tree, N > 1 = recursive tree up to N levels")
+        final int depth
+    ) throws ToolExecutionException {
         progress("📂 Listing content of directory " + path);
 
+        if (depth != 1) {
+            // Tree mode: delegate to the getFileTree logic.
+            // Allow blank path (interpreted as project root by getFileTree).
+            if (path != null && !path.isBlank()) {
+                checkPath(path);
+            }
+            return getFileTree(basepath, path, depth);
+        }
+
+        // Flat mode (depth == 1): list direct children, all files/dirs shown.
         checkPath(path);
 
         final Path dirPath = fullPath(path);
@@ -326,7 +504,7 @@ public class FileSystemTools extends AbstractCodeTool {
         }
 
         //
-        // currently langchain4j does not allow a tool to return an empty or null ù
+        // currently langchain4j does not allow a tool to return an empty or null
         // result. See https://github.com/langchain4j/langchain4j/issues/4300
         // Until the fix it, let's return (empty)
         //
@@ -349,7 +527,10 @@ public class FileSystemTools extends AbstractCodeTool {
      */
     @Tool("Create a new directory at the given path")
     @ToolPolicy(READWRITE)
-    public String createDirectory(String path) throws ToolExecutionException {
+    public String createDirectory(
+        @P("the pathname of the directory to create")
+        final String path
+    ) throws ToolExecutionException {
         progress("📂 Creating new directory " + path);
 
         checkPath(path);
@@ -379,7 +560,10 @@ public class FileSystemTools extends AbstractCodeTool {
      */
     @Tool("Delete a directory at the given path (must be empty)")
     @ToolPolicy(READWRITE)
-    public String deleteDirectory(final String path) throws ToolExecutionException {
+    public String deleteDirectory(
+        @P("the pathname of the directory to delete")
+        final String path
+    ) throws ToolExecutionException {
         progress("🗑️ Deleting directory " + path);
 
         checkPath(path);
@@ -404,4 +588,148 @@ public class FileSystemTools extends AbstractCodeTool {
             throw new ToolExecutionException(e);
         }
     }
+
+    // --------------------------------------------------------- static tree builders
+
+    /**
+     * Returns the file tree structure rooted at the given base directory,
+     * limited to the specified depth. Directories configured in
+     * {@link PreferencesManager#getExcludeDirs()}, hidden entries, and files
+     * whose extension is not in
+     * {@link PreferencesManager#getFileExtensionListToInclude()} are excluded.
+     *
+     * @param projectRoot the absolute path of the project root (used as the
+     *                    security boundary for path-traversal checks)
+     * @param subPath     a path relative to {@code projectRoot} to use as the
+     *                    tree root; {@code null} or blank means the whole tree
+     * @param maxDepth    the maximum number of directory levels to descend;
+     *                    values {@code <= 0} mean unlimited depth
+     * @return the file tree as an indented string, or an empty string when the
+     *         tree cannot be read
+     */
+    public static String getFileTree(Path projectRoot, String subPath, int maxDepth) {
+        if (projectRoot == null) {
+            throw new ToolExecutionException("project root is not set");
+        }
+        try {
+            final Path root;
+            if (subPath != null && !subPath.isBlank()) {
+                root = projectRoot.resolve(subPath).normalize();
+                if (!root.startsWith(projectRoot)) {
+                    // Prevent path traversal outside the project
+                    return "Path is outside the project directory: " + subPath;
+                }
+                if (!Files.isDirectory(root)) {
+                    return "Not a directory: " + subPath;
+                }
+            } else {
+                root = projectRoot;
+            }
+            final Set<String> allowedExtensions = new HashSet<>(
+                    PreferencesManager.getInstance().getFileExtensionListToInclude());
+            final StringBuilder sb = new StringBuilder();
+            final Stream<Path> stream = (maxDepth > 0)
+                    ? Files.walk(root, maxDepth)
+                    : Files.walk(root);
+            try (stream) {
+                stream
+                    .filter(path -> !isExcluded(projectRoot, path))
+                    .filter(path -> Files.isDirectory(path)
+                            || allowedExtensions.contains(getExtension(path)))
+                    .sorted()
+                    .forEach(path -> {
+                        if (path.equals(root)) {
+                            return;
+                        }
+                        final Path relative = root.relativize(path);
+                        final int depth = relative.getNameCount() - 1;
+                        sb.append("  ".repeat(depth))
+                          .append(path.getFileName())
+                          .append(Files.isDirectory(path) ? "/" : "")
+                          .append('\n');
+                    });
+            }
+            return sb.toString().trim();
+        } catch (IOException e) {
+            return "";
+        }
+    }
+
+    /**
+     * Returns the directory hierarchy rooted at the given base path as a
+     * formatted string. Only directories are included — individual files and
+     * classes are omitted — giving a compact overview of the package structure.
+     * Hidden directories and directories configured in
+     * {@link PreferencesManager#getExcludeDirs()} are excluded.
+     *
+     * @param root the absolute path to use as the tree root
+     * @return the directory hierarchy as an indented string, or an empty
+     *         string if the root is null or the tree cannot be read
+     */
+    public static String getDirTree(Path root) {
+        if (root == null) {
+            throw new ToolExecutionException("project root is not set");
+        }
+        try {
+            final StringBuilder sb = new StringBuilder();
+            try (Stream<Path> stream = Files.walk(root)) {
+                stream
+                    .filter(Files::isDirectory)
+                    .filter(path -> !isExcluded(root, path))
+                    .sorted()
+                    .forEach(path -> {
+                        if (path.equals(root)) {
+                            return;
+                        }
+                        final Path relative = root.relativize(path);
+                        final int depth = relative.getNameCount() - 1;
+                        sb.append("  ".repeat(depth))
+                          .append(path.getFileName())
+                          .append("/")
+                          .append('\n');
+                    });
+            }
+            return sb.toString().trim();
+        } catch (IOException e) {
+            return "";
+        }
+    }
+
+    /** Returns the file extension (without the dot) for the given path, or an empty string. */
+    private static String getExtension(Path path) {
+        final String name = path.getFileName().toString();
+        final int dot = name.lastIndexOf('.');
+        return dot >= 0 ? name.substring(dot + 1) : "";
+    }
+
+    /**
+     * Returns {@code true} when the given {@code path} should be excluded from
+     * the file/directory tree.
+     *
+     * <p>A path is excluded when any of its components starts with {@code .}
+     * (hidden files) <em>or</em> when its relative representation starts with
+     * any of the directory/file prefixes returned by
+     * {@link PreferencesManager#getExcludeDirs()}.  The comparison uses
+     * forward slashes so that it is consistent with the Unix-style paths
+     * stored in the settings regardless of the host OS.</p>
+     */
+    private static boolean isExcluded(final Path root, final Path path) {
+        if (path.equals(root)) {
+            return false;
+        }
+        // Always exclude hidden entries (any path component starting with '.')
+        for (final Path component : root.relativize(path)) {
+            if (component.toString().startsWith(".")) {
+                return true;
+            }
+        }
+        // Apply the user-configured exclude list (prefix match on the
+        // forward-slash relative path, same logic as ProjectUtil.collectFiles)
+        final String relativePath = root.relativize(path).toString()
+                .replace(File.separatorChar, '/');
+        return PreferencesManager.getInstance().getExcludeDirs().stream()
+                .filter(s -> !s.isBlank())
+                .anyMatch(relativePath::startsWith);
+    }
+
 }

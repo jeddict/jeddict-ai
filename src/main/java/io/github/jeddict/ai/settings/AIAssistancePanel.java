@@ -26,7 +26,6 @@ import io.github.jeddict.ai.models.LMStudioModelFetcher;
 import io.github.jeddict.ai.models.OllamaModelFetcher;
 import io.github.jeddict.ai.models.registry.GenAIModelRegistry;
 import io.github.jeddict.ai.models.PerplexityModelFetcher;
-import io.github.jeddict.ai.models.registry.GenAIModelRegistry;
 import io.github.jeddict.ai.scanner.ProjectClassScanner;
 import io.github.jeddict.ai.util.ColorUtil;
 import static io.github.jeddict.ai.util.ColorUtil.darken;
@@ -85,9 +84,11 @@ import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumnModel;
 import javax.swing.table.TableRowSorter;
 import org.apache.commons.lang3.StringUtils;
+import org.netbeans.api.progress.ProgressHandle;
 import org.openide.util.Exceptions;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
+import org.openide.util.RequestProcessor;
 
 final class AIAssistancePanel extends javax.swing.JPanel {
 
@@ -1181,8 +1182,8 @@ final class AIAssistancePanel extends javax.swing.JPanel {
         if (selectedContext != null && getModel(selectedContext) != null) {
             // TODO retrive object from persistence
             GenAIModel aIModel = getModel(selectedContext);
-            String descr = StringUtils.defaultIfBlank(aIModel.getDescription(), aIModel.getName());
-            modelHelp.setText("<html><p>&nbsp;" + StringUtils.abbreviate(descr, 100) + "...<br>&nbsp;In.Price:" + aIModel.getInputPrice() + ", Out.Price:" + aIModel.getOutputPrice() + "</p></html>");
+            String descr = StringUtils.defaultIfBlank(aIModel.description(), aIModel.name());
+            modelHelp.setText("<html><p>&nbsp;" + StringUtils.abbreviate(descr, 100) + "...<br>&nbsp;In.Price:" + aIModel.inputPrice() + ", Out.Price:" + aIModel.outputPrice() + "</p></html>");
         } else {
             modelHelp.setText("");
         }
@@ -1507,8 +1508,8 @@ final class AIAssistancePanel extends javax.swing.JPanel {
 
         if (models == null) {
             models = GenAIModelRegistry.getModels().values().stream()
-                .filter(model -> model.getProvider().equals(selectedProvider))
-                .map(GenAIModel::getName)
+                .filter(model -> model.provider().equals(selectedProvider))
+                .map(GenAIModel::name)
                 .collect(Collectors.toList());
         }
         Collections.sort(models);
@@ -1517,10 +1518,10 @@ final class AIAssistancePanel extends javax.swing.JPanel {
     }
 
     public LinkedHashMap<String, GenAIModel> getModelsByProvider(Map<String, GenAIModel> models, String provider) {
-        LinkedHashMap<String, GenAIModel> filteredModels = new LinkedHashMap<>(); // Modifica qui
+        LinkedHashMap<String, GenAIModel> filteredModels = new LinkedHashMap<>();
         for (Map.Entry<String, GenAIModel> entry : models.entrySet()) {
             GenAIModel model = entry.getValue();
-            if (model.getProvider().name().equals(provider)) {
+            if (model.provider().name().equals(provider)) {
                 filteredModels.put(entry.getKey(), model);
             }
         }
@@ -2343,7 +2344,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
 
                     List<GenAIModel> genAiModels = preferencesManager.getGenAIModelList(provider.name());
                     boolean alreadyExists = genAiModels.stream()
-                        .anyMatch(model -> model.getName().equalsIgnoreCase(modelName));
+                        .anyMatch(model -> model.name().equalsIgnoreCase(modelName));
 
                     if(!alreadyExists) {
                         genAiModels.add(newModel);
@@ -2365,16 +2366,19 @@ final class AIAssistancePanel extends javax.swing.JPanel {
             modelDialog.setVisible(true);
         });
 
-        // Aggiungi nuovo menu per scaricare modelli da remoto
+        // Add menu item for downloading models from remote
         JMenuItem downloadModelsItem = new JMenuItem("Add models from remote");
         downloadModelsItem.addActionListener(e -> {
-            // Creare una mappa predefinita di modelli disponibili
-            LinkedHashMap<String, GenAIModel> availableModels = getModelListTable((GenAIProvider)providerComboBox.getSelectedItem());
-
-            // Creare il dialog
-            //JDialog modelSelectionDialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Select Models to Add", true);
-            Window parent = SwingUtilities.getWindowAncestor(this);
-            JDialog modelSelectionDialog = new JDialog(parent, "Select Models to Add", Dialog.ModalityType.APPLICATION_MODAL);
+            GenAIProvider selectedProvider = (GenAIProvider) providerComboBox.getSelectedItem();
+            ProgressHandle ph = ProgressHandle.createHandle("Fetching available AI models...");
+            ph.start();
+            RequestProcessor.getDefault().post(() -> {
+                LinkedHashMap<String, GenAIModel> availableModels = getModelListTable(selectedProvider);
+                ph.finish();
+                SwingUtilities.invokeLater(() -> {
+                    // Creare il dialog
+                    Window parent = SwingUtilities.getWindowAncestor(this);
+                    JDialog modelSelectionDialog = new JDialog(parent, "Select Models to Add", Dialog.ModalityType.APPLICATION_MODAL);
             modelSelectionDialog.setLayout(new BorderLayout());
             modelSelectionDialog.setSize(800, 600);
             modelSelectionDialog.setLocationRelativeTo(this);
@@ -2400,7 +2404,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
                 // Verificare se il modello è già presente nella combobox
                 boolean alreadyInComboBox = false;
                 for (int i = 0; i < modelComboBox.getItemCount(); i++) {
-                    if (modelComboBox.getItemAt(i).equals(model.getName())) {
+                    if (modelComboBox.getItemAt(i).equals(model.name())) {
                         alreadyInComboBox = true;
                         break;
                     }
@@ -2409,10 +2413,10 @@ final class AIAssistancePanel extends javax.swing.JPanel {
                 // Aggiungere alla tabella con selezione predefinita se non è già presente
                 tableModel.addRow(new Object[]{
                     alreadyInComboBox, // Selezionare solo i modelli presenti
-                    model.getName(),
-                    model.getDescription(),
-                    model.getInputPrice()*1000000,
-                    model.getOutputPrice()*1000000
+                    model.name(),
+                    model.description(),
+                    model.inputPrice()*1000000,
+                    model.outputPrice()*1000000
                 });
             }
 
@@ -2504,7 +2508,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
                             selectedModels.add(model);
 
                             // Raggruppare per provider
-                            String providerName = model.getProvider().name();
+                            String providerName = model.provider().name();
                             modelsByProvider.computeIfAbsent(providerName, k -> new ArrayList<>()).add(model);
                         }
                     }
@@ -2527,11 +2531,11 @@ final class AIAssistancePanel extends javax.swing.JPanel {
                     // Aggiungere solo i modelli non già presenti
                     for (GenAIModel newModel : entry.getValue()) {
                         boolean alreadyExists = existingModels.stream()
-                            .anyMatch(model -> model.getName().equalsIgnoreCase(newModel.getName()));
+                            .anyMatch(model -> model.name().equalsIgnoreCase(newModel.name()));
 
                         if (!alreadyExists) {
                             existingModels.add(newModel);
-                            addModelToComboBox(newModel.getName()); // Aggiungere alla combobox
+                            addModelToComboBox(newModel.name()); // Aggiungere alla combobox
                         }
                     }
 
@@ -2548,6 +2552,8 @@ final class AIAssistancePanel extends javax.swing.JPanel {
             cancelButton.addActionListener(ev -> modelSelectionDialog.dispose());
 
             modelSelectionDialog.setVisible(true);
+                }); // close SwingUtilities.invokeLater
+            }); // close RequestProcessor.post
         });
 
 

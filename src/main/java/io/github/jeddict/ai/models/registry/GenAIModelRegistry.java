@@ -15,10 +15,10 @@
  */
 package io.github.jeddict.ai.models.registry;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
+import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLConnection;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.json.JSONTokener;
 
 /**
  *
@@ -38,12 +39,13 @@ public class GenAIModelRegistry {
 
     private static final String API_URL = "https://openrouter.ai/api/v1";
 
-    private static final String MODELS_URL = API_URL + "/models";
-
     private static final long CACHE_TTL_MS = Duration.ofMinutes(30).toMillis();
 
     private static Map<String, GenAIModel> CACHE = new HashMap<>();
     private static long lastLoaded = 0;
+
+    /** Package-private to allow test subclasses to override {@link #getAPIUrl()}. */
+    static GenAIModelRegistry REGISTRY_INSTANCE = new GenAIModelRegistry();
 
     public String getAPIUrl() {
         return API_URL;
@@ -53,45 +55,32 @@ public class GenAIModelRegistry {
         List<String> modelNames = new ArrayList<>();
 
         try {
-            URL url = new URL(apiUrl + "/models");
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-            connection.setRequestMethod("GET");
+            URLConnection connection = new URL(apiUrl + "/models").openConnection();
             connection.setRequestProperty("Accept", "application/json");
 
-            int responseCode = connection.getResponseCode();
-            if (responseCode == HttpURLConnection.HTTP_OK) {
-                StringBuilder response;
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
-                    response = new StringBuilder();
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        response.append(line);
-                    }
+            if (connection instanceof HttpURLConnection http) {
+                http.setRequestMethod("GET");
+                int responseCode = http.getResponseCode();
+                if (responseCode != HttpURLConnection.HTTP_OK) {
+                    System.err.println("GET request failed. Response Code: " + responseCode);
+                    return modelNames;
                 }
+            }
 
-                JSONObject jsonResponse = new JSONObject(response.toString());
+            try (InputStream is = connection.getInputStream()) {
+                JSONObject jsonResponse = new JSONObject(new JSONTokener(is));
                 JSONArray models = jsonResponse.getJSONArray("data");
 
-                // Converti il JSONArray in una lista per ordinamento
+                // Sort the list by "created" in descending order
                 List<JSONObject> modelList = new ArrayList<>();
                 for (int i = 0; i < models.length(); i++) {
                     modelList.add(models.getJSONObject(i));
                 }
+                modelList.sort((obj1, obj2) -> Long.compare(obj2.getLong("created"), obj1.getLong("created")));
 
-                // Ordina la lista per il campo "created" in ordine decrescente
-                modelList.sort((obj1, obj2) -> {
-                    long created1 = obj1.getLong("created");
-                    long created2 = obj2.getLong("created");
-                    return Long.compare(created2, created1); // Ordine decrescente
-                });
-
-                for (int i = 0; i < modelList.size(); i++) {
-                    JSONObject model = modelList.get(i);
-                    String name = model.getString("id");  // Assuming 'id' holds the model name
-                    modelNames.add(name);
+                for (JSONObject model : modelList) {
+                    modelNames.add(model.getString("id"));
                 }
-            } else {
-                System.err.println("GET request failed. Response Code: " + responseCode);
             }
 
         } catch (Exception e) {
@@ -110,36 +99,26 @@ public class GenAIModelRegistry {
     public LinkedHashMap<String, GenAIModel> fetchGenAIModels(String apiUrl) {
         LinkedHashMap<String, GenAIModel> modelsMap = new LinkedHashMap<>();
         try {
-            URL url = new URL(apiUrl + "/models");
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-            connection.setRequestMethod("GET");
+            URLConnection connection = new URL(apiUrl + "/models").openConnection();
             connection.setRequestProperty("Accept", "application/json");
 
-            int responseCode = connection.getResponseCode();
-            if (responseCode == HttpURLConnection.HTTP_OK) {
-                StringBuilder response;
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
-                    response = new StringBuilder();
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        response.append(line);
-                    }
+            if (connection instanceof HttpURLConnection http) {
+                http.setRequestMethod("GET");
+                int responseCode = http.getResponseCode();
+                if (responseCode != HttpURLConnection.HTTP_OK) {
+                    System.err.println("GET request failed. Response Code: " + responseCode);
+                    return modelsMap;
                 }
+            }
 
-                JSONObject jsonResponse = new JSONObject(response.toString());
+            try (InputStream is = connection.getInputStream()) {
+                JSONObject jsonResponse = new JSONObject(new JSONTokener(is));
                 JSONArray models = jsonResponse.getJSONArray("data");
 
-                // Converti il JSONArray in una lista per ordinamento
-                List<JSONObject> modelList = new ArrayList<>();
                 for (int i = 0; i < models.length(); i++) {
-                    modelList.add(models.getJSONObject(i));
-                }
-
-                for (int i = 0; i < modelList.size(); i++) {
-                    JSONObject model = modelList.get(i);
+                    JSONObject model = models.getJSONObject(i);
                     String name = model.getString("id");
                     String description = model.has("description") ? model.getString("description") : "";
-                    // Ak máš v API info o cene, môžeš ich tiež vytiahnuť, inak nastav na 0:
 
                     double inputPrice = 0.0;
                     double outputPrice = 0.0;
@@ -147,31 +126,21 @@ public class GenAIModelRegistry {
                     if (model.has("pricing")) {
                         JSONObject pricing = model.getJSONObject("pricing");
                         if (pricing.has("prompt")) {
-                            inputPrice = ((pricing.optDouble("prompt", 0.0)));
+                            inputPrice = pricing.optDouble("prompt", 0.0);
                         }
                         if (pricing.has("completion")) {
-                            outputPrice = ((pricing.optDouble("completion", 0.0)));
+                            outputPrice = pricing.optDouble("completion", 0.0);
                         }
                     }
 
-                    // Pozor: musíš pridať GPT4ALL do tvojho GenAIProvider enum, napr.:
-                    // public enum GenAIProvider { OPEN_AI, GOOGLE, ..., GPT4ALL }
                     GenAIModel genAIModel = new GenAIModel(GenAIProvider.CUSTOM_OPEN_AI, name, description, inputPrice, outputPrice);
                     modelsMap.put(name, genAIModel);
                 }
-            } else {
-                System.err.println("GET request failed. Response Code: " + responseCode);
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
         return modelsMap;
-    }
-
-    public static void main(String[] args) {
-        GenAIModelRegistry fetcher = new GenAIModelRegistry();
-        List<String> names = fetcher.fetchModelNames(API_URL);
-        System.out.println("Model Names: " + names);
     }
 
     public static synchronized Map<String, GenAIModel> getModels() {
@@ -206,7 +175,7 @@ public class GenAIModelRegistry {
     // --------------------------------------------
     private static Map<String, GenAIModel> loadFromHttp() throws Exception {
         HttpURLConnection conn
-                = (HttpURLConnection) new URL(MODELS_URL).openConnection();
+                = (HttpURLConnection) new URL(REGISTRY_INSTANCE.getAPIUrl() + "/models").openConnection();
 
         conn.setRequestMethod("GET");
         conn.setConnectTimeout(5000);
@@ -217,15 +186,8 @@ public class GenAIModelRegistry {
             throw new IllegalStateException("Failed to load models");
         }
 
-        StringBuilder json = new StringBuilder();
-        try (BufferedReader br = new BufferedReader(
-                new InputStreamReader(conn.getInputStream()))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                json.append(line);
-            }
+        try (InputStream is = conn.getInputStream()) {
+            return new OpenRouterModelParser().parse(is);
         }
-
-        return OpenRouterModelParser.parse(json.toString());
     }
 }

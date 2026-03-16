@@ -1,0 +1,8 @@
+This tool execution is malformed
+
+```tool:malformedTool
+"arg1": "value1"
+"arg2": {
+```
+
+use mock 'tool in error.3.txt'

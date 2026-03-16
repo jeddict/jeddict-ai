@@ -47,6 +47,7 @@ import static io.github.jeddict.ai.models.registry.GenAIProvider.OPEN_AI;
 import static io.github.jeddict.ai.models.registry.GenAIProvider.PERPLEXITY;
 import io.github.jeddict.ai.settings.PreferencesManager;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -64,7 +65,7 @@ public class JeddictChatModelBuilder {
     protected static PreferencesManager pm = PreferencesManager.getInstance();
     private String modelName;
 
-    private final ChatModelListener listener;
+    private final List<ChatModelListener> listeners = new ArrayList();
 
     public JeddictChatModelBuilder() {
         this(null);
@@ -78,7 +79,9 @@ public class JeddictChatModelBuilder {
         final String modelName, final ChatModelListener listener
     ) {
         this.modelName = modelName; // P2 - TODO: can this be null?
-        this.listener = listener;
+        if (listener != null) {
+            this.listeners.add(listener);
+        }
     }
 
     public ChatModel build() {
@@ -146,8 +149,8 @@ public class JeddictChatModelBuilder {
         setIfPredicate(builder::customHeaders, pm.getCustomHeaders(), Map::isEmpty);
         boolean headless = pm.getProviderLocation() != null;
         builder
-                .apiKey(pm.getApiKey(headless))
-                .modelName(modelName);
+            .apiKey(pm.getApiKey(headless))
+            .modelName(modelName);
 
         setIfValid(builder::temperature, pm.getTemperature(), Double.MIN_VALUE);
         setIfValid(value -> builder.timeout(Duration.ofSeconds(value)), pm.getTimeout(), Integer.MIN_VALUE);
@@ -162,7 +165,7 @@ public class JeddictChatModelBuilder {
         setIfValid(builder::topK, pm.getTopK(), Integer.MIN_VALUE);
         setIfValid(builder::presencePenalty, pm.getPresencePenalty(), Double.MIN_VALUE);
         setIfValid(builder::frequencyPenalty, pm.getFrequencyPenalty(), Double.MIN_VALUE);
-        setIfValid(builder::listeners, (listener != null) ? List.of(listener) : null, List.of());
+        setIfValid(builder::listeners, listeners, new ArrayList());
         setIfPredicate(builder::organizationId, pm.getOrganizationId(), String::isEmpty);
 
         builder.logRequestsResponses(pm.isLogRequestsEnabled(), pm.isLogResponsesEnabled())

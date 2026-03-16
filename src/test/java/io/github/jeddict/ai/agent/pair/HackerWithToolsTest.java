@@ -34,9 +34,9 @@ import org.junit.jupiter.api.Test;
  */
 public class HackerWithToolsTest extends PairProgrammerTestBase {
 
-    private static final String GLOBAL_RULES = "globale rules";
-    private static final String PROJECT_RULES = "project rules";
-    private static final String PROJECT_INFO = "some project info";
+    public static final String GLOBAL_RULES = "globale rules";
+    public static final String PROJECT_RULES = "project rules";
+    public static final String PROJECT_INFO = "some project info";
 
     private HackerWithTools pair;
 

@@ -19,8 +19,8 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ToolChoice;
-import io.github.jeddict.ai.models.DummyChatModel;
 import io.github.jeddict.ai.settings.PreferencesManager;
+import io.github.jeddict.ai.test.DummyChatModel;
 import java.util.logging.Logger;
 
 /**

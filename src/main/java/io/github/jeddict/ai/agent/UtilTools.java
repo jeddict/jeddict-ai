@@ -15,32 +15,34 @@
  */
 package io.github.jeddict.ai.agent;
 
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
-import io.github.jeddict.ai.scanner.ProjectMetadataInfo;
-import org.netbeans.api.project.Project;
+import dev.langchain4j.exception.ToolExecutionException;
 import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READONLY;
 import java.io.IOException;
 
 /**
- * Tool to return information about the project: jdk version, j2ee version
+ *
  */
-public class ProjectTools extends AbstractTool {
+public class UtilTools extends AbstractTool {
 
-    private final Project project;
-
-    public ProjectTools(final Project project) throws IOException  {
-        super(project.getProjectDirectory().getPath());
-        this.project = project;
+    public UtilTools() throws IOException {
+        super(".");
     }
 
-    @Tool(
-        name = "projectInfo",
-        value = "Return information about the project: jdk version, j2ee version"
-    )
+    /**
+     * Echo a given message returning it as is
+     *
+     * @param message the message to echo
+     * @return the same message
+     */
+    @Tool("Echo the given message back as return value")
     @ToolPolicy(READONLY)
-    public String projectInfo()
-    throws Exception {
-        progress("Gathering project info: " + project);
-        return ProjectMetadataInfo.get(project);
+    public String echo(
+        @P("message to echo")
+        final String message
+    ) throws ToolExecutionException {
+        return (message != null) ? message : "null";
     }
+
 }

@@ -14,7 +14,7 @@
  * the License.
  */
 
-package io.github.jeddict.ai.models;
+package io.github.jeddict.ai.test;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -26,15 +26,12 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.ArrayList;
-import java.util.Collections;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.Content;
-import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.ContentType;
 import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.ModelProvider;
@@ -47,6 +44,7 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ToolChoice;
+import java.nio.file.Paths;
 import static ste.lloop.Loop._break_;
 import static ste.lloop.Loop.on;
 
@@ -75,6 +73,7 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
 
     public boolean toolExecuted = false;
 
+
     public DummyChatModel() {
         this.listeners = new ArrayList<>();
     }
@@ -85,7 +84,7 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
 
     @Override
     public List<ChatModelListener> listeners() {
-        return Collections.unmodifiableList(listeners);
+        return listeners;
     }
 
     @Override
@@ -107,31 +106,7 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
             throw error;
         }
 
-        final StringBuilder bodyBuilder = new StringBuilder();
-
-        //
-        // build a string with all system and user messages
-        //
-        chatRequest.messages().forEach((msg) -> {
-            bodyBuilder.append("\n");
-            if (msg instanceof UserMessage usrMsg) {
-                for(Content c: usrMsg.contents()) {
-                    if (c instanceof TextContent txt) {
-                        bodyBuilder.append(txt.text()).append("\n");
-                    } else if (c instanceof ImageContent img) {
-                        bodyBuilder.append(img.image().url());
-                    } else {
-                        bodyBuilder.append(String.valueOf(usrMsg));
-                    }
-                }
-            } else if (msg instanceof SystemMessage sysMsg) {
-                bodyBuilder.append(sysMsg.text());
-            } else {
-                bodyBuilder.append(String.valueOf(msg));
-            }
-        });
-
-        final String body = bodyBuilder.toString();
+        final String mockInstruction = messageWithInstruction(chatRequest.messages());
 
         AiMessage responseMessage = null;
 
@@ -170,7 +145,7 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
                     // does not match)
                     final String regex = "(?i)execute tool " + Pattern.quote(name) + "(?![a-zA-Z])";
 
-                    if (Pattern.compile(regex).matcher(body).find()) {
+                    if (Pattern.compile(regex).matcher(mockInstruction).find()) {
                         _break_(name);
                     }
                 });
@@ -206,24 +181,34 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
         if (responseMessage == null) {
             //
             // If any message contained the mock instruction pattern, extract the
-            // mock, read its content.
+            // mock, read its content. I first check the mock file itself, and
+            // if not found, the same file prepended by "n. " where n is the value
+            // of {@code count} starting from 1.
+            //
             // In case of errors replace the placeholder {{error}} with the error
             // descritpion/message
             //
-            Matcher matcher = MOCK_INSTRUCTION_PATTERN.matcher(bodyBuilder.toString());
+            final Matcher matcher = MOCK_INSTRUCTION_PATTERN.matcher(mockInstruction);
 
             Path mockPath = Path.of(DEFAULT_MOCK_FILE);
-            if (matcher.find()) {
-                String mockFile = matcher.group(1); // Quoted file name
+            String mockFile = null;
+
+            while(matcher.find()) {
+                mockFile = matcher.group(1); // Quoted file name
                 if (mockFile == null) {
                     mockFile = matcher.group(2); // Unquoted file name
                 }
-                mockPath = Path.of("src/test/resources/mocks").resolve(mockFile).normalize();
             }
 
-            String errorMessage = null;
+            if (mockFile != null) {
+                mockPath = Paths.get("src/test/resources/mocks").resolve(mockFile).normalize();
+            }
+
+            String errorMessage = "";
             if (!Files.exists(mockPath)) {
-                errorMessage = "Mock file '" + mockPath.toUri().getPath() + "' not found.";
+                errorMessage = "Mock file '%s' not found.".formatted(
+                    mockPath.toAbsolutePath().toString().replace('\\', '/')
+                );
                 mockPath = Path.of(ERROR_MOCK_FILE);
             }
 
@@ -320,5 +305,67 @@ public class DummyChatModel implements ChatModel, StreamingChatModel {
         LOG.info(() -> "provider: " + String.valueOf(provider));
 
         return provider;
+    }
+
+    // --------------------------------------------------------- private methods
+
+    /**
+     *
+     * If the last message is a user message and ontains "use mock" we pick
+     * that message. If not in the user message, let's check the previous
+     * response: if it contains "use mock", we pick the response.
+     * If not in the response let's check the system message if provided
+     * (assuming it is in the first message): if it contains "use mock" we
+     * pick the system message.
+     * If no matches are found, an empty string is returned
+     */
+    private String messageWithInstruction(final List<ChatMessage> messages) {
+        if (messages == null || messages.isEmpty()) {
+            return "";
+        }
+
+        final int size = messages.size();
+        if (messages.get(size-1) instanceof UserMessage msg) {
+            if (msg.hasSingleText() && doesContainIstruction(msg.singleText())) {
+                return msg.singleText();
+            } else {
+                final String contentText = on(msg.contents()).loop((content) -> {
+                   if (content.type() == ContentType.TEXT) {
+                       final String text = content.toString();
+                       if (doesContainIstruction(text)) {
+                            _break_(text);
+                        }
+                   }
+                });
+                if (contentText != null) {
+                    return contentText;
+                }
+            }
+        }
+
+        if ((size > 2) && (messages.get(size-2) instanceof AiMessage msg)) {
+            final String text = msg.text();
+            if (doesContainIstruction(text)) {
+                return text;
+            }
+        }
+
+        if (messages.get(0) instanceof SystemMessage msg) {
+            final String text = msg.text();
+            if (doesContainIstruction(text)) {
+                return text;
+            }
+        }
+
+        return "";
+    }
+
+    private boolean doesContainIstruction(final String text) {
+        if (text == null) {
+            return false;
+        }
+        final String lowerText = text.toLowerCase();
+        return lowerText.toLowerCase().contains("use mock")
+            || lowerText.toLowerCase().contains("execute tool");
     }
 }

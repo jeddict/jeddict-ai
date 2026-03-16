@@ -13,20 +13,18 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package io.github.jeddict.ai.models;
+package io.github.jeddict.ai.test;
 
 import dev.langchain4j.agent.tool.ToolSpecifications;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import io.github.jeddict.ai.test.DummyChatModelListener;
-import io.github.jeddict.ai.test.DummyTool;
-import io.github.jeddict.ai.test.TestBase;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -38,7 +36,7 @@ import org.junit.jupiter.api.Test;
 /**
  *
  */
-public class DummyChatModelTest extends TestBase {
+public class DummyChatModelTest {
 
     @Test
     public void doChat_returns_provided_message() {
@@ -52,7 +50,7 @@ public class DummyChatModelTest extends TestBase {
     }
 
     @Test
-    public void doChat_return_the_error_page_if_the_mock_does_not_exist() {
+    public void doChat_returns_the_error_page_if_the_mock_does_not_exist() {
         final DummyChatModel chat = new DummyChatModel();
 
         ChatRequest chatRequest = ChatRequest.builder().messages(
@@ -60,7 +58,11 @@ public class DummyChatModelTest extends TestBase {
         ).build();
 
         then(chat.doChat(chatRequest).aiMessage().text().trim())
-            .startsWith("Oops! Mock file '" + Paths.get("src/test/resources/mocks/none.txt").toUri().getPath() + "' not found.");
+            .startsWith(
+                "Oops! Mock file '" +
+                Paths.get("src/test/resources/mocks/none.txt").toAbsolutePath().toString().replace('\\', '/') +
+                "' not found."
+            );
     }
 
     @Test
@@ -73,6 +75,89 @@ public class DummyChatModelTest extends TestBase {
 
         then(chat.doChat(chatRequest).aiMessage().text().trim())
             .startsWith("To use a mock, send a prompt containing the following instruction:");
+    }
+
+    @Test
+    public void doChat_picks_the_mock_from_system_message() {
+        final DummyChatModel chat = new DummyChatModel();
+
+        ChatRequest chatRequest = ChatRequest.builder().messages(
+            SystemMessage.from("use mock 'hello world.txt'"),
+            UserMessage.from("Hello!")
+        ).build();
+
+        then(chat.doChat(chatRequest).aiMessage().text().trim())
+            .isEqualToIgnoringNewLines("hello world");
+    }
+
+    @Test
+    public void doChat_picks_the_mock_from_user_message() {
+        final DummyChatModel chat = new DummyChatModel();
+
+        ChatRequest chatRequest = ChatRequest.builder().messages(
+            SystemMessage.from("System message"),
+            UserMessage.from("use mock 'hello world.txt'")
+        ).build();
+
+        then(chat.doChat(chatRequest).aiMessage().text().trim())
+            .isEqualToIgnoringNewLines("hello world");
+    }
+
+    @Test
+    public void doChat_picks_the_mock_from_response_message() {
+        final DummyChatModel chat = new DummyChatModel();
+
+        ChatRequest chatRequest = ChatRequest.builder().messages(
+            UserMessage.from("this is the first message"),
+            AiMessage.from("this is the response: use mock 'hello world.txt'"),
+            UserMessage.from("this is the last prompt")
+        ).build();
+
+        then(chat.doChat(chatRequest).aiMessage().text().trim())
+            .isEqualToIgnoringNewLines("hello world");
+    }
+
+    @Test
+    public void doChat_picks_the_mock_from_priority() {
+        final DummyChatModel chat = new DummyChatModel();
+
+        //
+        // If in both system and user messages, the latter wins
+        //
+        ChatRequest chatRequest = ChatRequest.builder().messages(
+            SystemMessage.from("use mock 'hello world.txt'"),
+            UserMessage.from("use mock error.txt")
+        ).build();
+
+        then(chat.doChat(chatRequest).aiMessage().text().trim())
+            .startsWith("Oops!");
+
+        //
+        // Always pick only the last user message
+        //
+        chatRequest = ChatRequest.builder().messages(
+            UserMessage.from("use mock error.txt!"),
+            UserMessage.from("Hello!"),
+            UserMessage.from("use mock 'hello world.txt'")
+        ).build();
+
+        then(chat.doChat(chatRequest).aiMessage().text().trim())
+            .isEqualToIgnoringNewLines("hello world");
+
+        //
+        // Always pick only the last response if not in last user message
+        //
+        chatRequest = ChatRequest.builder().messages(
+            UserMessage.from("use 'multi message.1.txt'"),
+            UserMessage.from("Hello!"),
+            AiMessage.from("this is the response: use mock 'multi message.2.txt'"),
+            UserMessage.from("use mock 'hello world.txt'"),
+            AiMessage.from("this is the response: use mock 'multi message.3.txt'"),
+            UserMessage.from("last message")
+        ).build();
+
+        then(chat.doChat(chatRequest).aiMessage().text().trim())
+            .isEqualToIgnoringNewLines("This is the third message");
     }
 
     @Test

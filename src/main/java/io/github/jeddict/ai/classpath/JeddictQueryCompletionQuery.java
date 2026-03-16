@@ -16,15 +16,18 @@
 package io.github.jeddict.ai.classpath;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
 import org.netbeans.api.java.classpath.ClassPath;
 import org.netbeans.api.project.Project;
 import org.netbeans.api.project.ProjectUtils;
 import org.netbeans.api.project.ui.OpenProjects;
-import org.netbeans.modules.editor.NbEditorUtilities;
 import org.netbeans.spi.editor.completion.CompletionResultSet;
 import org.netbeans.spi.editor.completion.support.AsyncCompletionQuery;
 import org.openide.filesystems.FileObject;
@@ -35,6 +38,7 @@ public class JeddictQueryCompletionQuery extends AsyncCompletionQuery {
     private static List<String> cachedClassNames = null;
     private static long lastScanTimestamp = 0;
     private static final long CACHE_EXPIRY_MS = 60 * 1000;
+    private static Set<String> cachedProjectPaths = Collections.emptySet();
     public static final String JEDDICT_EDITOR_CALLBACK = "jeddict-editor-callback";
 
     @Override
@@ -49,34 +53,22 @@ public class JeddictQueryCompletionQuery extends AsyncCompletionQuery {
             resultSet.finish();
             return;
         }
-        if (System.currentTimeMillis() - lastScanTimestamp > CACHE_EXPIRY_MS) {
-            cachedClassNames = null;
-        }
-        if (cachedClassNames == null) {
-            cachedClassNames = new ArrayList<>();
-            FileObject file = NbEditorUtilities.getFileObject(doc);
-            boolean found = false;
-            if (file != null) {
-                ClassPath classPath = ClassPath.getClassPath(file, ClassPath.COMPILE);
-                if (classPath != null) {
-                    for (ClassPath.Entry entry : classPath.entries()) {
-                        FileObject root = entry.getRoot();
-                        if (root != null) {
-                            collectClassNames(root, "", cachedClassNames);
-                            found = true;
-                        }
-                    }
-                }
+        Project[] currentOpenProjects = OpenProjects.getDefault().getOpenProjects();
+        Set<String> currentProjectPaths = openProjectPaths(currentOpenProjects);
+        List<String> snapshot;
+        synchronized (JeddictQueryCompletionQuery.class) {
+            boolean ttlExpired = System.currentTimeMillis() - lastScanTimestamp > CACHE_EXPIRY_MS;
+            boolean projectsChanged = !currentProjectPaths.equals(cachedProjectPaths);
+            if (cachedClassNames == null || ttlExpired || projectsChanged) {
+                cachedClassNames = new ArrayList<>();
+                scanProjects(currentOpenProjects, cachedClassNames);
+                cachedProjectPaths = currentProjectPaths;
+                lastScanTimestamp = System.currentTimeMillis();
             }
-
-            if (!found) {
-                scanAllProjects(cachedClassNames);
-            }
-
-            lastScanTimestamp = System.currentTimeMillis();
+            snapshot = cachedClassNames;
         }
 
-        for (String fqcn : cachedClassNames) {
+        for (String fqcn : snapshot) {
             if (prefix.isEmpty() || fqcn.toLowerCase().contains(prefix.toLowerCase())) {
                 resultSet.addItem(new JeddictQueryCompletionItem(fqcn, caretOffset, prefix, callback));
             }
@@ -97,22 +89,39 @@ public class JeddictQueryCompletionQuery extends AsyncCompletionQuery {
         }
     }
 
-    private void scanAllProjects(List<String> classNames) {
-        for (Project project : OpenProjects.getDefault().getOpenProjects()) {
-            for (var sourceGroup : ProjectUtils.getSources(project).getSourceGroups("java")) {
-                ClassPath classPath = ClassPath.getClassPath(sourceGroup.getRootFolder(), ClassPath.SOURCE);
-                if (classPath != null) {
-                    for (ClassPath.Entry entry : classPath.entries()) {
-                        FileObject root = entry.getRoot();
-                        if (root != null) {
-                            for (FileObject child : root.getChildren()) {
-                                collectClassNames(child, "", classNames);
-                            }
-                        }
-                    }
+    private boolean scanClassPathEntries(ClassPath classPath, List<String> classNames) {
+        boolean found = false;
+        for (ClassPath.Entry entry : classPath.entries()) {
+            FileObject root = entry.getRoot();
+            if (root != null) {
+                for (FileObject child : root.getChildren()) {
+                    collectClassNames(child, "", classNames);
                 }
+                found = true;
             }
         }
+        return found;
+    }
+
+    private void scanProject(Project project, List<String> classNames) {
+        for (var sourceGroup : ProjectUtils.getSources(project).getSourceGroups("java")) {
+            ClassPath classPath = ClassPath.getClassPath(sourceGroup.getRootFolder(), ClassPath.SOURCE);
+            if (classPath != null) {
+                scanClassPathEntries(classPath, classNames);
+            }
+        }
+    }
+
+    private void scanProjects(Project[] projects, List<String> classNames) {
+        for (Project project : projects) {
+            scanProject(project, classNames);
+        }
+    }
+
+    private static Set<String> openProjectPaths(Project[] projects) {
+        return Stream.of(projects)
+                .map(p -> p.getProjectDirectory().getPath())
+                .collect(Collectors.toSet());
     }
 
     private String extractPrefix(Document doc, int caretOffset) {
