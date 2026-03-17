@@ -17,106 +17,182 @@
 package io.github.jeddict.ai.components;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import io.github.jeddict.ai.util.UIUtil;
+import static io.github.jeddict.ai.util.Icons.ICON_CHEVRON_DOWN;
+import static io.github.jeddict.ai.util.Icons.ICON_CHEVRON_RIGHT;
+import static io.github.jeddict.ai.util.Icons.ICON_TERMINAL;
+import static io.github.jeddict.ai.util.StringUtil.camelCaseToHumanReadable;
+import static io.github.jeddict.ai.util.UIUtil.BORDER_JEDDICT_SPACED;
+import static io.github.jeddict.ai.util.UIUtil.BORDER_JEDDICT_SPACED_LINE_1;
+import static io.github.jeddict.ai.util.UIUtil.COLOR_JEDDICT_MAIN_BACKGROUND;
+import static io.github.jeddict.ai.util.UIUtil.FONT_MONOSPACED;
+import static io.github.jeddict.ai.util.UIUtil.FONT_NORMAL_TEXT;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import javax.swing.BorderFactory;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
 
 /**
- * A Swing component that displays the details and results of a tool execution.
- * 
- * This pane provides a visual representation of an AI tool execution, showing:
+ * A Swing component that displays the details and results of a tool execution
+ * in a collapsible GitHub Copilot-style row.
+ *
+ * <p>The pane has two visual states:</p>
  * <ul>
- *   <li>The tool name and invocation arguments (via {@link ToolInvocationPane})
- *   <li>The execution result in a scrollable text area
+ *   <li><b>Collapsed</b> (default) — a single header row that shows a terminal
+ *       icon, the human-readable tool name, and an expand chevron.</li>
+ *   <li><b>Expanded</b> — the header plus a details section containing the
+ *       tool invocation arguments (via {@link ToolInvocationPane}) and the
+ *       execution result in a scrollable text area.</li>
  * </ul>
- * 
- * The component is designed to be used within the {@link AssistantChat} to show
- * users the tools that were executed and their outcomes. The result text area
- * automatically adjusts its height based on the content (up to 5 lines).
- * 
+ *
+ * <p>Clicking anywhere on the header row toggles between collapsed and
+ * expanded states.</p>
+ *
  * @see ToolExecutionRequest
  * @see ToolInvocationPane
  * @see AssistantChat
  */
-public class ToolExecutionPane extends javax.swing.JPanel {
+public class ToolExecutionPane extends JPanel {
+
+    private final JPanel detailsPanel;
+    private final JLabel chevronLabel;
+    private boolean expanded = false;
 
     /**
      * Creates a new ToolExecutionPane with the given execution details and result.
-     * 
+     *
      * @param execution the tool execution request containing tool name and arguments
-     * @param result the result/output of the tool execution to display
+     * @param result    the result/output of the tool execution to display
      */
     public ToolExecutionPane(final ToolExecutionRequest execution, final String result) {
-        initComponents();
+        setLayout(new BorderLayout());
+        setName("root");
+        setBackground(COLOR_JEDDICT_MAIN_BACKGROUND);
+        setBorder(BORDER_JEDDICT_SPACED_LINE_1);
+        setMaximumSize(new Dimension(Integer.MAX_VALUE, 350));
 
-        toolInvocationPane.toolInvocation(execution);
+        // ── Header row ────────────────────────────────────────────────────────
+        final JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setName("header");
+        headerPanel.setBackground(COLOR_JEDDICT_MAIN_BACKGROUND);
+        headerPanel.setBorder(BORDER_JEDDICT_SPACED);
+        headerPanel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
+        // Terminal icon  >_  rendered in a small bordered box
+        final JLabel terminalIconLabel = new JLabel(ICON_TERMINAL);
+        terminalIconLabel.setName("terminalIcon");
+        terminalIconLabel.setFont(FONT_MONOSPACED);
+        terminalIconLabel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(180, 180, 180), 1),
+            BorderFactory.createEmptyBorder(2, 4, 2, 4)
+        ));
+
+        // Human-readable tool name label
+        final JLabel nameLabel = new JLabel(camelCaseToHumanReadable(execution.name()));
+        nameLabel.setName("toolName");
+        nameLabel.setFont(FONT_NORMAL_TEXT);
+        nameLabel.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 0));
+
+        // Left side: terminal icon + name
+        final JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        leftPanel.setName("headerLeft");
+        leftPanel.setBackground(COLOR_JEDDICT_MAIN_BACKGROUND);
+        leftPanel.add(terminalIconLabel);
+        leftPanel.add(nameLabel);
+
+        // Expand / collapse chevron on the right
+        chevronLabel = new JLabel(ICON_CHEVRON_RIGHT);
+        chevronLabel.setName("chevron");
+        chevronLabel.setFont(FONT_NORMAL_TEXT);
+        chevronLabel.setForeground(new Color(120, 120, 120));
+        chevronLabel.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 4));
+
+        headerPanel.add(leftPanel, BorderLayout.CENTER);
+        headerPanel.add(chevronLabel, BorderLayout.EAST);
+
+        // ── Details section (initially collapsed) ─────────────────────────────
+        detailsPanel = new JPanel(new BorderLayout());
+        detailsPanel.setName("details");
+        detailsPanel.setBackground(COLOR_JEDDICT_MAIN_BACKGROUND);
+        detailsPanel.setVisible(false);
+
+        // Tool invocation (arguments chips)
+        final ToolInvocationPane invocationPane = new ToolInvocationPane(execution);
+        invocationPane.setBackground(COLOR_JEDDICT_MAIN_BACKGROUND);
+        detailsPanel.add(invocationPane, BorderLayout.NORTH);
+
+        // Execution result
+        final JPanel resultPane = new JPanel(new BorderLayout());
+        resultPane.setName("result");
+        resultPane.setBackground(COLOR_JEDDICT_MAIN_BACKGROUND);
+        resultPane.setMaximumSize(new Dimension(Integer.MAX_VALUE, 300));
+        resultPane.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createEmptyBorder(5, 5, 5, 5),
+            BorderFactory.createLineBorder(new Color(234, 234, 234))
+        ));
+
+        final JTextArea resultTextArea = new JTextArea();
+        resultTextArea.setName("result");
+        resultTextArea.setEditable(false);
+        resultTextArea.setBackground(COLOR_JEDDICT_MAIN_BACKGROUND);
+        resultTextArea.setFont(FONT_NORMAL_TEXT);
+        resultTextArea.setLineWrap(true);
+        resultTextArea.setWrapStyleWord(true);
+        resultTextArea.setBorder(BorderFactory.createEmptyBorder(1, 1, 1, 1));
         resultTextArea.setText(result);
         resultTextArea.setRows(Math.min(5, resultTextArea.getLineCount()));
+
+        final JScrollPane resultScrollPane = new JScrollPane(resultTextArea);
+        resultScrollPane.setBorder(BorderFactory.createEmptyBorder(1, 1, 1, 1));
+        resultScrollPane.setMaximumSize(new Dimension(Integer.MAX_VALUE, 200));
+
+        resultPane.add(resultScrollPane, BorderLayout.CENTER);
+        detailsPanel.add(resultPane, BorderLayout.CENTER);
+
+        // ── Assemble ─────────────────────────────────────────────────────────
+        add(headerPanel, BorderLayout.NORTH);
+        add(detailsPanel, BorderLayout.CENTER);
+
+        // Toggle on any click within the header area
+        final MouseAdapter toggle = new MouseAdapter() {
+            @Override
+            public void mouseClicked(final MouseEvent e) {
+                toggleExpanded();
+            }
+        };
+        headerPanel.addMouseListener(toggle);
+        leftPanel.addMouseListener(toggle);
+        terminalIconLabel.addMouseListener(toggle);
+        nameLabel.addMouseListener(toggle);
+        chevronLabel.addMouseListener(toggle);
+    }
+
+    /** Toggles the expanded / collapsed state of the details section. */
+    private void toggleExpanded() {
+        expanded = !expanded;
+        detailsPanel.setVisible(expanded);
+        chevronLabel.setText(expanded ? ICON_CHEVRON_DOWN : ICON_CHEVRON_RIGHT);
+        revalidate();
+        repaint();
     }
 
     /**
-     * This method is called from within the constructor to initialize the form.
-     * WARNING: Do NOT modify this code. The content of this method is always
-     * regenerated by the Form Editor.
+     * Toggles expanded / collapsed state programmatically.
+     * This method is equivalent to clicking the header row.
      */
-    @SuppressWarnings("unchecked")
-    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
-    private void initComponents() {
-
-        toolInvocationPane = new io.github.jeddict.ai.components.ToolInvocationPane();
-        resultPane = new javax.swing.JPanel();
-        resultScrollPane = new javax.swing.JScrollPane();
-        resultTextArea = new javax.swing.JTextArea();
-        filler1 = new javax.swing.Box.Filler(new java.awt.Dimension(0, 2), new java.awt.Dimension(0, 2), new java.awt.Dimension(32767, 2));
-
-        setBackground(new java.awt.Color(255, 255, 255));
-        setBorder(UIUtil.BORDER_JEDDICT_SPACED_LINE_1);
-        setMaximumSize(new java.awt.Dimension(2147483647, 350));
-        setName("root"); // NOI18N
-        setLayout(new java.awt.BorderLayout());
-
-        toolInvocationPane.setBackground(UIUtil.COLOR_JEDDICT_MAIN_BACKGROUND);
-        add(toolInvocationPane, java.awt.BorderLayout.NORTH);
-
-        resultPane.setBackground(UIUtil.COLOR_JEDDICT_MAIN_BACKGROUND);
-        resultPane.setBorder(javax.swing.BorderFactory.createCompoundBorder(javax.swing.BorderFactory.createEmptyBorder(5, 5, 5, 5), javax.swing.BorderFactory.createLineBorder(new java.awt.Color(234, 234, 234))));
-        resultPane.setMaximumSize(new java.awt.Dimension(2147483647, 300));
-        resultPane.setName("result"); // NOI18N
-        resultPane.setLayout(new java.awt.BorderLayout());
-
-        resultScrollPane.setBorder(javax.swing.BorderFactory.createEmptyBorder(1, 1, 1, 1));
-        resultScrollPane.setMaximumSize(new java.awt.Dimension(32767, 200));
-        resultScrollPane.setMinimumSize(new java.awt.Dimension(16, 25));
-
-        resultTextArea.setEditable(false);
-        resultTextArea.setBackground(UIUtil.COLOR_JEDDICT_MAIN_BACKGROUND);
-        resultTextArea.setColumns(20);
-        resultTextArea.setFont(UIUtil.FONT_NORMAL_TEXT);
-        resultTextArea.setLineWrap(true);
-        resultTextArea.setText(org.openide.util.NbBundle.getMessage(ToolExecutionPane.class, "ToolExecutionPane.resultTextArea.text")); // NOI18N
-        resultTextArea.setWrapStyleWord(true);
-        resultTextArea.setBorder(javax.swing.BorderFactory.createEmptyBorder(1, 1, 1, 1));
-        resultTextArea.setMaximumSize(new java.awt.Dimension(2147483647, 200));
-        resultTextArea.setMinimumSize(new java.awt.Dimension(103, 87));
-        resultTextArea.setName("result"); // NOI18N
-        resultScrollPane.setViewportView(resultTextArea);
-
-        resultPane.add(resultScrollPane, java.awt.BorderLayout.CENTER);
-        resultPane.add(filler1, java.awt.BorderLayout.SOUTH);
-
-        add(resultPane, java.awt.BorderLayout.CENTER);
-    }// </editor-fold>//GEN-END:initComponents
-
-
-    private JPanel createArgumentChip(final String name, final String value) {
-        return new ArgumentChip(name, value);
+    public void toggle() {
+        toggleExpanded();
     }
 
-    // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.Box.Filler filler1;
-    private javax.swing.JPanel resultPane;
-    private javax.swing.JScrollPane resultScrollPane;
-    private javax.swing.JTextArea resultTextArea;
-    private io.github.jeddict.ai.components.ToolInvocationPane toolInvocationPane;
-    // End of variables declaration//GEN-END:variables
+    /** Returns {@code true} when the details section is currently visible. */
+    public boolean isExpanded() {
+        return expanded;
+    }
 }
