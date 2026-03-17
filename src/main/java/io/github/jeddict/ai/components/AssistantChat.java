@@ -261,7 +261,9 @@ public abstract class AssistantChat extends TopComponent {
 
         SwingUtilities.invokeLater(() -> {
             LOG.finest(() -> "updpating task loader with handle %s and progress %s".formatted(handle, progress));
-            handle.setDisplayName(progress);
+            if (handle != null) {
+                handle.setDisplayName(progress);
+            }
         });
     }
 
