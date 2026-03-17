@@ -53,7 +53,7 @@ import org.netbeans.spi.editor.completion.support.CompletionUtilities;
  * @author Gaurav Gupta
  */
 @MimeRegistration(
-        mimeType = "text/x-java",
+        mimeType = "text/plain",
         service = CompletionProvider.class
 )
 public final class AIQueryCompletionProvider implements CompletionProvider {
