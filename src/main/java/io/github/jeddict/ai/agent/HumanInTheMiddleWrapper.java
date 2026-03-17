@@ -26,6 +26,7 @@ import net.bytebuddy.implementation.bind.annotation.RuntimeType;
 import net.bytebuddy.matcher.ElementMatchers;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.function.Function;
@@ -112,13 +113,13 @@ public class HumanInTheMiddleWrapper {
                     .load(clazz.getClassLoader())
                     .getLoaded()
                     .getConstructor(clazz.getDeclaredConstructors()[0].getParameterTypes())
-                    .newInstance(getDummyArgsFor(clazz.getDeclaredConstructors()[0]));
+                    .newInstance(getDummyArgsFor(clazz.getDeclaredConstructors()[0], originalTool));
         } catch (Exception e) {
             throw new RuntimeException("Failed to wrap tool", e);
         }
     }
 
-    private Object[] getDummyArgsFor(Constructor<?> constructor) {
+    private Object[] getDummyArgsFor(Constructor<?> constructor, Object originalTool) {
         Object[] dummyArgs = new Object[constructor.getParameterCount()];
         Class<?>[] parameterTypes = constructor.getParameterTypes();
         for (int i = 0; i < parameterTypes.length; i++) {
@@ -128,10 +129,42 @@ public class HumanInTheMiddleWrapper {
             } else if (parameterTypes[i] == String.class) {
                 dummyArgs[i] = "."; // Satisfy AbstractTool's non-null basedir check
             } else {
-                dummyArgs[i] = null;
+                // For any other object parameter, try to get the actual value from
+                // the original tool via reflection so that the proxy subclass
+                // constructor does not fail on validation (e.g. ProjectTools(Project)
+                // calls basedirOf(project) which throws when project is null).
+                dummyArgs[i] = getFieldValueByType(parameterTypes[i], originalTool);
             }
         }
         return dummyArgs;
+    }
+
+    /**
+     * Searches the class hierarchy of {@code source} for the first field whose
+     * type is assignable to {@code type} and returns its value.  Returns
+     * {@code null} when no matching field is found or the field is inaccessible.
+     *
+     * <p>The check {@code type.isAssignableFrom(field.getType())} answers:
+     * "can a value of {@code field.getType()} be used where {@code type} is
+     * expected?" — i.e. the field's declared type is the same as or a subtype
+     * of the required parameter type.</p>
+     */
+    private Object getFieldValueByType(Class<?> type, Object source) {
+        Class<?> clazz = source.getClass();
+        while (clazz != null) {
+            for (Field field : clazz.getDeclaredFields()) {
+                if (type.isAssignableFrom(field.getType())) {
+                    try {
+                        field.setAccessible(true);
+                        return field.get(source);
+                    } catch (IllegalAccessException | SecurityException ignored) {
+                        // fall through to the next field / superclass
+                    }
+                }
+            }
+            clazz = clazz.getSuperclass();
+        }
+        return null;
     }
 
     /**
