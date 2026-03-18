@@ -17,8 +17,10 @@ package io.github.jeddict.ai.agent;
 
 import dev.langchain4j.exception.ToolExecutionException;
 import io.github.jeddict.ai.lang.JeddictBrainListener;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -109,5 +111,46 @@ public abstract class AbstractTool {
 
     public void withHumanInTheMiddle(final UnaryOperator<String> hitm) {
         humanInTheMiddle = (hitm == null) ? Optional.empty() : Optional.of(hitm);
+    }
+
+    /**
+     * Runs a shell command in the project directory, streams output, and
+     * returns the full log as a string.
+     *
+     * @param command     the command to execute (passed to the OS shell)
+     * @param label       a short human-readable label used in progress messages
+     *                    and the final status line (e.g. {@code "Running com.example.Main"})
+     * @return the combined stdout/stderr output followed by a status line
+     */
+    protected String runCommand(final String command, final String label) {
+        progress("🚀 " + label);
+        final StringBuilder fullLog = new StringBuilder();
+        try {
+            final ProcessBuilder pb;
+            if (System.getProperty("os.name").toLowerCase().contains("win")) {
+                pb = new ProcessBuilder("cmd", "/c", command)
+                        .directory(new File(basedir))
+                        .redirectErrorStream(true);
+            } else {
+                pb = new ProcessBuilder("sh", "-c", command)
+                        .directory(new File(basedir))
+                        .redirectErrorStream(true);
+            }
+            final Process process = pb.start();
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    fullLog.append(line).append('\n');
+                }
+            }
+            final int exitCode = process.waitFor();
+            fullLog.append(label)
+                   .append(exitCode == 0 ? " successful" : " failed with exit code " + exitCode)
+                   .append('\n');
+        } catch (final Exception e) {
+            fullLog.append(label).append(" failed: ").append(e.getMessage()).append('\n');
+        }
+        return fullLog.toString();
     }
 }

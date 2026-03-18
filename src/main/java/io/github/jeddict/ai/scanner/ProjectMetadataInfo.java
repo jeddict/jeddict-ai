@@ -16,15 +16,16 @@
 package io.github.jeddict.ai.scanner;
 
 import java.io.File;
+import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Logger;
+import java.util.logging.Level;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.maven.model.Plugin;
-import org.apache.maven.project.MavenProject;
-import org.codehaus.plexus.util.xml.Xpp3Dom;
 import org.netbeans.api.project.Project;
-import org.netbeans.modules.maven.api.NbMavenProject;
+import org.openide.filesystems.FileObject;
 
 /**
  *
@@ -37,14 +38,55 @@ import org.netbeans.modules.maven.api.NbMavenProject;
  */
 public class ProjectMetadataInfo {
 
+    private static final Logger LOG = Logger.getLogger(ProjectMetadataInfo.class.getName());
+
     private static final Map<Project, CachedResult> cache = new HashMap<>();
 
+    /**
+     * Optional hook that project-type-specific tools (e.g. MavenProjectTools,
+     * GradleProjectTools) implement so that {@link ProjectMetadataInfo} can
+     * obtain metadata without parsing build files directly.
+     *
+     * <p>This interface lives here (scanner package) so that the agent package
+     * can depend on scanner — not the other way round.</p>
+     */
+    public interface BuildMetadataResolver {
+        /** Returns the project display name, or {@code null} to keep the default. */
+        String getProjectName();
+
+        /**
+         * Returns the build-system type label for this project (e.g. "maven",
+         * "gradle", "ant", "nodejs", "python"). {@code null} means unknown.
+         */
+        String getProjectType();
+
+        /**
+         * Returns the name of the primary build file relative to the project
+         * root (e.g. "pom.xml", "build.gradle", "build.xml"). Used for
+         * cache-invalidation: when the file changes the cached metadata is
+         * discarded. {@code null} means use the project directory mtime.
+         */
+        String getBuildFileName();
+
+        /**
+         * Returns an ordered map of project metadata key-value pairs to include
+         * in the project info output (e.g. "Java Version" → "11").
+         * Implementations should return an empty map when no metadata is
+         * available; returning {@code null} is treated the same as an empty map.
+         */
+        Map<String, String> getProjectMetadata();
+    }
+
     public static String get(Project project) {
+        return get(project, null);
+    }
+
+    public static String get(Project project, BuildMetadataResolver resolver) {
         if (project == null) {
             return "";
         }
 
-        final CachedResult cachedResult = getCachedResult(project);
+        final CachedResult cachedResult = getCachedResult(project, resolver);
 
         // Check if cachedResult is null and handle accordingly
         if (cachedResult == null) {
@@ -55,135 +97,88 @@ public class ProjectMetadataInfo {
 
         sb.append("- name: ").append(StringUtils.defaultString(cachedResult.name)).append('\n')
           .append("- folder: ").append(StringUtils.defaultString(cachedResult.folder)).append('\n')
-          .append("- type: ").append(StringUtils.defaultString(cachedResult.type)).append('\n')
         ;
 
-        // Append EE Version with appropriate label if importPrefix is "jakarta
-        if (cachedResult.eeVersion() != null) {
-            if ("- jakarta".equals(cachedResult.importPrefix())) {
-                sb.append("- EE Version: ").append(cachedResult.eeVersion()).append("\n");
-            } else {
-                sb.append("- EE Version: ").append(cachedResult.eeVersion()).append("\n");
-            }
+        if (cachedResult.type() != null) {
+            sb.append("- type: ").append(cachedResult.type()).append('\n');
         }
-        if (cachedResult.importPrefix() != null) {
-            sb.append("- EE Import Prefix: ").append(cachedResult.importPrefix()).append("\n");
-        }
-        if (cachedResult.jdkVersion() != null) {
-            sb.append("- Java Version: ").append(cachedResult.jdkVersion()).append("\n");
+
+        for (final Map.Entry<String, String> entry : cachedResult.metadata().entrySet()) {
+            sb.append("- ").append(entry.getKey()).append(": ").append(entry.getValue()).append('\n');
         }
 
         return sb.toString().trim();
     }
 
     public static CachedResult getCachedResult(Project project) {
+        return getCachedResult(project, null);
+    }
+
+    /**
+     * Returns (and caches) a {@link CachedResult} for the given project.
+     *
+     * <p>When a {@link BuildMetadataResolver} is supplied, the project type,
+     * build file name, extra metadata key-value pairs, and project name are
+     * all obtained from it. When {@code resolver} is {@code null} type and
+     * metadata are absent — the generic path does not attempt to parse any
+     * build file.</p>
+     */
+    public static CachedResult getCachedResult(Project project, BuildMetadataResolver resolver) {
         try {
             // Check if the project is cached
             CachedResult cachedResult = cache.get(project);
 
-            // Get project modification timestamp
-            NbMavenProject nbMavenProject = project.getLookup().lookup(NbMavenProject.class);
-            if (nbMavenProject == null) {
-                return null; // Not a Maven project
+            final FileObject projectDirectory = project.getProjectDirectory();
+            final String folder = FilenameUtils.separatorsToSystem(projectDirectory.getPath());
+
+            // Use the build file modification time for cache invalidation; fall
+            // back to the project directory mtime when no resolver (or no build
+            // file name) is provided.
+            final String buildFileName = (resolver != null) ? resolver.getBuildFileName() : null;
+            final FileObject buildFile = (buildFileName != null)
+                    ? projectDirectory.getFileObject(buildFileName)
+                    : null;
+            final long lastModified = buildFile != null
+                    ? new File(buildFile.getPath()).lastModified()
+                    : new File(folder).lastModified();
+
+            if (cachedResult != null && cachedResult.timestamp >= lastModified) {
+                return cachedResult;
             }
 
-            // Get the pom.xml FileObject
-            final File pomFile = nbMavenProject.getMavenProject().getFile();
-            final long lastModified = pomFile.lastModified();
+            // Default project name: directory name.  The resolver may override this.
+            String name = projectDirectory.getName();
 
-            // Invalidate cache if timestamp has changed
-            if (cachedResult == null || cachedResult.timestamp < lastModified) {
-                // Get the MavenProject
-                MavenProject mavenProject = nbMavenProject.getMavenProject();
+            // Project type and metadata come entirely from the resolver.
+            // When no resolver is provided these remain null/empty.
+            String type = null;
+            Map<String, String> metadata = Collections.emptyMap();
 
-                // Determine Jakarta EE version
-                String eeVersion = getEEVersionFromDependencies(mavenProject);
-
-                // Determine JDK version
-                String jdkVersion = getJdkVersionFromPom(mavenProject);
-
-                // Determine the import prefix
-                String importPrefix = null;
-                if (eeVersion != null) {
-                    if (eeVersion.startsWith("jakarta")) {
-                        if (eeVersion.equals("jakarta-8.0.0")) {
-                            importPrefix = "javax"; // Special case for Jakarta EE 8
-                        } else {
-                            importPrefix = "jakarta";
-                        }
-                    } else if (eeVersion.startsWith("javax")) {
-                        importPrefix = "javax";
-                    }
+            if (resolver != null) {
+                if (resolver.getProjectName() != null && !resolver.getProjectName().isBlank()) {
+                    name = resolver.getProjectName();
                 }
-
-                // Cache the result
-                final CachedResult result = new CachedResult(
-                    mavenProject.getName(), 
-                    FilenameUtils.separatorsToSystem(project.getProjectDirectory().getPath()), 
-                    "maven",
-                    importPrefix, eeVersion, jdkVersion, lastModified
-                );
-                cache.put(project, result);
-
-                return result;
+                type = resolver.getProjectType();
+                final Map<String, String> resolved = resolver.getProjectMetadata();
+                if (resolved != null) {
+                    metadata = resolved;
+                }
             }
 
-            // Return cached result
-            return cachedResult;
+            // Cache the result
+            final CachedResult result = new CachedResult(name, folder, type, metadata, lastModified);
+            cache.put(project, result);
+            return result;
 
         } catch (Exception e) {
-            e.printStackTrace();
-            return null; // In case of errors
+            LOG.log(Level.WARNING, "Failed to read project metadata", e);
+            return null;
         }
-    }
-
-    private static String getEEVersionFromDependencies(MavenProject mavenProject) {
-        // Look for Jakarta EE or Java EE dependencies in the pom.xml
-        for (org.apache.maven.model.Dependency dependency : mavenProject.getDependencies()) {
-            if (dependency.getGroupId().equals("jakarta.platform")) {
-                if (dependency.getVersion().startsWith("8.0")) {
-                    return "jakarta-8.0.0"; // Special case for Jakarta EE 8
-                }
-                return "jakarta"; // Other versions of Jakarta EE
-            }
-            if (dependency.getGroupId().startsWith("javax.")) {
-                return "javax"; // Java EE dependencies
-            }
-        }
-        return null; // Return null if no matching dependencies are found
-    }
-
-    private static String getJdkVersionFromPom(MavenProject mavenProject) {
-        // Check for JDK version in Maven properties
-        String source = mavenProject.getProperties().getProperty("maven.compiler.source");
-        String target = mavenProject.getProperties().getProperty("maven.compiler.target");
-
-        // Return source version if available; fallback to target
-        if (source != null) {
-            return source;
-        }
-        if (target != null) {
-            return target;
-        }
-        for (Plugin plugin : mavenProject.getBuildPlugins()) {
-            if ("maven-compiler-plugin".equals(plugin.getArtifactId())) {
-                Object configuration = plugin.getConfiguration();
-                if (configuration instanceof Xpp3Dom dom) {
-                    Xpp3Dom sourceNode = dom.getChild("source");
-                    if (sourceNode != null) {
-                        return sourceNode.getValue();
-                    }
-                }
-            }
-        }
-
-        // Return null if no JDK version is found
-        return null;
     }
 
     private record CachedResult(
         String name, String folder, String type,
-        String importPrefix, String eeVersion, String jdkVersion,
+        Map<String, String> metadata,
         long timestamp
     ) {}
 }
