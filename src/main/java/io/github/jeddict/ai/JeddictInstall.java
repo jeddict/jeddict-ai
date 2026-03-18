@@ -96,7 +96,7 @@ public class JeddictInstall extends ModuleInstall {
         final Formatter f = new JeddictLogFormatter();
 
         //
-        // go backward to wach parent
+        // go backward to watch parent
         //
         Logger logger = Logger.getLogger(JeddictInstall.class.getPackageName());
         do {
