@@ -345,11 +345,11 @@
             <artifactId>json</artifactId>
             <version>20251224</version>
         </dependency>
-        <dependency>
         <!--
             TOON
         -->
-        <groupId>tools.jackson.core</groupId>
+        <dependency>
+            <groupId>tools.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
             <version>3.1.0</version>
         </dependency>
@@ -363,7 +363,6 @@
             <artifactId>jackson-annotations</artifactId>
             <version>2.21</version>
         </dependency>
-
         <dependency>
             <groupId>dev.toonformat</groupId>
             <artifactId>jtoon</artifactId>
@@ -723,6 +722,36 @@
             <artifactId>byte-buddy</artifactId>
             <version>1.18.2</version>
         </dependency>
+        <dependency>
+            <groupId>jakarta.ws.rs</groupId>
+            <artifactId>jakarta.ws.rs-api</artifactId>
+            <version>4.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-controls</artifactId>
+            <version>21.0.10</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-fxml</artifactId>
+            <version>21.0.10</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-swing</artifactId>
+            <version>21.0.10</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-base</artifactId>
+            <version>21.0.10</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-graphics</artifactId>
+            <version>21.0.10</version>
+        </dependency>
 
         <!--
           TEST DEPENDENCIES
@@ -763,11 +792,6 @@
             <artifactId>assertj-core</artifactId>
             <version>3.27.7</version>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>jakarta.ws.rs</groupId>
-            <artifactId>jakarta.ws.rs-api</artifactId>
-            <version>4.0.0</version>
         </dependency>
 
         <!--
