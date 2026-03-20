@@ -52,11 +52,8 @@ import io.github.jeddict.ai.agent.ToolsProbingTool;
 import io.github.jeddict.ai.agent.pair.HackerWithoutTools;
 import io.github.jeddict.ai.agent.pair.PairProgrammer;
 import static io.github.jeddict.ai.lang.InteractionMode.INTERACTIVE;
-import io.github.jeddict.ai.util.ClassLoaderUtil;
 import io.github.jeddict.ai.util.PropertyChangeEmitter;
 import java.lang.reflect.InvocationTargetException;
-import org.openide.DialogDisplayer;
-import org.openide.NotifyDescriptor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -210,7 +207,6 @@ public class JeddictBrain implements PropertyChangeEmitter {
      * @return an instance of the configured agent
      */
     public <T> T pairProgrammer(PairProgrammer.Specialist specialist) {
-        ClassLoaderUtil.usePluginClassLoaderIfNeeded(getClass());
         ChatModel chatModel = null;
 
         if (specialist == PairProgrammer.Specialist.HACKER) {
@@ -337,23 +333,6 @@ public class JeddictBrain implements PropertyChangeEmitter {
             );
 
             return toolsSupport;
-        } catch (final NoClassDefFoundError | java.util.ServiceConfigurationError e) {
-
-            LOG.severe(()
-                    -> "Error probing tool support (likely classloader conflict), returning false %s\n%s".formatted(
-                            e.toString(),
-                            Arrays.toString(e.getStackTrace())
-                    )
-            );
-
-            ClassLoaderUtil.enablePluginClassLoaderFallback();
-
-            final NotifyDescriptor nd = new NotifyDescriptor.Message(
-                    "AI tool support probe failed due to a classpath conflict: " + e.toString(),
-                    NotifyDescriptor.ERROR_MESSAGE
-            );
-            DialogDisplayer.getDefault().notify(nd);
-
         } catch (final Throwable t) {
             LOG.severe(() ->
                 "error probing tool support, returning false %s\n%s".formatted(
