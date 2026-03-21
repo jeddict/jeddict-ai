@@ -317,13 +317,14 @@ public class JeddictBrain implements PropertyChangeEmitter {
         // Otherwise probe the model by trying to trigger the execution of the
         // ToolsProbingTool tool
         //
-        final ToolsProbingTool probeTool = new ToolsProbingTool();
-        final ToolsProber prober = AgenticServices.agentBuilder(ToolsProber.class)
-            .chatModel(model(false, null))
-            .tools(probeTool)
-            .build();
-
         try {
+            final ToolsProbingTool probeTool = new ToolsProbingTool();
+            final ToolsProber prober = AgenticServices.agentBuilder(ToolsProber.class)
+                .chatModel(model(false, null))
+                .tools(probeTool)
+                .build();
+
+
             final boolean toolsSupport = prober.probe(probeTool.probeText);
 
             probedModels.put(modelName, toolsSupport);

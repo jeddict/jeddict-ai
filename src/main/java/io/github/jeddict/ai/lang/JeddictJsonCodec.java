@@ -44,6 +44,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Optional;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * A JSON codec implementation using Jackson for serialization and deserialization.
@@ -62,9 +64,11 @@ import java.util.Optional;
 @Internal
 class JeddictJsonCodec implements Json.JsonCodec {
 
+    private final Logger LOG = Logger.getLogger(getClass().getName());
+
     private final ObjectMapper objectMapper;
 
-    private static ObjectMapper createObjectMapper() {
+    private ObjectMapper createObjectMapper() {
 
         SimpleModule module = new SimpleModule("langchain4j-module");
 
@@ -144,13 +148,24 @@ class JeddictJsonCodec implements Json.JsonCodec {
 
         // FAIL_ON_UNKNOWN_PROPERTIES is enabled by default
         // to prevent issues caused by LLM hallucinations
-        return JsonMapper.builder()
+        ObjectMapper mapper = JsonMapper.builder()
                 .visibility(FIELD, ANY)
                 .enable(INDENT_OUTPUT)
                 .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS)
-                .build()
-                .findAndRegisterModules()
-                .registerModule(module);
+                .build();
+
+        try {
+            //
+            // discovery and register modules found in the current module
+            // classloader, catching any error to avoid crashing because of
+            // ServiceLoader failures (common in NetBeans)
+            //
+            mapper.registerModules(ObjectMapper.findModules(JeddictJsonCodec.class.getClassLoader()));
+        } catch (Throwable t) {
+            LOG.log(Level.INFO, "error discoverying jackson modules, continuing with default ones", t);
+        }
+
+        return mapper.registerModule(module);
     }
 
     /**
@@ -170,7 +185,7 @@ class JeddictJsonCodec implements Json.JsonCodec {
      * and throws exceptions for unknown properties to improve handling of unexpected input.
      */
     public JeddictJsonCodec() {
-        this(createObjectMapper());
+        this.objectMapper = createObjectMapper();
     }
 
     @Override
