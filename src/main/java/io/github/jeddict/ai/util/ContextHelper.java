@@ -26,6 +26,7 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
 import java.util.Set;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import org.netbeans.api.project.Project;
 import org.openide.filesystems.FileObject;
@@ -86,52 +87,44 @@ public class ContextHelper {
         final Set<FileObject> scope,
         final Project project,
         final boolean excludeJavadoc,
-        final List<String> includes,
-        final boolean agentEnabled
+        final List<String> includes
     ) {
         if (project == null) {
             return "";
         }
-        String projectDir = project.getProjectDirectory().getPath();
-        StringBuilder inputForAI = new StringBuilder();
+        final Logger LOG = Logger.getLogger(ContextHelper.class.getName());
 
-        if (agentEnabled) {
-            inputForAI.append("\nProject Dir: \n").append(projectDir).append("\n");
-            inputForAI.append("\nProject Files: \n");
-        }
-        Path projectPath = Paths.get(projectDir).toAbsolutePath().normalize();
+        final StringBuilder inputForAI = new StringBuilder();
 
         for (FileObject file : getFilesContextList(scope, includes)) {
-            if (agentEnabled) {
-                Path filePath = Paths.get(file.getPath()).toAbsolutePath().normalize();
-                Path relativePath;
-                try {
-                    relativePath = projectPath.relativize(filePath);
-                } catch (IllegalArgumentException e) {
-                    relativePath = filePath;
-                }
-                inputForAI.append(relativePath)
-                        .append("\n");
-            } else {
-                try {
-                    final String mimeType = Files.probeContentType(Path.of(file.toURI()));
+            LOG.finest(() -> "including file " + file + " in context");
+            try {
+                final String mimeType = Files.probeContentType(Path.of(file.toURI()));
 
-                    if (!mimeType.startsWith("image")) {
-                        String text = getLatestContent(file);
-                        if (text != null) {
-                            if ("java".equals(file.getExt()) && excludeJavadoc) {
-                                text = removeJavadoc(text);
-                            }
-                            inputForAI.append("File: ")
-                                    .append(file.getNameExt())
-                                    .append("\n")
-                                    .append(text)
-                                    .append("\n\n");
+                //
+                // mimeType can be null if probeContentType() is not able
+                // to determine the mime type; it should not happen often though
+                // as getFilesContextList() returnes files with a controlled
+                // list of extensions (via configuration)
+                //
+                if (mimeType != null && !mimeType.startsWith("image")) {
+                    String text = getLatestContent(file);
+                    if (text != null) {
+                        if ("java".equals(file.getExt()) && excludeJavadoc) {
+                            text = removeJavadoc(text);
                         }
+                        inputForAI.append("File: ")
+                                .append(file.getNameExt())
+                                .append("\n")
+                                .append(text)
+                                .append("\n\n");
                     }
-                } catch (Exception ex) {
-                    Exceptions.printStackTrace(ex);
+                } else {
+                    LOG.finest(() -> file + " discarted due to mime type " + mimeType);
                 }
+            } catch (Exception ex) {
+                LOG.finest(() -> "ups, error " + ex + " in including files in context");
+                Exceptions.printStackTrace(ex);
             }
         }
         return inputForAI.toString();

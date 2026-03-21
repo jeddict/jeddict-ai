@@ -613,14 +613,14 @@ public class AssistantChatManager extends JavaFix {
             try {
                 if (sqlCompletion != null) {
                     String context = sqlCompletion.getMetaData();
-                    String messageScopeContent = getTextFilesContext(messageContext, getProject(), excludeJavadoc, includeFiles, agentEnabled);
+                    String messageScopeContent = getTextFilesContext(messageContext, getProject(), excludeJavadoc, includeFiles);
                     if (messageScopeContent != null && !messageScopeContent.isEmpty()) {
                         context = context + "\n\n Files:\n" + messageScopeContent;
                     }
                     response = dbSpecialist(listener, modelName).assistDbMetadata(question, context, sessionRules);
                 } else if (commitMessage && commitChanges != null) {
                     String context = commitChanges;
-                    String messageScopeContent = getTextFilesContext(messageContext, getProject(), excludeJavadoc, includeFiles, agentEnabled);
+                    String messageScopeContent = getTextFilesContext(messageContext, getProject(), excludeJavadoc, includeFiles);
                     if (messageScopeContent != null && !messageScopeContent.isEmpty()) {
                         context = context + "\n\n Files:\n" + messageScopeContent;
                     }
@@ -630,7 +630,7 @@ public class AssistantChatManager extends JavaFix {
                     if (context == null) {
                         context = "";
                     }
-                    final String messageScopeContent = getTextFilesContext(messageContext, projectContext, excludeJavadoc, includeFiles, agentEnabled);
+                    final String messageScopeContent = getTextFilesContext(messageContext, projectContext, excludeJavadoc, includeFiles);
                     if (messageScopeContent != null && !messageScopeContent.isEmpty()) {
                         context = context + "\n\n Files:\n" + messageScopeContent;
                     }
@@ -664,13 +664,13 @@ public class AssistantChatManager extends JavaFix {
                             sessionScopeContent = getProjectContext(mainSessionContext, selectedProject, excludeJavadoc, agentEnabled);
                         } else {
                             mainSessionContext = new HashSet(sessionContext);
-                            sessionScopeContent = getTextFilesContext(mainSessionContext, selectedProject, excludeJavadoc, includeFiles, agentEnabled);
+                            sessionScopeContent = getTextFilesContext(mainSessionContext, selectedProject, excludeJavadoc, includeFiles);
                         }
                         List<String> sessionScopeImages = getImageFilesContext(mainSessionContext, includeFiles);
 
                         Set<FileObject> fitleredMessageContext = new HashSet(messageContext);
                         fitleredMessageContext.removeAll(mainSessionContext);
-                        String messageScopeContent = getTextFilesContext(fitleredMessageContext, selectedProject, excludeJavadoc, includeFiles, agentEnabled);
+                        String messageScopeContent = getTextFilesContext(fitleredMessageContext, selectedProject, excludeJavadoc, includeFiles);
                         List<String> messageScopeImages = getImageFilesContext(fitleredMessageContext, includeFiles);
                         List<String> images = new ArrayList<>();
                         images.addAll(sessionScopeImages);
