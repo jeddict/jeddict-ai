@@ -35,7 +35,6 @@ import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
-import dev.langchain4j.Internal;
 import dev.langchain4j.internal.Json;
 
 import java.io.IOException;
@@ -61,7 +60,6 @@ import java.util.logging.Logger;
  * - https://github.com/langchain4j/langchain4j/issues/4726
  * - https://docs.langchain4j.dev/tutorials/json/
  */
-@Internal
 class JeddictJsonCodec implements Json.JsonCodec {
 
     private final Logger LOG = Logger.getLogger(getClass().getName());
