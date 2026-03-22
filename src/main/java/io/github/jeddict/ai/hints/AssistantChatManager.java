@@ -362,27 +362,35 @@ public class AssistantChatManager extends JavaFix {
                     }
                 } else {
                     result = null;
-                    String question = getQuestionPane().getText();
-                    Map<String, String> prompts = PreferencesManager.getInstance().getPrompts();
+                    final Map<String, String> prompts = PreferencesManager.getInstance().getPrompts();
 
                     //
                     // To make sure the longest matching shortcut matches (i.e.
                     // 'shortcutlong' is 'shortcut' is defined as well) let's
                     // sort the shurtcuts in descending order; this guarantees
                     // 'shortcut2' is matched before "shortcut" in the for loop
+                    // Replace only placeholders as delimited world to avoid
+                    // to detect a placeholder when it is part of a text (e.g.
+                    // a url)
                     //
-                    ArrayList<String> promptKeys = new ArrayList();
+                    final ArrayList<String> promptKeys = new ArrayList();
                     promptKeys.addAll(prompts.keySet());
                     promptKeys.sort(Comparator.reverseOrder());
 
+                    String question = getQuestionPane().getText();
                     for (String key : promptKeys) {
-                        String prompt = prompts.get(key);
-
-                        String toReplace = "/" + key;
-
-                        if (question.contains(toReplace)) {
-                            question = question.replace(toReplace, prompt);
-                        }
+                        //
+                        // - (?<!\S)/ : A negative lookbehind that ensures the
+                        //              character before /diff is not a non-whitespace
+                        //              character (meaning it must be a space, a tab,
+                        //              or the beginning of the string).
+                        // - key : the prompt to match
+                        // - (?!\S) : A negative lookahead that ensures the character
+                        //            after /diff is not a non-whitespace character
+                        //            (meaning it must be a space, a tab, or the
+                        //            end of the string).
+                        //
+                        question = question.replaceAll("(?<!\\S)/" + key + "(?!\\S)", prompts.get(key));
                     }
                     if (!question.isEmpty()) {
                         handlePrompt(question, true);
