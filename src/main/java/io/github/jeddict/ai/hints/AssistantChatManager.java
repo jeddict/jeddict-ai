@@ -379,7 +379,7 @@ public class AssistantChatManager extends JavaFix {
 
                     String question = getQuestionPane().getText();
                     for (String key : promptKeys) {
-                        question = question.replaceAll("\\b" + key + "\\b", prompts.get(key));
+                        question = question.replaceAll("(?<!\\S)/" + key + "(?!\\S)", prompts.get(key));
                     }
                     if (!question.isEmpty()) {
                         handlePrompt(question, true);
