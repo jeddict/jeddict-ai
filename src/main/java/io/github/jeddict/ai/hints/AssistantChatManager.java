@@ -379,6 +379,17 @@ public class AssistantChatManager extends JavaFix {
 
                     String question = getQuestionPane().getText();
                     for (String key : promptKeys) {
+                        //
+                        // - (?<!\S)/ : A negative lookbehind that ensures the
+                        //              character before /diff is not a non-whitespace
+                        //              character (meaning it must be a space, a tab,
+                        //              or the beginning of the string).
+                        // - key : the prompt to match
+                        // - (?!\S) : A negative lookahead that ensures the character
+                        //            after /diff is not a non-whitespace character
+                        //            (meaning it must be a space, a tab, or the
+                        //            end of the string).
+                        //
                         question = question.replaceAll("(?<!\\S)/" + key + "(?!\\S)", prompts.get(key));
                     }
                     if (!question.isEmpty()) {
