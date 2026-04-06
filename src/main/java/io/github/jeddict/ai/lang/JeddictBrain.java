@@ -27,7 +27,6 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
@@ -207,8 +206,6 @@ public class JeddictBrain implements PropertyChangeEmitter {
      * @return an instance of the configured agent
      */
     public <T> T pairProgrammer(PairProgrammer.Specialist specialist) {
-        ChatModel chatModel = null;
-
         if (specialist == PairProgrammer.Specialist.HACKER) {
             if (!probeToolSupport()) {
                 specialist = PairProgrammer.Specialist.HACKER_WITHOUT_TOOLS;
