@@ -26,6 +26,7 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
 import java.util.Set;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import org.netbeans.api.project.Project;
 import org.openide.filesystems.FileObject;
@@ -36,6 +37,8 @@ import org.openide.util.Exceptions;
  * @author Gaurav Gupta
  */
 public class ContextHelper {
+
+    final static Logger LOG = Logger.getLogger(ContextHelper.class.getName());
 
     public static String getProjectContext(
         final Set<FileObject> projectContext,
@@ -113,10 +116,17 @@ public class ContextHelper {
                 inputForAI.append(relativePath)
                         .append("\n");
             } else {
+                LOG.finest(() -> "including file " + file + " in context");
                 try {
                     final String mimeType = Files.probeContentType(Path.of(file.toURI()));
 
-                    if (!mimeType.startsWith("image")) {
+                    //
+                    // mimeType can be null if probeContentType() is not able
+                    // to determine the mime type; it should not happen often though
+                    // as getFilesContextList() returnes files with a controlled
+                    // list of extensions (via configuration)
+                    //
+                    if (mimeType != null && !mimeType.startsWith("image")) {
                         String text = getLatestContent(file);
                         if (text != null) {
                             if ("java".equals(file.getExt()) && excludeJavadoc) {
@@ -128,8 +138,11 @@ public class ContextHelper {
                                     .append(text)
                                     .append("\n\n");
                         }
+                    } else {
+                        LOG.finest(() -> file + " discarted due to mime type " + mimeType);
                     }
                 } catch (Exception ex) {
+                    LOG.finest(() -> "ups, error " + ex + " in including files in context");
                     Exceptions.printStackTrace(ex);
                 }
             }
