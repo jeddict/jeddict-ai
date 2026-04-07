@@ -21,12 +21,13 @@ import org.netbeans.spi.editor.completion.CompletionProvider;
 import static org.netbeans.spi.editor.completion.CompletionProvider.COMPLETION_QUERY_TYPE;
 import org.netbeans.spi.editor.completion.CompletionTask;
 import org.netbeans.spi.editor.completion.support.AsyncCompletionTask;
+import static io.github.jeddict.ai.classpath.JeddictQueryCompletionQuery.JEDDICT_EDITOR_CALLBACK;
 
 /**
  *
  * @author Gaurav Gupta
  */
-@MimeRegistration(mimeType = "text/x-java", service = CompletionProvider.class)
+@MimeRegistration(mimeType = "text/plain", service = CompletionProvider.class)
 public class JeddictQueryCompletionProvider implements CompletionProvider {
 
     @Override
@@ -40,6 +41,9 @@ public class JeddictQueryCompletionProvider implements CompletionProvider {
 
     @Override
     public int getAutoQueryTypes(JTextComponent component, String typedText) {
+        if (component.getDocument().getProperty(JEDDICT_EDITOR_CALLBACK) == null) {
+            return 0;
+        }
         return typedText.equals("@") ? COMPLETION_QUERY_TYPE : 0;
     }
 }

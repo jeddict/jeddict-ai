@@ -465,7 +465,7 @@ public abstract class AssistantChat extends TopComponent {
         buttonPanel.addComponentListener(buttonPanelAdapter);
 
         questionPane = new JEditorPane();
-        questionPane.setEditorKit(createEditorKit("text/x-" + (type == null ? "java" : type)));
+        questionPane.setEditorKit(createEditorKit(MIME_PLAIN_TEXT));
         questionPane.putClientProperty("AI_QUERY_EDITOR", Boolean.TRUE);
 
         Document doc = questionPane.getDocument();
