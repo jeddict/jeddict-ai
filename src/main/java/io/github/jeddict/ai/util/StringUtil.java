@@ -91,4 +91,35 @@ public class StringUtil {
         }
     }
 
+    /**
+     * Converts a camelCase identifier to a human-readable sentence with the
+     * first word capitalised and the rest in lower case.
+     * <p>
+     * Examples:
+     * <ul>
+     *   <li>{@code "checkMavenLocalRepoLocation"} → {@code "Check maven local repo location"}</li>
+     *   <li>{@code "readLogsFromBashSession"} → {@code "Read logs from bash session"}</li>
+     *   <li>{@code "thisIsATool1"} → {@code "This is a tool 1"}</li>
+     * </ul>
+     *
+     * @param camelCase the camelCase string to convert; may be {@code null}
+     * @return the human-readable form, or {@code null} if the input is {@code null}
+     */
+    public static String camelCaseToHumanReadable(String camelCase) {
+        if (camelCase == null || camelCase.isEmpty()) {
+            return camelCase;
+        }
+        String spaced = camelCase
+            // Split acronym-to-CamelCase boundary: "ATool" → "A Tool"
+            .replaceAll("([A-Z]+)([A-Z][a-z])", "$1 $2")
+            // Split camelCase boundary: "thisIs" → "this Is"
+            .replaceAll("([a-z])([A-Z])", "$1 $2")
+            // Split letter-to-digit boundary: "Tool1" → "Tool 1"
+            .replaceAll("([a-zA-Z])(\\d)", "$1 $2")
+            // Split digit-to-letter boundary: "1Tool" → "1 Tool"
+            .replaceAll("(\\d)([a-zA-Z])", "$1 $2");
+        String lower = spaced.toLowerCase();
+        return lower.substring(0, 1).toUpperCase() + lower.substring(1);
+    }
+
 }

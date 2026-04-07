@@ -37,5 +37,8 @@ public class Icons {
     public static final String ICON_CANCEL = "\u274C";       // ❌
     public static final String ICON_STATS = "\uD83D\uDCC8"; // 📈
     public static final String ICON_ATTACH = "\uD83D\uDD17"; // 🔗
+    public static final String ICON_TERMINAL = ">_";         // terminal prompt
+    public static final String ICON_CHEVRON_RIGHT = "\u276F"; // ❯ (collapsed)
+    public static final String ICON_CHEVRON_DOWN  = "\u2304"; // ⌄ (expanded)
 
 }
