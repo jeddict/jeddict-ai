@@ -237,5 +237,143 @@ public class PreferencesManagerFullTest extends TestBase {
         then(preferences.getVarContext()).isEqualTo(io.github.jeddict.ai.settings.AIClassContext.CURRENT_CLASS);
     }
 
+    @Test
+    public void provider_location_and_provider_error_cases() throws Exception {
+        preferences.setProvider(GenAIProvider.GOOGLE);
+        preferences.setProviderLocation("http://example.com");
+        then(preferences.getProviderLocation()).isEqualTo("http://example.com");
+        then(preferences.getProviderLocation(GenAIProvider.GOOGLE)).isEqualTo("http://example.com");
+
+        // Simulate invalid provider stored
+        Field prefsField = PreferencesManager.class.getDeclaredField("preferences");
+        prefsField.setAccessible(true);
+        FilePreferences fp = (FilePreferences) prefsField.get(preferences);
+        fp.put("provider", "INVALID");
+
+        // getProvider should fallback to OPEN_AI
+        then(preferences.getProvider()).isEqualTo(GenAIProvider.OPEN_AI);
+    }
+
+    @Test
+    public void inline_hints_and_flags() {
+        // Inline prompt hint (preference-backed)
+        preferences.setInlinePromptHintEnabled(true);
+        then(preferences.isInlinePromptHintEnabled()).isTrue();
+        preferences.setInlinePromptHintEnabled(false);
+        then(preferences.isInlinePromptHintEnabled()).isFalse();
+
+        // Inline hints (MimeLookup-backed) - try toggling
+        PreferencesManager.setInlineHintsEnabled(true);
+        then(PreferencesManager.isInlineHintsEnabled()).isTrue();
+        PreferencesManager.setInlineHintsEnabled(false);
+        then(PreferencesManager.isInlineHintsEnabled()).isFalse();
+
+        // Other flags
+        preferences.setHintsEnabled(true);
+        then(preferences.isHintsEnabled()).isTrue();
+        preferences.setHintsEnabled(false);
+        then(preferences.isHintsEnabled()).isFalse();
+
+        preferences.setSmartCodeEnabled(true);
+        then(preferences.isSmartCodeEnabled()).isTrue();
+        preferences.setSmartCodeEnabled(false);
+        then(preferences.isSmartCodeEnabled()).isFalse();
+
+        preferences.setCompletionAllQueryType(true);
+        then(preferences.isCompletionAllQueryType()).isTrue();
+        preferences.setCompletionAllQueryType(false);
+        then(preferences.isCompletionAllQueryType()).isFalse();
+
+        preferences.setDescriptionEnabled(true);
+        then(preferences.isDescriptionEnabled()).isTrue();
+        preferences.setDescriptionEnabled(false);
+        then(preferences.isDescriptionEnabled()).isFalse();
+
+        preferences.setExcludeJavadocEnabled(true);
+        then(preferences.isExcludeJavadocEnabled()).isTrue();
+        preferences.setExcludeJavadocEnabled(false);
+        then(preferences.isExcludeJavadocEnabled()).isFalse();
+    }
+
+    @Test
+    public void conversation_and_misc_preferences() throws Exception {
+        preferences.setConversationContext(5);
+        then(preferences.getConversationContext()).isEqualTo(5);
+
+        Map<String,String> headers = new HashMap<>();
+        headers.put("H1","v1");
+        preferences.setCustomHeaders(headers);
+        then(preferences.getCustomHeaders()).containsEntry("H1","v1");
+
+        // Prompts encoding roundtrip
+        Map<String,String> prompts = new HashMap<>();
+        prompts.put("a","line1+line2 & extras");
+        preferences.setPrompts(prompts);
+        then(preferences.getPrompts().get("a")).isEqualTo("line1+line2 & extras");
+
+        // Global rules
+        preferences.setGlobalRules("GLOBAL");
+        then(preferences.getGlobalRules()).isEqualTo("GLOBAL");
+        // old key removed
+        Field prefsField = PreferencesManager.class.getDeclaredField("preferences");
+        prefsField.setAccessible(true);
+        FilePreferences fp = (FilePreferences) prefsField.get(preferences);
+        then(fp.get("systemMessage", null)).isNull();
+
+        // Project rules
+        DummyProject p = new DummyProject(projectFolderPath());
+        preferences.setProjectRules(p, "PRULE");
+        then(preferences.getProjectRules(p)).isEqualTo("PRULE");
+
+        // Assistant/session
+        preferences.setAssistantAction("ACT");
+        then(preferences.getAssistantAction()).isEqualTo("ACT");
+        preferences.setSessionRules("SRULE");
+        then(preferences.getSessionRules()).isEqualTo("SRULE");
+
+        // Test command override
+        preferences.setTestCommand(p, "./mvnw test");
+        then(preferences.getTestCommand(p)).isEqualTo("./mvnw test");
+    }
+
+    @Test
+    public void logging_org_and_numeric_preferences() {
+        preferences.setLogResponsesEnabled(true);
+        then(preferences.isLogResponsesEnabled()).isTrue();
+        preferences.setLogResponsesEnabled(false);
+        then(preferences.isLogResponsesEnabled()).isFalse();
+
+        preferences.setOrganizationId("ORG1");
+        then(preferences.getOrganizationId()).isEqualTo("ORG1");
+
+        preferences.setTopK(7);
+        then(preferences.getTopK()).isEqualTo(7);
+
+        preferences.setMaxCompletionTokens(400);
+        then(preferences.getMaxCompletionTokens()).isEqualTo(400);
+
+        preferences.setMaxOutputTokens(500);
+        then(preferences.getMaxOutputTokens()).isEqualTo(500);
+
+        preferences.setPresencePenalty(0.3);
+        then(preferences.getPresencePenalty()).isEqualTo(0.3);
+
+        preferences.setFrequencyPenalty(0.4);
+        then(preferences.getFrequencyPenalty()).isEqualTo(0.4);
+
+        preferences.setSeed(42);
+        then(preferences.getSeed()).isEqualTo(42);
+
+        preferences.setMaxRetries(3);
+        then(preferences.getMaxRetries()).isEqualTo(3);
+
+        // Token granularity when tokenGranularity not null
+        preferences.setTokenGranularity(TokenGranularity.WEEK);
+        then(preferences.getTokenGranularity()).isEqualTo(TokenGranularity.WEEK);
+
+        preferences.setLastBrowseDirectory("/tmp");
+        then(preferences.getLastBrowseDirectory()).isEqualTo("/tmp");
+    }
+
 }
 
