@@ -62,9 +62,10 @@ public class PreferencesManagerMoreTest extends TestBase {
 
     @Test
     public void gradle_build_detection() throws Exception {
-        // create gradle files in project dir
+        // create gradle files in project dir and remove pom.xml so Maven doesn't take precedence
         Files.createFile(projectFolderPath().resolve("gradlew"));
         Files.createFile(projectFolderPath().resolve("build.gradle"));
+        Files.deleteIfExists(projectFolderPath().resolve("pom.xml"));
 
         DummyProject p = new DummyProject(projectFolderPath());
         then(preferences.getBuildCommand(p)).isEqualTo("./gradlew build");
