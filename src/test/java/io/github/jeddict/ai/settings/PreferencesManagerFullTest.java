@@ -1,3 +1,18 @@
+/**
+ * Copyright 2025 the original author or authors from the Jeddict project (https://jeddict.github.io/).
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package io.github.jeddict.ai.settings;
 
 import io.github.jeddict.ai.models.registry.GenAIModel;
@@ -142,4 +157,85 @@ public class PreferencesManagerFullTest extends TestBase {
         preferences.setBuildCommand(p, "./mvnw install");
         then(preferences.getBuildCommand(p)).isEqualTo("./mvnw install");
     }
+
+    @Test
+    public void chat_model_and_model_list_and_chatModel() {
+        preferences.setChatModel("chat-x");
+        then(preferences.getChatModel()).isEqualTo("chat-x");
+
+        preferences.setModelList(List.of("alpha","beta"));
+        then(preferences.getModelList()).containsExactly("alpha","beta");
+
+        preferences.setModelList(List.of());
+        then(preferences.getModelList()).isEmpty();
+    }
+
+    @Test
+    public void prompts_migration_and_default_restoration() throws Exception {
+        // Clear prompts node to force restoration
+        Field prefsField = PreferencesManager.class.getDeclaredField("preferences");
+        prefsField.setAccessible(true);
+        FilePreferences fp = (FilePreferences) prefsField.get(preferences);
+
+        fp.setChild("prompts", new org.json.JSONObject());
+
+        Map<String,String> loaded = preferences.getPrompts();
+        // system prompts should be present after restoration
+        then(loaded).containsKey("rest");
+        then(loaded.get("rest")).isNotBlank();
+
+        // underlying preferences should have the prompt saved
+        org.json.JSONObject node = fp.getChild("prompts");
+        then(node.keySet()).contains("rest");
+    }
+
+    @Test
+    public void genai_model_list_error_handling() throws Exception {
+        Field prefsField = PreferencesManager.class.getDeclaredField("preferences");
+        prefsField.setAccessible(true);
+        FilePreferences fp = (FilePreferences) prefsField.get(preferences);
+
+        String key = "modelPreferenceList_" + GenAIProvider.OPEN_AI.name();
+        // provider invalid will be skipped by getGenAIModelList
+        fp.put(key, "[{\"provider\":\"INVALID\",\"name\":\"nm\",\"description\":\"d\",\"inputPrice\":0.1,\"outputPrice\":0.2}]");
+
+        List<GenAIModel> list = preferences.getGenAIModelList(GenAIProvider.OPEN_AI.name());
+        then(list).isEmpty();
+        then(preferences.getGenAIModelByName(GenAIProvider.OPEN_AI.name(), "nm")).isNull();
+
+        // ensure map gracefully handles the same malformed entry
+        then(preferences.getGenAIModelMap(GenAIProvider.OPEN_AI.name()).isEmpty()).isTrue();
+    }
+
+    @Test
+    public void import_nonexistent_throws() {
+        thenThrownBy(() -> preferences.importPreferences("nonexistent-file.json")).isInstanceOf(Exception.class);
+    }
+
+    @Test
+    public void ant_build_detection() throws Exception {
+        // create ant build file and remove other build files
+        Files.createFile(projectFolderPath().resolve("build.xml"));
+        Files.deleteIfExists(projectFolderPath().resolve("pom.xml"));
+        Files.deleteIfExists(projectFolderPath().resolve("build.gradle"));
+        Files.deleteIfExists(projectFolderPath().resolve("gradlew"));
+
+        DummyProject p = new DummyProject(projectFolderPath());
+        then(preferences.getBuildCommand(p)).isEqualTo("ant build");
+        then(preferences.getTestCommand(p)).isEqualTo("ant test");
+    }
+
+    @Test
+    public void class_context_and_var_context_roundtrip() {
+        preferences.setClassContextInlineHint(io.github.jeddict.ai.settings.AIClassContext.CURRENT_PACKAGE);
+        then(preferences.getClassContextInlineHint()).isEqualTo(io.github.jeddict.ai.settings.AIClassContext.CURRENT_PACKAGE);
+
+        preferences.setClassContext(io.github.jeddict.ai.settings.AIClassContext.ENTIRE_PROJECT);
+        then(preferences.getClassContext()).isEqualTo(io.github.jeddict.ai.settings.AIClassContext.ENTIRE_PROJECT);
+
+        preferences.setVarContext(io.github.jeddict.ai.settings.AIClassContext.CURRENT_CLASS);
+        then(preferences.getVarContext()).isEqualTo(io.github.jeddict.ai.settings.AIClassContext.CURRENT_CLASS);
+    }
+
 }
+
