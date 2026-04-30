@@ -209,7 +209,7 @@ public class PreferencesManagerFullTest extends TestBase {
 
     @Test
     public void import_nonexistent_throws() {
-        thenThrownBy(() -> preferences.importPreferences("nonexistent-file.json")).isInstanceOf(Exception.class);
+        org.assertj.core.api.BDDAssertions.thenThrownBy(() -> preferences.importPreferences("nonexistent-file.json")).isInstanceOf(Exception.class);
     }
 
     @Test
