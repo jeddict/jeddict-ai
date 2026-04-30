@@ -1,0 +1,117 @@
+/**
+ * PreferencesFX <-> Atlanta styles bridge
+ */
+
+.root {
+    /* 1. Fix 'Could not resolve -fx-text-base-color' for Labels */
+    -fx-text-base-color: -color-fg-default;
+
+    /* 2. Standard Modena Lookups (Satisfies general library requirements) */
+    -fx-base: -color-bg-default;
+    -fx-background: -color-bg-default;
+    -fx-control-inner-background: -color-bg-default;
+    -fx-text-inner-color: -color-fg-default;
+}
+
+/* 3. Fix 'ClassCastException' in CustomTextField */
+/* We reset the background-color to a single value to stop the
+   ControlsFX CSS from trying to blend String tokens as Colors */
+.custom-text-field {
+    -fx-background-color: -color-bg-default !important;
+    -fx-background-insets: 0 !important;
+    -fx-background-radius: 4 !important;
+}
+
+/* 4. Fix ToggleSwitch Label and Thumb Errors */
+.toggle-switch .label {
+    -fx-text-fill: -color-fg-default;
+}
+
+.toggle-switch .thumb-area {
+    /* Hard-coding a simple color list stops the internal casting error */
+    -fx-background-color: -color-border-default, -color-bg-subtle !important;
+}
+
+
+/* Fix for ToggleSwitch Thumb (The sliding circle) */
+.toggle-switch .thumb {
+    /* We reset the background to a simple color.
+       This stops the ClassCastException because it removes the
+       reference to broken Modena lookups like -fx-body-color. */
+    -fx-background-color: -color-bg-default !important;
+
+    /* Optional: Add a subtle border to make the thumb visible
+       against the track in dark mode */
+    -fx-border-color: -color-border-default !important;
+    -fx-border-radius: 10 !important;
+    -fx-background-radius: 10 !important;
+}
+
+/* Fix for ToggleSwitch Thumb when selected */
+.toggle-switch:selected .thumb {
+    -fx-background-color: white !important; /* Standard toggle look */
+}
+
+/* Ensure the thumb-area (the track) also doesn't crash */
+.toggle-switch .thumb-area {
+    -fx-background-color: -color-bg-subtle !important;
+    -fx-background-radius: 10 !important;
+}
+
+.toggle-switch:selected .thumb-area {
+    -fx-background-color: -color-accent-emphasis !important;
+}
+
+/* Fix for PreferencesFX / FormsFX Simple TextArea */
+.simple-textarea {
+    /* 1. Reset the background to a single flat color to stop the casting error */
+    -fx-background-color: -color-bg-default !important;
+
+    /* 2. Style the borders to match AtlantaFX */
+    -fx-border-color: -color-border-default !important;
+    -fx-border-width: 1px !important;
+
+    /* 3. Ensure text visibility */
+    -fx-text-fill: -color-fg-default !important;
+}
+
+/* Optional: Improve focus visibility to match your theme */
+.simple-textarea:focused {
+    -fx-border-color: -color-accent-fg !important;
+    -fx-background-color: -color-bg-default !important;
+}
+
+.navigation-view {
+    -fx-min-width: 350px !important;
+    -fx-pref-width: 350px !important;
+}
+
+/* Ensure the TreeView inside also fills the width */
+.navigation-view .tree-view {
+    -fx-min-width: 350px !important;
+}
+
+.bread-crumb-bar .button {
+    -visibility: false;
+}
+
+.custom-element-control {
+    -fx-text-alignment: center;
+}
+
+.group-title-setting-label,
+.group-title-setting-last-label {
+    -fx-wrap-text: true;
+    -fx-max-width: 350px;
+}
+
+#class-context-legend {
+    -fx-padding: 12 20 12 20;
+    -fx-border-width: 1px;
+    -fx-border-color: -color-border-default;
+    -fx-border-insets: 35 0 0 0;
+}
+
+.opaque-panel {
+    -fx-background-color: -color-bg-default;
+}

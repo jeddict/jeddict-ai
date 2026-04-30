@@ -47,6 +47,8 @@
         <maven.compiler.release>17</maven.compiler.release>
         <langchain4j.version>1.11.0</langchain4j.version>
         <netbeans.version>RELEASE290</netbeans.version>
+        <javafx-toolkit.version>0.0.1</javafx-toolkit.version>
+        <testfx.version>4.0.18</testfx.version>
     </properties>
 
     <build>
@@ -82,7 +84,6 @@
                             <id>org.netbeans.api:org-netbeans-modules-java-sourceui</id>
                             <type>impl</type>
                         </dependency>
-
                         <dependency>
                             <id>org.netbeans.api:org-netbeans-api-progress-nb</id>
                             <type>impl</type>
@@ -167,6 +168,14 @@
                             <id>org.netbeans.api:org-netbeans-api-java-classpath</id>
                             <type>impl</type>
                         </dependency>
+                        <dependency>
+                            <id>org.netbeans.api:org-netbeans-libs-flexmark</id>
+                            <type>impl</type>
+                        </dependency>
+                        <dependency>
+                            <id>com.github.stefanofornari:nb-javafx-toolkit</id>
+                            <type>impl</type>
+                        </dependency>
                     </moduleDependencies>
                     <publicPackages>
                         <publicPackage>io.github.jeddict.ai</publicPackage>
@@ -232,6 +241,13 @@
                         --add-exports=java.desktop/java.awt.peer=ALL-UNNAMED
                         --add-exports=java.desktop/sun.awt.event=ALL-UNNAMED
                         --add-exports=java.base/sun.security.action=ALL-UNNAMED
+                        -Dglass.platform=Monocle
+                        -Dmonocle.platform=Headless
+                        -Dmonocle.platform.headless.width=1024
+                        -Dmonocle.platform.headless.height=768
+                        -Dprism.order=sw
+                        -Dtestfx.headless=true
+                        -Dtestfx.robot=glass
                     </argLine>
                     <systemPropertyVariables>
                         <java.util.logging.config.file>src/test/resources/logging.properties</java.util.logging.config.file>
@@ -380,6 +396,16 @@
             <version>3.26.2</version>
         </dependency>
         <dependency>
+           <groupId>com.github.stefanofornari</groupId>
+           <artifactId>nb-javafx-toolkit</artifactId>
+           <version>${javafx-toolkit.version}c</version>
+        </dependency>
+        <!-- -->
+
+        <!--
+            Netbeans
+        -->
+        <dependency>
             <groupId>org.yaml</groupId>
             <artifactId>snakeyaml</artifactId>
             <version>2.3</version>
@@ -514,7 +540,6 @@
             <artifactId>org-netbeans-modules-editor</artifactId>
             <version>${netbeans.version}</version>
         </dependency>
-
         <dependency>
             <groupId>org.netbeans.api</groupId>
             <artifactId>org-openide-windows</artifactId>
@@ -535,7 +560,6 @@
             <artifactId>org-openide-util</artifactId>
             <version>${netbeans.version}</version>
         </dependency>
-
         <dependency>
             <groupId>org.netbeans.api</groupId>
             <artifactId>org-netbeans-api-annotations-common</artifactId>
@@ -703,6 +727,12 @@
             <version>${netbeans.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-libs-flexmark</artifactId>
+            <version>${netbeans.version}</version>
+        </dependency>
+        <!-- -->
+        <dependency>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
             <version>2.21.0</version>
@@ -721,36 +751,6 @@
             <groupId>net.bytebuddy</groupId>
             <artifactId>byte-buddy</artifactId>
             <version>1.18.2</version>
-        </dependency>
-        <dependency>
-            <groupId>jakarta.ws.rs</groupId>
-            <artifactId>jakarta.ws.rs-api</artifactId>
-            <version>4.0.0</version>
-        </dependency>
-        <dependency>
-            <groupId>org.openjfx</groupId>
-            <artifactId>javafx-controls</artifactId>
-            <version>21.0.10</version>
-        </dependency>
-        <dependency>
-            <groupId>org.openjfx</groupId>
-            <artifactId>javafx-fxml</artifactId>
-            <version>21.0.10</version>
-        </dependency>
-        <dependency>
-            <groupId>org.openjfx</groupId>
-            <artifactId>javafx-swing</artifactId>
-            <version>21.0.10</version>
-        </dependency>
-        <dependency>
-            <groupId>org.openjfx</groupId>
-            <artifactId>javafx-base</artifactId>
-            <version>21.0.10</version>
-        </dependency>
-        <dependency>
-            <groupId>org.openjfx</groupId>
-            <artifactId>javafx-graphics</artifactId>
-            <version>21.0.10</version>
         </dependency>
 
         <!--
@@ -793,6 +793,12 @@
             <version>3.27.7</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.github.stefanbirkner</groupId>
+            <artifactId>system-lambda</artifactId>
+            <version>1.2.1</version>
+            <scope>test</scope>
+        </dependency>
 
         <!--
             Headless testing
@@ -810,9 +816,27 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.github.stefanbirkner</groupId>
-            <artifactId>system-lambda</artifactId>
-            <version>1.2.1</version>
+            <groupId>org.testfx</groupId>
+            <artifactId>testfx-core</artifactId>
+            <version>${testfx.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testfx</groupId>
+            <artifactId>testfx-junit5</artifactId>
+            <version>${testfx.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testfx</groupId>
+            <artifactId>openjfx-monocle</artifactId>
+            <version>21.0.2</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.ws.rs</groupId>
+            <artifactId>jakarta.ws.rs-api</artifactId>
+            <version>4.0.0</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

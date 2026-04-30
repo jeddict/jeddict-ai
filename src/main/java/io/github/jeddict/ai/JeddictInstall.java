@@ -51,6 +51,13 @@ public class JeddictInstall extends ModuleInstall {
 
         configureLogging();
 
+        /*
+        Platform.setImplicitExit(false);
+        Platform.startup(() -> {
+            Application.setUserAgentStylesheet(new PrimerLight().getUserAgentStylesheet());
+        });
+        */
+
         //
         // Old versions of Jeddict used to store the configuration in $HOME/jeddict.json,
         // therefore the new code shall migrate the old settings is found.
