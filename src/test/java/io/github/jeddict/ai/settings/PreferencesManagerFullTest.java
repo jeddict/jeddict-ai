@@ -14,6 +14,7 @@ import java.util.Map;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import io.github.jeddict.ai.test.DummyProject;
 
 public class PreferencesManagerFullTest extends TestBase {
 
@@ -132,8 +133,8 @@ public class PreferencesManagerFullTest extends TestBase {
     @Test
     public void build_and_test_command_detection() throws Exception {
         // projectPath points to the copied minimal project
-        Path pom = projectFolderPath().resolve("pom.xml");
-        var p = project(pom.toString());
+        // Use DummyProject helper for tests instead of loading a real NetBeans project
+        DummyProject p = new DummyProject(projectFolderPath());
 
         then(preferences.getBuildCommand(p)).isEqualTo("mvn install");
         then(preferences.getTestCommand(p)).isEqualTo("mvn test");
