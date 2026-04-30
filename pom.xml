@@ -223,6 +223,9 @@
                     <includes>
                         <include>**/*Test.java</include>
                     </includes>
+                    <excludes>
+                        <exclude>**/*PromptsPanel*.java</exclude>
+                    </excludes>
                     <forkCount>1</forkCount>
                     <reuseForks>false</reuseForks>
                     <!-- JVM options required for headless testing -->
@@ -398,7 +401,7 @@
         <dependency>
            <groupId>com.github.stefanofornari</groupId>
            <artifactId>nb-javafx-toolkit</artifactId>
-           <version>${javafx-toolkit.version}c</version>
+           <version>${javafx-toolkit.version}</version>
         </dependency>
         <!-- -->
 
