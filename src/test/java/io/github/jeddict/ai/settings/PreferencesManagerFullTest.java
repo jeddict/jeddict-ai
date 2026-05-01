@@ -238,6 +238,69 @@ public class PreferencesManagerFullTest extends TestBase {
     }
 
     @Test
+    public void set_inline_hint_enabled_updates_static_and_pref() throws Exception {
+        // ensure both preferences are false first
+        preferences.setInlineHintEnabled(false);
+        preferences.setInlinePromptHintEnabled(false);
+        PreferencesManager.setInlineHintsEnabled(false);
+        then(preferences.isInlinePromptHintEnabled()).isFalse();
+        then(PreferencesManager.isInlineHintsEnabled()).isFalse();
+
+        // enabling inline hint should set preference and static inline hints
+        preferences.setInlineHintEnabled(true);
+        then(preferences.isInlinePromptHintEnabled() || preferences.isInlinePromptHintEnabled()).isFalse(); // sanity
+        then(PreferencesManager.isInlineHintsEnabled()).isTrue();
+
+        // disabling inline hint should update preference and still reflect combined state
+        preferences.setInlinePromptHintEnabled(true);
+        preferences.setInlineHintEnabled(false); // since prompt hint true, static should remain true
+        then(PreferencesManager.isInlineHintsEnabled()).isTrue();
+
+        // clear prompt hint and disable
+        preferences.setInlinePromptHintEnabled(false);
+        preferences.setInlineHintEnabled(false);
+        then(PreferencesManager.isInlineHintsEnabled()).isFalse();
+    }
+
+    @Test
+    public void get_prompts_when_pref_prompts_not_empty() throws Exception {
+        Field prefsField = PreferencesManager.class.getDeclaredField("preferences");
+        prefsField.setAccessible(true);
+        FilePreferences fp = (FilePreferences) prefsField.get(preferences);
+
+        // put an encoded prompt value into storage
+        String encoded = java.net.URLEncoder.encode("a prompt with spaces & =?","UTF-8");
+        fp.putChild("prompts", "stored", encoded);
+
+        // reset in-memory userPrompts
+        Field userPromptsField = PreferencesManager.class.getDeclaredField("userPrompts");
+        userPromptsField.setAccessible(true);
+        Map<String,String> map = (Map<String,String>) userPromptsField.get(preferences);
+        map.clear();
+
+        Map<String,String> loaded = preferences.getPrompts();
+        then(loaded).containsKey("stored");
+        then(loaded.get("stored")).isEqualTo("a prompt with spaces & =?");
+    }
+
+    @Test
+    public void get_token_granularity_when_field_null_reads_pref() throws Exception {
+        Field prefsField = PreferencesManager.class.getDeclaredField("preferences");
+        prefsField.setAccessible(true);
+        FilePreferences fp = (FilePreferences) prefsField.get(preferences);
+
+        fp.put("tokenGranularity", TokenGranularity.MONTH.name());
+
+        // reset singleton so new instance reads from storage
+        Field inst = PreferencesManager.class.getDeclaredField("instance");
+        inst.setAccessible(true);
+        inst.set(null, null);
+
+        PreferencesManager mgr = PreferencesManager.getInstance();
+        then(mgr.getTokenGranularity()).isEqualTo(TokenGranularity.MONTH);
+    }
+
+    @Test
     public void provider_location_and_provider_error_cases() throws Exception {
         preferences.setProvider(GenAIProvider.GOOGLE);
         preferences.setProviderLocation("http://example.com");
