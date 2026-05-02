@@ -66,22 +66,39 @@ public class JeddictPreferences {
 
     final public SettingsProperty settings = new SettingsProperty();
 
-    final public PreferencesFx preferences;
+    public PreferencesFx preferences;
 
     private String asset(String key) {
         return BUNDLE.containsKey(key) ? BUNDLE.getString(key) : key;
     }
 
-    final public HyperlinkLabel configPathLabel = new HyperlinkLabel(
-        asset("AIAssistancePanel.configPathLabel.text") + " [%s]".formatted(configPath())
-    );
-    //final public HyperlinkLabel modelsUrl = new HyperlinkLabel("https://models");
-    final public VBox modelsUrl = BBCodeParser.createLayout("[url=%s]%s[/url]".formatted("https://models", "https://models"));
-    final public VBox apiKeyUrl = BBCodeParser.createLayout("[url=%s]%s[/url]".formatted("https://api-keys", "https://api-keys"));
-    final private Button clearCacheButton = new Button(asset("AIAssistancePanel.cleanDataButton.text"));
-    final private Button manageModelButton = new Button(asset("AIAssistancePanel.manageModelsButton.text"));
+    public HyperlinkLabel configPathLabel;
+    public VBox modelsUrl;
+    public VBox apiKeyUrl;
+    private Button clearCacheButton;
+    private Button manageModelButton;
 
     public JeddictPreferences() {
+        initUi();
+    }
+
+    public JeddictPreferences(boolean headless) {
+        if (!headless) {
+            initUi();
+        }
+    }
+
+    private PromptsPanelController promptsController;
+
+    private void initUi() {
+        // lazily create JavaFX UI components to avoid initializing toolkit when running headless tests
+        configPathLabel = new HyperlinkLabel(
+            asset("AIAssistancePanel.configPathLabel.text") + " [%s]".formatted(configPath())
+        );
+        modelsUrl = BBCodeParser.createLayout("[url=%s]%s[/url]".formatted("https://models", "https://models"));
+        apiKeyUrl = BBCodeParser.createLayout("[url=%s]%s[/url]".formatted("https://api-keys", "https://api-keys"));
+        clearCacheButton = new Button(asset("AIAssistancePanel.cleanDataButton.text"));
+        manageModelButton = new Button(asset("AIAssistancePanel.manageModelsButton.text"));
 
         final Setting<StringField, StringProperty> rulesSetting =
             Setting.of(asset("AIAssistancePanel.globalRulesLabel.text"), settings.string("globalRules"));
@@ -89,7 +106,9 @@ public class JeddictPreferences {
             .multiline(true)
             .tooltip(asset("AIAssistancePanel.globalRulesLabel.toolTipText"));
 
-        final PromptsPanelController ctrl = new PromptsPanelController(new HashMap());
+        // initialize prompts controller with existing saved prompts so UI shows current prompts
+        final PromptsPanelController ctrl = new PromptsPanelController(new java.util.HashMap<>(PreferencesManager.getInstance().getPrompts()));
+        this.promptsController = ctrl;
         ctrl.table.setTooltip(new FieldTooltip(asset("AIAssistancePanel.promptTable.toolTipText")));
 
         preferences = PreferencesFx.of(JeddictPreferences.class,
@@ -359,7 +378,7 @@ public class JeddictPreferences {
             = Setting.of(
                 asset("AIAssistancePanel.gptModelLabel.text"),
                 FXCollections.observableArrayList(List.of("mini", "nano")),
-                settings.object("model")
+                settings.object("model", "")
             );
         modelSetting.getElement().tooltip(asset("AIAssistancePanel.gptModelLabel.toolTipText"));
 
@@ -462,6 +481,129 @@ public class JeddictPreferences {
                     )
                 )
             );
+    }
+
+    public void save() {
+        final PreferencesManager pm = PreferencesManager.getInstance();
+
+        // Booleans (explicit casts so wrong types fail fast) - skip when not present
+        Object v;
+        v = settings.getValue("enableAssistant"); if (v != null) pm.setAiAssistantActivated((Boolean) v);
+        v = settings.getValue("enableInlineCompletion"); if (v != null) pm.setSmartCodeEnabled((Boolean) v);
+        v = settings.getValue("enableInlinePromptHint"); if (v != null) pm.setInlinePromptHintEnabled((Boolean) v);
+
+        // Inline hint - prefer explicit key used by UI
+        v = settings.getValue("enableInlineHintOnEnter"); if (v != null) pm.setInlineHintEnabled((Boolean) v);
+        // Hints enabled
+        v = settings.getValue("enableInlineHint"); if (v != null) pm.setHintsEnabled((Boolean) v);
+
+        // Class / var contexts
+        v = settings.getValue("classContext"); if (v != null) pm.setClassContext((AIClassContext) v);
+        v = settings.getValue("classContext"); if (v != null) pm.setClassContextInlineHint((AIClassContext) v);
+        v = settings.getValue("varClassContext"); if (v != null) pm.setVarContext((AIClassContext) v);
+
+        // Provider and model
+        Object prov = settings.getValue("provider");
+        if (prov instanceof io.github.jeddict.ai.models.registry.GenAIProvider) {
+            pm.setProvider((io.github.jeddict.ai.models.registry.GenAIProvider) prov);
+        } else if (prov instanceof String) {
+            String s = (String) prov;
+            io.github.jeddict.ai.models.registry.GenAIProvider found = io.github.jeddict.ai.models.registry.GenAIProvider.OTHER;
+            for (io.github.jeddict.ai.models.registry.GenAIProvider p : io.github.jeddict.ai.models.registry.GenAIProvider.values()) {
+                if (p.name().replace("_", "").equalsIgnoreCase(s.replaceAll("\\s|_", ""))) {
+                    found = p;
+                    break;
+                }
+            }
+            pm.setProvider(found);
+        } else {
+            throw new ClassCastException("Unsupported provider type: " + (prov == null ? "null" : prov.getClass()));
+        }
+        v = settings.getValue("model"); if (v != null) pm.setModel((String) v);
+        v = settings.getValue("apiKey"); if (v != null) pm.setApiKey((String) v);
+        v = settings.getValue("provider_location"); if (v != null) pm.setProviderLocation((String) v);
+
+        // Numeric / double values
+        v = settings.getValue("temperature"); if (v != null) pm.setTemperature(((Number) v).doubleValue());
+        v = settings.getValue("topP"); if (v != null) pm.setTopP(((Number) v).doubleValue());
+        v = settings.getValue("presencePenalty"); if (v != null) pm.setPresencePenalty(((Number) v).doubleValue());
+        v = settings.getValue("frequencyPenalty"); if (v != null) pm.setFrequencyPenalty(((Number) v).doubleValue());
+        v = settings.getValue("seed"); if (v != null) pm.setSeed(((Number) v).intValue());
+        v = settings.getValue("maxTokens"); if (v != null) pm.setMaxTokens(((Number) v).intValue());
+        v = settings.getValue("maxCompletionTokens"); if (v != null) pm.setMaxCompletionTokens(((Number) v).intValue());
+        v = settings.getValue("maxOutputTokens"); if (v != null) pm.setMaxOutputTokens(((Number) v).intValue());
+        v = settings.getValue("topK"); if (v != null) pm.setTopK(((Number) v).intValue());
+
+        // Stream / timeout / retries
+        v = settings.getValue("stream"); if (v != null) pm.setStreamEnabled((Boolean) v);
+        v = settings.getValue("timeout"); if (v != null) pm.setTimeout(((Number) v).intValue());
+        v = settings.getValue("maxRetries"); if (v != null) pm.setMaxRetries(((Number) v).intValue());
+        v = settings.getValue("organizationId"); if (v != null) pm.setOrganizationId((String) v);
+
+        // Include / allow code execution
+        v = settings.getValue("allowCodeExecution"); if (v != null) pm.setAllowCodeExecution((Boolean) v);
+        v = settings.getValue("includeCodeExecutionOutput"); if (v != null) pm.setIncludeCodeExecutionOutput((Boolean) v);
+
+        // File extensions and excludes
+        v = settings.getValue("fileExtensionToInclude"); if (v != null) pm.setFileExtensionToInclude((String) v);
+        v = settings.getValue("excludeDirs"); if (v != null) pm.setExcludeDirs((String) v);
+
+        // Conversation context mapping (string -> int)
+        Object convo = settings.getValue("conversationContext");
+        if (convo instanceof Number) {
+            pm.setConversationContext(((Number) convo).intValue());
+        } else if (convo instanceof String) {
+            String s = (String) convo;
+            s = s.toLowerCase();
+            int ctx = 3; // default
+            if (s.contains("no") || s.contains("don’t") || s.contains("don't")) ctx = 0;
+            else if (s.contains("last reply") || s.contains("last chat")) ctx = 1;
+            else if (s.contains("3")) ctx = 3;
+            else if (s.contains("5")) ctx = 5;
+            else if (s.contains("10")) ctx = 10;
+            else if (s.contains("entire") || s.contains("all")) ctx = -1;
+            pm.setConversationContext(ctx);
+        }
+
+        // Global rules
+        pm.setGlobalRules((String) settings.getValue("globalRules"));
+
+        // Headers parsing: support lines or comma separated pairs key:value
+        String raw = (String) settings.getValue("headers");
+        java.util.Map<String, String> map = new HashMap<>();
+        String[] lines = raw.split("[\\r\\n,]");
+        for (String line : lines) {
+            String t = line.trim();
+            if (t.isEmpty()) continue;
+            String[] parts = t.split(":", 2);
+            if (parts.length == 2) {
+                map.put(parts[0].trim(), parts[1].trim());
+            } else if (t.contains("=")) {
+                parts = t.split("=", 2);
+                map.put(parts[0].trim(), parts[1].trim());
+            }
+        }
+        if (!map.isEmpty()) pm.setCustomHeaders(map);
+
+        // Prompts: if the PromptsPanelController exists, gather its items and save
+        if (this.promptsController != null) {
+            java.util.Map<String, String> prompts = new java.util.HashMap<>();
+            this.promptsController.items.forEach(e -> {
+                if (e.getKey() != null && !e.getKey().isEmpty()) prompts.put(e.getKey(), e.getValue());
+            });
+            pm.setPrompts(prompts);
+        } else {
+            // Fallback: if prompts were provided via SettingsProperty (headless tests), accept a Map
+            Object maybePrompts = settings.getValue("prompts");
+            if (maybePrompts instanceof java.util.Map) {
+                java.util.Map<?,?> rawPrompts = (java.util.Map<?,?>) maybePrompts;
+                java.util.Map<String,String> prompts = new java.util.HashMap<>();
+                rawPrompts.forEach((k,val) -> {
+                    if (k != null) prompts.put(k.toString(), val == null ? "" : val.toString());
+                });
+                pm.setPrompts(prompts);
+            }
+        }
     }
 
     private class ClassContextLegend extends StackPane {

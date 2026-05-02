@@ -22,7 +22,6 @@ import io.github.jeddict.ai.test.TestBase;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,13 +44,8 @@ public class PreferencesManagerFullTest extends TestBase {
         // Ensure user dir exists
         Files.createDirectory(HOME.resolve(USER));
 
-        // Re-initialize with test home
-        java.util.concurrent.Callable<Void> c = () -> {
-            System.setProperty("user.home", HOME.toAbsolutePath().toString());
-            preferences = PreferencesManager.getInstance();
-            return null;
-        };
-        c.call();
+        System.setProperty("user.home", HOME.toAbsolutePath().toString());
+        preferences = PreferencesManager.getInstance();
     }
 
     @Test
