@@ -504,7 +504,9 @@ public class JeddictPreferences {
 
         // Provider and model
         Object prov = settings.getValue("provider");
-        if (prov instanceof io.github.jeddict.ai.models.registry.GenAIProvider) {
+        if (prov == null) {
+            // nothing set in UI for provider; skip
+        } else if (prov instanceof io.github.jeddict.ai.models.registry.GenAIProvider) {
             pm.setProvider((io.github.jeddict.ai.models.registry.GenAIProvider) prov);
         } else if (prov instanceof String) {
             String s = (String) prov;
