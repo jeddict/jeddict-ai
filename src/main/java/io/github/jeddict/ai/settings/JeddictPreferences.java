@@ -27,13 +27,16 @@ import com.dlsc.preferencesfx.model.Category;
 import com.dlsc.preferencesfx.model.Group;
 import com.dlsc.preferencesfx.model.Setting;
 import com.dlsc.preferencesfx.view.NavigationView;
+import com.dlsc.preferencesfx.view.PreferencesFxView;
 import java.awt.Desktop;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.ResourceBundle;
+import javafx.application.Platform;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.IntegerProperty;
@@ -42,6 +45,7 @@ import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
 import javafx.geometry.HPos;
 import javafx.geometry.Insets;
+import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Tooltip;
 import javafx.scene.control.TreeView;
@@ -51,9 +55,11 @@ import javafx.scene.layout.VBox;
 import javafx.scene.text.TextAlignment;
 import javafx.scene.text.TextFlow;
 import javafx.util.Duration;
+import javax.swing.JComponent;
 import org.controlsfx.control.MasterDetailPane;
 import org.controlsfx.control.HyperlinkLabel;
 import static ste.lloop.Loop.on;
+import ste.netbeans.javafx.JFXPanel;
 
 /**
  *
@@ -78,52 +84,90 @@ public class JeddictPreferences {
     private Button clearCacheButton;
     private Button manageModelButton;
 
-    public JeddictPreferences() {
-        initUi();
-    }
 
-    public JeddictPreferences(boolean headless) {
-        if (!headless) {
-            initUi();
-        }
+    public JeddictPreferences() {
     }
 
     private PromptsPanelController promptsController;
+    private PreferencesFxView view;
 
-    private void initUi() {
-        // initialize all expected settings keys with safe defaults to avoid PreferencesFx history NPEs
-        // (ensures properties exist before PreferencesFx attaches listeners)
-        settings.bool("enableAssistant", false);
-        settings.bool("enableInlineCompletion", false);
-        settings.bool("enableInlinePromptHint", false);
-        settings.bool("enableInlineHintOnEnter", false);
-        settings.bool("enableInlineHint", false);
-        settings.object("classContext", AIClassContext.CURRENT_CLASS);
-        settings.object("varClassContext", AIClassContext.CURRENT_CLASS);
-        settings.object("provider", "");
-        settings.object("model", "");
-        settings.string("apiKey", "");
-        settings.string("provider_location", "");
-        settings.decimal("temperature", 0.0);
-        settings.decimal("topP", 0.0);
-        settings.decimal("presencePenalty", 0.0);
-        settings.decimal("frequencyPenalty", 0.0);
-        settings.integer("seed", 0);
-        settings.integer("maxTokens", 5000);
-        settings.integer("maxCompletionTokens", 5000);
-        settings.integer("maxOutputTokens", 5000);
-        settings.integer("topK", 0);
-        settings.bool("stream", false);
-        settings.integer("timeout", 0);
-        settings.integer("maxRetries", 0);
-        settings.string("organizationId", "");
-        settings.bool("allowCodeExecution", false);
-        settings.bool("includeCodeExecutionOutput", false);
-        settings.string("fileExtensionToInclude", "");
-        settings.string("excludeDirs", "");
-        settings.object("conversationContext", "Last 3 chats");
-        settings.string("globalRules", "");
-        settings.string("headers", "");
+
+    public JComponent getPanel() {
+        final JFXPanel panel = new JFXPanel();
+
+        Platform.runLater(() -> {
+            final Scene scene = new Scene(new StackPane(getView()));
+
+            scene.getStylesheets().add(JFXPanel.CSS);
+
+            panel.setScene(scene);
+        });
+
+        return panel;
+    }
+
+    public PreferencesFxView getView() {
+        if (view == null) {
+            initComponents();
+
+            view = preferences.getView();
+            MasterDetailPane mdp = (MasterDetailPane)view.getCenter();
+            mdp.resetDividerPosition();
+        }
+
+        return view;
+    }
+
+    private void initComponents() {
+        // initialize settings keys from current PreferencesManager so UI shows real defaults
+        final PreferencesManager pm = PreferencesManager.getInstance();
+        settings.bool("enableAssistant", pm.isAiAssistantActivated());
+        settings.bool("enableInlineCompletion", pm.isSmartCodeEnabled());
+        settings.bool("enableInlinePromptHint", pm.isInlinePromptHintEnabled());
+        settings.bool("enableInlineHintOnEnter", pm.isInlineHintEnabled());
+        settings.bool("enableInlineHint", pm.isHintsEnabled());
+        settings.object("classContext", pm.getClassContext());
+        settings.object("varClassContext", pm.getVarContext());
+        settings.object("provider", pm.getProvider());
+        settings.object("model", pm.getModel());
+        settings.string("apiKey", pm.getApiKey());
+        settings.string("provider_location", pm.getProviderLocation());
+        settings.decimal("temperature", pm.getTemperature() == null ? 0.0 : pm.getTemperature());
+        settings.decimal("topP", pm.getTopP() == null ? 0.0 : pm.getTopP());
+        settings.decimal("presencePenalty", pm.getPresencePenalty() == null ? 0.0 : pm.getPresencePenalty());
+        settings.decimal("frequencyPenalty", pm.getFrequencyPenalty() == null ? 0.0 : pm.getFrequencyPenalty());
+        settings.integer("seed", pm.getSeed() == null ? 0 : pm.getSeed());
+        settings.integer("maxTokens", pm.getMaxTokens() == null ? 5000 : pm.getMaxTokens());
+        settings.integer("maxCompletionTokens", pm.getMaxCompletionTokens() == null ? 5000 : pm.getMaxCompletionTokens());
+        settings.integer("maxOutputTokens", pm.getMaxOutputTokens() == null ? 5000 : pm.getMaxOutputTokens());
+        settings.integer("topK", pm.getTopK() == null ? 0 : pm.getTopK());
+        settings.bool("stream", pm.isStreamEnabled());
+        settings.integer("timeout", pm.getTimeout() == null ? 0 : pm.getTimeout());
+        settings.integer("maxRetries", pm.getMaxRetries() == null ? 0 : pm.getMaxRetries());
+        settings.string("organizationId", pm.getOrganizationId());
+        settings.bool("allowCodeExecution", pm.isAllowCodeExecution());
+        settings.bool("includeCodeExecutionOutput", pm.isIncludeCodeExecutionOutput());
+        settings.string("fileExtensionToInclude", String.join(",", pm.getFileExtensionListToInclude()));
+        settings.string("excludeDirs", String.join(",", pm.getExcludeDirs()));
+        // map conversation context int -> label
+        int convo = pm.getConversationContext();
+        String convoLabel = switch (convo) {
+            case 0 -> asset("AIAssistancePanel.conversationContext.option.no_past_chats");
+            case 1 -> asset("AIAssistancePanel.conversationContext.option.last_chat");
+            case 3 -> asset("AIAssistancePanel.conversationContext.option.last_3_chats");
+            case 5 -> asset("AIAssistancePanel.conversationContext.option.last_5_chats");
+            case 10 -> asset("AIAssistancePanel.conversationContext.option.last_10_chats");
+            default -> asset("AIAssistancePanel.conversationContext.option.all_past_chats");
+        };
+        settings.object("conversationContext", convoLabel);
+        settings.string("globalRules", pm.getGlobalRules());
+        // headers map -> string lines
+        Map<String,String> headers = pm.getCustomHeaders();
+        if (headers != null && !headers.isEmpty()) {
+            settings.string("headers", headers.entrySet().stream().map(e -> e.getKey()+":"+e.getValue()).collect(java.util.stream.Collectors.joining("\n")));
+        } else {
+            settings.string("headers", "");
+        }
 
         // lazily create JavaFX UI components to avoid initializing toolkit when running headless tests
         configPathLabel = new HyperlinkLabel(

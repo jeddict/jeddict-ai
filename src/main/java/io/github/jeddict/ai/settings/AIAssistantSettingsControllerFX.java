@@ -32,37 +32,33 @@ import org.openide.util.Lookup;
 )
 public final class AIAssistantSettingsControllerFX extends OptionsPanelController {
 
-    private AIAssistantPanelFX panel;
+    private JeddictPreferences preferences = new JeddictPreferences();
     private final PropertyChangeSupport pcs = new PropertyChangeSupport(this);
-    private boolean changed;
 
     @Override
     public void update() {
-        getPanel().load();
-        changed = false;
     }
 
     @Override
     public void applyChanges() {
         SwingUtilities.invokeLater(() -> {
-            getPanel().store();
-            changed = false;
+            preferences.save();
+
         });
     }
 
     @Override
     public void cancel() {
-        // need not do anything special, if no changes have been persisted yet
     }
 
     @Override
     public boolean isValid() {
-        return getPanel().valid();
+        return true;
     }
 
     @Override
     public boolean isChanged() {
-        return changed;
+        return preferences.preferences.isContainingChanges();
     }
 
     @Override
@@ -72,7 +68,7 @@ public final class AIAssistantSettingsControllerFX extends OptionsPanelControlle
 
     @Override
     public JComponent getComponent(Lookup masterLookup) {
-        return getPanel();
+        return preferences.getPanel();
     }
 
     @Override
@@ -84,20 +80,4 @@ public final class AIAssistantSettingsControllerFX extends OptionsPanelControlle
     public void removePropertyChangeListener(PropertyChangeListener l) {
         pcs.removePropertyChangeListener(l);
     }
-
-    private AIAssistantPanelFX getPanel() {
-        if (panel == null) {
-            panel = new AIAssistantPanelFX(this);
-        }
-        return panel;
-    }
-
-    void changed() {
-        if (!changed) {
-            changed = true;
-            pcs.firePropertyChange(OptionsPanelController.PROP_CHANGED, false, true);
-        }
-        pcs.firePropertyChange(OptionsPanelController.PROP_VALID, null, null);
-    }
-
 }

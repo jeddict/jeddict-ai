@@ -81,7 +81,52 @@ public class SettingsProperty extends SimpleMapProperty<String, Property<?>> {
 
     @SuppressWarnings("unchecked")
     public <T> ObjectProperty<T> object(String key, T defaultValue) {
-        return (ObjectProperty<T>) computeIfAbsent(key, k -> init(new SimpleObjectProperty<>(defaultValue)));
+        Property<?> existing = super.get(key);
+        if (existing != null) {
+            if (existing instanceof ObjectProperty) {
+                return (ObjectProperty<T>) existing;
+            }
+            // Create a wrapper ObjectProperty<T> that stays in sync with the existing property
+            SimpleObjectProperty<Object> wrapper = new SimpleObjectProperty<>(existing.getValue());
+            if (existing instanceof StringProperty) {
+                StringProperty sp = (StringProperty) existing;
+                sp.addListener((obs, oldV, newV) -> wrapper.setValue((T) newV));
+                wrapper.addListener((obs, oldV, newV) -> sp.set(newV == null ? null : newV.toString()));
+            } else if (existing instanceof BooleanProperty) {
+                BooleanProperty bp = (BooleanProperty) existing;
+                bp.addListener((obs, oldV, newV) -> wrapper.setValue((T) newV));
+                wrapper.addListener((obs, oldV, newV) -> bp.set(newV == null ? false : Boolean.parseBoolean(newV.toString())));
+            } else if (existing instanceof IntegerProperty) {
+                IntegerProperty ip = (IntegerProperty) existing;
+                ip.addListener((obs, oldV, newV) -> wrapper.setValue((T) Integer.valueOf(ip.get())));
+                wrapper.addListener((obs, oldV, newV) -> {
+                    try {
+                        ip.set(newV == null ? 0 : Integer.parseInt(newV.toString()));
+                    } catch (Exception e) {
+                        // ignore parse errors
+                    }
+                });
+            } else if (existing instanceof DoubleProperty) {
+                DoubleProperty dp = (DoubleProperty) existing;
+                dp.addListener((obs, oldV, newV) -> wrapper.setValue((T) Double.valueOf(dp.get())));
+                wrapper.addListener((obs, oldV, newV) -> {
+                    try {
+                        dp.set(newV == null ? 0.0 : Double.parseDouble(newV.toString()));
+                    } catch (Exception e) {
+                        // ignore parse errors
+                    }
+                });
+            } else {
+                // Generic fallback: keep wrapper and existing in sync via Object values
+                existing.addListener((obs, oldV, newV) -> wrapper.setValue((T) newV));
+                wrapper.addListener((obs, oldV, newV) -> ((Property) existing).setValue(newV));
+            }
+            return (ObjectProperty<T>) wrapper;
+        } else {
+            ObjectProperty<T> op = init(new SimpleObjectProperty<>(defaultValue));
+            super.put(key, op);
+            return op;
+        }
     }
 
     /**

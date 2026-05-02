@@ -47,7 +47,7 @@
         <maven.compiler.release>17</maven.compiler.release>
         <langchain4j.version>1.11.0</langchain4j.version>
         <netbeans.version>RELEASE290</netbeans.version>
-        <javafx-toolkit.version>0.0.1</javafx-toolkit.version>
+        <javafx-toolkit.version>0.0.2-SNAPSHOT</javafx-toolkit.version>
         <testfx.version>4.0.18</testfx.version>
     </properties>
 
@@ -400,6 +400,7 @@
            <artifactId>nb-javafx-toolkit</artifactId>
            <version>${javafx-toolkit.version}</version>
         </dependency>
+
         <!-- -->
 
         <!--

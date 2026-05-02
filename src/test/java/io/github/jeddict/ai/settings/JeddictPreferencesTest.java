@@ -28,7 +28,7 @@ public class JeddictPreferencesTest extends TestBase {
     @Test
     public void save_persists_ui_settings_to_preferences_manager() {
         // Construct headless JeddictPreferences (skip JavaFX UI creation)
-        JeddictPreferences ui = new JeddictPreferences(true);
+        JeddictPreferences ui = new JeddictPreferences();
 
         // Booleans
         ui.settings.set("enableAssistant", true);
