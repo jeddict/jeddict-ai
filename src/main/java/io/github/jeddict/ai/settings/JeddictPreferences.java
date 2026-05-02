@@ -91,6 +91,40 @@ public class JeddictPreferences {
     private PromptsPanelController promptsController;
 
     private void initUi() {
+        // initialize all expected settings keys with safe defaults to avoid PreferencesFx history NPEs
+        // (ensures properties exist before PreferencesFx attaches listeners)
+        settings.bool("enableAssistant", false);
+        settings.bool("enableInlineCompletion", false);
+        settings.bool("enableInlinePromptHint", false);
+        settings.bool("enableInlineHintOnEnter", false);
+        settings.bool("enableInlineHint", false);
+        settings.object("classContext", AIClassContext.CURRENT_CLASS);
+        settings.object("varClassContext", AIClassContext.CURRENT_CLASS);
+        settings.object("provider", "");
+        settings.object("model", "");
+        settings.string("apiKey", "");
+        settings.string("provider_location", "");
+        settings.decimal("temperature", 0.0);
+        settings.decimal("topP", 0.0);
+        settings.decimal("presencePenalty", 0.0);
+        settings.decimal("frequencyPenalty", 0.0);
+        settings.integer("seed", 0);
+        settings.integer("maxTokens", 5000);
+        settings.integer("maxCompletionTokens", 5000);
+        settings.integer("maxOutputTokens", 5000);
+        settings.integer("topK", 0);
+        settings.bool("stream", false);
+        settings.integer("timeout", 0);
+        settings.integer("maxRetries", 0);
+        settings.string("organizationId", "");
+        settings.bool("allowCodeExecution", false);
+        settings.bool("includeCodeExecutionOutput", false);
+        settings.string("fileExtensionToInclude", "");
+        settings.string("excludeDirs", "");
+        settings.object("conversationContext", "Last 3 chats");
+        settings.string("globalRules", "");
+        settings.string("headers", "");
+
         // lazily create JavaFX UI components to avoid initializing toolkit when running headless tests
         configPathLabel = new HyperlinkLabel(
             asset("AIAssistancePanel.configPathLabel.text") + " [%s]".formatted(configPath())
