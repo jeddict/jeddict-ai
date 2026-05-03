@@ -133,6 +133,29 @@ public class JeddictPreferences {
         settings.object("model", pm.getModel());
         settings.string("apiKey", pm.getApiKey());
         settings.string("provider_location", pm.getProviderLocation());
+        // When provider changes, update provider_location to the provider-specific saved value
+        settings.object("provider").addListener((obs, oldProv, newProv) -> {
+            try {
+                if (newProv == null) {
+                    settings.set("provider_location", null);
+                } else if (newProv instanceof io.github.jeddict.ai.models.registry.GenAIProvider gp) {
+                    String loc = PreferencesManager.getInstance().getProviderLocation(gp);
+                    settings.set("provider_location", loc);
+                } else {
+                    // Fallback: attempt to map string to enum
+                    String s = newProv.toString();
+                    for (io.github.jeddict.ai.models.registry.GenAIProvider p : io.github.jeddict.ai.models.registry.GenAIProvider.values()) {
+                        if (p.name().replace("_", "").equalsIgnoreCase(s.replaceAll("\\s|_", ""))) {
+                            settings.set("provider_location", PreferencesManager.getInstance().getProviderLocation(p));
+                            return;
+                        }
+                    }
+                    settings.set("provider_location", null);
+                }
+            } catch (Exception e) {
+                // ignore errors updating provider location
+            }
+        });
         settings.decimal("temperature", pm.getTemperature() == null ? 0.0 : pm.getTemperature());
         settings.decimal("topP", pm.getTopP() == null ? 0.0 : pm.getTopP());
         settings.decimal("presencePenalty", pm.getPresencePenalty() == null ? 0.0 : pm.getPresencePenalty());
