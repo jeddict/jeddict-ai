@@ -87,11 +87,11 @@ public class JeddictPreferencesFullUITest extends ApplicationTest {
 
     @Test
     public void full_ui_save_persists_all_settings() {
-        // wait for UI to be attached
-        sleep(500);
+        // wait for UI to be attached (wait up to 500ms)
+        waitForLabel("Assistant", 500);
         // Assistant category
         clickOn("Assistant");
-        sleep(200);
+        waitForLabel("Enable AI Assistant", 500);
         setCheckBox("Enable AI Assistant", true);
         setCheckBox("Enable Inline Completion", true);
         setCheckBox("Enable Inline Suggestions for Saved Prompts", true);
@@ -100,13 +100,13 @@ public class JeddictPreferencesFullUITest extends ApplicationTest {
 
         // Inline Completion subcategory - set contexts
         clickOn("Inline Completion");
-        sleep(200);
+        waitForLabel("Code Context Analysis (Default)", 500);
         setComboBox("Code Context Analysis (Default)", "Entire Project");
         setComboBox("Code Context Analysis (Variable Name, Method Name, String Literals)", "Current Package");
 
         // Providers
         clickOn("Providers");
-        sleep(200);
+        waitForLabel("Provider:", 500);
         // Provider combo uses display names
         setComboBox("Provider:", "OpenAI");
         setText("API Key:", "ui-apikey-1");
@@ -115,7 +115,7 @@ public class JeddictPreferencesFullUITest extends ApplicationTest {
 
         // Inference settings (temperature/topP/topK/...)
         clickOn("Inference");
-        sleep(200);
+        waitForLabel("Temperature:", 500);
         setText("Temperature:", "0.9");
         setText("Top P:", "0.55");
         setText("Presence Penalty:", "0.12");
@@ -128,7 +128,7 @@ public class JeddictPreferencesFullUITest extends ApplicationTest {
 
         // Provider settings: stream/timeout/retries/headers
         clickOn("Provider Settings");
-        sleep(200);
+        waitForLabel("Stream", 500);
         setCheckBox("Stream", true);
         setText("Request Timeout:", "120");
         setText("Max Retries:", "4");
@@ -136,7 +136,7 @@ public class JeddictPreferencesFullUITest extends ApplicationTest {
 
         // Chat / Context
         clickOn("Chat");
-        sleep(200);
+        waitForLabel("Conversation Context", 500);
         setComboBox("Conversation Context", "Last 10 chats");
         setCheckBox("Exclude Javadoc Comments in Context", true);
         setText("File Extensions to Include in Context:", "java,kt,xml");
@@ -156,7 +156,7 @@ public class JeddictPreferencesFullUITest extends ApplicationTest {
         boolean promptsClicked = true;
         try {
             clickOn("Prompts");
-            sleep(200);
+            waitForLabel("Prompts", 500);
             Node promptsPanel = lookup("#promptsPanel").query();
             then(promptsPanel).isNotNull();
         } catch (Exception ex) {
@@ -271,6 +271,34 @@ public class JeddictPreferencesFullUITest extends ApplicationTest {
     }
 
     @Test
+    public void provider_selection_updates_endpoint_field() {
+        sleep(500);
+        clickOn("Providers");
+        sleep(200);
+        PreferencesManager pm = PreferencesManager.getInstance();
+        // ensure per-provider endpoint values exist
+        pm.setProvider(io.github.jeddict.ai.models.registry.GenAIProvider.OPEN_AI);
+        pm.setProviderLocation("https://openai.local");
+        pm.setProvider(io.github.jeddict.ai.models.registry.GenAIProvider.ANTHROPIC);
+        pm.setProviderLocation("https://anthropic.local");
+        // return to OPEN_AI
+        pm.setProvider(io.github.jeddict.ai.models.registry.GenAIProvider.OPEN_AI);
+
+        // select Anthropic and verify endpoint updated
+        setComboBox("Provider:", "Anthropic");
+        sleep(200);
+        Node endpoint = findControl("Endpoint:");
+        then(endpoint).isNotNull();
+        interact(() -> then(((TextInputControl) endpoint).getText()).isEqualTo("https://anthropic.local"));
+
+        // select OpenAI and verify endpoint updated
+        setComboBox("Provider:", "OpenAI");
+        sleep(200);
+        Node endpoint2 = findControl("Endpoint:");
+        interact(() -> then(((TextInputControl) endpoint2).getText()).isEqualTo("https://openai.local"));
+    }
+
+    @Test
     public void getPanel_returns_a_JFXPanel() {
         then(preferences.getPanel()).isInstanceOf(JFXPanel.class);
     }
@@ -360,6 +388,34 @@ public class JeddictPreferencesFullUITest extends ApplicationTest {
     }
 
     // Safe helpers: try UI interaction, otherwise set backing settings property directly
+
+    // Wait helper: polls for a label to be present (timeout in ms)
+    private void waitForLabel(String labelText, long timeoutMs) {
+        long deadline = System.nanoTime() + timeoutMs * 1_000_000L;
+        while (System.nanoTime() < deadline) {
+            try {
+                lookup(labelText).query();
+                return;
+            } catch (Exception e) {
+                try { Thread.sleep(10); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+            }
+        }
+        // final attempt to throw an informative error
+        lookup(labelText).query();
+    }
+
+    private void waitForCondition(java.util.function.BooleanSupplier cond, long timeoutMs) {
+        long deadline = System.nanoTime() + timeoutMs * 1_000_000L;
+        while (System.nanoTime() < deadline) {
+            try {
+                if (cond.getAsBoolean()) return;
+            } catch (Exception e) {
+                // ignore and retry
+            }
+            try { Thread.sleep(10); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+        }
+        throw new AssertionError("waitForCondition timed out");
+    }
     private void safeSetCheckBox(String labelText, String key, boolean value) {
         try {
             setCheckBox(labelText, value);

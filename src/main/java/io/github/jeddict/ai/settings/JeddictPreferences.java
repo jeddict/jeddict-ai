@@ -477,6 +477,75 @@ public class JeddictPreferences {
             = Setting.of(asset("AIAssistancePanel.providerLocationLabel.text"), settings.string("provider_location"));
         providerLocationSetting.getElement().tooltip(asset("AIAssistancePanel.providerLocationLabel.toolTipText"));
 
+        // Visibility: hide endpoint for well-known hosted providers (they don't need a custom endpoint)
+        javafx.beans.binding.BooleanBinding endpointVisible = javafx.beans.binding.Bindings.createBooleanBinding(() -> {
+            Object p = settings.getValue("provider");
+            if (p instanceof io.github.jeddict.ai.models.registry.GenAIProvider gp) {
+                switch (gp) {
+                    case ANTHROPIC, GOOGLE, GROQ, MISTRAL, OPEN_AI, PERPLEXITY:
+                        return false;
+                    default:
+                        return true;
+                }
+            } else if (p instanceof String s) {
+                for (io.github.jeddict.ai.models.registry.GenAIProvider x : io.github.jeddict.ai.models.registry.GenAIProvider.values()) {
+                    if (x.name().replace("_", "").equalsIgnoreCase(s.replaceAll("\\s|_", ""))) {
+                        switch (x) {
+                            case ANTHROPIC, GOOGLE, GROQ, MISTRAL, OPEN_AI, PERPLEXITY:
+                                return false;
+                            default:
+                                return true;
+                        }
+                    }
+                }
+            }
+            return true;
+        }, settings.object("provider"));
+        // preferencesfx standard way to drive visibility
+        try {
+            java.lang.reflect.Method m = providerLocationSetting.getElement().getClass().getMethod("applyVisibility", javafx.beans.binding.BooleanBinding.class);
+            m.invoke(providerLocationSetting.getElement(), endpointVisible);
+        } catch (NoSuchMethodException nsme) {
+            // fallback: try generic 'visibleProperty' binding if available
+            try {
+                java.lang.reflect.Method vp = providerLocationSetting.getElement().getClass().getMethod("visibleProperty");
+                Object prop = vp.invoke(providerLocationSetting.getElement());
+                if (prop instanceof javafx.beans.property.BooleanProperty) {
+                    ((javafx.beans.property.BooleanProperty) prop).bind(endpointVisible);
+                }
+            } catch (Exception ex) {
+                // ignore -- visibility API not available
+            }
+        } catch (Exception e) {
+            // ignore invocation errors
+        }
+
+        // Also update API key and provider_location when provider changes (replicate AIAssistancePanel behaviour)
+        settings.object("provider").addListener((obs, oldProv, newProv) -> {
+            try {
+                PreferencesManager pm = PreferencesManager.getInstance();
+                if (newProv instanceof io.github.jeddict.ai.models.registry.GenAIProvider gp) {
+                    settings.set("apiKey", pm.getApiKey(gp));
+                    String loc = pm.getProviderLocation(gp);
+                    settings.set("provider_location", loc);
+                } else if (newProv instanceof String s) {
+                    for (io.github.jeddict.ai.models.registry.GenAIProvider p : io.github.jeddict.ai.models.registry.GenAIProvider.values()) {
+                        if (p.name().replace("_", "").equalsIgnoreCase(s.replaceAll("\\s|_", ""))) {
+                            settings.set("apiKey", pm.getApiKey(p));
+                            settings.set("provider_location", pm.getProviderLocation(p));
+                            return;
+                        }
+                    }
+                    settings.set("apiKey", pm.getApiKey());
+                    settings.set("provider_location", pm.getProviderLocation());
+                } else {
+                    settings.set("apiKey", pm.getApiKey());
+                }
+            } catch (Exception e) {
+                // ignore listener errors
+            }
+        });
+
         final Setting<SingleSelectionField<String>, ObjectProperty<String>> modelSetting
             = Setting.of(
                 asset("AIAssistancePanel.gptModelLabel.text"),
