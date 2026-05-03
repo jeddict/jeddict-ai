@@ -46,7 +46,7 @@ public class JeddictPreferencesFullUITest extends ApplicationTest {
         preferences = new JeddictPreferences();
         // provide safe defaults for properties BEFORE attaching the PreferencesFx view to avoid PreferencesFx history NPE
         preferences.settings.set("model", "");
-        preferences.settings.set("provider", "");
+        preferences.settings.set("provider", io.github.jeddict.ai.models.registry.GenAIProvider.OPEN_AI);
         preferences.settings.set("enableAssistant", false);
         preferences.settings.set("enableInlineCompletion", false);
         preferences.settings.set("enableInlinePromptHint", false);
@@ -191,7 +191,7 @@ public class JeddictPreferencesFullUITest extends ApplicationTest {
             preferences.settings.set("classContext", AIClassContext.ENTIRE_PROJECT);
             preferences.settings.set("varClassContext", AIClassContext.CURRENT_PACKAGE);
 
-            preferences.settings.set("provider", "OpenAI");
+            preferences.settings.set("provider", io.github.jeddict.ai.models.registry.GenAIProvider.OPEN_AI);
             preferences.settings.set("model", "mini");
             preferences.settings.set("apiKey", "ui-apikey-1");
             preferences.settings.set("provider_location", "https://ui.example.local");
