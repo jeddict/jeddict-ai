@@ -128,18 +128,8 @@ public class JeddictPreferences {
         settings.bool("enableInlineHint", pm.isHintsEnabled());
         settings.object("classContext", pm.getClassContext());
         settings.object("varClassContext", pm.getVarContext());
-        String providerDisplay;
-        if (pm.getProvider() == null) {
-            providerDisplay = "";
-        } else {
-            switch (pm.getProvider()) {
-                case OPEN_AI: providerDisplay = "OpenAI"; break;
-                case ANTHROPIC: providerDisplay = "Anthropic"; break;
-                case MISTRAL: providerDisplay = "Mistral"; break;
-                default: providerDisplay = pm.getProvider().name().replace("_", ""); break;
-            }
-        }
-        settings.object("provider", providerDisplay);
+        // Store provider as enum so save() can persist provider and provider-specific settings correctly
+        settings.object("provider", pm.getProvider());
         settings.object("model", pm.getModel());
         settings.string("apiKey", pm.getApiKey());
         settings.string("provider_location", pm.getProviderLocation());
@@ -449,9 +439,10 @@ public class JeddictPreferences {
             = Setting.of("Headers", settings.string("headers"));
         headersSetting.getElement().multiline(true);
 
-        final Setting<SingleSelectionField<String>, ObjectProperty<String>> providerSetting
+        final Setting<SingleSelectionField<io.github.jeddict.ai.models.registry.GenAIProvider>, ObjectProperty<io.github.jeddict.ai.models.registry.GenAIProvider>> providerSetting
             = Setting.of(asset("AIAssistancePanel.providerLabel.text"),
-                FXCollections.observableArrayList(List.of("OpenAI", "Anthropic", "Mistral")), settings.object("provider", "")
+                FXCollections.observableArrayList(java.util.Arrays.asList(io.github.jeddict.ai.models.registry.GenAIProvider.sortedValues())),
+                settings.object("provider", PreferencesManager.getInstance().getProvider())
             );
         providerSetting.getElement().tooltip(asset("AIAssistancePanel.providerComboBox.toolTipText"));
 
