@@ -128,7 +128,18 @@ public class JeddictPreferences {
         settings.bool("enableInlineHint", pm.isHintsEnabled());
         settings.object("classContext", pm.getClassContext());
         settings.object("varClassContext", pm.getVarContext());
-        settings.object("provider", pm.getProvider());
+        String providerDisplay;
+        if (pm.getProvider() == null) {
+            providerDisplay = "";
+        } else {
+            switch (pm.getProvider()) {
+                case OPEN_AI: providerDisplay = "OpenAI"; break;
+                case ANTHROPIC: providerDisplay = "Anthropic"; break;
+                case MISTRAL: providerDisplay = "Mistral"; break;
+                default: providerDisplay = pm.getProvider().name().replace("_", ""); break;
+            }
+        }
+        settings.object("provider", providerDisplay);
         settings.object("model", pm.getModel());
         settings.string("apiKey", pm.getApiKey());
         settings.string("provider_location", pm.getProviderLocation());
