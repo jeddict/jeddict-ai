@@ -1,13 +1,20 @@
 package io.github.jeddict.ai.settings;
 
+import com.dlsc.preferencesfx.formsfx.view.renderer.PreferencesFxFormRenderer;
+import com.dlsc.preferencesfx.model.Category;
 import io.github.jeddict.ai.models.registry.GenAIProvider;
+import static io.github.jeddict.ai.models.registry.GenAIProvider.CUSTOM_OPEN_AI;
+import static io.github.jeddict.ai.models.registry.GenAIProvider.DEEPINFRA;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.Duration;
+import java.util.List;
 import java.util.Optional;
+import javafx.application.Platform;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 import javafx.scene.Scene;
 import javafx.scene.Node;
 import javafx.scene.Parent;
@@ -15,9 +22,17 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.TextInputControl;
+import javafx.scene.image.Image;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.io.TempDir;
+import org.testfx.api.FxService;
 import org.testfx.framework.junit5.ApplicationTest;
+import static org.testfx.util.WaitForAsyncUtils.waitForFxEvents;
+import static ste.lloop.Loop.on;
 import ste.netbeans.javafx.JFXPanel;
 
 /**
@@ -27,71 +42,62 @@ import ste.netbeans.javafx.JFXPanel;
  */
 public class JeddictPreferencesFullUITest extends ApplicationTest {
 
+    private final Duration D500 = Duration.ofMillis(500);
+
     @TempDir
     public static Path HOME;
 
+    private StackPane root;
     private JeddictPreferences preferences;
 
     @BeforeAll
     public static void beforeAll() throws Exception {
         System.setProperty("user.home", HOME.toAbsolutePath().toString());
-        Files.copy(Path.of("src/test/resources/settings/jeddict.json"), HOME.resolve("jeddict.json"));
-        PreferencesManager pm = PreferencesManager.getInstance();
-        pm.setProvider(io.github.jeddict.ai.models.registry.GenAIProvider.OPEN_AI);
-        pm.setApiKey("test-api-key");
+
+        final Path configPath = HOME.resolve(".config/jeddict");
+        Files.createDirectories(configPath);
+        Files.copy(Path.of("src/test/resources/settings/jeddict.json"), configPath.resolve("jeddict-config.json"));
+        System.out.println("settings: " + PreferencesManager.getInstance().getProviderLocation(CUSTOM_OPEN_AI));
+    }
+
+    @AfterEach
+    public void afterEach(final TestInfo info) throws Exception {
+        final Image image =
+            FxService.serviceContext().getCaptureSupport().captureNode(root);
+
+        final String test = info.getTestMethod()
+            .map(java.lang.reflect.Method::getName)
+            .orElse("unknown");
+        final Path dir = Paths.get("target", "screenshots");
+        Files.createDirectories(dir);
+
+        final Path screenshot = dir.resolve(test + '-' + System.currentTimeMillis() + ".png");
+        FxService.serviceContext().getCaptureSupport().saveImage(image, screenshot);
+
+        System.out.println("Screenshot saved " + screenshot);
     }
 
     @Override
     public void start(Stage stage) {
-        preferences = new JeddictPreferences();
-        // provide safe defaults for properties BEFORE attaching the PreferencesFx view to avoid PreferencesFx history NPE
-        preferences.settings.set("model", "");
-        preferences.settings.set("provider", io.github.jeddict.ai.models.registry.GenAIProvider.OPEN_AI);
-        preferences.settings.set("enableAssistant", false);
-        preferences.settings.set("enableInlineCompletion", false);
-        preferences.settings.set("enableInlinePromptHint", false);
-        preferences.settings.set("enableInlineHintOnEnter", false);
-        preferences.settings.set("enableInlineHint", false);
-        preferences.settings.set("classContext", AIClassContext.CURRENT_CLASS);
-        preferences.settings.set("varClassContext", AIClassContext.CURRENT_CLASS);
-        preferences.settings.set("apiKey", "");
-        preferences.settings.set("provider_location", "");
-        preferences.settings.set("temperature", 0.0);
-        preferences.settings.set("topP", 0.0);
-        preferences.settings.set("presencePenalty", 0.0);
-        preferences.settings.set("frequencyPenalty", 0.0);
-        preferences.settings.set("seed", 0);
-        preferences.settings.set("maxTokens", 5000);
-        preferences.settings.set("maxCompletionTokens", 5000);
-        preferences.settings.set("maxOutputTokens", 5000);
-        preferences.settings.set("topK", 0);
-        preferences.settings.set("stream", false);
-        preferences.settings.set("timeout", 0);
-        preferences.settings.set("maxRetries", 0);
-        preferences.settings.set("organizationId", "");
-        preferences.settings.set("allowCodeExecution", false);
-        preferences.settings.set("includeCodeExecutionOutput", false);
-        preferences.settings.set("fileExtensionToInclude", "");
-        preferences.settings.set("excludeDirs", "");
-        preferences.settings.set("conversationContext", "Last 3 chats");
-        preferences.settings.set("globalRules", "");
-        preferences.settings.set("headers", "");
+        preferences = new JeddictPreferences(); // it reads jeddict-config.json
 
-        StackPane root = new StackPane();
+        root = new StackPane();
         Scene scene = new Scene(root, 1000, 800);
         stage.setScene(scene);
         stage.show();
 
-        javafx.application.Platform.runLater(() -> root.getChildren().add(preferences.getView()));
+        System.out.println("start preferences.settings: " + preferences.settings);
+
+        Platform.runLater(() -> root.getChildren().add(preferences.getView()));
     }
 
     @Test
     public void full_ui_save_persists_all_settings() {
         // wait for UI to be attached (wait up to 500ms)
-        waitForLabel("Assistant", 500);
+        waitForFxEvents();
         // Assistant category
         clickOn("Assistant");
-        waitForLabel("Enable AI Assistant", 500);
+        waitForFxEvents();
         setCheckBox("Enable AI Assistant", true);
         setCheckBox("Enable Inline Completion", true);
         setCheckBox("Enable Inline Suggestions for Saved Prompts", true);
@@ -100,22 +106,23 @@ public class JeddictPreferencesFullUITest extends ApplicationTest {
 
         // Inline Completion subcategory - set contexts
         clickOn("Inline Completion");
-        waitForLabel("Code Context Analysis (Default)", 500);
+        waitForFxEvents();
         setComboBox("Code Context Analysis (Default)", "Entire Project");
         setComboBox("Code Context Analysis (Variable Name, Method Name, String Literals)", "Current Package");
 
         // Providers
         clickOn("Providers");
-        waitForLabel("Provider:", 500);
+        waitForFxEvents();
+
         // Provider combo uses display names
-        setComboBox("Provider:", "OpenAI");
+        setComboBox("Provider:", DEEPINFRA.name());
         setText("API Key:", "ui-apikey-1");
-        setText("Endpoint:", "https://ui.example.local");
-        setComboBox("Model:", "mini");
+        setText("Endpoint:", "http://localhost:7777");
+        setComboBox("Model:", "aion-1.0-mini");
 
         // Inference settings (temperature/topP/topK/...)
         clickOn("Inference");
-        waitForLabel("Temperature:", 500);
+        waitForFxEvents();
         setText("Temperature:", "0.9");
         setText("Top P:", "0.55");
         setText("Presence Penalty:", "0.12");
@@ -128,7 +135,7 @@ public class JeddictPreferencesFullUITest extends ApplicationTest {
 
         // Provider settings: stream/timeout/retries/headers
         clickOn("Provider Settings");
-        waitForLabel("Stream", 500);
+        waitForFxEvents();
         setCheckBox("Stream", true);
         setText("Request Timeout:", "120");
         setText("Max Retries:", "4");
@@ -136,7 +143,7 @@ public class JeddictPreferencesFullUITest extends ApplicationTest {
 
         // Chat / Context
         clickOn("Chat");
-        waitForLabel("Conversation Context", 500);
+        waitForFxEvents();
         setComboBox("Conversation Context", "Last 10 chats");
         setCheckBox("Exclude Javadoc Comments in Context", true);
         setText("File Extensions to Include in Context:", "java,kt,xml");
@@ -156,7 +163,7 @@ public class JeddictPreferencesFullUITest extends ApplicationTest {
         boolean promptsClicked = true;
         try {
             clickOn("Prompts");
-            waitForLabel("Prompts", 500);
+            waitForFxEvents();
             Node promptsPanel = lookup("#promptsPanel").query();
             then(promptsPanel).isNotNull();
         } catch (Exception ex) {
@@ -191,7 +198,7 @@ public class JeddictPreferencesFullUITest extends ApplicationTest {
             preferences.settings.set("classContext", AIClassContext.ENTIRE_PROJECT);
             preferences.settings.set("varClassContext", AIClassContext.CURRENT_PACKAGE);
 
-            preferences.settings.set("provider", io.github.jeddict.ai.models.registry.GenAIProvider.OPEN_AI);
+            preferences.settings.set("provider", GenAIProvider.OPEN_AI);
             preferences.settings.set("model", "mini");
             preferences.settings.set("apiKey", "ui-apikey-1");
             preferences.settings.set("provider_location", "https://ui.example.local");
@@ -272,35 +279,60 @@ public class JeddictPreferencesFullUITest extends ApplicationTest {
 
     @Test
     public void provider_selection_updates_endpoint_field() {
-        sleep(500);
+        waitForFxEvents();
         clickOn("Providers");
-        sleep(200);
-        PreferencesManager pm = PreferencesManager.getInstance();
-        // ensure per-provider endpoint values exist
-        pm.setProvider(io.github.jeddict.ai.models.registry.GenAIProvider.OPEN_AI);
-        pm.setProviderLocation("https://openai.local");
-        pm.setProvider(io.github.jeddict.ai.models.registry.GenAIProvider.ANTHROPIC);
-        pm.setProviderLocation("https://anthropic.local");
-        // return to OPEN_AI
-        pm.setProvider(io.github.jeddict.ai.models.registry.GenAIProvider.OPEN_AI);
 
-        // select Anthropic and verify endpoint updated
-        setComboBox("Provider:", "Anthropic");
-        sleep(200);
-        Node endpoint = findControl("Endpoint:");
+        waitForFxEvents();
+        //
+        // OPEN_AI by default
+        //
+        final Node[] endpoint = { findFieldControl("Endpoint:", ".text-field") };
+        System.out.println(endpoint[0]);
+        then(endpoint[0]).isNull();
+
+        // select LM STUDIO and verify endpoint updated
+        setComboBox("Provider:", CUSTOM_OPEN_AI.name());
+        waitForFxEvents();
+        endpoint[0] = findFieldControl("Endpoint:", ".text-field");
         then(endpoint).isNotNull();
-        interact(() -> then(((TextInputControl) endpoint).getText()).isEqualTo("https://anthropic.local"));
-
-        // select OpenAI and verify endpoint updated
-        setComboBox("Provider:", "OpenAI");
-        sleep(200);
-        Node endpoint2 = findControl("Endpoint:");
-        interact(() -> then(((TextInputControl) endpoint2).getText()).isEqualTo("https://openai.local"));
+        then(endpoint[0].isVisible()).isTrue();
+        System.out.println(endpoint[0]);
+        interact(() -> then(((TextInputControl) endpoint[0]).getText()).isEqualTo("http://localhost:7777"));
     }
 
     @Test
     public void getPanel_returns_a_JFXPanel() {
         then(preferences.getPanel()).isInstanceOf(JFXPanel.class);
+    }
+
+    @Test
+    public void string_fields_show_empty_when_not_set() {
+        final List<Category> categories = preferences.preferences.preferencesFxModel.getCategories();
+
+        nullAllSettings(categories); waitForFxEvents();
+        // navigate to Providers category so API Key field is visible
+        clickOn("Assistant");  waitForFxEvents();
+        clickOn("Chat"); waitForFxEvents();
+
+        // UI may be backed by PreferencesManager values; verify the settings property is empty when no stored value exists
+        interact(() -> {
+            then(preferences.settings.getValue("fileExtensionToInclude")).isEqualTo("");
+            then(preferences.settings.getValue("excludeDirs")).isEqualTo("");
+        });
+        // UI may be backed by PreferencesManager values; verify the settings property is empty when no stored value exists
+        interact(() -> {
+            then(preferences.settings.getValue("provider_location")).isEqualTo("");
+        });
+
+        waitForFxEvents();
+        // navigate to Providers category so API Key field is visible
+        clickOn("Providers");
+        waitForFxEvents();
+        // UI may be backed by PreferencesManager values; verify the settings property is empty when no stored value exists
+        interact(() -> {
+            then(preferences.settings.getValue("provider_location")).isEqualTo("");
+        });
+
     }
 
     // --------------------------------------------------------- private methods
@@ -322,46 +354,49 @@ public class JeddictPreferencesFullUITest extends ApplicationTest {
         return Optional.empty();
     }
 
-    private Node findControl(String labelText) {
-        // try common selectors
-        String[] selectors = new String[]{".check-box", ".combo-box", ".text-field", ".text-area", ".spinner", ".choice-box"};
-        for (String s : selectors) {
-            Optional<Node> n = findControlForLabel(labelText, s);
-            if (n.isPresent()) return n.get();
-        }
-        // As fallback try direct lookup of control by label text (some controls expose label as button)
+    private Node findFieldControl(final String labelText, final String selector) {
         try {
-            return lookup(labelText).query();
-        } catch (Exception e) {
-            return null;
-        }
+            final Node label = lookup(labelText).query();
+            if (!label.isVisible()) {
+                return null;
+            }
+            final Parent p = label.getParent();
+
+            if (p instanceof PreferencesFxFormRenderer form) {
+                final int row = GridPane.getRowIndex(label), col = GridPane.getColumnIndex(label);
+
+                for (Node node : form.getChildren()) {
+                    if ((GridPane.getRowIndex(node) == row) && (GridPane.getColumnIndex(node) == col+1)) {
+                        return node.lookup(selector);
+                    }
+                }
+            }
+        } catch (Exception x) {}
+
+        return null;
     }
 
+
     private void setCheckBox(String labelText, boolean value) {
-        Node n = findControl(labelText);
+        Node n = findFieldControl(labelText, ".check-box");
         if (n instanceof CheckBox) {
             interact(() -> ((CheckBox) n).setSelected(value));
         } else if (n != null) {
             // try clicking the label itself
-            clickOn(labelText);
+                clickOn(labelText);
         }
     }
 
     private void setComboBox(String labelText, String item) {
-        Node n = findControl(labelText);
-        if (n instanceof ComboBox) {
-            @SuppressWarnings("unchecked")
-            ComboBox<Object> cb = (ComboBox<Object>) n;
-            interact(() -> cb.getSelectionModel().select(item));
-        } else {
-            // try open popup and click item by text
-            clickOn(labelText);
-            clickOn(item);
+        final Node n = findFieldControl(labelText, ".combo-box");
+        if (n instanceof ComboBox comboBox) {
+            clickOn(comboBox); waitForFxEvents();
+            clickOn(item); waitForFxEvents();
         }
     }
 
     private void setText(String labelText, String value) {
-        Node n = findControl(labelText);
+        Node n = findFieldControl(labelText, ".text-field");
         if (n instanceof Spinner) {
             try {
                 int iv = Integer.parseInt(value);
@@ -389,33 +424,6 @@ public class JeddictPreferencesFullUITest extends ApplicationTest {
 
     // Safe helpers: try UI interaction, otherwise set backing settings property directly
 
-    // Wait helper: polls for a label to be present (timeout in ms)
-    private void waitForLabel(String labelText, long timeoutMs) {
-        long deadline = System.nanoTime() + timeoutMs * 1_000_000L;
-        while (System.nanoTime() < deadline) {
-            try {
-                lookup(labelText).query();
-                return;
-            } catch (Exception e) {
-                try { Thread.sleep(10); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
-            }
-        }
-        // final attempt to throw an informative error
-        lookup(labelText).query();
-    }
-
-    private void waitForCondition(java.util.function.BooleanSupplier cond, long timeoutMs) {
-        long deadline = System.nanoTime() + timeoutMs * 1_000_000L;
-        while (System.nanoTime() < deadline) {
-            try {
-                if (cond.getAsBoolean()) return;
-            } catch (Exception e) {
-                // ignore and retry
-            }
-            try { Thread.sleep(10); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
-        }
-        throw new AssertionError("waitForCondition timed out");
-    }
     private void safeSetCheckBox(String labelText, String key, boolean value) {
         try {
             setCheckBox(labelText, value);
@@ -438,6 +446,20 @@ public class JeddictPreferencesFullUITest extends ApplicationTest {
         } catch (Exception ex) {
             interact(() -> preferences.settings.set(key, value));
         }
+    }
+
+    private void nullAllSettings(final List<Category> categories) {
+        on(categories).loop(category -> {
+            nullAllSettings(category.getChildren());
+            on(category.getGroups()).loop(group -> {
+                on(group.getSettings()).loop(setting -> {
+                    System.out.println(setting + " - " + setting.valueProperty());
+                    if (setting.valueProperty() != null) {
+                        setting.valueProperty().setValue(null);
+                    };
+                });
+            });
+        });
     }
 
 }

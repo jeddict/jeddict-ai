@@ -2127,7 +2127,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
         }
     }
 
-    boolean valid() {
+        boolean valid() {
         return true;
     }
 

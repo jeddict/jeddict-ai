@@ -17,14 +17,12 @@
 
 package io.github.jeddict.ai.util;
 
-import com.dlsc.preferencesfx.view.PreferencesFxView;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import io.github.jeddict.ai.components.ToolExecutionConfirmationPane;
 import io.github.jeddict.ai.components.ToolExecutionPane;
 import io.github.jeddict.ai.components.ToolInvocationPane;
 import io.github.jeddict.ai.components.diff.DiffPane;
 import io.github.jeddict.ai.settings.JeddictPreferences;
-import java.awt.BorderLayout;
 import static java.awt.BorderLayout.SOUTH;
 import java.awt.Color;
 import java.awt.Container;
@@ -33,12 +31,9 @@ import java.awt.event.MouseEvent;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javafx.application.Platform;
-import javafx.embed.swing.JFXPanel;
-import javafx.scene.Scene;
-import javafx.scene.layout.StackPane;
 import javax.swing.BoxLayout;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
@@ -46,12 +41,12 @@ import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
-import org.controlsfx.control.MasterDetailPane;
 import org.netbeans.api.project.Project;
 import org.netbeans.api.project.ProjectUtils;
 import org.openide.DialogDisplayer;
 import org.openide.NotifyDescriptor;
 import org.openide.filesystems.FileObject;
+import ste.netbeans.javafx.JFXPanel;
 
 /**
  *
@@ -208,24 +203,11 @@ public class UIRunner {
     }
 
     private void showSettingsDialog(JFrame frame) {
-        JFXPanel jfxPanel = new JFXPanel();
-        jfxPanel.setLayout(new BorderLayout());
+        final JeddictPreferences p = new JeddictPreferences();
+        final JComponent panel = (JFXPanel)p.getPanel();
 
         frame.getContentPane().removeAll();
-        frame.getContentPane().add(jfxPanel);
-
-        Platform.runLater(() -> {
-            final JeddictPreferences p = new JeddictPreferences();
-            PreferencesFxView view = p.preferences.getView();
-            MasterDetailPane mdp = (MasterDetailPane)view.getCenter();
-            mdp.resetDividerPosition();
-
-            final Scene scene = new Scene(new StackPane(view));
-
-            scene.getStylesheets().add(cssUrl);
-
-            jfxPanel.setScene(scene);
-        });
+        frame.getContentPane().add(panel);
     }
 
     private Project selectProject() {

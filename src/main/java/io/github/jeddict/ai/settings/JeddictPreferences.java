@@ -22,12 +22,20 @@ import com.dlsc.formsfx.model.structure.IntegerField;
 import com.dlsc.formsfx.model.structure.SingleSelectionField;
 import com.dlsc.formsfx.model.structure.StringField;
 import com.dlsc.formsfx.view.util.FieldTooltip;
+import com.dlsc.formsfx.view.util.VisibilityProperty;
 import com.dlsc.preferencesfx.PreferencesFx;
 import com.dlsc.preferencesfx.model.Category;
 import com.dlsc.preferencesfx.model.Group;
 import com.dlsc.preferencesfx.model.Setting;
 import com.dlsc.preferencesfx.view.NavigationView;
 import com.dlsc.preferencesfx.view.PreferencesFxView;
+import io.github.jeddict.ai.models.registry.GenAIProvider;
+import static io.github.jeddict.ai.models.registry.GenAIProvider.ANTHROPIC;
+import static io.github.jeddict.ai.models.registry.GenAIProvider.GOOGLE;
+import static io.github.jeddict.ai.models.registry.GenAIProvider.GROQ;
+import static io.github.jeddict.ai.models.registry.GenAIProvider.MISTRAL;
+import static io.github.jeddict.ai.models.registry.GenAIProvider.OPEN_AI;
+import static io.github.jeddict.ai.models.registry.GenAIProvider.PERPLEXITY;
 import java.awt.Desktop;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -36,6 +44,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
+import java.util.Set;
 import javafx.application.Platform;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.DoubleProperty;
@@ -55,7 +64,9 @@ import javafx.scene.layout.VBox;
 import javafx.scene.text.TextAlignment;
 import javafx.scene.text.TextFlow;
 import javafx.util.Duration;
+import javafx.util.StringConverter;
 import javax.swing.JComponent;
+import org.apache.commons.lang3.StringUtils;
 import org.controlsfx.control.MasterDetailPane;
 import org.controlsfx.control.HyperlinkLabel;
 import static ste.lloop.Loop.on;
@@ -83,6 +94,21 @@ public class JeddictPreferences {
     public VBox apiKeyUrl;
     private Button clearCacheButton;
     private Button manageModelButton;
+
+    private final StringConverter CONVERTER_BLANK_STRING_STRING = new StringConverter<String>() {
+        @Override
+        public String fromString(final String s) {
+            return StringUtils.defaultIfBlank(s, "");
+        }
+
+        @Override
+        public String toString(final String s) {
+            if (s == null) {
+                return "";
+            }
+            return s.trim();
+        }
+    };
 
 
     public JeddictPreferences() {
@@ -131,44 +157,35 @@ public class JeddictPreferences {
         // Store provider as enum so save() can persist provider and provider-specific settings correctly
         settings.object("provider", pm.getProvider());
         settings.object("model", pm.getModel());
-        settings.string("apiKey", pm.getApiKey());
-        settings.string("provider_location", pm.getProviderLocation());
+        settings.string("apiKey", pm.getApiKey() == null ? "" : pm.getApiKey());
+        settings.string("provider_location", pm.getProviderLocation() == null ? "" : pm.getProviderLocation());
         // When provider changes, update provider_location to the provider-specific saved value
         settings.object("provider").addListener((obs, oldProv, newProv) -> {
             try {
                 if (newProv == null) {
                     settings.set("provider_location", null);
-                } else if (newProv instanceof io.github.jeddict.ai.models.registry.GenAIProvider gp) {
+                } else if (newProv instanceof GenAIProvider gp) {
                     String loc = PreferencesManager.getInstance().getProviderLocation(gp);
                     settings.set("provider_location", loc);
-                } else {
-                    // Fallback: attempt to map string to enum
-                    String s = newProv.toString();
-                    for (io.github.jeddict.ai.models.registry.GenAIProvider p : io.github.jeddict.ai.models.registry.GenAIProvider.values()) {
-                        if (p.name().replace("_", "").equalsIgnoreCase(s.replaceAll("\\s|_", ""))) {
-                            settings.set("provider_location", PreferencesManager.getInstance().getProviderLocation(p));
-                            return;
-                        }
-                    }
-                    settings.set("provider_location", null);
                 }
             } catch (Exception e) {
                 // ignore errors updating provider location
             }
         });
-        settings.decimal("temperature", pm.getTemperature() == null ? 0.0 : pm.getTemperature());
-        settings.decimal("topP", pm.getTopP() == null ? 0.0 : pm.getTopP());
-        settings.decimal("presencePenalty", pm.getPresencePenalty() == null ? 0.0 : pm.getPresencePenalty());
-        settings.decimal("frequencyPenalty", pm.getFrequencyPenalty() == null ? 0.0 : pm.getFrequencyPenalty());
-        settings.integer("seed", pm.getSeed() == null ? 0 : pm.getSeed());
-        settings.integer("maxTokens", pm.getMaxTokens() == null ? 5000 : pm.getMaxTokens());
-        settings.integer("maxCompletionTokens", pm.getMaxCompletionTokens() == null ? 5000 : pm.getMaxCompletionTokens());
-        settings.integer("maxOutputTokens", pm.getMaxOutputTokens() == null ? 5000 : pm.getMaxOutputTokens());
-        settings.integer("topK", pm.getTopK() == null ? 0 : pm.getTopK());
+        // numeric fields: convert backend sentinel values (MIN_VALUE) or null to 0 for UI
+        settings.decimal("temperature", safeDouble(pm.getTemperature()));
+        settings.decimal("topP", safeDouble(pm.getTopP()));
+        settings.decimal("presencePenalty", safeDouble(pm.getPresencePenalty()));
+        settings.decimal("frequencyPenalty", safeDouble(pm.getFrequencyPenalty()));
+        settings.integer("seed", safeInteger(pm.getSeed()));
+        settings.integer("maxTokens", safeInteger(pm.getMaxTokens()));
+        settings.integer("maxCompletionTokens", safeInteger(pm.getMaxCompletionTokens()));
+        settings.integer("maxOutputTokens", safeInteger(pm.getMaxOutputTokens()));
+        settings.integer("topK", safeInteger(pm.getTopK()));
         settings.bool("stream", pm.isStreamEnabled());
-        settings.integer("timeout", pm.getTimeout() == null ? 0 : pm.getTimeout());
-        settings.integer("maxRetries", pm.getMaxRetries() == null ? 0 : pm.getMaxRetries());
-        settings.string("organizationId", pm.getOrganizationId());
+        settings.integer("timeout", safeInteger(pm.getTimeout()));
+        settings.integer("maxRetries", safeInteger(pm.getMaxRetries()));
+        settings.string("organizationId", pm.getOrganizationId() == null ? "" : pm.getOrganizationId());
         settings.bool("allowCodeExecution", pm.isAllowCodeExecution());
         settings.bool("includeCodeExecutionOutput", pm.isIncludeCodeExecutionOutput());
         settings.string("fileExtensionToInclude", String.join(",", pm.getFileExtensionListToInclude()));
@@ -184,7 +201,7 @@ public class JeddictPreferences {
             default -> asset("AIAssistancePanel.conversationContext.option.all_past_chats");
         };
         settings.object("conversationContext", convoLabel);
-        settings.string("globalRules", pm.getGlobalRules());
+        settings.string("globalRules", pm.getGlobalRules() == null ? "" : pm.getGlobalRules());
         // headers map -> string lines
         Map<String,String> headers = pm.getCustomHeaders();
         if (headers != null && !headers.isEmpty()) {
@@ -391,13 +408,17 @@ public class JeddictPreferences {
     private Category chatCategory() {
         final Setting<StringField, StringProperty> extensionsSetting
             = Setting.of(asset("AIAssistancePanel.fileExtLabel.text"), settings.string("fileExtensionToInclude"));
-        extensionsSetting.getElement().tooltip(asset("AIAssistancePanel.fileExtLabel.toolTipText"));
-        extensionsSetting.getElement().multiline(true);
+        extensionsSetting.getElement()
+            .multiline(true)
+            .tooltip(asset("AIAssistancePanel.fileExtLabel.toolTipText"))
+            .format(CONVERTER_BLANK_STRING_STRING);
 
         final Setting<StringField, StringProperty> excludeDirs
             = Setting.of(asset("AIAssistancePanel.excludeDir.text"), settings.string("excludeDirs"));
-        excludeDirs.getElement().multiline(true);
-        excludeDirs.getElement().tooltip(asset("AIAssistancePanel.excludeDir.toolTipText"));
+        excludeDirs.getElement()
+            .multiline(true)
+            .tooltip(asset("AIAssistancePanel.excludeDir.toolTipText"))
+            .format(CONVERTER_BLANK_STRING_STRING);
 
         final Setting<SingleSelectionField<String>, ObjectProperty<String>> conversationContextSetting =
             Setting.of(
@@ -462,9 +483,9 @@ public class JeddictPreferences {
             = Setting.of("Headers", settings.string("headers"));
         headersSetting.getElement().multiline(true);
 
-        final Setting<SingleSelectionField<io.github.jeddict.ai.models.registry.GenAIProvider>, ObjectProperty<io.github.jeddict.ai.models.registry.GenAIProvider>> providerSetting
+        final Setting<SingleSelectionField<GenAIProvider>, ObjectProperty<GenAIProvider>> providerSetting
             = Setting.of(asset("AIAssistancePanel.providerLabel.text"),
-                FXCollections.observableArrayList(java.util.Arrays.asList(io.github.jeddict.ai.models.registry.GenAIProvider.sortedValues())),
+                FXCollections.observableArrayList(java.util.Arrays.asList(GenAIProvider.sortedValues())),
                 settings.object("provider", PreferencesManager.getInstance().getProvider())
             );
         providerSetting.getElement().tooltip(asset("AIAssistancePanel.providerComboBox.toolTipText"));
@@ -474,77 +495,26 @@ public class JeddictPreferences {
         apiKeySetting.getElement().tooltip(asset("AIAssistancePanel.apiKeyLabel.toolTipText"));
 
         final Setting<StringField, StringProperty> providerLocationSetting
-            = Setting.of(asset("AIAssistancePanel.providerLocationLabel.text"), settings.string("provider_location"));
-        providerLocationSetting.getElement().tooltip(asset("AIAssistancePanel.providerLocationLabel.toolTipText"));
-
-        // Visibility: hide endpoint for well-known hosted providers (they don't need a custom endpoint)
-        javafx.beans.binding.BooleanBinding endpointVisible = javafx.beans.binding.Bindings.createBooleanBinding(() -> {
-            Object p = settings.getValue("provider");
-            if (p instanceof io.github.jeddict.ai.models.registry.GenAIProvider gp) {
-                switch (gp) {
-                    case ANTHROPIC, GOOGLE, GROQ, MISTRAL, OPEN_AI, PERPLEXITY:
-                        return false;
-                    default:
-                        return true;
-                }
-            } else if (p instanceof String s) {
-                for (io.github.jeddict.ai.models.registry.GenAIProvider x : io.github.jeddict.ai.models.registry.GenAIProvider.values()) {
-                    if (x.name().replace("_", "").equalsIgnoreCase(s.replaceAll("\\s|_", ""))) {
-                        switch (x) {
-                            case ANTHROPIC, GOOGLE, GROQ, MISTRAL, OPEN_AI, PERPLEXITY:
-                                return false;
-                            default:
-                                return true;
+            = Setting.of(
+                asset("AIAssistancePanel.providerLocationLabel.text"),
+                settings.string("provider_location"),
+                VisibilityProperty.of(
+                    settings.object("provider"),
+                    (provider) -> {
+                        if (provider == null) {
+                            return true;
                         }
-                    }
-                }
-            }
-            return true;
-        }, settings.object("provider"));
-        // preferencesfx standard way to drive visibility
-        try {
-            java.lang.reflect.Method m = providerLocationSetting.getElement().getClass().getMethod("applyVisibility", javafx.beans.binding.BooleanBinding.class);
-            m.invoke(providerLocationSetting.getElement(), endpointVisible);
-        } catch (NoSuchMethodException nsme) {
-            // fallback: try generic 'visibleProperty' binding if available
-            try {
-                java.lang.reflect.Method vp = providerLocationSetting.getElement().getClass().getMethod("visibleProperty");
-                Object prop = vp.invoke(providerLocationSetting.getElement());
-                if (prop instanceof javafx.beans.property.BooleanProperty) {
-                    ((javafx.beans.property.BooleanProperty) prop).bind(endpointVisible);
-                }
-            } catch (Exception ex) {
-                // ignore -- visibility API not available
-            }
-        } catch (Exception e) {
-            // ignore invocation errors
-        }
+                        final Set preconfiguredProvider = Set.of(
+                            ANTHROPIC, GOOGLE , GROQ, MISTRAL, OPEN_AI, PERPLEXITY
+                        );
 
-        // Also update API key and provider_location when provider changes (replicate AIAssistancePanel behaviour)
-        settings.object("provider").addListener((obs, oldProv, newProv) -> {
-            try {
-                PreferencesManager pm = PreferencesManager.getInstance();
-                if (newProv instanceof io.github.jeddict.ai.models.registry.GenAIProvider gp) {
-                    settings.set("apiKey", pm.getApiKey(gp));
-                    String loc = pm.getProviderLocation(gp);
-                    settings.set("provider_location", loc);
-                } else if (newProv instanceof String s) {
-                    for (io.github.jeddict.ai.models.registry.GenAIProvider p : io.github.jeddict.ai.models.registry.GenAIProvider.values()) {
-                        if (p.name().replace("_", "").equalsIgnoreCase(s.replaceAll("\\s|_", ""))) {
-                            settings.set("apiKey", pm.getApiKey(p));
-                            settings.set("provider_location", pm.getProviderLocation(p));
-                            return;
-                        }
+                        return !preconfiguredProvider.contains(provider);
                     }
-                    settings.set("apiKey", pm.getApiKey());
-                    settings.set("provider_location", pm.getProviderLocation());
-                } else {
-                    settings.set("apiKey", pm.getApiKey());
-                }
-            } catch (Exception e) {
-                // ignore listener errors
-            }
-        });
+                )
+            );
+        providerLocationSetting.getElement()
+            .tooltip(asset("AIAssistancePanel.providerLocationLabel.toolTipText"))
+            .format(CONVERTER_BLANK_STRING_STRING);
 
         final Setting<SingleSelectionField<String>, ObjectProperty<String>> modelSetting
             = Setting.of(
@@ -553,6 +523,35 @@ public class JeddictPreferences {
                 settings.object("model", "")
             );
         modelSetting.getElement().tooltip(asset("AIAssistancePanel.gptModelLabel.toolTipText"));
+
+        // Update API key, provider_location, models and model info when provider changes (assume provider property is GenAIProvider)
+        settings.object("provider").addListener((obs, oldProv, newProv) -> {
+            try {
+                PreferencesManager pm = PreferencesManager.getInstance();
+                GenAIProvider gp = (GenAIProvider) newProv;
+                // update api key and endpoint
+                settings.set("apiKey", pm.getApiKey(gp));
+                settings.set("provider_location", pm.getProviderLocation(gp));
+                // update model list for selected provider
+                java.util.Set<String> models = GenAIProvider.getModelsByProvider(gp);
+                try {
+                    modelSetting.getElement().getItems().setAll(models);
+                } catch (Throwable ignored) {
+                    if (!models.isEmpty()) settings.set("model", models.iterator().next());
+                }
+                // update model info URL display
+                String info = gp.getModelInfoUrl();
+                try {
+                    modelsUrl.getChildren().clear();
+                    javafx.scene.text.TextFlow tf = new javafx.scene.text.TextFlow(new javafx.scene.text.Text(info));
+                    modelsUrl.getChildren().add(tf);
+                    modelsUrl.setVisible(info != null && !info.isBlank());
+                } catch (Throwable ignored) {
+                }
+            } catch (Exception e) {
+                // ignore listener errors
+            }
+        });
 
         final Setting<DoubleField, DoubleProperty> temperatureSetting
             = Setting.of(asset("AIAssistancePanel.temperatureLabel.text"), settings.decimal("temperature", 0.0), 0.0, 1.0, 2, null);
@@ -678,12 +677,12 @@ public class JeddictPreferences {
         Object prov = settings.getValue("provider");
         if (prov == null) {
             // nothing set in UI for provider; skip
-        } else if (prov instanceof io.github.jeddict.ai.models.registry.GenAIProvider) {
-            pm.setProvider((io.github.jeddict.ai.models.registry.GenAIProvider) prov);
+        } else if (prov instanceof GenAIProvider) {
+            pm.setProvider((GenAIProvider) prov);
         } else if (prov instanceof String) {
             String s = (String) prov;
-            io.github.jeddict.ai.models.registry.GenAIProvider found = io.github.jeddict.ai.models.registry.GenAIProvider.OTHER;
-            for (io.github.jeddict.ai.models.registry.GenAIProvider p : io.github.jeddict.ai.models.registry.GenAIProvider.values()) {
+            GenAIProvider found = GenAIProvider.OTHER;
+            for (GenAIProvider p : GenAIProvider.values()) {
                 if (p.name().replace("_", "").equalsIgnoreCase(s.replaceAll("\\s|_", ""))) {
                     found = p;
                     break;
@@ -801,3 +800,5 @@ public class JeddictPreferences {
         }
     }
 }
+
+
