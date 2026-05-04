@@ -315,22 +315,20 @@ public class JeddictPreferencesFullUITest extends ApplicationTest {
         clickOn("Chat"); waitForFxEvents();
 
         // UI may be backed by PreferencesManager values; verify the settings property is empty when no stored value exists
+        final String[] keys = new String[] { "apiKey", "provider_location", "organizationId", "globalRules", "headers", "fileExtensionToInclude", "excludeDirs" };
         interact(() -> {
-            then(preferences.settings.getValue("fileExtensionToInclude")).isEqualTo("");
-            then(preferences.settings.getValue("excludeDirs")).isEqualTo("");
-        });
-        // UI may be backed by PreferencesManager values; verify the settings property is empty when no stored value exists
-        interact(() -> {
-            then(preferences.settings.getValue("provider_location")).isEqualTo("");
+            for (String k : keys) {
+                then(preferences.settings.getValue(k)).as("key="+k).isEqualTo("");
+            }
         });
 
         waitForFxEvents();
         // navigate to Providers category so API Key field is visible
         clickOn("Providers");
         waitForFxEvents();
-        // UI may be backed by PreferencesManager values; verify the settings property is empty when no stored value exists
+        // also assert provider specific fields remain empty
         interact(() -> {
-            then(preferences.settings.getValue("provider_location")).isEqualTo("");
+            for (String k : keys) then(preferences.settings.getValue(k)).as("key="+k).isEqualTo("");
         });
 
     }

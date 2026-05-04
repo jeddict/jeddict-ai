@@ -162,7 +162,15 @@ public class SettingsProperty extends SimpleMapProperty<String, Property<?>> {
      */
     public Object getValue(String key) {
         Property<?> p = super.get(key);
-        return p != null ? p.getValue() : null;
+        if (p == null) return null;
+        Object v = p.getValue();
+        if (p instanceof StringProperty) {
+            if (v == null) return "";
+            String s = v.toString();
+            if (s.equalsIgnoreCase("null")) return "";
+            return s;
+        }
+        return v;
     }
 
     @Override

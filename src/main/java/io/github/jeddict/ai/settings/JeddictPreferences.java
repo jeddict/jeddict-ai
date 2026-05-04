@@ -315,6 +315,19 @@ public class JeddictPreferences {
         }
     }
 
+    // Helper converters: normalize backend numeric sentinel values (MIN_VALUE) or null to 0 for the UI
+    private static Integer safeInteger(Integer v) {
+        if (v == null) return 0;
+        if (v.equals(Integer.MIN_VALUE)) return 0;
+        return v;
+    }
+
+    private static Double safeDouble(Double d) {
+        if (d == null) return 0.0;
+        if (d.equals(Double.MIN_VALUE)) return 0.0;
+        return d;
+    }
+
     private Category assistantCategory() {
         final Setting<SingleSelectionField<AIClassContext>, ObjectProperty<AIClassContext>> classContextSetting
             = Setting.of(asset("AIAssistancePanel.classContextLabel.text"),
