@@ -30,6 +30,7 @@ import javafx.beans.property.SimpleMapProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
+import javafx.beans.value.ChangeListener;
 import javafx.collections.FXCollections;
 
 /**
@@ -153,7 +154,7 @@ public class SettingsProperty extends SimpleMapProperty<String, Property<?>> {
             } else {
                 newProperty = new SimpleObjectProperty<>(value);
             }
-            put(key, newProperty);
+            put(key, init(newProperty));
         }
     }
 
@@ -174,29 +175,13 @@ public class SettingsProperty extends SimpleMapProperty<String, Property<?>> {
         return existing;
     }
 
-    private <T extends Property<?>> T init(final T p) {
-        //
-        // fireValueChangedEvent() informs SimpleMapProperty listeners
-        // that the value (the map) has changed internally.
-        //
-        p.addListener((obs, old, newValue) -> {
+    private <T extends Property<?>> T init(T p) {
+        final ChangeListener<Object> listener = (obs, old, newValue) -> {
+            // fireValueChangedEvent() informs SimpleMapProperty listeners
+            // that the value (the map) has changed internally.
             fireValueChangedEvent();
-        });
-        //
-        // handle nulls by setting default values appropriate for the UI
-        //
-        p.addListener((obs, old, newValue) -> {
-            System.out.println("handling null for " + p + "(" + obs + ")");
-            if (newValue == null) {
-                if (obs instanceof StringProperty s) {
-                    s.setValue("");
-                } else if (obs instanceof IntegerProperty i) {
-                    i.setValue(0);
-                } else if (obs instanceof DoubleProperty d) {
-                    d.setValue(0);
-                }
-            }
-        });
+        };
+        p.addListener(listener);
         return p;
     }
 }

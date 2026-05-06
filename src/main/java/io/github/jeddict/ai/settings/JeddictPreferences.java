@@ -81,21 +81,7 @@ public class JeddictPreferences {
 
     private static final ResourceBundle BUNDLE = ResourceBundle.getBundle("io.github.jeddict.ai.settings.Bundle");
 
-    final public SettingsProperty settings = new SettingsProperty();
-
-    public PreferencesFx preferences;
-
-    private String asset(String key) {
-        return BUNDLE.containsKey(key) ? BUNDLE.getString(key) : key;
-    }
-
-    public HyperlinkLabel configPathLabel;
-    public VBox modelsUrl;
-    public VBox apiKeyUrl;
-    private Button clearCacheButton;
-    private Button manageModelButton;
-
-    private final StringConverter CONVERTER_BLANK_STRING_STRING = new StringConverter<String>() {
+    public static final StringConverter CONVERTER_BLANK_STRING_STRING = new StringConverter<String>() {
         @Override
         public String fromString(final String s) {
             return StringUtils.defaultIfBlank(s, "");
@@ -109,6 +95,50 @@ public class JeddictPreferences {
             return s.trim();
         }
     };
+
+    private static final StringConverter CONVERTER_BLANK_STRING_INT = new StringConverter<Integer>() {
+        @Override
+        public Integer fromString(final String s) {
+            return ((s == null) || (s.isBlank())) ? 0 : Integer.valueOf(s);
+        }
+
+        @Override
+        public String toString(final Integer n) {
+            if (n == null) {
+                return "";
+            }
+            return String.valueOf(n);
+        }
+    };
+
+    private static final StringConverter CONVERTER_BLANK_STRING_DOUBLE = new StringConverter<Double>() {
+        @Override
+        public Double fromString(final String s) {
+            return ((s == null) || (s.isBlank())) ? 0 : Double.valueOf(s);
+        }
+
+        @Override
+        public String toString(final Double n) {
+            if (n == null) {
+                return "";
+            }
+            return String.valueOf(n);
+        }
+    };
+
+    final public SettingsProperty settings = new SettingsProperty();
+
+    public PreferencesFx preferences;
+
+    protected String asset(String key) {
+        return BUNDLE.containsKey(key) ? BUNDLE.getString(key) : key;
+    }
+
+    public HyperlinkLabel configPathLabel;
+    public VBox modelsUrl;
+    public VBox apiKeyUrl;
+    private Button clearCacheButton;
+    private Button manageModelButton;
 
 
     public JeddictPreferences() {
@@ -144,6 +174,8 @@ public class JeddictPreferences {
         return view;
     }
 
+    //
+    // TODO: remove ? x : y
     private void initComponents() {
         // initialize settings keys from current PreferencesManager so UI shows real defaults
         final PreferencesManager pm = PreferencesManager.getInstance();
@@ -154,37 +186,22 @@ public class JeddictPreferences {
         settings.bool("enableInlineHint", pm.isHintsEnabled());
         settings.object("classContext", pm.getClassContext());
         settings.object("varClassContext", pm.getVarContext());
-        // Store provider as enum so save() can persist provider and provider-specific settings correctly
         settings.object("provider", pm.getProvider());
         settings.object("model", pm.getModel());
-        settings.string("apiKey", pm.getApiKey() == null ? "" : pm.getApiKey());
-        settings.string("provider_location", pm.getProviderLocation() == null ? "" : pm.getProviderLocation());
-        // When provider changes, update provider_location to the provider-specific saved value
-        settings.object("provider").addListener((obs, oldProv, newProv) -> {
-            try {
-                if (newProv == null) {
-                    settings.set("provider_location", null);
-                } else if (newProv instanceof GenAIProvider gp) {
-                    String loc = PreferencesManager.getInstance().getProviderLocation(gp);
-                    settings.set("provider_location", loc);
-                }
-            } catch (Exception e) {
-                // ignore errors updating provider location
-            }
-        });
-        // numeric fields: convert backend sentinel values (MIN_VALUE) or null to 0 for UI
-        settings.decimal("temperature", safeDouble(pm.getTemperature()));
-        settings.decimal("topP", safeDouble(pm.getTopP()));
-        settings.decimal("presencePenalty", safeDouble(pm.getPresencePenalty()));
-        settings.decimal("frequencyPenalty", safeDouble(pm.getFrequencyPenalty()));
-        settings.integer("seed", safeInteger(pm.getSeed()));
-        settings.integer("maxTokens", safeInteger(pm.getMaxTokens()));
-        settings.integer("maxCompletionTokens", safeInteger(pm.getMaxCompletionTokens()));
-        settings.integer("maxOutputTokens", safeInteger(pm.getMaxOutputTokens()));
-        settings.integer("topK", safeInteger(pm.getTopK()));
+        settings.string("apiKey", pm.getApiKey());
+        settings.string("provider_location", pm.getProviderLocation());
+        settings.decimal("temperature", pm.getTemperature() == null ? 0.0 : pm.getTemperature());
+        settings.decimal("topP", pm.getTopP() == null ? 0.0 : pm.getTopP());
+        settings.decimal("presencePenalty", pm.getPresencePenalty() == null ? 0.0 : pm.getPresencePenalty());
+        settings.decimal("frequencyPenalty", pm.getFrequencyPenalty() == null ? 0.0 : pm.getFrequencyPenalty());
+        settings.integer("seed", pm.getSeed() == null ? 0 : pm.getSeed());
+        settings.integer("maxTokens", pm.getMaxTokens() == null ? 5000 : pm.getMaxTokens());
+        settings.integer("maxCompletionTokens", pm.getMaxCompletionTokens() == null ? 5000 : pm.getMaxCompletionTokens());
+        settings.integer("maxOutputTokens", pm.getMaxOutputTokens() == null ? 5000 : pm.getMaxOutputTokens());
+        settings.integer("topK", pm.getTopK() == null ? 0 : pm.getTopK());
         settings.bool("stream", pm.isStreamEnabled());
-        settings.integer("timeout", safeInteger(pm.getTimeout()));
-        settings.integer("maxRetries", safeInteger(pm.getMaxRetries()));
+        settings.integer("timeout", pm.getTimeout() == null ? 0 : pm.getTimeout());
+        settings.integer("maxRetries", pm.getMaxRetries() == null ? 0 : pm.getMaxRetries());
         settings.string("organizationId", pm.getOrganizationId() == null ? "" : pm.getOrganizationId());
         settings.bool("allowCodeExecution", pm.isAllowCodeExecution());
         settings.bool("includeCodeExecutionOutput", pm.isIncludeCodeExecutionOutput());
@@ -201,7 +218,7 @@ public class JeddictPreferences {
             default -> asset("AIAssistancePanel.conversationContext.option.all_past_chats");
         };
         settings.object("conversationContext", convoLabel);
-        settings.string("globalRules", pm.getGlobalRules() == null ? "" : pm.getGlobalRules());
+        settings.string("globalRules", pm.getGlobalRules());
         // headers map -> string lines
         Map<String,String> headers = pm.getCustomHeaders();
         if (headers != null && !headers.isEmpty()) {
@@ -223,7 +240,8 @@ public class JeddictPreferences {
             Setting.of(asset("AIAssistancePanel.globalRulesLabel.text"), settings.string("globalRules"));
         rulesSetting.getElement()
             .multiline(true)
-            .tooltip(asset("AIAssistancePanel.globalRulesLabel.toolTipText"));
+            .tooltip(asset("AIAssistancePanel.globalRulesLabel.toolTipText"))
+            .format(CONVERTER_BLANK_STRING_STRING);
 
         // initialize prompts controller with existing saved prompts so UI shows current prompts
         final PromptsPanelController ctrl = new PromptsPanelController(new java.util.HashMap<>(PreferencesManager.getInstance().getPrompts()));
@@ -370,7 +388,7 @@ public class JeddictPreferences {
         classContextInlineHintSetting.getElement().tooltip(asset("AIAssistancePanel.classContextInlineHintComboBox.toolTipText"));
 
         return Category.of(
-            "Assistant",
+            asset("AIAssistancePanel.assistantPane.TabConstraints.tabTitle"),
             Group.of("AI Assistant Settings",
                 activateAssistant,
                 enableInlineCompletion,
@@ -480,8 +498,11 @@ public class JeddictPreferences {
 
     private Category providersCategory() {
         final Setting<StringField, StringProperty> headersSetting
-            = Setting.of("Headers", settings.string("headers"));
-        headersSetting.getElement().multiline(true);
+            = Setting.of(asset("AIAssistancePanel.customHeadersLabel.text"), settings.string("headers"));
+        headersSetting.getElement()
+            .multiline(true)
+            .tooltip(asset("AIAssistancePanel.customHeadersLabel.toolTipText"))
+            .format(CONVERTER_BLANK_STRING_STRING);
 
         final Setting<SingleSelectionField<GenAIProvider>, ObjectProperty<GenAIProvider>> providerSetting
             = Setting.of(asset("AIAssistancePanel.providerLabel.text"),
@@ -492,7 +513,9 @@ public class JeddictPreferences {
 
         final Setting<StringField, StringProperty> apiKeySetting
             = Setting.of(asset("AIAssistancePanel.apiKeyLabel.text"), settings.string("apiKey"));
-        apiKeySetting.getElement().tooltip(asset("AIAssistancePanel.apiKeyLabel.toolTipText"));
+        apiKeySetting.getElement()
+            .tooltip(asset("AIAssistancePanel.apiKeyLabel.toolTipText"))
+            .format(CONVERTER_BLANK_STRING_STRING);
 
         final Setting<StringField, StringProperty> providerLocationSetting
             = Setting.of(
@@ -555,54 +578,70 @@ public class JeddictPreferences {
 
         final Setting<DoubleField, DoubleProperty> temperatureSetting
             = Setting.of(asset("AIAssistancePanel.temperatureLabel.text"), settings.decimal("temperature", 0.0), 0.0, 1.0, 2, null);
-        temperatureSetting.getElement().tooltip(asset("AIAssistancePanel.temperatureLabel.toolTipText"));
+        temperatureSetting.getElement()
+            .tooltip(asset("AIAssistancePanel.temperatureLabel.toolTipText"))
+            .format(CONVERTER_BLANK_STRING_DOUBLE);
 
         final Setting<DoubleField, DoubleProperty> topPSetting
             = Setting.of(asset("AIAssistancePanel.topPLabel.text"), settings.decimal("topP", 0.0), 0.0, 1.0, 2, null);
-        topPSetting.getElement().tooltip(asset("AIAssistancePanel.topPLabel.toolTipText"));
+        topPSetting.getElement().tooltip(asset("AIAssistancePanel.topPLabel.toolTipText"))
+                .format(CONVERTER_BLANK_STRING_DOUBLE);
 
-        final Setting<IntegerField, DoubleProperty> topKSetting
+        final Setting<IntegerField, IntegerProperty> topKSetting
             = Setting.of(asset("AIAssistancePanel.topKLabel.text"), settings.integer("topK", 0));
-        topKSetting.getElement().tooltip(asset("AIAssistancePanel.topKSetting.toolTipText"));
+        topKSetting.getElement().tooltip(asset("AIAssistancePanel.topKSetting.toolTipText"))
+                .format(CONVERTER_BLANK_STRING_INT);
 
         final Setting<IntegerField, IntegerProperty> seedSetting
             = Setting.of(asset("AIAssistancePanel.seedLabel.text"), settings.integer("seed", 0));
-        seedSetting.getElement().tooltip(asset("AIAssistancePanel.seedLabel.toolTipText"));
+        seedSetting.getElement().tooltip(asset("AIAssistancePanel.seedLabel.toolTipText"))
+                .format(CONVERTER_BLANK_STRING_INT);
 
         final Setting<IntegerField, IntegerProperty> maxTokensSetting
             = Setting.of(asset("AIAssistancePanel.maxTokensLabel.text"), settings.integer("maxTokens", 5000));
-        maxTokensSetting.getElement().tooltip(asset("AIAssistancePanel.maxTokensLabel.toolTipText"));
+        maxTokensSetting.getElement().tooltip(asset("AIAssistancePanel.maxTokensLabel.toolTipText"))
+                .format(CONVERTER_BLANK_STRING_INT);
 
         final Setting<IntegerField, IntegerProperty> maxOutputTokensSetting
             = Setting.of(asset("AIAssistancePanel.maxOutputTokensLabel.text"), settings.integer("maxOutputTokens", 5000));
-        maxOutputTokensSetting.getElement().tooltip(asset("AIAssistancePanel.maxOutputTokensLabel.toolTipText"));
+        maxOutputTokensSetting.getElement().tooltip(asset("AIAssistancePanel.maxOutputTokensLabel.toolTipText"))
+                .format(CONVERTER_BLANK_STRING_INT);
 
         final Setting<IntegerField, IntegerProperty> maxCompletionTokensSetting
             = Setting.of(asset("AIAssistancePanel.maxCompletionTokensLabel.text"), settings.integer("maxCompletionTokens", 5000));
-        maxCompletionTokensSetting.getElement().tooltip(asset("AIAssistancePanel.maxCompletionTokensLabel.toolTipText"));
+        maxCompletionTokensSetting.getElement().tooltip(asset("AIAssistancePanel.maxCompletionTokensLabel.toolTipText"))
+                .format(CONVERTER_BLANK_STRING_INT);
 
         final Setting<DoubleField, DoubleProperty> presencePenaltySetting
             = Setting.of(asset("AIAssistancePanel.presencePenaltyLabel.text"), settings.decimal("presencePenalty", 0.0), -2.0, 2.0, 2, null);
-        presencePenaltySetting.getElement().tooltip(asset("AIAssistancePanel.presencePenaltyLabel.toolTipText"));
+        presencePenaltySetting.getElement()
+            .tooltip(asset("AIAssistancePanel.presencePenaltyLabel.toolTipText"))
+            .format(CONVERTER_BLANK_STRING_DOUBLE);
 
         final Setting<DoubleField, DoubleProperty> frequencyPenaltySetting
             = Setting.of(asset("AIAssistancePanel.frequencyPenaltyLabel.text"), settings.decimal("frequencyPenalty", 0.0), -2.0, 2.0, 2, null);
-        frequencyPenaltySetting.getElement().tooltip(asset("AIAssistancePanel.frequencyPenaltyLabel.toolTipText"));
+        frequencyPenaltySetting.getElement()
+            .tooltip(asset("AIAssistancePanel.frequencyPenaltyLabel.toolTipText"))
+            .format(CONVERTER_BLANK_STRING_DOUBLE);
 
         final Setting<BooleanField, BooleanProperty> streamSetting
             = Setting.of(asset("AIAssistancePanel.stream.text"), settings.bool("stream", false));
 
         final Setting<IntegerField, IntegerProperty> timeoutSetting
             = Setting.of(asset("AIAssistancePanel.timeoutLabel.text"), settings.integer("timeout"));
-        timeoutSetting.getElement().tooltip(asset("AIAssistancePanel.timeoutLabel.toolTipText"));
+        timeoutSetting.getElement().tooltip(asset("AIAssistancePanel.timeoutLabel.toolTipText"))
+                .format(CONVERTER_BLANK_STRING_INT);
 
         final Setting<IntegerField, IntegerProperty> maxRetriesSetting
             = Setting.of(asset("AIAssistancePanel.maxRetriesLabel.text"), settings.integer("maxRetries"));
-        maxRetriesSetting.getElement().tooltip(asset("AIAssistancePanel.maxRetriesLabel.toolTipText"));
+        maxRetriesSetting.getElement().tooltip(asset("AIAssistancePanel.maxRetriesLabel.toolTipText"))
+                .format(CONVERTER_BLANK_STRING_INT);
 
         final Setting<StringField, StringProperty> organizationIdSetting
             = Setting.of(asset("AIAssistancePanel.organizationIdLabel.text"), settings.string("organizationId"));
-        organizationIdSetting.getElement().tooltip(asset("AIAssistancePanel.organizationIdLabel.toolTipText"));
+        organizationIdSetting.getElement()
+            .tooltip(asset("AIAssistancePanel.organizationIdLabel.toolTipText"))
+            .format(CONVERTER_BLANK_STRING_STRING);
 
         final Tooltip tooltip = new Tooltip(asset("AIAssistancePanel.manageModelsButton.toolTipText"));
         tooltip.getStyleClass().add("simple-tooltip");
@@ -800,5 +839,3 @@ public class JeddictPreferences {
         }
     }
 }
-
-

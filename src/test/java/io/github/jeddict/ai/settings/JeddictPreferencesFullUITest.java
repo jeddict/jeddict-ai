@@ -20,7 +20,9 @@ import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
 import javafx.scene.control.Spinner;
+import javafx.scene.control.TextField;
 import javafx.scene.control.TextInputControl;
 import javafx.scene.image.Image;
 import javafx.scene.layout.GridPane;
@@ -32,6 +34,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.testfx.api.FxService;
 import org.testfx.framework.junit5.ApplicationTest;
 import static org.testfx.util.WaitForAsyncUtils.waitForFxEvents;
+import static ste.lloop.Loop._break_;
 import static ste.lloop.Loop.on;
 import ste.netbeans.javafx.JFXPanel;
 
@@ -57,7 +60,6 @@ public class JeddictPreferencesFullUITest extends ApplicationTest {
         final Path configPath = HOME.resolve(".config/jeddict");
         Files.createDirectories(configPath);
         Files.copy(Path.of("src/test/resources/settings/jeddict.json"), configPath.resolve("jeddict-config.json"));
-        System.out.println("settings: " + PreferencesManager.getInstance().getProviderLocation(CUSTOM_OPEN_AI));
     }
 
     @AfterEach
@@ -86,84 +88,76 @@ public class JeddictPreferencesFullUITest extends ApplicationTest {
         stage.setScene(scene);
         stage.show();
 
-        System.out.println("start preferences.settings: " + preferences.settings);
-
         Platform.runLater(() -> root.getChildren().add(preferences.getView()));
     }
 
+    //
+    // TODO: turn setText into accepting a resourcekey insted of the label
     @Test
     public void full_ui_save_persists_all_settings() {
         // wait for UI to be attached (wait up to 500ms)
         waitForFxEvents();
         // Assistant category
-        clickOn("Assistant");
-        waitForFxEvents();
-        setCheckBox("Enable AI Assistant", true);
-        setCheckBox("Enable Inline Completion", true);
-        setCheckBox("Enable Inline Suggestions for Saved Prompts", true);
-        setCheckBox("Enable Inline Suggestions on Enter", true);
-        setCheckBox("Enable Hints", true);
+        clickOn(preferences.asset("Assistant"));  waitForFxEvents();
+        setCheckBox("AIAssistancePanel.aiAssistantActivationCheckBox.text", true);
+        setCheckBox("AIAssistancePanel.enableSmartCodeCheckBox.text", true);
+        setCheckBox("AIAssistancePanel.enableInlinePromptHintCheckBox.text", true);
+        setCheckBox("AIAssistancePanel.enableInlineHintCheckBox.text", true);
+        setCheckBox("AIAssistancePanel.enableHintsCheckBox.text", true);
 
         // Inline Completion subcategory - set contexts
-        clickOn("Inline Completion");
-        waitForFxEvents();
-        setComboBox("Code Context Analysis (Default)", "Entire Project");
-        setComboBox("Code Context Analysis (Variable Name, Method Name, String Literals)", "Current Package");
+        clickOn(preferences.asset("AIAssistancePanel.inlineCompletionPane.TabConstraints.tabTitle"));  waitForFxEvents();
+        setComboBox("AIAssistancePanel.classContextLabel.text", AIClassContext.ENTIRE_PROJECT.toString());
+        setComboBox("AIAssistancePanel.varContextLabel.text", AIClassContext.CURRENT_PACKAGE.toString());
 
         // Providers
-        clickOn("Providers");
-        waitForFxEvents();
+        clickOn(preferences.asset("AIAssistancePanel.providersPane.TabConstraints.tabTitle"));  waitForFxEvents();
 
         // Provider combo uses display names
-        setComboBox("Provider:", DEEPINFRA.name());
-        setText("API Key:", "ui-apikey-1");
-        setText("Endpoint:", "http://localhost:7777");
-        setComboBox("Model:", "aion-1.0-mini");
+        setComboBox("AIAssistancePanel.providerLabel.text", DEEPINFRA.name());
+        setText("AIAssistancePanel.apiKeyLabel.text", "ui-apikey-1");
+        setText("AIAssistancePanel.providerLocationLabel.text", "http://localhost:7777");
+        setComboBox("AIAssistancePanel.gptModelLabel.text", "aion-1.0-mini");
 
         // Inference settings (temperature/topP/topK/...)
-        clickOn("Inference");
-        waitForFxEvents();
-        setText("Temperature:", "0.9");
-        setText("Top P:", "0.55");
-        setText("Presence Penalty:", "0.12");
-        setText("Frequency Penalty:", "0.22");
-        setText("Seed:", "7");
-        setText("Max Tokens:", "1234");
-        setText("Max Completion Tokens:", "2345");
-        setText("Max Output Tokens:", "3456");
-        setText("Top K:", "11");
+        clickOn(preferences.asset("AIAssistancePanel.settings.inference.title"));  waitForFxEvents();
+        setText("AIAssistancePanel.temperatureLabel.text", "0.9");
+        setText("AIAssistancePanel.topPLabel.text", "0.55");
+        setText("AIAssistancePanel.presencePenaltyLabel.text", "0.12");
+        setText("AIAssistancePanel.frequencyPenaltyLabel.text", "0.22");
+        setText("AIAssistancePanel.seedLabel.text", "7");
+        setText("AIAssistancePanel.maxTokensLabel.text", "1234");
+        setText("AIAssistancePanel.maxCompletionTokensLabel.text", "2345");
+        setText("AIAssistancePanel.maxOutputTokensLabel.text", "3456");
+        setText("AIAssistancePanel.topKLabel.text", "11");
 
         // Provider settings: stream/timeout/retries/headers
-        clickOn("Provider Settings");
-        waitForFxEvents();
-        setCheckBox("Stream", true);
-        setText("Request Timeout:", "120");
-        setText("Max Retries:", "4");
-        setText("Headers", "X-UI:abc\nY-UI:def");
+        clickOn(preferences.asset("AIAssistancePanel.providerSettingsPane.TabConstraints.tabTitle"));
+        waitForFxEvents(); setCheckBox("AIAssistancePanel.stream.text", true);
+        setText("AIAssistancePanel.timeoutLabel.text", "120");
+        setText("AIAssistancePanel.maxRetriesLabel.text", "4");
+        setText("AIAssistancePanel.customHeadersLabel.text", "X-UI:abc\nY-UI:def");
 
         // Chat / Context
-        clickOn("Chat");
-        waitForFxEvents();
-        setComboBox("Conversation Context", "Last 10 chats");
-        setCheckBox("Exclude Javadoc Comments in Context", true);
-        setText("File Extensions to Include in Context:", "java,kt,xml");
-        setText("Directories and Files to Exclude from Context", "node_modules,build,tmp");
+        clickOn(preferences.asset("AIAssistancePanel.askAIPane.TabConstraints.tabTitle")); waitForFxEvents();
+        setComboBox("AIAssistancePanel.conversationContextLabel.text", preferences.asset("AIAssistancePanel.conversationContext.option.last_10_chats"));
+        setCheckBox("AIAssistancePanel.excludeJavadocCommentsCheckBox.text", true);
+        setText("AIAssistancePanel.fileExtLabel.text", "java,kt,xml");
+        setText("AIAssistancePanel.excludeDir.text", "node_modules,build,tmp");
 
         // Code execution
-        setCheckBox("Allow Code Execution", true);
-        setCheckBox("Include Code Execution Output", true);
+        setCheckBox("AIAssistancePanel.allowCodeExecution.text", true);
+        setCheckBox("AIAssistancePanel.includeCodeExecutionOutput.text", true);
 
         // Global Rules
-        clickOn("Global Rules");
-        sleep(200);
+        clickOn(preferences.asset("AIAssistancePanel.globalRulesPane.TabConstraints.tabTitle"));  waitForFxEvents();
         // find the big text field (global rules)
-        setText("Global Rules", "ui-rule-1");
+        setText("AIAssistancePanel.globalRulesLabel.text", "ui-rule-1");
 
         // Prompts - ensure it exists (try clicking the tab; if not present, verify model contains the prompts view)
         boolean promptsClicked = true;
         try {
-            clickOn("Prompts");
-            waitForFxEvents();
+            clickOn(preferences.asset("AIAssistancePanel.promptSettingsPane.TabConstraints.tabTitle")); waitForFxEvents();
             Node promptsPanel = lookup("#promptsPanel").query();
             then(promptsPanel).isNotNull();
         } catch (Exception ex) {
@@ -280,23 +274,21 @@ public class JeddictPreferencesFullUITest extends ApplicationTest {
     @Test
     public void provider_selection_updates_endpoint_field() {
         waitForFxEvents();
-        clickOn("Providers");
+        clickOn(preferences.asset("AIAssistancePanel.providersPane.TabConstraints.tabTitle"));
 
         waitForFxEvents();
         //
         // OPEN_AI by default
         //
-        final Node[] endpoint = { findFieldControl("Endpoint:", ".text-field") };
-        System.out.println(endpoint[0]);
+        final Node[] endpoint = { findFieldControl(preferences.asset("AIAssistancePanel.providerLocationLabel.text"), ".text-field") };
         then(endpoint[0]).isNull();
 
         // select LM STUDIO and verify endpoint updated
-        setComboBox("Provider:", CUSTOM_OPEN_AI.name());
+        setComboBox("AIAssistancePanel.providerLabel.text", CUSTOM_OPEN_AI.name());
         waitForFxEvents();
-        endpoint[0] = findFieldControl("Endpoint:", ".text-field");
+        endpoint[0] = findFieldControl(preferences.asset("AIAssistancePanel.providerLocationLabel.text"), ".text-field");
         then(endpoint).isNotNull();
         then(endpoint[0].isVisible()).isTrue();
-        System.out.println(endpoint[0]);
         interact(() -> then(((TextInputControl) endpoint[0]).getText()).isEqualTo("http://localhost:7777"));
     }
 
@@ -310,27 +302,45 @@ public class JeddictPreferencesFullUITest extends ApplicationTest {
         final List<Category> categories = preferences.preferences.preferencesFxModel.getCategories();
 
         nullAllSettings(categories); waitForFxEvents();
-        // navigate to Providers category so API Key field is visible
-        clickOn("Assistant");  waitForFxEvents();
-        clickOn("Chat"); waitForFxEvents();
+        //
+        // section Assistant
+        //
+        clickOn(preferences.asset("AIAssistancePanel.assistantPane.TabConstraints.tabTitle"));  waitForFxEvents();
+        clickOn(preferences.asset("AIAssistancePanel.askAIPane.TabConstraints.tabTitle")); waitForFxEvents();
 
         // UI may be backed by PreferencesManager values; verify the settings property is empty when no stored value exists
-        final String[] keys = new String[] { "apiKey", "provider_location", "organizationId", "globalRules", "headers", "fileExtensionToInclude", "excludeDirs" };
-        interact(() -> {
-            for (String k : keys) {
-                then(preferences.settings.getValue(k)).as("key="+k).isEqualTo("");
-            }
-        });
 
-        waitForFxEvents();
-        // navigate to Providers category so API Key field is visible
-        clickOn("Providers");
-        waitForFxEvents();
-        // also assert provider specific fields remain empty
-        interact(() -> {
-            for (String k : keys) then(preferences.settings.getValue(k)).as("key="+k).isEqualTo("");
-        });
+        on("AIAssistancePanel.fileExtLabel.text", "AIAssistancePanel.excludeDir.text" ).loop((k) ->
+            then(getFieldText(k)).isEqualTo("")
+        );
 
+        //
+        // Section Inference
+        //
+        clickOn(preferences.asset("AIAssistancePanel.settings.inference.title")); waitForFxEvents();
+        on(
+            "AIAssistancePanel.topKLabel.text", "AIAssistancePanel.seedLabel.text",
+            "AIAssistancePanel.maxTokensLabel.text", "AIAssistancePanel.maxOutputTokensLabel.text",
+            "AIAssistancePanel.maxCompletionTokensLabel.text").loop((k) ->
+            then(getFieldText(k)).isEqualTo("0")
+        );
+        then(getFieldText("AIAssistancePanel.organizationIdLabel.text")).isEqualTo("");
+
+        //
+        // Section Provider Settings
+        //
+        clickOn(preferences.asset("AIAssistancePanel.providerSettingsPane.TabConstraints.tabTitle")); waitForFxEvents();
+        on(
+            "AIAssistancePanel.timeoutLabel.text", "AIAssistancePanel.maxRetriesLabel.text"
+        ).loop((k) ->then(getFieldText(k)).isEqualTo("0")
+        );
+        then(getFieldText("AIAssistancePanel.customHeadersLabel.text")).isEqualTo("");
+
+        //
+        // Section Global Rules
+        //
+        clickOn(preferences.asset("AIAssistancePanel.globalRulesPane.TabConstraints.tabTitle")); waitForFxEvents();
+        then(getFieldText("AIAssistancePanel.globalRulesLabel.text")).isEqualTo("");
     }
 
     // --------------------------------------------------------- private methods
@@ -354,7 +364,12 @@ public class JeddictPreferencesFullUITest extends ApplicationTest {
 
     private Node findFieldControl(final String labelText, final String selector) {
         try {
-            final Node label = lookup(labelText).query();
+            final Label label = on(lookup(labelText).queryAll()).loop(node -> {
+                if (node instanceof Label l) {
+                    _break_(l);
+                }
+            });
+
             if (!label.isVisible()) {
                 return null;
             }
@@ -375,26 +390,26 @@ public class JeddictPreferencesFullUITest extends ApplicationTest {
     }
 
 
-    private void setCheckBox(String labelText, boolean value) {
-        Node n = findFieldControl(labelText, ".check-box");
+    private void setCheckBox(String key, boolean value) {
+        Node n = findFieldControl(preferences.asset(key), ".check-box");
         if (n instanceof CheckBox) {
             interact(() -> ((CheckBox) n).setSelected(value));
         } else if (n != null) {
             // try clicking the label itself
-                clickOn(labelText);
+                clickOn(preferences.asset(key));
         }
     }
 
-    private void setComboBox(String labelText, String item) {
-        final Node n = findFieldControl(labelText, ".combo-box");
+    private void setComboBox(String key, String item) {
+        final Node n = findFieldControl(preferences.asset(key), ".combo-box");
         if (n instanceof ComboBox comboBox) {
             clickOn(comboBox); waitForFxEvents();
             clickOn(item); waitForFxEvents();
         }
     }
 
-    private void setText(String labelText, String value) {
-        Node n = findFieldControl(labelText, ".text-field");
+    private void setText(String key, String value) {
+        Node n = findFieldControl(preferences.asset(key), ".text-field");
         if (n instanceof Spinner) {
             try {
                 int iv = Integer.parseInt(value);
@@ -415,35 +430,21 @@ public class JeddictPreferencesFullUITest extends ApplicationTest {
             interact(() -> t.setText(value));
         } else {
             // fallback: click on label then type
-            clickOn(labelText);
+            clickOn(preferences.asset(key));
             write(value);
         }
     }
 
-    // Safe helpers: try UI interaction, otherwise set backing settings property directly
+    private String getFieldText(final String key) {
+        final TextField text = (TextField)findFieldControl(
+            preferences.asset(key), ".text-field"
+        );
 
-    private void safeSetCheckBox(String labelText, String key, boolean value) {
-        try {
-            setCheckBox(labelText, value);
-        } catch (Exception ex) {
-            interact(() -> preferences.settings.set(key, value));
+        if (text == null) {
+            throw new IllegalArgumentException("no TextField found with key " + key);
         }
-    }
 
-    private void safeSetComboBox(String labelText, String key, String item) {
-        try {
-            setComboBox(labelText, item);
-        } catch (Exception ex) {
-            interact(() -> preferences.settings.set(key, item));
-        }
-    }
-
-    private void safeSetText(String labelText, String key, String value) {
-        try {
-            setText(labelText, value);
-        } catch (Exception ex) {
-            interact(() -> preferences.settings.set(key, value));
-        }
+        return text.getText();
     }
 
     private void nullAllSettings(final List<Category> categories) {
@@ -451,7 +452,6 @@ public class JeddictPreferencesFullUITest extends ApplicationTest {
             nullAllSettings(category.getChildren());
             on(category.getGroups()).loop(group -> {
                 on(group.getSettings()).loop(setting -> {
-                    System.out.println(setting + " - " + setting.valueProperty());
                     if (setting.valueProperty() != null) {
                         setting.valueProperty().setValue(null);
                     };
