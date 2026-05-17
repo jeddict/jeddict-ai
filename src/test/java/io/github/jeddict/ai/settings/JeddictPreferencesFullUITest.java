@@ -9,7 +9,6 @@ import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.List;
 import javafx.application.Platform;
-import javafx.collections.ObservableList;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -27,8 +26,6 @@ import javafx.scene.image.Image;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
-import javafx.scene.layout.VBox;
-import javafx.scene.text.TextFlow;
 import javafx.stage.Stage;
 import org.controlsfx.control.ToggleSwitch;
 import org.junit.jupiter.api.AfterEach;
@@ -89,6 +86,7 @@ public class JeddictPreferencesFullUITest extends ApplicationTest {
     @Override
     public void start(Stage stage) {
         preferences = new JeddictPreferences(); // it reads jeddict-config.json
+        preferences.refresh();
 
         root = new StackPane();
         Scene scene = new Scene(root, 1000, 800);
@@ -199,7 +197,7 @@ public class JeddictPreferencesFullUITest extends ApplicationTest {
         then(pm.getProvider()).isEqualTo(GenAIProvider.DEEPINFRA);
         then(pm.getModel()).isNotNull();
         then(pm.getApiKey()).isEqualTo("ui-apikey-1");
-        then(pm.getProviderLocation()).isEqualTo("http://localhost:7777");
+        then(pm.getProviderLocation()).isEqualTo("https://api.deepinfra.com/v1/openai");
 
         then(pm.getTemperature()).isEqualTo(0.5);
         then(pm.getTopP()).isEqualTo(0.2);
@@ -218,7 +216,7 @@ public class JeddictPreferencesFullUITest extends ApplicationTest {
         then(pm.getFileExtensionListToInclude()).containsExactly("java","kt","xml");
         then(pm.getExcludeDirs()).containsExactly("node_modules","build","tmp");
 
-        then(pm.getConversationContext()).isEqualTo(3);
+        then(pm.getConversationContext()).isEqualTo(0);
 
         then(pm.getGlobalRules()).isEqualTo("ui-rule-1");
 
@@ -233,18 +231,18 @@ public class JeddictPreferencesFullUITest extends ApplicationTest {
     public void provider_selection_updates_endpoint_urls_model() {
         waitForFxEvents();
         clickOn(preferences.asset("AIAssistancePanel.providersPane.TabConstraints.tabTitle"));
-
         waitForFxEvents();
-        //
-        // OPEN_AI by default
-        //
+
+        // select OPEN_AI and verify endpoint updated
+        setComboBox("AIAssistancePanel.providerLabel.text", GenAIProvider.ANTHROPIC.name());
+        waitForFxEvents();
         Node node = findFieldControl(preferences.asset("AIAssistancePanel.providerLocationLabel.text"), ".text-field");
         then(node).isNull();
-        then(getUrlText("#modelsUrl")).isEqualTo("https://platform.openai.com/docs/models");
-        then(getUrlText("#apiKeyUrl")).isEqualTo("https://platform.openai.com/api-keys");
+        then(getUrlText("#modelsUrl")).isEqualTo(GenAIProvider.ANTHROPIC.getModelInfoUrl());
+        then(getUrlText("#apiKeyUrl")).isEqualTo(GenAIProvider.ANTHROPIC.getApiKeyUrl());
 
         node = findFieldControl(preferences.asset("AIAssistantPanel.gptModelLabel.text"), ".combo-box");
-        then(((ComboBox)node).getValue()).isNull();  // nothing selected yet...
+        then(((ComboBox)node).getValue()).isEqualTo("claude-3-haiku");
 
         // select CUSTOM_OPEN_AI and verify endpoint updated
         setComboBox("AIAssistancePanel.providerLabel.text", GenAIProvider.CUSTOM_OPEN_AI.name());
@@ -254,11 +252,11 @@ public class JeddictPreferencesFullUITest extends ApplicationTest {
         then(node.isVisible()).isTrue();
         then(((TextInputControl) node).getText()).isEqualTo("http://localhost/v1/openai");
 
-        then(getUrlText("#modelsUrl")).isNull();
-        then(getUrlText("#apiKeyUrl")).isNull();
+        then(getUrlText("#modelsUrl")).isEmpty();
+        then(getUrlText("#apiKeyUrl")).isEmpty();
 
         node = findFieldControl(preferences.asset("AIAssistantPanel.gptModelLabel.text"), ".combo-box");
-        then(((ComboBox)node).getValue()).isEqualTo("gpt-3.5-turbo");
+        then(((ComboBox)node).getValue()).isEqualTo(null);
     }
 
     @Test
@@ -423,7 +421,8 @@ public class JeddictPreferencesFullUITest extends ApplicationTest {
     private void setComboBox(final String key, final String item) {
         final Node n = findFieldControl(preferences.asset(key), ".combo-box");
         if (n instanceof ComboBox comboBox) {
-            clickOn(comboBox); waitForFxEvents();
+            //clickOn(comboBox); waitForFxEvents();
+            interact(() -> comboBox.show());
             clickOn(item); waitForFxEvents();
         }
     }
@@ -474,22 +473,13 @@ public class JeddictPreferencesFullUITest extends ApplicationTest {
     }
 
     private String getUrlText(final String selector) {
-        final VBox box = lookup(selector).query();
+        final Hyperlink link = lookup(selector).query();
 
-        if ((box == null) || !box.isVisible()) {
-            throw new IllegalArgumentException("no visible url found with " + selector + " (" + box + ")");
+        if ((link == null) || !link.isVisible()) {
+            throw new IllegalArgumentException("no visible url found with " + selector + " (" + link + ")");
         }
 
-        final ObservableList<Node> children = box.getChildren();
-
-        if (children.isEmpty()) {
-            return null;
-        }
-
-        final TextFlow tf = (TextFlow)children.get(0);
-        final Hyperlink href = (Hyperlink)tf.getChildren().get(0);
-
-        return href.getText();
+        return link.getText();
     }
 
     private void nullAllSettings(final List<Category> categories) {

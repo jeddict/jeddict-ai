@@ -63,17 +63,13 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.HPos;
 import javafx.geometry.Insets;
-import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
-import javafx.scene.control.Label;
+import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Tooltip;
 import javafx.scene.control.TreeView;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.StackPane;
-import javafx.scene.layout.VBox;
-import javafx.scene.text.TextAlignment;
-import javafx.scene.text.TextFlow;
 import javafx.util.Duration;
 import javafx.util.StringConverter;
 import javax.swing.JComponent;
@@ -145,8 +141,8 @@ public class JeddictPreferences {
     }
 
     public HyperlinkLabel configPathLabel;
-    public VBox modelsUrl;
-    public VBox apiKeyUrl;
+    public Hyperlink modelsLink;
+    public Hyperlink apiKeyLink;
     private Button clearCacheButton;
     private Button manageModelButton;
 
@@ -241,6 +237,8 @@ public class JeddictPreferences {
         settings.object("varClassContext").set(pm.getVarContext());
         settings.object("provider").set(pm.getProvider());
         settings.object("model").set(pm.getModel());
+        settings.string("apiKeyUrl").set(pm.getProvider().getApiKeyUrl());
+        settings.string("modelsUrl").set(pm.getProvider().getModelInfoUrl());
         settings.string("apiKey").set(pm.getApiKey());
         settings.string("provider_location").set(pm.getProviderLocation());
         settings.decimal("temperature").set(pm.getTemperature());
@@ -286,8 +284,18 @@ public class JeddictPreferences {
         configPathLabel = new HyperlinkLabel(
             asset("AIAssistancePanel.configPathLabel.text") + " [%s]".formatted(configPath())
         );
-        modelsUrl = new VBox(); modelsUrl.setId("modelsUrl");
-        apiKeyUrl = new VBox(); apiKeyUrl.setId("apiKeyUrl");
+        modelsLink = new Hyperlink(); modelsLink.setId("modelsUrl");
+        modelsLink.setOnAction(event -> {
+            modelsLink.setVisited(false); // Forces the link back to its unclicked default color
+        });
+        modelsLink.textProperty().bind(settings.string("modelsUrl"));
+
+        apiKeyLink = new Hyperlink(); apiKeyLink.setId("apiKeyUrl");
+        apiKeyLink.setOnAction(event -> {
+            apiKeyLink.setVisited(false); // Forces the link back to its unclicked default color
+        });
+        apiKeyLink.textProperty().bind(settings.string("apiKeyUrl"));
+
         clearCacheButton = new Button(asset("AIAssistancePanel.cleanDataButton.text"));
         manageModelButton = new Button(asset("AIAssistancePanel.manageModelsButton.text"));
 
@@ -336,7 +344,7 @@ public class JeddictPreferences {
                 final NavigationView nv = (NavigationView) mdp.getDetailNode();
                 final TreeView<?> treeView = (TreeView<?>) nv.getChildren().get(1);
                 mdp.setDividerPosition(0.25);
-                on(clearCacheButton, manageModelButton, configPathLabel, modelsUrl, apiKeyUrl).loop((node) -> {
+                on(clearCacheButton, manageModelButton, configPathLabel, modelsLink, apiKeyLink).loop((node) -> {
                     node.getStyleClass().add(CLASS_SETTING_CUSTOM_ELEMENT);
                     GridPane.setColumnIndex(node, 0);
                     GridPane.setColumnSpan(node, 2);
@@ -644,9 +652,6 @@ public class JeddictPreferences {
 
         // Urls
         final PreferencesManager pm = PreferencesManager.getInstance();
-        final GenAIProvider provider = pm.getProvider();
-        updateURL(modelsUrl, provider.getModelInfoUrl());
-        updateURL(apiKeyUrl, provider.getApiKeyUrl());
 
         // Update API key, provider_location, models and model info when provider changes (assume provider property is GenAIProvider)
         settings.object("provider").addListener((obs, oldProv, newProv) -> {
@@ -657,19 +662,17 @@ public class JeddictPreferences {
             }
             settings.set("apiKey", pm.getApiKey(gp));
             settings.set("provider_location", pm.getProviderLocation(gp));
+            settings.set("modelsUrl", gp.getModelInfoUrl());
+            settings.set("apiKeyUrl", gp.getApiKeyUrl());
 
             // update model list for selected provider
             models.clear(); models.addAll(GenAIProvider.getModelsByProvider(gp));
             FXCollections.sort(models);
             modelSetting.getElement().select(0);
-
-            // update model info URL display
-            updateURL(modelsUrl, gp.getModelInfoUrl());
-            updateURL(apiKeyUrl, gp.getApiKeyUrl());
         });
 
-        final Setting modelsUrlSetting = Setting.of(modelsUrl);
-        final Setting apiKeyUrlSetting = Setting.of(apiKeyUrl);
+        final Setting modelsUrlSetting = Setting.of(modelsLink);
+        final Setting apiKeyUrlSetting = Setting.of(apiKeyLink);
 
         //
         // Headers
@@ -960,34 +963,6 @@ public class JeddictPreferences {
 
         // Development mode
         pm.setDevelopment(settings.bool("development").getValue());
-    }
-
-    private void updateURL(VBox node, String url) {
-
-        final ObservableList<Node> box = node.getChildren();
-        box.clear();
-
-        if ((url == null) || url.isBlank()) {
-            return;
-        }
-
-        //
-        // remove tailing /
-        //
-        while (url.endsWith("/")) {
-            url = url.substring(0, url.length()-1);
-        }
-
-        try {
-            TextFlow tf = (TextFlow)BBCodeParser.createLayout("[url=%s]%s[/url]".formatted(url, url)).getChildren().get(0);
-            tf.setTextAlignment(TextAlignment.RIGHT);
-            box.add(tf);
-            node.setVisible(true);
-        } catch (IllegalArgumentException x) {
-            // invalid BBCode ...
-            box.add(new Label(url));
-            node.setVisible(true);
-        }
     }
 
     private class ClassContextLegend extends StackPane {
