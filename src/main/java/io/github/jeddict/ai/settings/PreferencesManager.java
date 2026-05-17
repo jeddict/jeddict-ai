@@ -19,10 +19,16 @@ package io.github.jeddict.ai.settings;
  *
  * @author Gaurav Gupta, Shiwani Gupta
  */
+import static io.github.jeddict.ai.models.Constant.CUSTOM_OPEN_AI_URL;
+import static io.github.jeddict.ai.models.Constant.DEEPINFRA_URL;
+import static io.github.jeddict.ai.models.Constant.DEEPSEEK_URL;
+import static io.github.jeddict.ai.models.Constant.GPT4ALL_URL;
+import io.github.jeddict.ai.models.GroqModelFetcher;
 import io.github.jeddict.ai.models.registry.GenAIModel;
 import io.github.jeddict.ai.models.registry.GenAIProvider;
 import io.github.jeddict.ai.response.TokenGranularity;
 import static io.github.jeddict.ai.models.registry.GenAIModel.DEFAULT_MODEL;
+import static io.github.jeddict.ai.models.registry.GenAIProvider.CUSTOM_OPEN_AI;
 import io.github.jeddict.ai.util.FileUtil;
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -81,6 +87,7 @@ public class PreferencesManager {
     private static final String TIMEOUT_PREFERENCE = "timeout";
     private static final String LOG_REQUESTS_PREFERENCE = "logRequests";
     private static final String LOG_RESPONSES_PREFERENCE = "logResponses";
+    private static final String DEVELOPMENT_PREFERENCE = "development";
     private static final String REPEAT_PENALTY_PREFERENCE = "repeatPenalty";
     private static final String ORGANIZATION_ID_PREFERENCE = "organizationId";
     private static final String TOP_K_PREFERENCE = "topK";
@@ -178,6 +185,18 @@ public class PreferencesManager {
     private Map<String, String> headerKeyValueMap = new HashMap<>();
     private TokenGranularity tokenGranularity;
 
+
+    private interface Defaults {
+        public double TEMPERATURE = 0.0,
+                      TOP_P       = 0.95,
+                      PENALTY     = 0.0;
+        public int    TOP_K       = 40,
+                      MAX_TOKEN   = 4096,
+                      SEED        = 123,
+                      TIMEOUT     = 60;
+
+    }
+
     private PreferencesManager() {
         final Path configPath = FileUtil.getConfigPath();
         final Path configFile = configPath.resolve(JEDDICT_CONFIG);
@@ -189,11 +208,13 @@ public class PreferencesManager {
     private static PreferencesManager instance;
 
     public static PreferencesManager getInstance() {
-        if (instance == null) {
-            synchronized (PreferencesManager.class) {
-                if (instance == null) {
-                    instance = new PreferencesManager();
-                }
+        return getInstance(false);
+    }
+
+    public static PreferencesManager getInstance(boolean reset) {
+        synchronized (PreferencesManager.class) {
+            if (reset || (instance == null)) {
+                instance = new PreferencesManager();
             }
         }
         return instance;
@@ -220,7 +241,7 @@ public class PreferencesManager {
     }
 
     public String getApiKey(GenAIProvider provider) {
-        return preferences.get(provider.name() + API_KEY_PREFERENCES, null);
+        return preferences.get(provider.name() + API_KEY_PREFERENCES, "");
     }
 
     // TODO: P3 - PreferencesManger should not provide UI
@@ -274,7 +295,26 @@ public class PreferencesManager {
     }
 
      public String getProviderLocation(GenAIProvider provider) {
-        return preferences.get(provider.name() + PROVIDER_LOCATION_PREFERENCES, null);
+        return switch (provider) {
+            case DEEPINFRA -> {
+                yield DEEPINFRA_URL;
+            }
+            case DEEPSEEK -> {
+                yield DEEPSEEK_URL;
+            }
+            case GROQ -> {
+                yield GroqModelFetcher.API_URL;
+            }
+            case CUSTOM_OPEN_AI -> {
+                yield CUSTOM_OPEN_AI_URL;
+            }
+            case GPT4ALL -> {
+                yield GPT4ALL_URL;
+            }
+            default -> {
+                yield preferences.get(provider.name() + PROVIDER_LOCATION_PREFERENCES, "");
+            }
+        };
     }
 
     public String getModelName() {
@@ -851,7 +891,7 @@ public class PreferencesManager {
     }
 
     public Double getTemperature() {
-        return preferences.getDouble(TEMPERATURE_PREFERENCE, Double.MIN_VALUE);
+        return preferences.getDouble(TEMPERATURE_PREFERENCE, Defaults.TEMPERATURE);
     }
 
     public void setTemperature(Double temperature) {
@@ -859,7 +899,7 @@ public class PreferencesManager {
     }
 
     public Double getTopP() {
-        return preferences.getDouble(TOP_P_PREFERENCE, Double.MIN_VALUE);
+        return preferences.getDouble(TOP_P_PREFERENCE, Defaults.TOP_P);
     }
 
     public void setTopP(Double topP) {
@@ -867,7 +907,7 @@ public class PreferencesManager {
     }
 
     public Integer getTimeout() {
-        return preferences.getInt(TIMEOUT_PREFERENCE, Integer.MIN_VALUE);
+        return preferences.getInt(TIMEOUT_PREFERENCE, Defaults.TIMEOUT);
     }
 
     public void setTimeout(Integer timeout) {
@@ -890,8 +930,18 @@ public class PreferencesManager {
         preferences.putBoolean(LOG_RESPONSES_PREFERENCE, enabled);
     }
 
+    public boolean isDevelopment() {
+        return preferences.getBoolean(DEVELOPMENT_PREFERENCE, false);
+    }
+
+    public void setDevelopment(boolean enabled) {
+        preferences.putBoolean(DEVELOPMENT_PREFERENCE, enabled);
+        setLogRequestsEnabled(enabled);
+        setLogResponsesEnabled(enabled);
+    }
+
     public Double getRepeatPenalty() {
-        return preferences.getDouble(REPEAT_PENALTY_PREFERENCE, Double.MIN_VALUE);
+        return preferences.getDouble(REPEAT_PENALTY_PREFERENCE, Defaults.PENALTY);
     }
 
     public void setRepeatPenalty(Double repeatPenalty) {
@@ -907,7 +957,7 @@ public class PreferencesManager {
     }
 
     public Integer getTopK() {
-        return preferences.getInt(TOP_K_PREFERENCE, Integer.MIN_VALUE);
+        return preferences.getInt(TOP_K_PREFERENCE, Defaults.TOP_K);
     }
 
     public void setTopK(Integer topK) {
@@ -915,7 +965,7 @@ public class PreferencesManager {
     }
 
     public Integer getMaxTokens() {
-        return preferences.getInt(MAX_TOKENS_PREFERENCE, Integer.MIN_VALUE);
+        return preferences.getInt(MAX_TOKENS_PREFERENCE, Defaults.MAX_TOKEN);
     }
 
     public void setMaxTokens(Integer maxTokens) {
@@ -923,7 +973,7 @@ public class PreferencesManager {
     }
 
     public Integer getMaxCompletionTokens() {
-        return preferences.getInt(MAX_COMPLETION_TOKENS_PREFERENCE, Integer.MIN_VALUE);
+        return preferences.getInt(MAX_COMPLETION_TOKENS_PREFERENCE, Defaults.MAX_TOKEN);
     }
 
     public void setMaxCompletionTokens(Integer maxCompletionTokens) {
@@ -931,7 +981,7 @@ public class PreferencesManager {
     }
 
     public Integer getMaxOutputTokens() {
-        return preferences.getInt(MAX_OUTPUT_TOKENS_PREFERENCE, Integer.MIN_VALUE);
+        return preferences.getInt(MAX_OUTPUT_TOKENS_PREFERENCE, Defaults.MAX_TOKEN);
     }
 
     public void setMaxOutputTokens(Integer maxOutputTokens) {
@@ -939,7 +989,7 @@ public class PreferencesManager {
     }
 
     public Double getPresencePenalty() {
-        return preferences.getDouble(PRESENCE_PENALTY_PREFERENCE, Double.MIN_VALUE);
+        return preferences.getDouble(PRESENCE_PENALTY_PREFERENCE, Defaults.PENALTY);
     }
 
     public void setPresencePenalty(Double presencePenalty) {
@@ -947,7 +997,7 @@ public class PreferencesManager {
     }
 
     public Double getFrequencyPenalty() {
-        return preferences.getDouble(FREQUENCY_PENALTY_PREFERENCE, Double.MIN_VALUE);
+        return preferences.getDouble(FREQUENCY_PENALTY_PREFERENCE, Defaults.PENALTY);
     }
 
     public void setFrequencyPenalty(Double frequencyPenalty) {
@@ -955,7 +1005,7 @@ public class PreferencesManager {
     }
 
     public Integer getSeed() {
-        return preferences.getInt(SEED_PREFERENCE, Integer.MIN_VALUE);
+        return preferences.getInt(SEED_PREFERENCE, Defaults.SEED);
     }
 
     public void setSeed(Integer seed) {
@@ -979,7 +1029,7 @@ public class PreferencesManager {
     }
 
     public Integer getMaxRetries() {
-        return preferences.getInt(MAX_RETRIES_PREFERENCE, Integer.MIN_VALUE);
+        return preferences.getInt(MAX_RETRIES_PREFERENCE, 2);
     }
 
     public void setMaxRetries(Integer maxRetries) {

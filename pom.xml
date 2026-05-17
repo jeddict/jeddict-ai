@@ -47,7 +47,7 @@
         <maven.compiler.release>17</maven.compiler.release>
         <langchain4j.version>1.11.0</langchain4j.version>
         <netbeans.version>RELEASE290</netbeans.version>
-        <javafx-toolkit.version>0.0.2-SNAPSHOT</javafx-toolkit.version>
+        <javafx-toolkit.version>0.0.3-SNAPSHOT</javafx-toolkit.version>
         <testfx.version>4.0.18</testfx.version>
     </properties>
 
@@ -398,10 +398,16 @@
             <version>3.26.2</version>
         </dependency>
         <dependency>
-           <groupId>com.github.stefanofornari</groupId>
-           <artifactId>nb-javafx-toolkit</artifactId>
-           <version>${javafx-toolkit.version}</version>
+            <groupId>com.github.stefanofornari</groupId>
+            <artifactId>nb-javafx-toolkit</artifactId>
+            <version>${javafx-toolkit.version}</version>
+            <!--type>nbm</type-->
         </dependency>
+        <!--dependency>
+            <groupId>io.github.palexdev</groupId>
+            <artifactId>scenicview</artifactId>
+            <version>17.0.2</version>
+        </dependency-->
 
         <!-- -->
 
@@ -748,7 +754,7 @@
         <dependency>
             <groupId>com.github.stefanofornari</groupId>
             <artifactId>lambda-loop</artifactId>
-            <version>0.6.1</version>
+            <version>0.6.3</version>
         </dependency>
         <dependency>
             <groupId>net.bytebuddy</groupId>

@@ -15,6 +15,11 @@
  */
 package io.github.jeddict.ai.settings;
 
+import io.github.jeddict.ai.models.Constant;
+import static io.github.jeddict.ai.models.Constant.CUSTOM_OPEN_AI_URL;
+import static io.github.jeddict.ai.models.Constant.DEEPINFRA_URL;
+import static io.github.jeddict.ai.models.Constant.DEEPSEEK_URL;
+import io.github.jeddict.ai.models.GroqModelFetcher;
 import io.github.jeddict.ai.models.registry.GenAIModel;
 import io.github.jeddict.ai.models.registry.GenAIProvider;
 import io.github.jeddict.ai.response.TokenGranularity;
@@ -60,7 +65,7 @@ public class PreferencesManagerFullTest extends TestBase {
         then(preferences.getApiKey()).isEqualTo("secret-key");
 
         preferences.clearApiKey();
-        then(preferences.getApiKey(GenAIProvider.GOOGLE)).isNull();
+        then(preferences.getApiKey(GenAIProvider.GOOGLE)).isEmpty();
     }
 
     @Test
@@ -430,6 +435,20 @@ public class PreferencesManagerFullTest extends TestBase {
 
         preferences.setLastBrowseDirectory("/tmp");
         then(preferences.getLastBrowseDirectory()).isEqualTo("/tmp");
+    }
+
+    @Test
+    public void getProviderLocation_returns_default_for_soome_models() {
+        then(preferences.getProviderLocation(GenAIProvider.DEEPINFRA))
+            .isEqualTo(DEEPINFRA_URL);
+        then(preferences.getProviderLocation(GenAIProvider.DEEPSEEK))
+            .isEqualTo(DEEPSEEK_URL);
+        then(preferences.getProviderLocation(GenAIProvider.GROQ))
+            .isEqualTo(GroqModelFetcher.API_URL);
+        then(preferences.getProviderLocation(GenAIProvider.CUSTOM_OPEN_AI))
+            .isEqualTo(CUSTOM_OPEN_AI_URL);
+        then(preferences.getProviderLocation(GenAIProvider.GPT4ALL))
+            .isEqualTo(Constant.GPT4ALL_URL);
     }
 
 }

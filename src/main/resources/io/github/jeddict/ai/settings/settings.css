@@ -1,0 +1,48 @@
+
+.bread-crumb-bar .button {
+    -visibility: false;
+}
+
+.custom-element-control {
+    -fx-text-alignment: center;
+}
+
+.group-title-setting-label,
+.group-title-setting-last-label {
+    -fx-wrap-text: true;
+    -fx-max-width: 350px;
+}
+
+#class-context-legend {
+    -fx-padding: 12 20 12 20;
+    -fx-border-width: 1px;
+    -fx-border-color: -color-border-default;
+    -fx-border-insets: 35 0 0 0;
+}
+
+.opaque-panel {
+    -fx-background-color: -color-bg-default;
+}
+
+/*
+ TODO: to be removed after updateing javafx-toolkit
+*/
+.height-s {
+    -fx-min-height: 80px !important;
+    -fx-pref-height: 80px !important;
+}
+
+.height-m {
+    -fx-min-height: 100px !important;
+    -fx-pref-height: 100px !important;
+}
+
+.height-l {
+    -fx-min-height: 125px !important;
+    -fx-pref-height: 125px !important;
+}
+
+.global-rules-height {
+    -fx-min-height: 350px;
+    -fx-pref-height: 350px;
+}

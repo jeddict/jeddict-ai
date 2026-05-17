@@ -17,6 +17,7 @@ package io.github.jeddict.ai.settings;
 
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
+import java.util.logging.Logger;
 import javax.swing.JComponent;
 import javax.swing.SwingUtilities;
 import org.netbeans.spi.options.OptionsPanelController;
@@ -35,15 +36,18 @@ public final class AIAssistantSettingsControllerFX extends OptionsPanelControlle
     private JeddictPreferences preferences = new JeddictPreferences();
     private final PropertyChangeSupport pcs = new PropertyChangeSupport(this);
 
+    private final Logger LOG = Logger.getLogger(AIAssistantSettingsControllerFX.class.getName());
+
     @Override
     public void update() {
+        LOG.info("option panel controller - update");
+        preferences.refresh();
     }
 
     @Override
     public void applyChanges() {
         SwingUtilities.invokeLater(() -> {
             preferences.save();
-
         });
     }
 
@@ -58,7 +62,10 @@ public final class AIAssistantSettingsControllerFX extends OptionsPanelControlle
 
     @Override
     public boolean isChanged() {
-        return preferences.preferences.isContainingChanges();
+        //
+        // if preferences is null, the UI is not yet initialized
+        //
+        return (preferences.preferences != null) && preferences.preferences.isContainingChanges();
     }
 
     @Override
@@ -68,6 +75,7 @@ public final class AIAssistantSettingsControllerFX extends OptionsPanelControlle
 
     @Override
     public JComponent getComponent(Lookup masterLookup) {
+        preferences.refresh();
         return preferences.getPanel();
     }
 

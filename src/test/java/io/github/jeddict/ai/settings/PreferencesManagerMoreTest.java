@@ -1,12 +1,26 @@
+/**
+ * Copyright 2026 the original author or authors from the Jeddict project
+ * (https://jeddict.github.io/).
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package io.github.jeddict.ai.settings;
 
-import io.github.jeddict.ai.models.registry.GenAIProvider;
 import io.github.jeddict.ai.response.TokenGranularity;
 import io.github.jeddict.ai.test.DummyProject;
 import io.github.jeddict.ai.test.TestBase;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -132,5 +146,18 @@ public class PreferencesManagerMoreTest extends TestBase {
         preferences.setExcludeDirs("a,b,c");
         List<String> dirs = preferences.getExcludeDirs();
         then(dirs).containsExactly("a","b","c");
+    }
+
+    @Test
+    public void development_property_updates_logging_settings() {
+        preferences.setDevelopment(true);
+        then(preferences.isDevelopment()).isTrue();
+        then(preferences.isLogRequestsEnabled()).isTrue();
+        then(preferences.isLogResponsesEnabled()).isTrue();
+
+        preferences.setDevelopment(false);
+        then(preferences.isDevelopment()).isFalse();
+        then(preferences.isLogRequestsEnabled()).isFalse();
+        then(preferences.isLogResponsesEnabled()).isFalse();
     }
 }

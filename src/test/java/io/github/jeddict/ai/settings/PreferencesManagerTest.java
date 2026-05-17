@@ -15,7 +15,7 @@
  */
 package io.github.jeddict.ai.settings;
 
-import com.github.stefanbirkner.systemlambda.SystemLambda;
+import static com.github.stefanbirkner.systemlambda.SystemLambda.restoreSystemProperties;
 import static io.github.jeddict.ai.settings.PreferencesManager.JEDDICT_CONFIG;
 import io.github.jeddict.ai.test.TestBase;
 import io.github.jeddict.ai.util.FileUtil;
@@ -35,20 +35,21 @@ public class PreferencesManagerTest extends TestBase {
     @Override
     public void beforeEach() throws Exception {
         super.beforeEach();
-        // Reset the singleton instance before each test
-        Field instance = PreferencesManager.class.getDeclaredField("instance");
-        instance.setAccessible(true);
-        instance.set(null, null);
+        restoreSystemProperties(() -> {
+            // Reset the singleton instance before each test
+            Field instance = PreferencesManager.class.getDeclaredField("instance");
+            instance.setAccessible(true);
+            instance.set(null, null);
 
-        Files.createDirectory(HOME.resolve(USER));
+            Files.createDirectory(HOME.resolve(USER));
+        });
     }
 
     @Test
     public void constructor_without_given_path_linux() throws Exception {
-        SystemLambda.restoreSystemProperties(() -> {
+        restoreSystemProperties(() -> {
             System.setProperty("os.name", LINUX);
             System.setProperty("user.name", USER);
-            System.setProperty("user.home", "/home/" + USER);
 
             Path expectedPath = FileUtil.getConfigPath().resolve(JEDDICT_CONFIG);
 
@@ -63,10 +64,9 @@ public class PreferencesManagerTest extends TestBase {
 
     @Test
     public void constructor_without_given_path_macos() throws Exception {
-        SystemLambda.restoreSystemProperties(() -> {
+        restoreSystemProperties(() -> {
             System.setProperty("os.name", MACOS);
             System.setProperty("user.name", USER);
-            System.setProperty("user.home", "/home/" + USER);
 
             Path expectedPath = FileUtil.getConfigPath().resolve(JEDDICT_CONFIG);
 
@@ -81,10 +81,9 @@ public class PreferencesManagerTest extends TestBase {
 
     @Test
     public void constructor_without_given_path_windows() throws Exception {
-        SystemLambda.restoreSystemProperties(() -> {
+        restoreSystemProperties(() -> {
             System.setProperty("os.name", WINDOWS);
             System.setProperty("user.name", USER);
-            System.setProperty("user.home", "C:\\Users\\" + USER);
 
             Path expectedPath = FileUtil.getConfigPath().resolve(JEDDICT_CONFIG);
 

@@ -215,7 +215,7 @@ public class PromptsPanelController {
             }
         });
 
-        table.setPrefWidth(2000);
+        table.setPrefWidth(2000); table.setPrefHeight(375); // I could not find a way to do it with CSS
         table.setMaxWidth(Double.MAX_VALUE);
         table.getColumns().setAll(nameCol, promptCol);
         table.setItems(items);

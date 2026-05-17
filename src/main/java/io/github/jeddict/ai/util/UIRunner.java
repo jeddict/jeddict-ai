@@ -58,7 +58,6 @@ public class UIRunner {
     private JPopupMenu contextMenu;
 
     private final Logger LOG = Logger.getLogger(UIRunner.class.getName());
-    private final String cssUrl = UIRunner.class.getResource("/io/github/jeddict/ai/settings/preferences.css").toExternalForm();
 
     public static void main(final String[] args) {
         new UIRunner();
