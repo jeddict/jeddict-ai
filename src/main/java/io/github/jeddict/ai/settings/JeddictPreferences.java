@@ -45,6 +45,7 @@ import java.awt.KeyboardFocusManager;
 import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.io.StringReader;
+import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -77,6 +78,8 @@ import javax.swing.SwingUtilities;
 import org.apache.commons.lang3.StringUtils;
 import org.controlsfx.control.MasterDetailPane;
 import org.controlsfx.control.HyperlinkLabel;
+import org.openide.awt.HtmlBrowser.URLDisplayer;
+import org.openide.util.Exceptions;
 import static ste.lloop.Loop.on;
 import ste.netbeans.javafx.JFXPanel;
 
@@ -286,13 +289,16 @@ public class JeddictPreferences {
         );
         modelsLink = new Hyperlink(); modelsLink.setId("modelsUrl");
         modelsLink.setOnAction(event -> {
+            browse(modelsLink.getText());
             modelsLink.setVisited(false); // Forces the link back to its unclicked default color
         });
         modelsLink.textProperty().bind(settings.string("modelsUrl"));
 
         apiKeyLink = new Hyperlink(); apiKeyLink.setId("apiKeyUrl");
         apiKeyLink.setOnAction(event -> {
+            browse(apiKeyLink.getText());
             apiKeyLink.setVisited(false); // Forces the link back to its unclicked default color
+
         });
         apiKeyLink.textProperty().bind(settings.string("apiKeyUrl"));
 
@@ -983,6 +989,14 @@ public class JeddictPreferences {
                 asset("AIAssistancePanel.inlineCompletionPane.TabConstraints.projectDescription")
             )));
             setId("class-context-legend");
+        }
+    }
+
+    private void browse(final String url) {
+        try {
+            URLDisplayer.getDefault().showURL(URI.create(url).toURL());
+        } catch (Exception x) {
+            Exceptions.printStackTrace(x);
         }
     }
 }

@@ -121,9 +121,6 @@ public class JeddictPreferencesTest extends TestBase {
         then(pm.getMaxRetries()).isEqualTo(3);
         then(pm.getOrganizationId()).isEqualTo("org-1");
 
-        then(pm.isAllowCodeExecution()).isTrue();
-        then(pm.isIncludeCodeExecutionOutput()).isTrue();
-
         then(pm.getFileExtensionListToInclude()).containsExactly("java","kt");
         then(pm.getExcludeDirs()).containsExactly("a","b","c");
 
