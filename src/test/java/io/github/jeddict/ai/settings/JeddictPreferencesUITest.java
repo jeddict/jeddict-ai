@@ -44,7 +44,7 @@ import ste.netbeans.javafx.JFXPanel;
  * This replaces the previous settings-backed approach and performs real UI interactions
  * to set values as a user would, then calls save() and verifies PreferencesManager.
  */
-public class JeddictPreferencesFullUITest extends ApplicationTest {
+public class JeddictPreferencesUITest extends ApplicationTest {
 
     private final Duration D500 = Duration.ofMillis(500);
 

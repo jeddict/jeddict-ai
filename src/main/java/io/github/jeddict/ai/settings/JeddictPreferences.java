@@ -16,6 +16,7 @@
 package io.github.jeddict.ai.settings;
 
 import atlantafx.base.theme.NordLight;
+import atlantafx.base.theme.Styles;
 import atlantafx.base.util.BBCodeParser;
 import com.dlsc.formsfx.model.structure.BooleanField;
 import com.dlsc.formsfx.model.structure.DoubleField;
@@ -39,6 +40,7 @@ import static io.github.jeddict.ai.models.registry.GenAIProvider.GROQ;
 import static io.github.jeddict.ai.models.registry.GenAIProvider.MISTRAL;
 import static io.github.jeddict.ai.models.registry.GenAIProvider.OPEN_AI;
 import static io.github.jeddict.ai.models.registry.GenAIProvider.PERPLEXITY;
+import io.github.jeddict.ai.scanner.ProjectClassScanner;
 import java.awt.Desktop;
 import java.awt.KeyEventDispatcher;
 import java.awt.KeyboardFocusManager;
@@ -65,12 +67,17 @@ import javafx.collections.ObservableList;
 import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.DialogPane;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Tooltip;
 import javafx.scene.control.TreeView;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.StackPane;
+import javafx.stage.StageStyle;
 import javafx.util.Duration;
 import javafx.util.StringConverter;
 import javax.swing.JComponent;
@@ -156,10 +163,10 @@ public class JeddictPreferences {
     private PromptsPanelController promptsController;
     private PreferencesFxView view;
 
+    public final JFXPanel panel = new JFXPanel();
+
 
     public JComponent getPanel() {
-        final JFXPanel panel = new JFXPanel();
-
         //
         // With JafaFX keyboards events bubble up to the parent component;
         // this is a problem because for example if the user press ENTER in
@@ -303,6 +310,12 @@ public class JeddictPreferences {
         apiKeyLink.textProperty().bind(settings.string("apiKeyUrl"));
 
         clearCacheButton = new Button(asset("AIAssistancePanel.cleanDataButton.text"));
+        clearCacheButton.getStyleClass().add(Styles.SMALL);
+        clearCacheButton.setOnAction(event -> {
+            ProjectClassScanner.clear();
+            info(asset("AIAssistancePanel.cleanDataButton.alert.text"));
+        });
+
         manageModelButton = new Button(asset("AIAssistancePanel.manageModelsButton.text"));
 
         //
@@ -498,6 +511,7 @@ public class JeddictPreferences {
                     Group.of(asset("AIAssistancePanel.inlineHintPane.TabConstraints.tabTitle"),
                         classContextInlineHintSetting
                     ),
+                    Group.of(Setting.of(clearCacheButton)),
                     Group.of(Setting.of(new ClassContextLegend()))
                 ),
                 chatCategory()
@@ -998,5 +1012,22 @@ public class JeddictPreferences {
         } catch (Exception x) {
             Exceptions.printStackTrace(x);
         }
+    }
+
+    private void info(final String msg) {
+        final ButtonType okType = new ButtonType("OK", ButtonBar.ButtonData.OK_DONE);
+
+        final Alert alert = new Alert(
+            Alert.AlertType.INFORMATION, msg, okType
+        );
+        alert.setHeaderText(null);
+        alert.initStyle(StageStyle.UNDECORATED);
+
+        final DialogPane dialog = alert.getDialogPane();
+
+        dialog.getStylesheets().add(new NordLight().getUserAgentStylesheet());
+        dialog.lookupButton(okType).getStyleClass().addAll(Styles.SMALL);
+
+        alert.showAndWait();
     }
 }
