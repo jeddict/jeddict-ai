@@ -73,6 +73,9 @@ import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.DialogPane;
 import javafx.scene.control.Hyperlink;
+import javafx.scene.control.MenuButton;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.Tooltip;
 import javafx.scene.control.TreeView;
 import javafx.scene.layout.GridPane;
@@ -154,7 +157,7 @@ public class JeddictPreferences {
     public Hyperlink modelsLink;
     public Hyperlink apiKeyLink;
     private Button clearCacheButton;
-    private Button manageModelButton;
+    private MenuButton manageModelButton;
 
 
     public JeddictPreferences() {
@@ -316,7 +319,8 @@ public class JeddictPreferences {
             info(asset("AIAssistancePanel.cleanDataButton.alert.text"));
         });
 
-        manageModelButton = new Button(asset("AIAssistancePanel.manageModelsButton.text"));
+        manageModelButton = new MenuButton(asset("AIAssistancePanel.manageModelsButton.text"));
+        manageModelButton.getItems().setAll(manageModelsMenuItems());
 
         //
         // Global Rules
@@ -1029,5 +1033,14 @@ public class JeddictPreferences {
         dialog.lookupButton(okType).getStyleClass().addAll(Styles.SMALL);
 
         alert.showAndWait();
+    }
+
+    private MenuItem[] manageModelsMenuItems() {
+        final MenuItem[] items = new MenuItem[5];
+
+        items[0] = new MenuItem();
+        items[4] = new SeparatorMenuItem();
+
+        return items;
     }
 }
