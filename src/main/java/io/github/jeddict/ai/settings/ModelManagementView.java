@@ -12,6 +12,10 @@ public class ModelManagementView extends MenuButton {
         this.model = new ModelManagementModel();
         this.controller = new ModelManagementController(model);
 
-        getItems().add(new MenuItem("Add model manually"));
+        MenuItem addModelManuallyItem = new MenuItem("Add model manually");
+        addModelManuallyItem.setOnAction(e -> controller.addModelManually(getScene().getWindow()));
+        getItems().add(addModelManuallyItem);
+
+        getItems().add(new MenuItem("Add models from remote"));
     }
 }

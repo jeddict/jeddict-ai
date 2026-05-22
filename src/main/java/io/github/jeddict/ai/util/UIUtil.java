@@ -15,6 +15,7 @@
  */
 package io.github.jeddict.ai.util;
 
+import atlantafx.base.theme.NordLight;
 import io.github.jeddict.ai.components.AssistantChat;
 import java.awt.Color;
 import java.awt.Component;
@@ -41,6 +42,14 @@ import javax.swing.event.AncestorListener;
 public class UIUtil {
 
     //
+    // AtlantaFX stylesheet
+    //
+    public static final String[] GLOBAL_STYLESHEETS = {
+        new NordLight().getUserAgentStylesheet(),
+        "/ste/netbeans/javafx/bridge.css"
+    };
+
+    //
     // Colors
     //
     public static final Color COLOR_JEDDICT_MAIN_BACKGROUND = Color.WHITE;
@@ -57,14 +66,14 @@ public class UIUtil {
     //
     // Borders
     //
-    public static final Border BORDER_JEDDICT_SPACED = 
+    public static final Border BORDER_JEDDICT_SPACED =
         BorderFactory.createEmptyBorder(5, 5, 5, 5);
     public static final Border BORDER_JEDDICT_SPACED_LINE_1 =
         BorderFactory.createCompoundBorder(
-            BorderFactory.createEmptyBorder(5, 5, 5, 5), 
+            BorderFactory.createEmptyBorder(5, 5, 5, 5),
             BorderFactory.createMatteBorder(1, 0, 0, 0, COLOR_JEDDICT_ACCENT1)
         );
-    
+
     public static void makeDefaultButton(final JButton button) {
         button.addAncestorListener(new AncestorListener() {
             @Override
@@ -78,8 +87,8 @@ public class UIUtil {
             @Override public void ancestorMoved(AncestorEvent event) {}
         });
     }
-        
-    
+
+
     public static String queryToEnhance() {
         // Create a JTextArea for multiline input
         JTextArea textArea = new JTextArea(10, 30); // 10 rows, 30 columns

@@ -31,11 +31,11 @@ import org.kordamp.ikonli.javafx.FontIcon;
 
 import animatefx.animation.ZoomIn;
 import animatefx.animation.ZoomOut;
-import atlantafx.base.theme.NordLight;
 import javafx.geometry.Pos;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.StageStyle;
+import static io.github.jeddict.ai.util.UIUtil.GLOBAL_STYLESHEETS;
 
 public class PromptsPanelController {
     public final TableView<Map.Entry<String, String>> table = new TableView<>();
@@ -274,7 +274,7 @@ public class PromptsPanelController {
             );
             final DialogPane dialog = confirm.getDialogPane();
 
-            dialog.getStylesheets().add(new NordLight().getUserAgentStylesheet());
+            dialog.getStylesheets().addAll(GLOBAL_STYLESHEETS);
             dialog.lookupButton(yesType).getStyleClass().add(Styles.SMALL);
             dialog.lookupButton(noType).getStyleClass().add(Styles.SMALL);
             ((Label)dialog.lookup(".label.content")).setAlignment(Pos.CENTER_LEFT);

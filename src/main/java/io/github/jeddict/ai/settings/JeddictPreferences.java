@@ -15,7 +15,6 @@
  */
 package io.github.jeddict.ai.settings;
 
-import atlantafx.base.theme.NordLight;
 import atlantafx.base.theme.Styles;
 import atlantafx.base.util.BBCodeParser;
 import com.dlsc.formsfx.model.structure.BooleanField;
@@ -35,6 +34,8 @@ import com.dlsc.preferencesfx.view.NavigationView;
 import com.dlsc.preferencesfx.view.PreferencesFxView;
 import io.github.jeddict.ai.models.registry.GenAIProvider;
 import static io.github.jeddict.ai.models.registry.GenAIProvider.ANTHROPIC;
+import static io.github.jeddict.ai.models.registry.GenAIProvider.DEEPINFRA;
+import static io.github.jeddict.ai.models.registry.GenAIProvider.DEEPSEEK;
 import static io.github.jeddict.ai.models.registry.GenAIProvider.GOOGLE;
 import static io.github.jeddict.ai.models.registry.GenAIProvider.GROQ;
 import static io.github.jeddict.ai.models.registry.GenAIProvider.MISTRAL;
@@ -73,9 +74,6 @@ import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.DialogPane;
 import javafx.scene.control.Hyperlink;
-import javafx.scene.control.MenuButton;
-import javafx.scene.control.MenuItem;
-import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.Tooltip;
 import javafx.scene.control.TreeView;
 import javafx.scene.layout.GridPane;
@@ -92,6 +90,7 @@ import org.openide.awt.HtmlBrowser.URLDisplayer;
 import org.openide.util.Exceptions;
 import static ste.lloop.Loop.on;
 import ste.netbeans.javafx.JFXPanel;
+import static io.github.jeddict.ai.util.UIUtil.GLOBAL_STYLESHEETS;
 
 
 /**
@@ -157,7 +156,7 @@ public class JeddictPreferences {
     public Hyperlink modelsLink;
     public Hyperlink apiKeyLink;
     private Button clearCacheButton;
-    private MenuButton manageModelButton;
+    private ModelManagementView manageModelButton;
 
 
     public JeddictPreferences() {
@@ -212,11 +211,8 @@ public class JeddictPreferences {
         Platform.runLater(() -> {
             final Scene scene = new Scene(new StackPane(getView()));
 
-            scene.getStylesheets().addAll(
-                new NordLight().getUserAgentStylesheet(),
-                "/ste/netbeans/javafx/bridge.css",
-                "/io/github/jeddict/ai/settings/settings.css"
-            );
+            scene.getStylesheets().addAll(GLOBAL_STYLESHEETS);
+            scene.getStylesheets().add("/io/github/jeddict/ai/settings/settings.css");
 
             //ScenicView.show(scene);
 
@@ -303,6 +299,11 @@ public class JeddictPreferences {
             modelsLink.setVisited(false); // Forces the link back to its unclicked default color
         });
         modelsLink.textProperty().bind(settings.string("modelsUrl"));
+        modelsLink.visibleProperty().bind(
+            VisibilityProperty.of(settings.string("modelsUrl"), (link) -> {
+                return !StringUtils.isBlank(link);
+            }
+        ).get());
 
         apiKeyLink = new Hyperlink(); apiKeyLink.setId("apiKeyUrl");
         apiKeyLink.setOnAction(event -> {
@@ -311,6 +312,11 @@ public class JeddictPreferences {
 
         });
         apiKeyLink.textProperty().bind(settings.string("apiKeyUrl"));
+        apiKeyLink.visibleProperty().bind(
+            VisibilityProperty.of(settings.string("apiKeyUrl"), (link) -> {
+                return !StringUtils.isBlank(link);
+            }
+        ).get());
 
         clearCacheButton = new Button(asset("AIAssistancePanel.cleanDataButton.text"));
         clearCacheButton.getStyleClass().add(Styles.SMALL);
@@ -319,8 +325,8 @@ public class JeddictPreferences {
             info(asset("AIAssistancePanel.cleanDataButton.alert.text"));
         });
 
-        manageModelButton = new MenuButton(asset("AIAssistancePanel.manageModelsButton.text"));
-        manageModelButton.getItems().setAll(manageModelsMenuItems());
+        manageModelButton = new ModelManagementView();
+        manageModelButton.setText(asset("AIAssistancePanel.manageModelsButton.text"));
 
         //
         // Global Rules
@@ -824,6 +830,16 @@ public class JeddictPreferences {
         tooltip.setMaxWidth(300);
         tooltip.setWrapText(true);
         manageModelButton.setTooltip(tooltip);
+        manageModelButton.visibleProperty().bind(
+            VisibilityProperty.of(
+                settings.object("provider"),
+                (provider) -> {
+                    return !Set.of(
+                        ANTHROPIC, DEEPINFRA, DEEPSEEK, GOOGLE, MISTRAL, OPEN_AI, PERPLEXITY
+                    ).contains(provider);
+                }
+            ).get()
+        );
 
         //
         // Build the category
@@ -1029,18 +1045,9 @@ public class JeddictPreferences {
 
         final DialogPane dialog = alert.getDialogPane();
 
-        dialog.getStylesheets().add(new NordLight().getUserAgentStylesheet());
+        dialog.getStylesheets().addAll(GLOBAL_STYLESHEETS);
         dialog.lookupButton(okType).getStyleClass().addAll(Styles.SMALL);
 
         alert.showAndWait();
-    }
-
-    private MenuItem[] manageModelsMenuItems() {
-        final MenuItem[] items = new MenuItem[5];
-
-        items[0] = new MenuItem();
-        items[4] = new SeparatorMenuItem();
-
-        return items;
     }
 }
