@@ -20,6 +20,7 @@ import static org.assertj.core.api.BDDAssertions.then;
 
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.IntegerProperty;
+import javafx.beans.property.ListProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleDoubleProperty;
@@ -27,6 +28,7 @@ import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
+import javafx.collections.ObservableList;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -175,5 +177,33 @@ public class SettingsPropertyTest {
 
         p1.set("newValue");
         then(p2.get()).isEqualTo("newValue");
+    }
+
+    @Test
+    void list_property_supports_type_inference_for_string() {
+        ObservableList<String> values = mapProperty.list("listKey");
+
+        values.add("alpha");
+        values.add("beta");
+
+        then(values).containsExactly("alpha", "beta");
+    }
+
+    @Test
+    void list_property_supports_type_inference_for_integer() {
+        ListProperty<Integer> values = mapProperty.list("intListKey");
+
+        values.add(10);
+        values.add(20);
+
+        then(values).containsExactly(10, 20);
+    }
+
+    @Test
+    void list_multiple_calls_for_same_key_return_same_instance() {
+        ObservableList<String> first = mapProperty.list("sameListKey");
+        ObservableList<String> second = mapProperty.list("sameListKey");
+
+        then(first).isSameAs(second);
     }
 }

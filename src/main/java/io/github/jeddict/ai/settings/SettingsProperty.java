@@ -19,12 +19,14 @@ package io.github.jeddict.ai.settings;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.IntegerProperty;
+import javafx.beans.property.ListProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.Property;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleFloatProperty;
 import javafx.beans.property.SimpleIntegerProperty;
+import javafx.beans.property.SimpleListProperty;
 import javafx.beans.property.SimpleLongProperty;
 import javafx.beans.property.SimpleMapProperty;
 import javafx.beans.property.SimpleObjectProperty;
@@ -32,6 +34,7 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 
 /**
  * A property representing a map where individual keys are stored as JavaFX properties.
@@ -72,6 +75,16 @@ public class SettingsProperty extends SimpleMapProperty<String, Property<?>> {
 
     public DoubleProperty decimal(String key, double defaultValue) {
         return (DoubleProperty) computeIfAbsent(key, k -> init(new SimpleDoubleProperty(defaultValue)));
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> ListProperty<T> list(String key) {
+        return list(key, FXCollections.observableArrayList());
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> ListProperty<T> list(String key, ObservableList defaultValue) {
+        return (ListProperty) computeIfAbsent(key, k -> init (new SimpleListProperty(defaultValue)));
     }
 
     @SuppressWarnings("unchecked")

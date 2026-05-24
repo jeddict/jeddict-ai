@@ -32,6 +32,7 @@ import com.dlsc.preferencesfx.model.Group;
 import com.dlsc.preferencesfx.model.Setting;
 import com.dlsc.preferencesfx.view.NavigationView;
 import com.dlsc.preferencesfx.view.PreferencesFxView;
+import io.github.jeddict.ai.models.registry.GenAIModel;
 import io.github.jeddict.ai.models.registry.GenAIProvider;
 import static io.github.jeddict.ai.models.registry.GenAIProvider.ANTHROPIC;
 import static io.github.jeddict.ai.models.registry.GenAIProvider.DEEPINFRA;
@@ -64,7 +65,6 @@ import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -88,9 +88,12 @@ import org.controlsfx.control.MasterDetailPane;
 import org.controlsfx.control.HyperlinkLabel;
 import org.openide.awt.HtmlBrowser.URLDisplayer;
 import org.openide.util.Exceptions;
-import static ste.lloop.Loop.on;
 import ste.netbeans.javafx.JFXPanel;
 import static io.github.jeddict.ai.util.UIUtil.GLOBAL_STYLESHEETS;
+import javafx.collections.ListChangeListener;
+import javafx.collections.ObservableList;
+import static ste.lloop.Loop.on;
+import ste.netbeans.javafx.collections.MappedList;
 
 
 /**
@@ -141,6 +144,18 @@ public class JeddictPreferences {
                 return "";
             }
             return String.valueOf(n);
+        }
+    };
+
+    private static final StringConverter CONVERTER_MODEL_STRING = new StringConverter<GenAIModel>() {
+        @Override
+        public String toString(final GenAIModel model) {
+            return (model == null) ? null : model.name();
+        }
+
+        @Override
+        public GenAIModel fromString(final String s) {
+            return null;
         }
     };
 
@@ -245,6 +260,7 @@ public class JeddictPreferences {
         settings.object("classContext").set(pm.getClassContext());
         settings.object("varClassContext").set(pm.getVarContext());
         settings.object("provider").set(pm.getProvider());
+        settings.<GenAIModel>list("models").set(modelList(pm, pm.getProvider()));
         settings.object("model").set(pm.getModel());
         settings.string("apiKeyUrl").set(pm.getProvider().getApiKeyUrl());
         settings.string("modelsUrl").set(pm.getProvider().getModelInfoUrl());
@@ -327,6 +343,9 @@ public class JeddictPreferences {
 
         manageModelButton = new ModelManagementView();
         manageModelButton.setText(asset("AIAssistancePanel.manageModelsButton.text"));
+
+        manageModelButton.modelsProperty.bindBidirectional(settings.list("models"));
+        manageModelButton.providerProperty.bind(settings.object("provider"));
 
         //
         // Global Rules
@@ -616,13 +635,15 @@ public class JeddictPreferences {
         // Providers settingsa
         //
 
+        final PreferencesManager pm = PreferencesManager.getInstance();
+
         //
         // Provider
         //
         final Setting<SingleSelectionField<GenAIProvider>, ObjectProperty<GenAIProvider>> providerSetting
             = Setting.of(asset("AIAssistancePanel.providerLabel.text"),
                 FXCollections.observableArrayList(java.util.Arrays.asList(GenAIProvider.sortedValues())),
-                settings.object("provider", PreferencesManager.getInstance().getProvider())
+                settings.object("provider", pm.getProvider())
             );
         providerSetting.getElement().tooltip(asset("AIAssistancePanel.providerComboBox.toolTipText"));
 
@@ -664,24 +685,29 @@ public class JeddictPreferences {
             .format(CONVERTER_STRING_STRING);
 
         //
-        // Model
+        // Model(s)
         //
-        final ObservableList<String> models = FXCollections.observableArrayList();
-        models.addAll(GenAIProvider.getModelsByProvider((GenAIProvider)settings.object("provider").get()));
-        FXCollections.sort(models);
-
         final Setting<SingleSelectionField<String>, ObjectProperty<String>> modelSetting
             = Setting.of(
                 asset("AIAssistancePanel.gptModelLabel.text"),
-                models,
+                new MappedList<>(settings.list("models"), GenAIModel::name),
                 settings.object("model")
             );
         modelSetting.getElement()
-            .freeText(true)
-            .tooltip(asset("AIAssistancePanel.gptModelLabel.toolTipText"));
+            .tooltip(asset("AIAssistancePanel.gptModelLabel.toolTipText"))
+            .itemsProperty().get().addListener((ListChangeListener.Change<? extends String> change) -> {
+                //
+                // select the newly added element
+                //
+                while (change.next()) {
+                    if (change.wasAdded()) {
+                        settings.object("model").set(change.getAddedSubList().get(0));
+                    }
+                    break;
+                }
+            });
 
         // Urls
-        final PreferencesManager pm = PreferencesManager.getInstance();
 
         // Update API key, provider_location, models and model info when provider changes (assume provider property is GenAIProvider)
         settings.object("provider").addListener((obs, oldProv, newProv) -> {
@@ -695,9 +721,8 @@ public class JeddictPreferences {
             settings.set("modelsUrl", gp.getModelInfoUrl());
             settings.set("apiKeyUrl", gp.getApiKeyUrl());
 
-            // update model list for selected provider
-            models.clear(); models.addAll(GenAIProvider.getModelsByProvider(gp));
-            FXCollections.sort(models);
+            settings.<GenAIModel>list("models").set(modelList(pm, gp));
+
             modelSetting.getElement().select(0);
         });
 
@@ -776,7 +801,7 @@ public class JeddictPreferences {
                 .format(CONVERTER_STRING_INT);
 
         //
-        // Presense penalty
+        // Presence penalty
         //
         final Setting<DoubleField, DoubleProperty> presencePenaltySetting
             = Setting.of(asset("AIAssistancePanel.presencePenaltyLabel.text"), settings.decimal("presencePenalty"), -2.0, 2.0, 2, null);
@@ -840,6 +865,7 @@ public class JeddictPreferences {
                 }
             ).get()
         );
+
 
         //
         // Build the category
@@ -928,6 +954,9 @@ public class JeddictPreferences {
         v = settings.getValue("model"); if (v != null) pm.setModel((String) v);
         v = settings.getValue("apiKey"); if (v != null) pm.setApiKey((String) v);
         v = settings.getValue("provider_location"); if (v != null) pm.setProviderLocation((String) v);
+
+        // Models
+        v = settings.getValue("models"); if (v != null) pm.setGenAIModelList((List<GenAIModel>)v, pm.getProvider().name());
 
         // Numeric / double values
         v = settings.getValue("temperature"); if (v != null) pm.setTemperature(((Number) v).doubleValue());
@@ -1049,5 +1078,13 @@ public class JeddictPreferences {
         dialog.lookupButton(okType).getStyleClass().addAll(Styles.SMALL);
 
         alert.showAndWait();
+    }
+
+    private ObservableList<GenAIModel> modelList(PreferencesManager pm, GenAIProvider provider) {
+        ObservableList<GenAIModel> list = FXCollections.observableArrayList();
+        list.addAll(pm.getGenAIModelList(provider.name()));
+        FXCollections.sort(list, (m1, m2) -> m1.name().compareTo(m2.name()));
+
+        return list;
     }
 }

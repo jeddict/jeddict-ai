@@ -25,4 +25,9 @@ public class ModelManagementModel {
     public StringProperty descriptionProperty() { return description; }
     public DoubleProperty inputPriceProperty() { return inputPrice; }
     public DoubleProperty outputPriceProperty() { return outputPrice; }
+
+    public void reset() {
+        name.set(""); description.set("");
+        inputPrice.set(0.0); outputPrice.set(0.0);
+    }
 }

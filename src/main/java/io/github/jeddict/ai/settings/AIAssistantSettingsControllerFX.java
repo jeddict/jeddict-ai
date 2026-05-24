@@ -75,7 +75,6 @@ public final class AIAssistantSettingsControllerFX extends OptionsPanelControlle
 
     @Override
     public JComponent getComponent(Lookup masterLookup) {
-        preferences.refresh();
         return preferences.getPanel();
     }
 
