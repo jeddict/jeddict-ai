@@ -245,11 +245,11 @@
                         -Dmonocle.platform.headless.height=768
                         -Dprism.order=sw
                         -Dtestfx.robot=glass
-                        -Dtestfx.headless=false      <!-- false to show UI -->
-                        <!-- comment out to show UI >
+                        -Dtestfx.headless=true      <!-- false to show UI -->
+                        <!-- comment out to show UI -->
                         -Dglass.platform=Monocle
                         -Dmonocle.platform=Headless
-                        -->
+                        <!-- -->
                     </argLine>
                     <systemPropertyVariables>
                         <java.util.logging.config.file>src/test/resources/logging.properties</java.util.logging.config.file>
