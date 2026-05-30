@@ -11,7 +11,7 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
 
-public class ModelManagementModel {
+public class ModelManagerModel {
     private final ListProperty<GenAIProvider> providers = new SimpleListProperty<>(FXCollections.observableArrayList(GenAIProvider.values()));
     private final ObjectProperty<GenAIProvider> provider = new SimpleObjectProperty<>();
     private final StringProperty name = new SimpleStringProperty("");

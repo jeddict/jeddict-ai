@@ -167,7 +167,7 @@ public class JeddictPreferences {
     public Hyperlink modelsLink;
     public Hyperlink apiKeyLink;
     private Button clearCacheButton;
-    private ModelManagementView manageModelButtons;
+    private ModelManagerView manageModelButtons;
 
 
     public JeddictPreferences() {
@@ -338,7 +338,7 @@ public class JeddictPreferences {
             info(asset("AIAssistancePanel.cleanDataButton.alert.text"));
         });
 
-        manageModelButtons = new ModelManagementView();
+        manageModelButtons = new ModelManagerView();
         manageModelButtons.modelsProperty.bindBidirectional(settings.list("models"));
         manageModelButtons.providerProperty.bind(settings.object("provider"));
         manageModelButtons.selectedModelProperty.bind(settings.object("model"));

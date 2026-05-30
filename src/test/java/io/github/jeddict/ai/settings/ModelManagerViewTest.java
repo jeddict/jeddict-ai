@@ -15,13 +15,13 @@ import org.testfx.framework.junit5.ApplicationTest;
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.testfx.util.WaitForAsyncUtils.waitForFxEvents;
 
-public class ModelManagementViewTest extends ApplicationTest {
+public class ModelManagerViewTest extends ApplicationTest {
 
-    private ModelManagementView view;
+    private ModelManagerView view;
 
     @Override
     public void start(Stage stage) {
-        view = new ModelManagementView();
+        view = new ModelManagerView();
         Scene scene = new Scene(view, 400, 400);
         stage.setScene(scene);
         stage.show();

@@ -31,9 +31,9 @@ import org.kordamp.ikonli.javafx.FontIcon;
 import static ste.lloop.Loop._break_;
 import static ste.lloop.Loop.on;
 
-public class ModelManagementView extends HBox {
+public class ModelManagerView extends HBox {
 
-    public final ModelManagementModel model;
+    public final ModelManagerModel model;
 
     public final ObjectProperty<GenAIProvider> providerProperty = new SimpleObjectProperty();
     public final ListProperty<GenAIModel> modelsProperty = new SimpleListProperty(FXCollections.observableArrayList());
@@ -44,8 +44,8 @@ public class ModelManagementView extends HBox {
     private final Button deleteButton = new Button(null, new FontIcon(Feather.MINUS));
     private final Button remoteButton = new Button(null, new FontIcon(Feather.DOWNLOAD_CLOUD));
 
-    public ModelManagementView() {
-        this.model = new ModelManagementModel();
+    public ModelManagerView() {
+        this.model = new ModelManagerModel();
         getChildren().addAll(addButton, deleteButton, remoteButton);
         setAlignment(Pos.TOP_RIGHT);
 
