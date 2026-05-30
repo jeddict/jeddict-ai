@@ -33,7 +33,7 @@ import org.openide.util.Lookup;
 )
 public final class AIAssistantSettingsControllerFX extends OptionsPanelController {
 
-    private JeddictPreferences preferences = new JeddictPreferences();
+    private final JeddictPreferences preferences = new JeddictPreferences();
     private final PropertyChangeSupport pcs = new PropertyChangeSupport(this);
 
     private final Logger LOG = Logger.getLogger(AIAssistantSettingsControllerFX.class.getName());

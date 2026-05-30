@@ -85,6 +85,7 @@ import javax.swing.table.TableColumnModel;
 import javax.swing.table.TableRowSorter;
 import org.apache.commons.lang3.StringUtils;
 import org.netbeans.api.progress.ProgressHandle;
+import org.openide.NotifyDescriptor;
 import org.openide.util.Exceptions;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
@@ -1529,52 +1530,59 @@ final class AIAssistancePanel extends javax.swing.JPanel {
     }
 
     private LinkedHashMap<String, GenAIModel> getModelListTable(GenAIProvider selectedProvider) {
-        // TODO Sostituire con la ripresa dal file json
         final LinkedHashMap<String, GenAIModel> models = new LinkedHashMap<>();
-        if (selectedProvider == GenAIProvider.OLLAMA
-                && !providerLocationField.getText().isEmpty()) {
-            OllamaModelFetcher fetcher = new OllamaModelFetcher();
-            List<String> strModels = fetcher.fetchModelNames(providerLocationField.getText());
-            strModels.forEach((model) -> {
-                models.put(model, new GenAIModel(selectedProvider, model, model, 0, 0));
-            });
-            // Aggiunge tutti i MODELS esistenti alla lista
-            models.putAll(getModelsByProvider(GenAIModelRegistry.getModels(),selectedProvider.name()));
-        } else if (selectedProvider == GenAIProvider.LM_STUDIO
-                && !providerLocationField.getText().isEmpty()) {
-            LMStudioModelFetcher fetcher = new LMStudioModelFetcher();
-            List<String> strModels = fetcher.fetchModelNames(providerLocationField.getText());
-            strModels.forEach((model) -> {
-                models.put(model, new GenAIModel(selectedProvider, model, model, 0, 0));
-            });
-            // Aggiunge tutti i MODELS esistenti alla lista
-            models.putAll(getModelsByProvider(GenAIModelRegistry.getModels(),selectedProvider.name()));
-        } else if (selectedProvider == GenAIProvider.GPT4ALL
-                && !providerLocationField.getText().isEmpty()) {
-            GPT4AllModelFetcher fetcher = new GPT4AllModelFetcher();
-            models.putAll(fetcher.fetchGenAIModels(providerLocationField.getText()));
-            models.putAll(getModelsByProvider(GenAIModelRegistry.getModels(),selectedProvider.name()));
-        } else if (selectedProvider == GenAIProvider.COPILOT_PROXY) {
-            GPT4AllModelFetcher fetcher = new GPT4AllModelFetcher();
-            models.putAll(fetcher.fetchGenAIModels(DEFAULT_COPILOT_PROVIDER_LOCATION));
-            models.putAll(getModelsByProvider(GenAIModelRegistry.getModels(),selectedProvider.name()));
-        } else if (selectedProvider == GenAIProvider.GROQ
-                && !providerLocationField.getText().isEmpty()) {
-            GroqModelFetcher fetcher = new GroqModelFetcher();
-            List<String> strModels = fetcher.fetchModels(providerLocationField.getText(), new String(apiKeyField.getPassword()));
-            strModels.forEach((model) -> {
-                models.put(model, new GenAIModel(selectedProvider, model, model, 0, 0));
-            });
-            // Aggiunge tutti i MODELS esistenti alla lista
-            models.putAll(getModelsByProvider(GenAIModelRegistry.getModels(),selectedProvider.name()));
-        } else if (selectedProvider == GenAIProvider.CUSTOM_OPEN_AI) {
-            GenAIModelRegistry fetcher = new GenAIModelRegistry();
-            LinkedHashMap<String, GenAIModel> apiModels = fetcher.fetchGenAIModels(providerLocationField.getText());
-            // Prima aggiungi i modelli predefiniti
-            models.putAll(getModelsByProvider(GenAIModelRegistry.getModels(), selectedProvider.name()));
+        try {
+            if (selectedProvider == GenAIProvider.OLLAMA
+                    && !providerLocationField.getText().isEmpty()) {
+                OllamaModelFetcher fetcher = new OllamaModelFetcher();
+                List<String> strModels = fetcher.fetchModelNames(providerLocationField.getText());
+                strModels.forEach((model) -> {
+                    models.put(model, new GenAIModel(selectedProvider, model, model, 0, 0));
+                });
+                // Aggiunge tutti i MODELS esistenti alla lista
+                models.putAll(getModelsByProvider(GenAIModelRegistry.getModels(),selectedProvider.name()));
+            } else if (selectedProvider == GenAIProvider.LM_STUDIO
+                    && !providerLocationField.getText().isEmpty()) {
+                LMStudioModelFetcher fetcher = new LMStudioModelFetcher();
+                List<String> strModels = fetcher.fetchModelNames(providerLocationField.getText());
+                strModels.forEach((model) -> {
+                    models.put(model, new GenAIModel(selectedProvider, model, model, 0, 0));
+                });
+                // Aggiunge tutti i MODELS esistenti alla lista
+                models.putAll(getModelsByProvider(GenAIModelRegistry.getModels(),selectedProvider.name()));
+            } else if (selectedProvider == GenAIProvider.GPT4ALL
+                    && !providerLocationField.getText().isEmpty()) {
+                GPT4AllModelFetcher fetcher = new GPT4AllModelFetcher();
+                models.putAll(fetcher.fetchGenAIModels(providerLocationField.getText()));
+                models.putAll(getModelsByProvider(GenAIModelRegistry.getModels(),selectedProvider.name()));
+            } else if (selectedProvider == GenAIProvider.COPILOT_PROXY) {
+                GPT4AllModelFetcher fetcher = new GPT4AllModelFetcher();
+                models.putAll(fetcher.fetchGenAIModels(DEFAULT_COPILOT_PROVIDER_LOCATION));
+                models.putAll(getModelsByProvider(GenAIModelRegistry.getModels(),selectedProvider.name()));
+            } else if (selectedProvider == GenAIProvider.GROQ
+                    && !providerLocationField.getText().isEmpty()) {
+                GroqModelFetcher fetcher = new GroqModelFetcher();
+                List<String> strModels = fetcher.fetchModels(providerLocationField.getText(), new String(apiKeyField.getPassword()));
+                strModels.forEach((model) -> {
+                    models.put(model, new GenAIModel(selectedProvider, model, model, 0, 0));
+                });
+                // Aggiunge tutti i MODELS esistenti alla lista
+                models.putAll(getModelsByProvider(GenAIModelRegistry.getModels(),selectedProvider.name()));
+            } else if (selectedProvider == GenAIProvider.CUSTOM_OPEN_AI) {
+                GenAIModelRegistry fetcher = new GenAIModelRegistry();
+                LinkedHashMap<String, GenAIModel> apiModels = fetcher.fetchGenAIModels(providerLocationField.getText());
+                // Prima aggiungi i modelli predefiniti
+                models.putAll(getModelsByProvider(GenAIModelRegistry.getModels(), selectedProvider.name()));
 
-            // Poi aggiungi i modelli dall'API (che sovrascrivono i duplicati)
-            models.putAll(apiModels);
+                // Poi aggiungi i modelli dall'API (che sovrascrivono i duplicati)
+                models.putAll(apiModels);
+            }
+        } catch (IOException x) {
+            String message = "Error retrieving the models from remote";
+            NotifyDescriptor descriptor = new NotifyDescriptor.Message(
+                message,
+                NotifyDescriptor.ERROR_MESSAGE
+            );
         }
 
         if (models.isEmpty()) {

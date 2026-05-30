@@ -8,7 +8,6 @@ import javafx.beans.property.SimpleListProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.FXCollections;
 import javafx.scene.Scene;
-import javafx.scene.control.MenuItem;
 import javafx.scene.input.KeyCode;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
@@ -29,23 +28,16 @@ public class ModelManagementViewTest extends ApplicationTest {
     }
 
     @Test
-    void has_add_model_manually_menu_item() {
-        then(view.getItems())
-            .extracting(MenuItem::getText)
-            .contains("Add model manually");
+    void has_add_delete_remote() {
+        then(lookup("#add_model")).isNotNull();
+        then(lookup("#delete_model")).isNotNull();
+        then(lookup("#remote_model")).isNotNull();
     }
 
     @Test
-    void has_add_models_from_remote_menu_item() {
-        then(view.getItems())
-            .extracting(MenuItem::getText)
-            .contains("Add models from remote");
-    }
-
-    @Test
-    void clicking_add_model_manually_opens_dialog() {
+    void clicking_add_model_manually_opens_dialog() throws Exception {
         clickOn(view);
-        clickOn("Add model manually");
+        clickOn("#add_model");
 
         boolean dialogFound = listWindows().stream()
             .filter(w -> w instanceof javafx.stage.Stage)
@@ -58,7 +50,7 @@ public class ModelManagementViewTest extends ApplicationTest {
     @Test
     void dialog_has_required_fields() {
         clickOn(view);
-        clickOn("Add model manually");
+        clickOn("#add_model");
 
         then((Object) lookup("Model Name:").queryLabeled()).isNotNull();
         then((Object) lookup("Description:").queryLabeled()).isNotNull();
@@ -72,7 +64,7 @@ public class ModelManagementViewTest extends ApplicationTest {
     @Test
     void enable_OK_only_if_name_is_valid() {
         clickOn(view);
-        clickOn("Add model manually"); waitForFxEvents();
+        clickOn("#add_model"); waitForFxEvents();
 
         then(lookup("OK").queryButton().isDisabled()).isTrue();
 
@@ -95,7 +87,7 @@ public class ModelManagementViewTest extends ApplicationTest {
         // Add a first model
         //
         clickOn(view);
-        clickOn("Add model manually"); waitForFxEvents();
+        clickOn("#add_model"); waitForFxEvents();
 
         clickOn("#name .text-input").push(KeyCode.SHORTCUT, KeyCode.A).write("two"); waitForFxEvents();
         clickOn("#description .text-input").push(KeyCode.SHORTCUT, KeyCode.A).write("desc2"); waitForFxEvents();
@@ -122,7 +114,7 @@ public class ModelManagementViewTest extends ApplicationTest {
         // Add a second model
         //
         clickOn(view);
-        clickOn("Add model manually"); waitForFxEvents();
+        clickOn("#add_model"); waitForFxEvents();
 
         clickOn("#name .text-input").push(KeyCode.SHORTCUT, KeyCode.A).write("three"); waitForFxEvents();
         clickOn("#description .text-input").push(KeyCode.SHORTCUT, KeyCode.A).write("desc3"); waitForFxEvents();
@@ -168,7 +160,7 @@ public class ModelManagementViewTest extends ApplicationTest {
         // Add a first model
         //
         clickOn(view);
-        clickOn("Add model manually"); waitForFxEvents();
+        clickOn("#add_model"); waitForFxEvents();
 
         clickOn("#name .text-input").push(KeyCode.SHORTCUT, KeyCode.A).write("two"); waitForFxEvents();
         clickOn("OK");
@@ -177,11 +169,61 @@ public class ModelManagementViewTest extends ApplicationTest {
         // Add a second model
         //
         clickOn(view);
-        clickOn("Add model manually"); waitForFxEvents();
+        clickOn("#add_model"); waitForFxEvents();
 
         then(lookup("#name .text-input").queryTextInputControl().getText()).isEqualTo("");
         then(lookup(("#description .text-input")).queryTextInputControl().getText()).isEqualTo("");
         then(lookup(("#input_price .text-input")).queryTextInputControl().getText()).isEqualTo("0.0");
         then(lookup(("#output_price .text-input")).queryTextInputControl().getText()).isEqualTo("0.0");
+    }
+
+    @Test
+    void remote_shows_ModelUpdterDialog() throws Exception {
+        /*
+        view.providerProperty.bind(new SimpleObjectProperty(GenAIProvider.CUSTOM_OPEN_AI));
+
+        clickOn("#remote_models"); waitForFxEvents();
+
+        I can0t really do this because the we are now in a swing environment...
+        Let's skip it for now, we will come back on this when the panel is turned
+        into FX
+        WaitForAsyncUtils.waitFor(5, TimeUnit.SECONDS, () -> {
+            for (Window window : Window.getWindows()) {
+                if (window instanceof JDialog && window.isVisible()) {
+                    if (ModelUpdaterDialog.TITLE.equals(((JDialog) window).getTitle())) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        });
+        */
+    }
+
+    @Test
+    void delete_button_delets_the_selected_model() {
+        final ObjectProperty<GenAIProvider> provider = new SimpleObjectProperty(GenAIProvider.CUSTOM_OPEN_AI);
+        final ObjectProperty<String> selected = new SimpleObjectProperty();
+        final ListProperty<GenAIModel> models = new SimpleListProperty(FXCollections.observableArrayList());
+
+        models.getValue().addAll(
+            new GenAIModel(GenAIProvider.CUSTOM_OPEN_AI, "one", "desc1", 1.0, 1.1),
+            new GenAIModel(GenAIProvider.CUSTOM_OPEN_AI, "two", "desc2", 2.0, 2.1)
+        );
+
+        view.providerProperty.bind(provider);
+        view.modelsProperty.bindBidirectional(models);
+        view.selectedModelProperty.bind(selected);
+
+        //
+        // no selected model... nothing to delete
+        //
+        clickOn("#delete_model"); waitForFxEvents();
+        then(models).hasSize(2);
+
+        selected.set("two");
+        clickOn("#delete_model"); waitForFxEvents();
+        then(models).containsExactly(models.get(0));
+
     }
 }

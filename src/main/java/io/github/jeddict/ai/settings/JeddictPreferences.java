@@ -35,8 +35,6 @@ import com.dlsc.preferencesfx.view.PreferencesFxView;
 import io.github.jeddict.ai.models.registry.GenAIModel;
 import io.github.jeddict.ai.models.registry.GenAIProvider;
 import static io.github.jeddict.ai.models.registry.GenAIProvider.ANTHROPIC;
-import static io.github.jeddict.ai.models.registry.GenAIProvider.DEEPINFRA;
-import static io.github.jeddict.ai.models.registry.GenAIProvider.DEEPSEEK;
 import static io.github.jeddict.ai.models.registry.GenAIProvider.GOOGLE;
 import static io.github.jeddict.ai.models.registry.GenAIProvider.GROQ;
 import static io.github.jeddict.ai.models.registry.GenAIProvider.MISTRAL;
@@ -74,12 +72,10 @@ import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.DialogPane;
 import javafx.scene.control.Hyperlink;
-import javafx.scene.control.Tooltip;
 import javafx.scene.control.TreeView;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.StackPane;
 import javafx.stage.StageStyle;
-import javafx.util.Duration;
 import javafx.util.StringConverter;
 import javax.swing.JComponent;
 import javax.swing.SwingUtilities;
@@ -150,7 +146,7 @@ public class JeddictPreferences {
     private static final StringConverter CONVERTER_MODEL_STRING = new StringConverter<GenAIModel>() {
         @Override
         public String toString(final GenAIModel model) {
-            return (model == null) ? null : model.name();
+            return (model == null) ? null : model.fullName();
         }
 
         @Override
@@ -171,7 +167,7 @@ public class JeddictPreferences {
     public Hyperlink modelsLink;
     public Hyperlink apiKeyLink;
     private Button clearCacheButton;
-    private ModelManagementView manageModelButton;
+    private ModelManagementView manageModelButtons;
 
 
     public JeddictPreferences() {
@@ -260,8 +256,9 @@ public class JeddictPreferences {
         settings.object("classContext").set(pm.getClassContext());
         settings.object("varClassContext").set(pm.getVarContext());
         settings.object("provider").set(pm.getProvider());
-        settings.<GenAIModel>list("models").set(modelList(pm, pm.getProvider()));
-        settings.object("model").set(pm.getModel());
+        settings.list("models").clear();
+        settings.list("models").addAll(pm.getGenAIModelList(pm.getProvider().name()));
+        settings.object("model").set(pm.getModelName());
         settings.string("apiKeyUrl").set(pm.getProvider().getApiKeyUrl());
         settings.string("modelsUrl").set(pm.getProvider().getModelInfoUrl());
         settings.string("apiKey").set(pm.getApiKey());
@@ -341,11 +338,11 @@ public class JeddictPreferences {
             info(asset("AIAssistancePanel.cleanDataButton.alert.text"));
         });
 
-        manageModelButton = new ModelManagementView();
-        manageModelButton.setText(asset("AIAssistancePanel.manageModelsButton.text"));
-
-        manageModelButton.modelsProperty.bindBidirectional(settings.list("models"));
-        manageModelButton.providerProperty.bind(settings.object("provider"));
+        manageModelButtons = new ModelManagementView();
+        manageModelButtons.modelsProperty.bindBidirectional(settings.list("models"));
+        manageModelButtons.providerProperty.bind(settings.object("provider"));
+        manageModelButtons.selectedModelProperty.bind(settings.object("model"));
+        manageModelButtons.endpoint.bind(settings.string("provider_location"));
 
         //
         // Global Rules
@@ -392,7 +389,7 @@ public class JeddictPreferences {
                 final NavigationView nv = (NavigationView) mdp.getDetailNode();
                 final TreeView<?> treeView = (TreeView<?>) nv.getChildren().get(1);
                 mdp.setDividerPosition(0.25);
-                on(clearCacheButton, manageModelButton, configPathLabel, modelsLink, apiKeyLink).loop((node) -> {
+                on(clearCacheButton, manageModelButtons, configPathLabel, modelsLink, apiKeyLink).loop((node) -> {
                     node.getStyleClass().add(CLASS_SETTING_CUSTOM_ELEMENT);
                     GridPane.setColumnIndex(node, 0);
                     GridPane.setColumnSpan(node, 2);
@@ -687,10 +684,11 @@ public class JeddictPreferences {
         //
         // Model(s)
         //
+        ObservableList<GenAIModel> sortedModels = settings.<GenAIModel>list("models").sorted((m1, m2) -> m1.fullName().compareTo(m2.fullName()));
         final Setting<SingleSelectionField<String>, ObjectProperty<String>> modelSetting
             = Setting.of(
                 asset("AIAssistancePanel.gptModelLabel.text"),
-                new MappedList<>(settings.list("models"), GenAIModel::name),
+                new MappedList<>(sortedModels, GenAIModel::fullName),
                 settings.object("model")
             );
         modelSetting.getElement()
@@ -702,8 +700,12 @@ public class JeddictPreferences {
                 while (change.next()) {
                     if (change.wasAdded()) {
                         settings.object("model").set(change.getAddedSubList().get(0));
+                    } else if (change.wasRemoved()) {
+                        final List<GenAIModel> models = settings.list("models");
+                        if (!models.isEmpty()) {
+                            settings.object("model").set(models.get(0).fullName());
+                        }
                     }
-                    break;
                 }
             });
 
@@ -721,9 +723,14 @@ public class JeddictPreferences {
             settings.set("modelsUrl", gp.getModelInfoUrl());
             settings.set("apiKeyUrl", gp.getApiKeyUrl());
 
-            settings.<GenAIModel>list("models").set(modelList(pm, gp));
+            settings.list("models").clear();
+            settings.list("models").addAll(pm.getGenAIModelList(gp.name()));
 
-            modelSetting.getElement().select(0);
+            settings.object("model").set(
+                settings.list("models").isEmpty()
+                    ? null
+                    : ((GenAIModel)settings.list("models").get(0)).fullName()
+            );
         });
 
         final Setting modelsUrlSetting = Setting.of(modelsLink);
@@ -849,23 +856,23 @@ public class JeddictPreferences {
             .tooltip(asset("AIAssistancePanel.organizationIdLabel.toolTipText"))
             .format(CONVERTER_STRING_STRING);
 
-        final Tooltip tooltip = new Tooltip(asset("AIAssistancePanel.manageModelsButton.toolTipText"));
-        tooltip.getStyleClass().add("simple-tooltip");
-        tooltip.setShowDelay(Duration.millis(500));
-        tooltip.setMaxWidth(300);
-        tooltip.setWrapText(true);
-        manageModelButton.setTooltip(tooltip);
-        manageModelButton.visibleProperty().bind(
+        //
+        // ManageModels button
+        //
+        manageModelButtons.visibleProperty().bind(
             VisibilityProperty.of(
                 settings.object("provider"),
                 (provider) -> {
+                    return true;
+                    /*
                     return !Set.of(
                         ANTHROPIC, DEEPINFRA, DEEPSEEK, GOOGLE, MISTRAL, OPEN_AI, PERPLEXITY
                     ).contains(provider);
+                    */
                 }
             ).get()
         );
-
+        Setting manageModelSetting = Setting.of(manageModelButtons);
 
         //
         // Build the category
@@ -880,7 +887,7 @@ public class JeddictPreferences {
                 apiKeySetting,
                 apiKeyUrlSetting,
                 modelSetting,
-                Setting.of(manageModelButton)
+                manageModelSetting
             )
         ).expand()
             .subCategories(
@@ -951,7 +958,7 @@ public class JeddictPreferences {
         } else {
             throw new ClassCastException("Unsupported provider type: " + (prov == null ? "null" : prov.getClass()));
         }
-        v = settings.getValue("model"); if (v != null) pm.setModel((String) v);
+        v = settings.getValue("model"); if (v != null) pm.setModel((String)v);
         v = settings.getValue("apiKey"); if (v != null) pm.setApiKey((String) v);
         v = settings.getValue("provider_location"); if (v != null) pm.setProviderLocation((String) v);
 
@@ -1078,13 +1085,5 @@ public class JeddictPreferences {
         dialog.lookupButton(okType).getStyleClass().addAll(Styles.SMALL);
 
         alert.showAndWait();
-    }
-
-    private ObservableList<GenAIModel> modelList(PreferencesManager pm, GenAIProvider provider) {
-        ObservableList<GenAIModel> list = FXCollections.observableArrayList();
-        list.addAll(pm.getGenAIModelList(provider.name()));
-        FXCollections.sort(list, (m1, m2) -> m1.name().compareTo(m2.name()));
-
-        return list;
     }
 }

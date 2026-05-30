@@ -2,10 +2,11 @@ package io.github.jeddict.ai.settings;
 
 import com.dlsc.preferencesfx.formsfx.view.renderer.PreferencesFxFormRenderer;
 import com.dlsc.preferencesfx.model.Category;
+import io.github.jeddict.ai.models.registry.GenAIModel;
 import io.github.jeddict.ai.models.registry.GenAIProvider;
+import static io.github.jeddict.ai.models.registry.GenAIProvider.ANTHROPIC;
 import static io.github.jeddict.ai.models.registry.GenAIProvider.DEEPINFRA;import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.List;
 import javafx.application.Platform;
@@ -22,16 +23,12 @@ import javafx.scene.control.Slider;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextInputControl;
-import javafx.scene.image.Image;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 import org.controlsfx.control.ToggleSwitch;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.io.TempDir;
-import org.testfx.api.FxService;
 import org.testfx.framework.junit5.ApplicationTest;
 import static org.testfx.util.WaitForAsyncUtils.waitForFxEvents;
 import static ste.lloop.Loop._break_;
@@ -66,6 +63,7 @@ public class JeddictPreferencesUITest extends ApplicationTest {
         Files.copy(Path.of("src/test/resources/settings/jeddict.json"), configFile);
     }
 
+    /*
     @AfterEach
     public void afterEach(final TestInfo info) throws Exception {
         final Image image =
@@ -82,6 +80,7 @@ public class JeddictPreferencesUITest extends ApplicationTest {
 
         System.out.println("Screenshot saved " + screenshot);
     }
+    */
 
     @Override
     public void start(Stage stage) {
@@ -120,8 +119,15 @@ public class JeddictPreferencesUITest extends ApplicationTest {
         // Provider combo uses display names
         setComboBox("AIAssistancePanel.providerLabel.text", DEEPINFRA.name());
         setText("AIAssistancePanel.apiKeyLabel.text", "ui-apikey-1");
+        interact(() -> {
+            preferences.settings.list("models").addAll(
+                new GenAIModel(DEEPINFRA, "aion-1.0-mini", "desc", 0, 0),
+                new GenAIModel(DEEPINFRA, "aion-1.0-medium", "desc", 0, 0),
+                new GenAIModel(DEEPINFRA, "aion-1.0-big", "desc", 0, 0)
+            );
+            preferences.settings.object("model").set("aion-1.0-medium");
+        });
         setText("AIAssistancePanel.providerLocationLabel.text", "http://localhost:7777");
-        setComboBox("AIAssistancePanel.gptModelLabel.text", "aion-1.0-mini");
 
         // Inference settings (temperature/topP/topK/...)
         clickOn(preferences.asset("AIAssistancePanel.settings.inference.title"));  waitForFxEvents();
@@ -229,20 +235,35 @@ public class JeddictPreferencesUITest extends ApplicationTest {
 
     @Test
     public void provider_selection_updates_endpoint_urls_model() {
+        //
+        // Save a few models...
+        //
+        interact(() -> {
+            preferences.settings.object("provider").set(GenAIProvider.ANTHROPIC);
+            preferences.settings.list("models").addAll(
+                new GenAIModel(ANTHROPIC, "anthropic-1.0-mini", "desc", 0, 0),
+                new GenAIModel(ANTHROPIC, "anthropic-1.0-medium", "desc", 0, 0),
+                new GenAIModel(ANTHROPIC, "anthropic-1.0-big", "desc", 0, 0)
+            );
+            preferences.save();
+            preferences.settings.object("provider").set(GenAIProvider.CUSTOM_OPEN_AI);
+            preferences.save();
+        });
         waitForFxEvents();
         clickOn(preferences.asset("AIAssistancePanel.providersPane.TabConstraints.tabTitle"));
         waitForFxEvents();
 
-        // select OPEN_AI and verify endpoint updated
+        // select ANTHROPIC and verify endpoint updated
         setComboBox("AIAssistancePanel.providerLabel.text", GenAIProvider.ANTHROPIC.name());
+
         waitForFxEvents();
         Node node = findFieldControl(preferences.asset("AIAssistancePanel.providerLocationLabel.text"), ".text-field");
         then(node).isNull();
         then(getUrlText("#modelsUrl")).isEqualTo(GenAIProvider.ANTHROPIC.getModelInfoUrl());
         then(getUrlText("#apiKeyUrl")).isEqualTo(GenAIProvider.ANTHROPIC.getApiKeyUrl());
 
-        node = findFieldControl(preferences.asset("AIAssistantPanel.gptModelLabel.text"), ".combo-box");
-        then(((ComboBox)node).getValue()).isEqualTo("claude-3-haiku");
+        node = findFieldControl(preferences.asset("AIAssistantPanel.gptModelLabel.text"), ".combo-box"); waitForFxEvents();
+        then(((ComboBox)node).getValue()).isEqualTo("anthropic-1.0-mini");
 
         // select CUSTOM_OPEN_AI and verify endpoint updated
         setComboBox("AIAssistancePanel.providerLabel.text", GenAIProvider.CUSTOM_OPEN_AI.name());
@@ -252,8 +273,8 @@ public class JeddictPreferencesUITest extends ApplicationTest {
         then(node.isVisible()).isTrue();
         then(((TextInputControl) node).getText()).isEqualTo("http://localhost/v1/openai");
 
-        then(getUrlText("#modelsUrl")).isEmpty();
-        then(getUrlText("#apiKeyUrl")).isEmpty();
+        then(lookup("#modelsUrl").query().isVisible()).isFalse();
+        then(lookup("#apiKeyUrl").query().isVisible()).isFalse();
 
         node = findFieldControl(preferences.asset("AIAssistantPanel.gptModelLabel.text"), ".combo-box");
         then(((ComboBox)node).getValue()).isEqualTo(null);

@@ -15,8 +15,11 @@
  */
 package io.github.jeddict.ai.models.registry;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
 import java.time.Duration;
@@ -26,6 +29,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.json.JSONTokener;
@@ -36,6 +40,8 @@ import org.json.JSONTokener;
  * @author Gaurav Gupta
  */
 public class GenAIModelRegistry {
+
+    private static final Logger LOG = Logger.getLogger(GenAIModelRegistry.class.getName());
 
     private static final String API_URL = "https://openrouter.ai/api/v1";
 
@@ -51,11 +57,12 @@ public class GenAIModelRegistry {
         return API_URL;
     }
 
-    public List<String> fetchModelNames(String apiUrl) {
+    public List<String> fetchModelNames(String apiUrl) throws IOException {
         List<String> modelNames = new ArrayList<>();
 
+        final String url = apiUrl + "/models";
         try {
-            URLConnection connection = new URL(apiUrl + "/models").openConnection();
+            URLConnection connection = new URL(url).openConnection();
             connection.setRequestProperty("Accept", "application/json");
 
             if (connection instanceof HttpURLConnection http) {
@@ -83,8 +90,8 @@ public class GenAIModelRegistry {
                 }
             }
 
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (MalformedURLException e) {
+            throw new IOException("invalid url " + url);
         }
 
         return modelNames;
@@ -96,10 +103,13 @@ public class GenAIModelRegistry {
      * @param apiUrl GPT4All API url
      * @return Map of model name to GenAIModel
      */
-    public LinkedHashMap<String, GenAIModel> fetchGenAIModels(String apiUrl) {
+    public LinkedHashMap<String, GenAIModel> fetchGenAIModels(String apiUrl)
+        throws IOException {
         LinkedHashMap<String, GenAIModel> modelsMap = new LinkedHashMap<>();
+
+        final String url = apiUrl + "/models";
         try {
-            URLConnection connection = new URL(apiUrl + "/models").openConnection();
+            URLConnection connection = new URL(url).openConnection();
             connection.setRequestProperty("Accept", "application/json");
 
             if (connection instanceof HttpURLConnection http) {
@@ -137,8 +147,8 @@ public class GenAIModelRegistry {
                     modelsMap.put(name, genAIModel);
                 }
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (MalformedURLException e) {
+            throw new IOException("invalid url " + url);
         }
         return modelsMap;
     }
@@ -174,14 +184,18 @@ public class GenAIModelRegistry {
     // HTTP + JSON parsing (lightweight)
     // --------------------------------------------
     private static Map<String, GenAIModel> loadFromHttp() throws Exception {
-        HttpURLConnection conn
-                = (HttpURLConnection) new URL(REGISTRY_INSTANCE.getAPIUrl() + "/models").openConnection();
+        final String url = REGISTRY_INSTANCE.getAPIUrl() + "/models";
+
+        LOG.info(() -> "retrieving models from " + url);
+
+        HttpURLConnection conn = (HttpURLConnection) URI.create(url).toURL().openConnection();
 
         conn.setRequestMethod("GET");
         conn.setConnectTimeout(5000);
         conn.setReadTimeout(10000);
         conn.setRequestProperty("Accept", "application/json");
 
+        conn.connect();
         if (conn.getResponseCode() != 200) {
             throw new IllegalStateException("Failed to load models");
         }

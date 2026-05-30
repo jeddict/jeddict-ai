@@ -59,7 +59,7 @@ public class PreferencesManagerTest extends TestBase {
                 FileUtils.deleteDirectory(configDir.toFile());
             }
             Files.createDirectories(configDir);
-            
+
             Files.createDirectories(HOME.resolve(USER));
         });
         preferences = PreferencesManager.getInstance();
@@ -126,7 +126,7 @@ public class PreferencesManagerTest extends TestBase {
         then(preferences.getProvider()).isEqualTo(GenAIProvider.GOOGLE);
 
         preferences.setModel("test-model");
-        then(preferences.getModel()).isEqualTo("test-model");
+        then(preferences.getModelName()).isEqualTo("test-model");
 
         preferences.setApiKey("secret-key");
         then(preferences.getApiKey()).isEqualTo("secret-key");
@@ -204,7 +204,7 @@ public class PreferencesManagerTest extends TestBase {
         Files.writeString(tmp, "{\"model\":\"imported-model\"}");
 
         preferences.importPreferences(tmp.toString());
-        then(preferences.getModel()).isEqualTo("imported-model");
+        then(preferences.getModelName()).isEqualTo("imported-model");
 
         Path export = HOME.resolve("export-test.json");
         preferences.exportPreferences(export.toString());
@@ -216,7 +216,7 @@ public class PreferencesManagerTest extends TestBase {
         Path pDir = HOME.resolve("mvn-project");
         Files.createDirectories(pDir);
         Files.createFile(pDir.resolve("pom.xml"));
-        
+
         DummyProject p = new DummyProject(pDir);
 
         then(preferences.getBuildCommand(p)).isEqualTo("mvn install");
@@ -622,5 +622,17 @@ public class PreferencesManagerTest extends TestBase {
         then(preferences.isDevelopment()).isFalse();
         then(preferences.isLogRequestsEnabled()).isFalse();
         then(preferences.isLogResponsesEnabled()).isFalse();
+    }
+
+    @Test
+    public void get_and_set_current_model() {
+        preferences.setGenAIModelList(List.of(
+            new GenAIModel(GenAIProvider.CUSTOM_OPEN_AI, "model1", "", 1.0, 1.0),
+            new GenAIModel(GenAIProvider.CUSTOM_OPEN_AI, "model2", "", 2.0, 2.0)
+        ), GenAIProvider.CUSTOM_OPEN_AI.name());
+        preferences.setProvider(GenAIProvider.CUSTOM_OPEN_AI);
+        preferences.setModel("model1");
+
+        then(preferences.getModel()).isEqualTo(new GenAIModel(GenAIProvider.CUSTOM_OPEN_AI, "model1", "", 1.0, 1.0));
     }
 }

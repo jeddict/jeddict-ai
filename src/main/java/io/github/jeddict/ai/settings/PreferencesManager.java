@@ -27,8 +27,6 @@ import io.github.jeddict.ai.models.GroqModelFetcher;
 import io.github.jeddict.ai.models.registry.GenAIModel;
 import io.github.jeddict.ai.models.registry.GenAIProvider;
 import io.github.jeddict.ai.response.TokenGranularity;
-import static io.github.jeddict.ai.models.registry.GenAIModel.DEFAULT_MODEL;
-import static io.github.jeddict.ai.models.registry.GenAIProvider.CUSTOM_OPEN_AI;
 import io.github.jeddict.ai.util.FileUtil;
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -54,6 +52,8 @@ import org.netbeans.api.project.Project;
 import java.nio.file.Path;
 import java.io.IOException;
 import java.util.logging.Logger;
+import static ste.lloop.Loop._break_;
+import static ste.lloop.Loop.on;
 
 public class PreferencesManager {
 
@@ -202,7 +202,6 @@ public class PreferencesManager {
         final Path configFile = configPath.resolve(JEDDICT_CONFIG);
 
         preferences = new FilePreferences(configFile);
-
     }
 
     private static PreferencesManager instance;
@@ -305,11 +304,11 @@ public class PreferencesManager {
             case GROQ -> {
                 yield GroqModelFetcher.API_URL;
             }
-            case CUSTOM_OPEN_AI -> {
-                yield CUSTOM_OPEN_AI_URL;
-            }
             case GPT4ALL -> {
                 yield GPT4ALL_URL;
+            }
+            case CUSTOM_OPEN_AI -> {
+                yield CUSTOM_OPEN_AI_URL;
             }
             default -> {
                 yield preferences.get(provider.name() + PROVIDER_LOCATION_PREFERENCES, "");
@@ -326,7 +325,7 @@ public class PreferencesManager {
         }
         if (modelName == null || modelName.isEmpty()) {
             // Fallback to default model name
-            modelName = getModel();
+            modelName = preferences.get(MODEL_PREFERENCE, null);
         }
         return modelName;
     }
@@ -387,8 +386,14 @@ public class PreferencesManager {
         preferences.put("varContext", context != null ? context.name() : null);
     }
 
-    public String getModel() {
-        return preferences.get(MODEL_PREFERENCE, DEFAULT_MODEL);
+    public GenAIModel getModel() {
+        final List<GenAIModel> models = getGenAIModelList(getProvider().name());
+        final String modelName = getModelName();
+        return on(models).loop((model) -> {
+            if (model.name().equals(modelName)) {
+                _break_(model);
+            }
+        });
     }
 
     public void setModel(String model) {
@@ -408,7 +413,7 @@ public class PreferencesManager {
         for (GenAIModel model : models) {
             JSONObject modelJson = new JSONObject();
             modelJson.put("provider", model.provider().name());
-            modelJson.put("name", model.name());
+            modelJson.put("name", model.fullName());
             modelJson.put("description", model.description());
             modelJson.put("inputPrice", model.inputPrice());
             modelJson.put("outputPrice", model.outputPrice());
@@ -443,7 +448,7 @@ public class PreferencesManager {
     public GenAIModel getGenAIModelByName(String providerName, String modelName) {
         List<GenAIModel> models = getGenAIModelList(providerName);
         return models.stream()
-                .filter(model -> model.name().equals(modelName))
+                .filter(model -> model.fullName().equals(modelName))
                 .findFirst()
                 .orElse(null);
     }
@@ -463,7 +468,7 @@ public class PreferencesManager {
                 double outputPrice = modelJson.getDouble("outputPrice");
 
                 GenAIModel model = new GenAIModel(provider, name, description, inputPrice, outputPrice);
-                models.put(model.name(),model);
+                models.put(model.fullName(),model);
             } catch (Exception e) {
                 System.err.println("Error loading model: " + e.getMessage());
             }
@@ -482,7 +487,7 @@ public class PreferencesManager {
     }
 
     public String getChatModel() {
-        return preferences.get(CHAT_MODEL_PREFERENCE, getModel());
+        return preferences.get(CHAT_MODEL_PREFERENCE, getModelName());
     }
 
     public void setChatModel(String model) {

@@ -1,9 +1,11 @@
 package io.github.jeddict.ai.settings;
 
+import io.github.jeddict.ai.models.registry.GenAIModel;
 import io.github.jeddict.ai.models.registry.GenAIProvider;
 import io.github.jeddict.ai.test.TestBase;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
+import java.util.List;
 import java.util.Map;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,6 +44,9 @@ public class JeddictPreferencesTest extends TestBase {
         ui.settings.set("varClassContext", AIClassContext.CURRENT_PACKAGE);
 
         // Provider / model / keys
+        ui.settings.set("models", List.of(
+            new GenAIModel(GenAIProvider.OPEN_AI, "gpt-test", "", 0, 0)
+        ));
         ui.settings.set("provider", GenAIProvider.OPEN_AI);
         ui.settings.set("model", "gpt-test");
         ui.settings.set("apiKey", "apikey-123");
@@ -102,7 +107,7 @@ public class JeddictPreferencesTest extends TestBase {
         then(pm.getVarContext()).isEqualTo(AIClassContext.CURRENT_PACKAGE);
 
         then(pm.getProvider()).isEqualTo(GenAIProvider.OPEN_AI);
-        then(pm.getModel()).isEqualTo("gpt-test");
+        then(pm.getModel().fullName()).isEqualTo("gpt-test");
         then(pm.getApiKey()).isEqualTo("apikey-123");
         then(pm.getProviderLocation()).isEqualTo("https://example.local");
 

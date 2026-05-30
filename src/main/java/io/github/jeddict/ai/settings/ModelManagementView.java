@@ -15,35 +15,67 @@ import javafx.beans.property.ListProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleListProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
+import javafx.geometry.Pos;
+import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.DialogPane;
-import javafx.scene.control.MenuButton;
-import javafx.scene.control.MenuItem;
-import javafx.stage.Window;
+import javafx.scene.control.Tooltip;
+import javafx.scene.layout.HBox;
+import javax.swing.FocusManager;
+import org.kordamp.ikonli.feather.Feather;
+import org.kordamp.ikonli.javafx.FontIcon;
+import static ste.lloop.Loop._break_;
+import static ste.lloop.Loop.on;
 
-public class ModelManagementView extends MenuButton {
+public class ModelManagementView extends HBox {
 
     public final ModelManagementModel model;
 
     public final ObjectProperty<GenAIProvider> providerProperty = new SimpleObjectProperty();
     public final ListProperty<GenAIModel> modelsProperty = new SimpleListProperty(FXCollections.observableArrayList());
+    public final ObjectProperty<String> selectedModelProperty = new SimpleObjectProperty();
+    public final StringProperty endpoint = new SimpleStringProperty();
 
-    private final MenuItem addManuallyItem = new MenuItem("Add model manually");
-
-    private Window owner = null;
-
+    private final Button addButton = new Button(null, new FontIcon(Feather.PLUS));
+    private final Button deleteButton = new Button(null, new FontIcon(Feather.MINUS));
+    private final Button remoteButton = new Button(null, new FontIcon(Feather.DOWNLOAD_CLOUD));
 
     public ModelManagementView() {
         this.model = new ModelManagementModel();
-        getItems().add(addManuallyItem);
-        getItems().add(new MenuItem("Add models from remote"));
+        getChildren().addAll(addButton, deleteButton, remoteButton);
+        setAlignment(Pos.TOP_RIGHT);
 
-        addManuallyItem.setOnAction(event -> Platform.runLater(() -> addModelManually()));
+        addButton.setId("add_model");
+        addButton.setTooltip(new Tooltip("Add model"));
+        addButton.setOnAction(event -> Platform.runLater(() -> addModel()));
+
+        deleteButton.setId("delete_model");
+        deleteButton.setTooltip(new Tooltip("Delete selected model"));
+        deleteButton.setOnAction(event -> deleteModel());
+
+        remoteButton.setId("remote_models");
+        remoteButton.setTooltip(new Tooltip("Select models from remote"));
+        remoteButton.setOnAction(event -> {
+            final ModelUpdaterDialog updater = new ModelUpdaterDialog(
+                FocusManager.getCurrentManager().getActiveWindow(),
+                providerProperty.get(),
+                endpoint.get(),
+                modelsProperty.get()
+            );
+
+            updater.updateModels();
+        });
+
+        on(addButton, deleteButton, remoteButton).loop((button) -> {
+            button.getStyleClass().addAll(Styles.BUTTON_ICON, Styles.BUTTON_OUTLINED, Styles.FLAT);
+        });
     }
 
-    public void addModelManually() {
+    public void addModel() {
         model.reset();
         StringField nameField = Field.ofStringType(model.nameProperty())
             .label("Model Name:")
@@ -75,9 +107,7 @@ public class ModelManagementView extends MenuButton {
         );
 
         Dialog<ButtonType> dialog = new Dialog<>();
-        if (owner != null) {
-            dialog.initOwner(owner);
-        }
+        dialog.initOwner(this.getScene().getWindow());
         dialog.setTitle("Add Custom Model");
 
         DialogPane dialogPane = dialog.getDialogPane();
@@ -103,5 +133,15 @@ public class ModelManagementView extends MenuButton {
             );
             Platform.runLater(() -> modelsProperty.get().add(m));
         }
+    }
+
+    public void deleteModel() {
+        final GenAIModel selected = on(modelsProperty).loop((m) -> {
+            if (m.fullName().equals(selectedModelProperty.get())) {
+                _break_(m);
+            }
+        });
+
+        modelsProperty.remove(selected);
     }
 }
