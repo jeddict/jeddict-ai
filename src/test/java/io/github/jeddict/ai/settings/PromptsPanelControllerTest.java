@@ -58,11 +58,11 @@ public class PromptsPanelControllerTest extends ApplicationTest {
 
     @Test
     public void click_add_shows_editor() {
-        clickOn("#addButton");
-        waitForVisibility("#editPromptPane", true);
+        clickOn("#add");
+        waitForVisibility("#edit_prompt", true);
 
-        TextInputControl nameField = lookup("#nameField .text-field").queryAs(TextInputControl.class);
-        TextInputControl contentArea = lookup("#contentArea .text-area").queryAs(TextInputControl.class);
+        TextInputControl nameField = lookup("#name .text-field").queryAs(TextInputControl.class);
+        TextInputControl contentArea = lookup("#prompt .text-area").queryAs(TextInputControl.class);
 
         then(nameField.getText()).isEmpty();
         then(contentArea.getText()).isEmpty();
@@ -70,17 +70,17 @@ public class PromptsPanelControllerTest extends ApplicationTest {
 
     @Test
     public void save_new_prompt_updates_table_and_hides_editor() {
-        clickOn("#addButton");
-        waitForVisibility("#editPromptPane", true);
+        clickOn("#add");
+        waitForVisibility("#edit_prompt", true);
 
         interact(() -> {
-            lookup("#nameField .text-field").queryAs(TextInputControl.class).setText("newKey");
-            lookup("#contentArea .text-area").queryAs(TextInputControl.class).setText("newValue");
+            lookup("#name .text-field").queryAs(TextInputControl.class).setText("newKey");
+            lookup("#prompt .text-area").queryAs(TextInputControl.class).setText("newValue");
         });
         waitForFxEvents();
 
-        clickOn("#actionButton");
-        waitForVisibility("#editPromptPane", false);
+        clickOn("#action");
+        waitForVisibility("#edit_prompt", false);
 
         then(controller.table.getItems()).hasSize(1);
         then(controller.table.getItems().get(0).getKey()).isEqualTo("newKey");
@@ -97,10 +97,10 @@ public class PromptsPanelControllerTest extends ApplicationTest {
         waitForFxEvents();
 
         clickOn("value1"); // Click on the name in the table
-        waitForVisibility("#editPromptPane", true);
+        waitForVisibility("#edit_prompt", true);
 
-        TextInputControl nameField = lookup("#nameField .text-field").queryAs(TextInputControl.class);
-        TextInputControl contentArea = lookup("#contentArea .text-area").queryAs(TextInputControl.class);
+        TextInputControl nameField = lookup("#name .text-field").queryAs(TextInputControl.class);
+        TextInputControl contentArea = lookup("#prompt .text-area").queryAs(TextInputControl.class);
 
         then(nameField.getText()).isEqualTo("key1");
         then(contentArea.getText()).isEqualTo("value1");
@@ -109,13 +109,13 @@ public class PromptsPanelControllerTest extends ApplicationTest {
 
     @Test
     public void cancel_hides_editor_without_changes() {
-        clickOn("#addButton");
-        waitForVisibility("#editPromptPane", true);
+        clickOn("#add");
+        waitForVisibility("#edit_prompt", true);
         interact(() -> lookup(".text-field").queryAs(TextInputControl.class).setText("temporary"));
 
         clickOn("Cancel");
 
-        waitForVisibility("#promptsPanel", true);
+        waitForVisibility("#prompts", true);
         then(controller.table.getItems()).isEmpty();
     }
 

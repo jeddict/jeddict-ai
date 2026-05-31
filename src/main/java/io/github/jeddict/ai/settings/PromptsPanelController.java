@@ -43,6 +43,8 @@ import com.dlsc.formsfx.model.structure.Group;
 import com.dlsc.formsfx.view.renderer.FormRenderer;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
+import static ste.lloop.Loop._break_;
+import static ste.lloop.Loop.on;
 
 public class PromptsPanelController {
     public final TableView<Map.Entry<String, String>> table = new TableView<>();
@@ -74,13 +76,13 @@ public class PromptsPanelController {
                 Field.ofStringType(nameProperty)
                     .label("Name:")
                     .required("Name is required")
-                    .id("nameField"),
+                    .id("name"),
                 Field.ofStringType(contentProperty)
-                    .label("Content:")
-                    .required("Content is required")
+                    .label("Prompt:")
+                    .required("Prompt is required")
                     .multiline(true)
                     .styleClass("height-m")
-                    .id("contentArea")
+                    .id("prompt")
             )
         );
 
@@ -90,9 +92,23 @@ public class PromptsPanelController {
         VBox.setVgrow(formRenderer, Priority.ALWAYS);
 
         actionButton = new Button("Create");
-        actionButton.setId("actionButton");
+        actionButton.setId("action");
         actionButton.getStyleClass().addAll(Styles.SMALL, Styles.BUTTON_OUTLINED, Styles.ACCENT);
         actionButton.disableProperty().bind(modelForm.validProperty().not());
+
+        ((TextField)formRenderer.lookup("#name .text-field")).textProperty().subscribe(name-> {
+            Boolean existing = on(items).loop((entry) -> {
+                if (entry.getKey().equals(name)) {
+                    _break_(true);
+                }
+            });
+
+            if ((existing != null) && existing) {
+                actionButton.setText("Save");
+            } else {
+                actionButton.setText((editingIndex == -1) ? "Create" : "Save");
+            }
+        });
 
         Button cancel = new Button("Cancel");
         cancel.getStyleClass().addAll(Styles.SMALL, Styles.BUTTON_OUTLINED);
@@ -102,7 +118,7 @@ public class PromptsPanelController {
         actions.setAlignment(Pos.CENTER_LEFT);
 
         editContainer = new VBox(formRenderer, actions);
-        editContainer.setId("editPromptPane");
+        editContainer.setId("edit_prompt");
         editContainer.setPadding(new Insets(10));
         editContainer.getStyleClass().add("opaque-panel");
         editContainer.setVisible(false);
@@ -154,12 +170,10 @@ public class PromptsPanelController {
         if (index == -1) {
             nameProperty.set("");
             contentProperty.set("");
-            actionButton.setText("Create");
         } else {
             Map.Entry<String, String> entry = items.get(index);
             nameProperty.set(entry.getKey());
             contentProperty.set(entry.getValue());
-            actionButton.setText("Save");
         }
 
         modelForm.reset(); // ensure validation state is cleared for new entry
@@ -251,7 +265,7 @@ public class PromptsPanelController {
         tableWrapper.setMaxWidth(Double.MAX_VALUE);
 
         mainContainer = new VBox(tableWrapper);
-        mainContainer.setId("promptsPanel");
+        mainContainer.setId("prompts");
         mainContainer.setMaxWidth(Double.MAX_VALUE);
         mainContainer.getStyleClass().add("opaque-panel");
         VBox.setVgrow(tableWrapper, Priority.ALWAYS);
@@ -259,12 +273,12 @@ public class PromptsPanelController {
         // add and delete button area
         Button add = new Button(null, new FontIcon(Feather.PLUS));
         add.getStyleClass().addAll(Styles.BUTTON_ICON, Styles.BUTTON_OUTLINED, Styles.FLAT);
-        add.setId("addButton");
+        add.setId("add");
         add.setOnAction(e -> showEditor(-1));
 
         Button delete = new Button(null, new FontIcon(Feather.MINUS));
         delete.getStyleClass().addAll(Styles.BUTTON_ICON, Styles.BUTTON_OUTLINED, Styles.FLAT);
-        delete.setId("deleteButton");
+        delete.setId("delete");
         delete.setDisable(true);
         delete.setOnAction(e -> {
             Map.Entry<String, String> selected = table.getSelectionModel().getSelectedItem();
@@ -306,7 +320,7 @@ public class PromptsPanelController {
         // placeholder when there is no content
         add = new Button(null, new FontIcon(Feather.PLUS));
         add.getStyleClass().addAll(Styles.BUTTON_ICON, Styles.BUTTON_OUTLINED, Styles.FLAT);
-        add.setId("tablePlaceholderButton");
+        add.setId("table_placeholder");
         add.setOnAction(e -> showEditor(-1));
 
         HBox placeholder = new HBox(5); // 5px spacing

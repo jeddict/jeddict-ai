@@ -28,6 +28,7 @@ import javafx.stage.Stage;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.Test;
 import org.testfx.framework.junit5.ApplicationTest;
+import static org.testfx.util.WaitForAsyncUtils.waitForFxEvents;
 
 /**
  *
@@ -48,12 +49,12 @@ public class PromptsPanelViewTest extends ApplicationTest {
 
     @Test
     public void action_disabled_until_fields_non_empty() {
-        // click the add button (to be implemented)
-        clickOn("#addButton");
+        // click the add button (to be implemented)c
+        clickOn("#add");
 
-        TextField nameField = lookup("#nameField").query();
-        TextArea contentArea = lookup("#contentArea").query();
-        Button action = lookup("#actionButton").query();
+        TextField nameField = lookup("#name .text-field").query();
+        TextArea contentArea = lookup("#prompt .text-area").query();
+        Button action = lookup("#action").query();
 
         then(nameField.getText()).isEmpty();
         then(contentArea.getText()).isEmpty();
@@ -71,10 +72,10 @@ public class PromptsPanelViewTest extends ApplicationTest {
     @Test
     public void add_creates_new_entry() {
         int before = controller.table.getItems().size();
-        clickOn("#addButton");
-        TextField nameField = lookup("#nameField").query();
-        TextArea contentArea = lookup("#contentArea").query();
-        Button action = lookup("#actionButton").query();
+        clickOn("#add");
+        TextField nameField = lookup("#name .text-field").query();
+        TextArea contentArea = lookup("#prompt .text-area").query();
+        Button action = lookup("#action").query();
 
         clickOn(nameField).write("UniquePromptName");
         clickOn(contentArea).write("Some content for unique prompt");
@@ -90,22 +91,19 @@ public class PromptsPanelViewTest extends ApplicationTest {
         controller.items.add(Map.entry("key", "Original value"));
 
         int before = controller.table.getItems().size();
-        clickOn("#addButton");
-        TextField nameField = lookup("#nameField").query();
-        TextArea contentArea = lookup("#contentArea").query();
-        Button action = lookup("#actionButton").query();
+        clickOn("#add");
+        TextField nameField = lookup("#name .text-field").query();
+        TextArea contentArea = lookup("#prompt .text-area").query();
+        Button action = lookup("#action").query();
 
         // use existing name
         String existing = controller.items.get(0).getKey();
-        clickOn(nameField).write(existing);
-        clickOn(contentArea).write("Updated via add");
-
-        // Wait for updateState to run (it runs on text property change)
-        interact(() -> {});
+        clickOn(nameField).write(existing); waitForFxEvents();
+        clickOn(contentArea).write("Updated via add"); waitForFxEvents();
 
         // should switch to Save
         then(action.getText()).isEqualTo("Save");
-        clickOn(action);
+        clickOn(action);waitForFxEvents();
 
         then(controller.table.getItems().size()).isEqualTo(before);
         then(controller.items.stream().anyMatch(e -> e.getValue().equals("Updated via add"))).isTrue();
@@ -114,7 +112,7 @@ public class PromptsPanelViewTest extends ApplicationTest {
     @Test
     public void delete_button_enabled_on_selection() {
         controller.items.add(Map.entry("key", "value"));
-        Button delete = lookup("#deleteButton").queryButton();
+        Button delete = lookup("#delete").queryButton();
         then(delete.isDisable()).isTrue();
 
         interact(() -> controller.table.getSelectionModel().select(0));
@@ -126,7 +124,7 @@ public class PromptsPanelViewTest extends ApplicationTest {
         controller.items.add(Map.entry("key", "value"));
         int before = controller.table.getItems().size();
         interact(() -> controller.table.getSelectionModel().select(0));
-        clickOn("#deleteButton");
+        clickOn("#delete");
         // click Cancel on dialog
         clickOn("Cancel");
         then(controller.table.getItems()).hasSize(before);
@@ -137,7 +135,7 @@ public class PromptsPanelViewTest extends ApplicationTest {
         controller.items.add(Map.entry("key", "value"));
         int before = controller.table.getItems().size();
         interact(() -> controller.table.getSelectionModel().select(0));
-        clickOn("#deleteButton");
+        clickOn("#delete");
         clickOn("Yes");
         then(controller.table.getItems()).hasSize(before - 1);
     }
@@ -148,14 +146,14 @@ public class PromptsPanelViewTest extends ApplicationTest {
         interact(() -> controller.table.getSelectionModel().select(0));
         clickOn(".table-row-cell");
 
-        TextField nameField = lookup("#nameField").query();
-        TextArea contentArea = lookup("#contentArea").query();
+        TextField nameField = lookup("#name .text-field").query();
+        TextArea contentArea = lookup("#prompt .text-area").query();
 
         clickOn(nameField).eraseText(nameField.getText().length()).write("B");
         clickOn(contentArea).eraseText(contentArea.getText().length()).write("Merged Content");
         // action should be Save
-        then(lookup("#actionButton").queryButton().getText()).isEqualTo("Save");
-        clickOn("#actionButton");
+        then(lookup("#action").queryButton().getText()).isEqualTo("Save");
+        clickOn("#action");
 
         // After merge, there should be only one entry named B with merged content
         then(controller.table.getItems().stream().filter(p -> p.getKey().equals("B")).count()).isEqualTo(1l);
@@ -169,9 +167,9 @@ public class PromptsPanelViewTest extends ApplicationTest {
         interact(() -> controller.table.getSelectionModel().select(0));
         clickOn(".table-row-cell");
 
-        TextField nameField = lookup("#nameField").query();
-        TextArea contentArea = lookup("#contentArea").query();
-        Button action = lookup("#actionButton").query();
+        TextField nameField = lookup("#name .text-field").query();
+        TextArea contentArea = lookup("#prompt .text-area").query();
+        Button action = lookup("#action").query();
 
         clickOn(nameField).eraseText(nameField.getText().length()).write("RenamedPrompt");
         clickOn(contentArea).eraseText(contentArea.getText().length()).write("New content\nMore");
@@ -185,10 +183,10 @@ public class PromptsPanelViewTest extends ApplicationTest {
 
     @Test
     public void plus_button_opens_empty_popup_for_add() {
-        clickOn("#addButton");
-        TextField nameField = lookup("#nameField").query();
-        TextArea contentArea = lookup("#contentArea").query();
-        Button action = lookup("#actionButton").query();
+        clickOn("#add");
+        TextField nameField = lookup("#name .text-field").query();
+        TextArea contentArea = lookup("#prompt .text-area").query();
+        Button action = lookup("#action").query();
 
         then(nameField.getText()).isEmpty();
         then(contentArea.getText()).isEmpty();
@@ -203,8 +201,8 @@ public class PromptsPanelViewTest extends ApplicationTest {
         clickOn(".table-row-cell");
 
         // name field should be present and prefilled with the existing name
-        TextField nameField = lookup("#nameField").query();
-        TextArea contentArea = lookup("#contentArea").query();
+        TextField nameField = lookup("#name .text-field").query();
+        TextArea contentArea = lookup("#prompt .text-area").query();
 
         then(nameField.getText()).isEqualTo(controller.items.get(0).getKey());
         then(contentArea.getText()).contains("multiple lines");
@@ -213,9 +211,9 @@ public class PromptsPanelViewTest extends ApplicationTest {
     @Test
     public void popup_title_updates_when_name_changes_to_existing() {
         controller.items.add(Map.entry("key", "value"));
-        clickOn("#addButton");
-        TextField nameField = lookup("#nameField").query();
-        TextArea contentArea = lookup("#contentArea").query();
+        clickOn("#action");
+        TextField nameField = lookup("#name .text-field").query();
+        TextArea contentArea = lookup("#prompt .text-area").query();
 
         // initial title should be Create Prompt
         Stage dialogStage = (Stage) nameField.getScene().getWindow();
@@ -245,7 +243,7 @@ public class PromptsPanelViewTest extends ApplicationTest {
         // click on the cell area - best-effort selector
         clickOn(".table-row-cell");
         // After clicking, the popup dialog should be shown; look up TextArea
-        TextArea ta = lookup(".text-area").query();
+        TextArea ta = lookup("#prompt .text-area").query();
         then(ta.getText()).contains("multiple lines");
     }
 
@@ -254,7 +252,7 @@ public class PromptsPanelViewTest extends ApplicationTest {
         controller.items.add(Map.entry("key1", "value1"));
         interact(() -> controller.table.getSelectionModel().select(0));
         clickOn(".table-row-cell");
-        TextArea ta = lookup(".text-area").query();
+        TextArea ta = lookup("#prompt .text-area").query();
         clickOn(ta).eraseText(ta.getText().length()).write("New first line\nSecond line");
         // click Save button
         clickOn("Save");
