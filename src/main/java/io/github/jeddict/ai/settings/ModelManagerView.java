@@ -1,5 +1,7 @@
 package io.github.jeddict.ai.settings;
 
+import animatefx.animation.ZoomIn;
+import animatefx.animation.ZoomOut;
 import atlantafx.base.theme.Styles;
 import com.dlsc.formsfx.model.structure.Field;
 import com.dlsc.formsfx.model.structure.Form;
@@ -8,8 +10,6 @@ import com.dlsc.formsfx.model.structure.StringField;
 import com.dlsc.formsfx.view.renderer.FormRenderer;
 import io.github.jeddict.ai.models.registry.GenAIModel;
 import io.github.jeddict.ai.models.registry.GenAIProvider;
-import static io.github.jeddict.ai.util.UIUtil.GLOBAL_STYLESHEETS;
-import java.util.Optional;
 import javafx.application.Platform;
 import javafx.beans.property.ListProperty;
 import javafx.beans.property.ObjectProperty;
@@ -18,13 +18,15 @@ import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
+import javafx.scene.Parent;
 import javafx.scene.control.Button;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.Dialog;
-import javafx.scene.control.DialogPane;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
+import javafx.scene.layout.VBox;
 import javax.swing.FocusManager;
 import org.kordamp.ikonli.feather.Feather;
 import org.kordamp.ikonli.javafx.FontIcon;
@@ -48,6 +50,7 @@ public class ModelManagerView extends HBox {
         this.model = new ModelManagerModel();
         getChildren().addAll(addButton, deleteButton, remoteButton);
         setAlignment(Pos.TOP_RIGHT);
+        setPadding(new Insets(0, 20, 0, 0));
 
         addButton.setId("add_model");
         addButton.setTooltip(new Tooltip("Add model"));
@@ -80,7 +83,6 @@ public class ModelManagerView extends HBox {
         StringField nameField = Field.ofStringType(model.nameProperty())
             .label("Model Name:")
             .required("Model name is required")
-            .styleClass(Styles.SMALL)
             .labelSpan(3)
             .id("name");
 
@@ -90,39 +92,46 @@ public class ModelManagerView extends HBox {
                 Field.ofStringType(model.descriptionProperty())
                     .label("Description:")
                     .multiline(true)
-                    .styleClass(".height-m ")
+                    .styleClass("height-m")
                     .labelSpan(3)
                     .id("description"),
                 Field.ofDoubleType(model.inputPriceProperty())
                     .label("Input Price:")
-                    .styleClass(Styles.SMALL)
                     .labelSpan(3)
                     .id("input_price"),
                 Field.ofDoubleType(model.outputPriceProperty())
                     .label("Output Price:")
-                    .styleClass(Styles.SMALL)
                     .labelSpan(3)
                     .id("output_price")
             )
-        );
+        ).title("Add New Model");
 
-        Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.initOwner(this.getScene().getWindow());
-        dialog.setTitle("Add Custom Model");
+        final Parent parent = getParent();
+        if (!(parent instanceof Pane paneParent) || !(parent.getParent() instanceof Pane container)) {
+            return;
+        }
+        final FormRenderer formRenderer = new FormRenderer(modelForm);
+        formRenderer.getStylesheets().add("/com/dlsc/preferencesfx/formsfx/view/renderer/style.css");
+        VBox.setVgrow(formRenderer, javafx.scene.layout.Priority.ALWAYS);
 
-        DialogPane dialogPane = dialog.getDialogPane();
-        dialogPane.getStylesheets().addAll(GLOBAL_STYLESHEETS);
+        Button save = new Button("Save");
+        save.getStyleClass().addAll(Styles.SMALL, Styles.BUTTON_OUTLINED, Styles.ACCENT);
+        save.disableProperty().bind(nameField.validProperty().not());
 
-        dialogPane.setContent(new FormRenderer(modelForm));
-        dialogPane.getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-        dialogPane.lookupButton(ButtonType.OK).getStyleClass().addAll(Styles.SMALL);
-        dialogPane.lookupButton(ButtonType.OK).disableProperty().bind(nameField.validProperty().not());
-        dialogPane.lookupButton(ButtonType.CANCEL).getStyleClass().addAll(Styles.SMALL);
-        dialogPane.setPrefWidth(600);
+        Button cancel = new Button("Cancel");
+        cancel.getStyleClass().addAll(Styles.SMALL, Styles.BUTTON_OUTLINED);
 
-        Optional<ButtonType> result = dialog.showAndWait();
+        HBox actions = new HBox(10, save, cancel);
+        actions.setPadding(new Insets(10, 0, 0, 0));
+        actions.setAlignment(Pos.CENTER_LEFT);
 
-        if (result.isPresent() && result.get() == ButtonType.OK) {
+        VBox formContainer = new VBox(formRenderer, actions);
+        formContainer.setPadding(new Insets(10));
+        formContainer.setMaxWidth(Double.MAX_VALUE);
+        formContainer.setVisible(true);
+        formContainer.setManaged(true);
+
+        save.setOnAction(e -> {
             modelForm.persist();
             final GenAIModel m = new GenAIModel(
                 providerProperty.get(),
@@ -132,7 +141,28 @@ public class ModelManagerView extends HBox {
                 model.outputPriceProperty().get()
             );
             Platform.runLater(() -> modelsProperty.get().add(m));
-        }
+            returnToParent(formContainer, parent, container);
+        });
+
+        cancel.setOnAction(e -> returnToParent(formContainer, parent, container));
+
+        container.getChildren().add(formContainer);
+
+        paneParent.setVisible(false);
+        paneParent.setManaged(false);
+
+        new ZoomIn(formContainer).setSpeed(3.0).play();
+    }
+
+    private void returnToParent(Node form, Node parent, Pane container) {
+        ZoomOut zoomOut = new ZoomOut(form);
+        zoomOut.setSpeed(3.0);
+        zoomOut.setOnFinished(e -> {
+            container.getChildren().remove(form);
+            parent.setVisible(true);
+            parent.setManaged(true);
+        });
+        zoomOut.play();
     }
 
     public void deleteModel() {

@@ -10,6 +10,8 @@ import javafx.collections.FXCollections;
 import javafx.scene.Scene;
 import javafx.scene.input.KeyCode;
 import javafx.stage.Stage;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.StackPane;
 import org.junit.jupiter.api.Test;
 import org.testfx.framework.junit5.ApplicationTest;
 import static org.assertj.core.api.BDDAssertions.then;
@@ -18,62 +20,83 @@ import static org.testfx.util.WaitForAsyncUtils.waitForFxEvents;
 public class ModelManagerViewTest extends ApplicationTest {
 
     private ModelManagerView view;
+    private GridPane parent;
+    private StackPane container;
 
     @Override
     public void start(Stage stage) {
         view = new ModelManagerView();
-        Scene scene = new Scene(view, 400, 400);
+        parent = new GridPane();
+        parent.add(view, 0, 0);
+        container = new StackPane(parent);
+        Scene scene = new Scene(container, 400, 400);
         stage.setScene(scene);
         stage.show();
     }
 
     @Test
-    void has_add_delete_remote() {
-        then(lookup("#add_model")).isNotNull();
-        then(lookup("#delete_model")).isNotNull();
-        then(lookup("#remote_model")).isNotNull();
+    void shows_parent_at_first() {
+        then((Object) view.isVisible()).isEqualTo(true);
+        then((Object) parent.isVisible()).isEqualTo(true);
     }
 
     @Test
-    void clicking_add_model_manually_opens_dialog() throws Exception {
+    void has_add_delete_remote() {
+        then((Object) lookup("#add_model")).isNotNull();
+        then((Object) lookup("#delete_model")).isNotNull();
+        then((Object) lookup("#remote_models")).isNotNull();
+    }
+
+    @Test
+    void clicking_add_model_manually_shows_form_and_hides_parent() throws Exception {
         clickOn(view);
-        clickOn("#add_model");
+        clickOn("#add_model"); waitForFxEvents();
 
-        boolean dialogFound = listWindows().stream()
-            .filter(w -> w instanceof javafx.stage.Stage)
-            .map(w -> (javafx.stage.Stage) w)
-            .anyMatch(s -> "Add Custom Model".equals(s.getTitle()));
-
-        then(dialogFound).as("Dialog 'Add Custom Model' should be visible").isTrue();
+        then((Object) parent.isVisible()).isEqualTo(false);
+        then((Object) lookup("Model Name:").queryLabeled()).isNotNull();
     }
 
     @Test
     void dialog_has_required_fields() {
         clickOn(view);
-        clickOn("#add_model");
+        clickOn("#add_model"); waitForFxEvents();
 
         then((Object) lookup("Model Name:").queryLabeled()).isNotNull();
         then((Object) lookup("Description:").queryLabeled()).isNotNull();
         then((Object) lookup("Input Price:").queryLabeled()).isNotNull();
         then((Object) lookup("Output Price:").queryLabeled()).isNotNull();
 
-        then((Object) lookup("OK").queryButton()).isNotNull();
+        then((Object) lookup("Save").queryButton()).isNotNull();
         then((Object) lookup("Cancel").queryButton()).isNotNull();
     }
 
     @Test
-    void enable_OK_only_if_name_is_valid() {
+    void returning_from_form_shows_parent() {
         clickOn(view);
         clickOn("#add_model"); waitForFxEvents();
+        then((Object) parent.isVisible()).isEqualTo(false);
 
-        then(lookup("OK").queryButton().isDisabled()).isTrue();
+        clickOn("Cancel"); waitForFxEvents();
+        // wait for animation to finish
+        try { Thread.sleep(600); } catch (InterruptedException e) {}
+        waitForFxEvents();
 
-        clickOn(".text-input"); write("new-model"); waitForFxEvents();
-        then(lookup("OK").queryButton().isDisabled()).isFalse();
+        then((Object) parent.isVisible()).isEqualTo(true);
     }
 
     @Test
-    void update_models_on_ok() {
+    void enable_Save_only_if_name_is_valid() {
+        clickOn(view);
+        clickOn("#add_model"); waitForFxEvents();
+
+        then(lookup("Save").queryButton().isDisabled()).isTrue();
+
+        clickOn("#name .text-input"); write("new-model"); waitForFxEvents();
+        then(lookup("Save").queryButton().isDisabled()).isFalse();
+    }
+
+    @Test
+    void update_models_on_save() {
         final ObjectProperty<GenAIProvider> provider = new SimpleObjectProperty(GenAIProvider.CUSTOM_OPEN_AI);
         final ListProperty<GenAIModel> models = new SimpleListProperty(FXCollections.observableArrayList());
         models.getValue().add(new GenAIModel(
@@ -94,7 +117,7 @@ public class ModelManagerViewTest extends ApplicationTest {
         clickOn("#input_price .text-input").push(KeyCode.SHORTCUT, KeyCode.A).write("2.0"); waitForFxEvents();
         clickOn("#output_price .text-input").push(KeyCode.SHORTCUT, KeyCode.A).write("2.1"); waitForFxEvents();
 
-        clickOn("OK");
+        clickOn("Save");
 
         then(models).hasSize(2);
 
@@ -121,7 +144,7 @@ public class ModelManagerViewTest extends ApplicationTest {
         clickOn("#input_price .text-input").push(KeyCode.SHORTCUT, KeyCode.A).write("3.0"); waitForFxEvents();
         clickOn("#output_price .text-input").push(KeyCode.SHORTCUT, KeyCode.A).write("3.1"); waitForFxEvents();
 
-        clickOn("OK");
+        clickOn("Save");
 
         then(models).hasSize(3);
 
@@ -163,7 +186,7 @@ public class ModelManagerViewTest extends ApplicationTest {
         clickOn("#add_model"); waitForFxEvents();
 
         clickOn("#name .text-input").push(KeyCode.SHORTCUT, KeyCode.A).write("two"); waitForFxEvents();
-        clickOn("OK");
+        clickOn("Save");
 
         //
         // Add a second model
