@@ -37,6 +37,13 @@ import javafx.scene.layout.VBox;
 import javafx.stage.StageStyle;
 import static io.github.jeddict.ai.util.UIUtil.GLOBAL_STYLESHEETS;
 
+import com.dlsc.formsfx.model.structure.Field;
+import com.dlsc.formsfx.model.structure.Form;
+import com.dlsc.formsfx.model.structure.Group;
+import com.dlsc.formsfx.view.renderer.FormRenderer;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
+
 public class PromptsPanelController {
     public final TableView<Map.Entry<String, String>> table = new TableView<>();
     public final ObservableList<Map.Entry<String, String>> items = FXCollections.observableArrayList();
@@ -47,8 +54,9 @@ public class PromptsPanelController {
     private VBox mainContainer;
     private VBox editContainer;
 
-    private TextField nameField;
-    private TextArea contentArea;
+    private final StringProperty nameProperty = new SimpleStringProperty();
+    private final StringProperty contentProperty = new SimpleStringProperty();
+    private Form modelForm;
     private Button actionButton;
 
     private int editingIndex = -1;
@@ -61,51 +69,49 @@ public class PromptsPanelController {
     }
 
     private void createEditContainer() {
-        nameField = new TextField();
-        nameField.setId("nameField");
+        modelForm = Form.of(
+            Group.of(
+                Field.ofStringType(nameProperty)
+                    .label("Name:")
+                    .required("Name is required")
+                    .id("nameField"),
+                Field.ofStringType(contentProperty)
+                    .label("Content:")
+                    .required("Content is required")
+                    .multiline(true)
+                    .styleClass("height-m")
+                    .id("contentArea")
+            )
+        );
 
-        contentArea = new TextArea();
-        contentArea.setId("contentArea");
-        contentArea.setWrapText(true);
-        contentArea.setPrefRowCount(10);
+        FormRenderer formRenderer = new FormRenderer(modelForm);
+        formRenderer.getStylesheets().add("/com/dlsc/preferencesfx/formsfx/view/renderer/style.css");
+        formRenderer.getStylesheets().addAll(GLOBAL_STYLESHEETS);
+        VBox.setVgrow(formRenderer, Priority.ALWAYS);
 
         actionButton = new Button("Create");
         actionButton.setId("actionButton");
-        actionButton.setDisable(true);
+        actionButton.getStyleClass().addAll(Styles.SMALL, Styles.BUTTON_OUTLINED, Styles.ACCENT);
+        actionButton.disableProperty().bind(modelForm.validProperty().not());
+
         Button cancel = new Button("Cancel");
+        cancel.getStyleClass().addAll(Styles.SMALL, Styles.BUTTON_OUTLINED);
 
         HBox actions = new HBox(8, actionButton, cancel);
+        actions.setPadding(new Insets(10, 0, 0, 0));
+        actions.setAlignment(Pos.CENTER_LEFT);
 
-        editContainer = new VBox(8, new Label("Name:"), nameField, new Label("Content:"), contentArea, actions);
+        editContainer = new VBox(formRenderer, actions);
         editContainer.setId("editPromptPane");
         editContainer.setPadding(new Insets(10));
         editContainer.getStyleClass().add("opaque-panel");
         editContainer.setVisible(false);
         editContainer.setManaged(false);
 
-        // helper to update action enablement and label (and title)
-        Runnable updateState = () -> {
-            String n = nameField.getText() == null ? "" : nameField.getText().trim();
-            String c = contentArea.getText() == null ? "" : contentArea.getText().trim();
-            boolean enabled = !n.isEmpty() && !c.isEmpty();
-            actionButton.setDisable(!enabled);
-
-            // Check if name exists in current items
-            boolean existing = items.stream().anyMatch(e -> e.getKey().equals(n));
-
-            if (existing) {
-                actionButton.setText("Save");
-            } else {
-                actionButton.setText(editingIndex == -1 ? "Create" : "Save");
-            }
-        };
-
-        nameField.textProperty().addListener((obs, o, v) -> updateState.run());
-        contentArea.textProperty().addListener((obs, o, v) -> updateState.run());
-
         actionButton.setOnAction(event -> {
-            String n = nameField.getText().trim();
-            String c = contentArea.getText();
+            modelForm.persist();
+            String n = nameProperty.get().trim();
+            String c = contentProperty.get();
             final Map.Entry<String, String> e = Map.entry(n, c);
 
             // find if name already exists
@@ -146,15 +152,17 @@ public class PromptsPanelController {
     private void showEditor(int index) {
         this.editingIndex = index;
         if (index == -1) {
-            nameField.setText("");
-            contentArea.setText("");
+            nameProperty.set("");
+            contentProperty.set("");
             actionButton.setText("Create");
         } else {
             Map.Entry<String, String> entry = items.get(index);
-            nameField.setText(entry.getKey());
-            contentArea.setText(entry.getValue());
+            nameProperty.set(entry.getKey());
+            contentProperty.set(entry.getValue());
             actionButton.setText("Save");
         }
+
+        modelForm.reset(); // ensure validation state is cleared for new entry
 
         mainContainer.setVisible(false);
         mainContainer.setManaged(false);

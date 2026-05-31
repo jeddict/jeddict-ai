@@ -26,10 +26,10 @@ import org.junit.jupiter.api.Test;
 import org.testfx.framework.junit5.ApplicationTest;
 
 import javafx.scene.Node;
-import javafx.scene.control.TextArea;
-import javafx.scene.control.TextField;
 import java.util.concurrent.TimeUnit;
+import javafx.scene.control.TextInputControl;
 import org.testfx.util.WaitForAsyncUtils;
+import static org.testfx.util.WaitForAsyncUtils.waitForFxEvents;
 
 
 public class PromptsPanelControllerTest extends ApplicationTest {
@@ -59,11 +59,10 @@ public class PromptsPanelControllerTest extends ApplicationTest {
     @Test
     public void click_add_shows_editor() {
         clickOn("#addButton");
-
         waitForVisibility("#editPromptPane", true);
 
-        TextField nameField = lookup("#nameField").queryAs(TextField.class);
-        TextArea contentArea = lookup("#contentArea").queryAs(TextArea.class);
+        TextInputControl nameField = lookup("#nameField .text-field").queryAs(TextInputControl.class);
+        TextInputControl contentArea = lookup("#contentArea .text-area").queryAs(TextInputControl.class);
 
         then(nameField.getText()).isEmpty();
         then(contentArea.getText()).isEmpty();
@@ -74,12 +73,14 @@ public class PromptsPanelControllerTest extends ApplicationTest {
         clickOn("#addButton");
         waitForVisibility("#editPromptPane", true);
 
-        clickOn("#nameField").write("newKey");
-        clickOn("#contentArea").write("newValue");
+        interact(() -> {
+            lookup("#nameField .text-field").queryAs(TextInputControl.class).setText("newKey");
+            lookup("#contentArea .text-area").queryAs(TextInputControl.class).setText("newValue");
+        });
+        waitForFxEvents();
 
         clickOn("#actionButton");
-
-        waitForVisibility("#promptsPanel", true);
+        waitForVisibility("#editPromptPane", false);
 
         then(controller.table.getItems()).hasSize(1);
         then(controller.table.getItems().get(0).getKey()).isEqualTo("newKey");
@@ -93,24 +94,24 @@ public class PromptsPanelControllerTest extends ApplicationTest {
             prompts.put("key1", "value1");
             controller.items.add(Map.entry("key1", "value1"));
         });
+        waitForFxEvents();
 
-        // Click on the first row (we target the text in the prompt column)
-        clickOn("value1");
-
+        clickOn("value1"); // Click on the name in the table
         waitForVisibility("#editPromptPane", true);
 
-        TextField nameField = lookup("#nameField").queryAs(TextField.class);
-        TextArea contentArea = lookup("#contentArea").queryAs(TextArea.class);
+        TextInputControl nameField = lookup("#nameField .text-field").queryAs(TextInputControl.class);
+        TextInputControl contentArea = lookup("#contentArea .text-area").queryAs(TextInputControl.class);
 
         then(nameField.getText()).isEqualTo("key1");
         then(contentArea.getText()).isEqualTo("value1");
     }
 
+
     @Test
     public void cancel_hides_editor_without_changes() {
         clickOn("#addButton");
         waitForVisibility("#editPromptPane", true);
-        clickOn("#nameField").write("temporary");
+        interact(() -> lookup(".text-field").queryAs(TextInputControl.class).setText("temporary"));
 
         clickOn("Cancel");
 
