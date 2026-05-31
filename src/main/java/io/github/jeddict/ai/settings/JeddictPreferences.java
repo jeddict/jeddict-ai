@@ -75,6 +75,7 @@ import javafx.scene.control.Hyperlink;
 import javafx.scene.control.TreeView;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.StackPane;
+import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.util.StringConverter;
 import javax.swing.JComponent;
@@ -231,6 +232,18 @@ public class JeddictPreferences {
         });
 
         return panel;
+    }
+
+    public void show() {
+        Platform.runLater(() -> {
+            Stage stage = new Stage();
+            stage.setTitle("Jeddict AI Settings");
+            Scene scene = new Scene(new StackPane(getView()), 1000, 800);
+            scene.getStylesheets().addAll(GLOBAL_STYLESHEETS);
+            scene.getStylesheets().add("/io/github/jeddict/ai/settings/settings.css");
+            stage.setScene(scene);
+            stage.show();
+        });
     }
 
     public PreferencesFxView getView() {
