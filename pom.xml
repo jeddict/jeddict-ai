@@ -45,7 +45,8 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>17</maven.compiler.release>
-        <langchain4j.version>1.11.0</langchain4j.version>
+        <langchain4j.version>1.15.1</langchain4j.version>
+        <langchain4j.beta>beta25</langchain4j.beta>
         <netbeans.version>RELEASE290</netbeans.version>
         <javafx-toolkit.version>0.0.4</javafx-toolkit.version>
         <testfx.version>4.0.18</testfx.version>
@@ -315,7 +316,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-local-ai</artifactId>
-            <version>${langchain4j.version}-beta19</version>
+            <version>${langchain4j.version}-${langchain4j.beta}</version>
         </dependency>
         <dependency>
             <groupId>dev.langchain4j</groupId>
@@ -335,7 +336,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-agentic</artifactId>
-            <version>${langchain4j.version}-beta19</version>
+            <version>${langchain4j.version}-${langchain4j.beta}</version>
             <type>jar</type>
         </dependency>
         <dependency>

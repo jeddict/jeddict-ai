@@ -17,12 +17,12 @@ package io.github.jeddict.ai.agent;
 
 import io.github.jeddict.ai.agent.pair.*;
 import dev.langchain4j.agentic.AgenticServices;
+import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.UndeclaredThrowableException;
 import java.util.logging.Level;
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.BDDAssertions.thenThrownBy;
@@ -83,7 +83,7 @@ public class ToolsProberTest extends PairProgrammerTestBase {
     public void probing_illegal_values_throws_error() {
         for(String B: new String[] {null, "", "   ", " \n", "\t"}) {
             thenThrownBy( () -> prober.probe(B) )
-                .isInstanceOf(UndeclaredThrowableException.class)
+                .isInstanceOf(AgentInvocationException.class)
                 .cause()
                     .isInstanceOf(InvocationTargetException.class)
                     .cause()
