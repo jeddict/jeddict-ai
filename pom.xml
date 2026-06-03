@@ -173,10 +173,6 @@
                             <id>org.netbeans.api:org-netbeans-libs-flexmark</id>
                             <type>impl</type>
                         </dependency>
-                        <dependency>
-                            <id>com.github.stefanofornari:nb-javafx-toolkit</id>
-                            <type>impl</type>
-                        </dependency>
                     </moduleDependencies>
                     <publicPackages>
                         <publicPackage>io.github.jeddict.ai</publicPackage>
