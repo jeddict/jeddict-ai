@@ -43,13 +43,11 @@ import static io.github.jeddict.ai.models.registry.GenAIProvider.MISTRAL;
 import static io.github.jeddict.ai.models.registry.GenAIProvider.OPEN_AI;
 import static io.github.jeddict.ai.models.registry.GenAIProvider.PERPLEXITY;
 import io.github.jeddict.ai.scanner.ProjectClassScanner;
-import java.awt.Desktop;
 import java.awt.KeyEventDispatcher;
 import java.awt.KeyboardFocusManager;
 import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.io.StringReader;
-import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -83,8 +81,6 @@ import javax.swing.JComponent;
 import javax.swing.SwingUtilities;
 import org.apache.commons.lang3.StringUtils;
 import org.controlsfx.control.MasterDetailPane;
-import org.controlsfx.control.HyperlinkLabel;
-import org.openide.awt.HtmlBrowser.URLDisplayer;
 import org.openide.util.Exceptions;
 import ste.netbeans.javafx.JFXPanel;
 import static io.github.jeddict.ai.util.UIUtil.GLOBAL_STYLESHEETS;
@@ -92,6 +88,7 @@ import java.util.ArrayList;
 import javafx.application.Application;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
+import org.controlsfx.control.HyperlinkLabel;
 //import org.scenicview.ScenicView;
 import static ste.lloop.Loop.on;
 import ste.commons.javafx.collections.MappedList;
@@ -427,14 +424,9 @@ public class JeddictPreferences {
         });
 
         configPathLabel.setOnAction((action) -> {
-            if (Desktop.isDesktopSupported()) {
-                new Thread(() -> {
-                    try {
-                        Desktop.getDesktop().open(configPath().toFile());
-                    } catch (IOException ex) {
-                        ex.printStackTrace();
-                    }
-                }).start();
+            if (action.getSource() instanceof Hyperlink link) {
+                browse(configPath().toAbsolutePath().toString());
+                link.setVisited(false); // Forces the link back to its unclicked default color
             }
         });
     }
@@ -1094,7 +1086,7 @@ public class JeddictPreferences {
 
     private void browse(final String url) {
         try {
-            URLDisplayer.getDefault().showURL(URI.create(url).toURL());
+            panel.hostServices().showDocument(url);
         } catch (Exception x) {
             Exceptions.printStackTrace(x);
         }
