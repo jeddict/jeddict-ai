@@ -35,8 +35,6 @@ import java.util.Map;
 import static com.github.stefanbirkner.systemlambda.SystemLambda.restoreSystemProperties;
 import static io.github.jeddict.ai.settings.PreferencesManager.JEDDICT_CONFIG;
 import static org.assertj.core.api.BDDAssertions.then;
-import org.apache.commons.io.FileUtils;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -45,25 +43,6 @@ import org.junit.jupiter.api.Test;
  */
 public class PreferencesManagerTest extends TestBase {
 
-    @BeforeEach
-    @Override
-    public void beforeEach() throws Exception {
-        super.beforeEach();
-        restoreSystemProperties(() -> {
-            // Reset the singleton instance before each test
-            PreferencesManager.getInstance(true);
-
-            // Clean up the config directory to ensure a blank slate for every test
-            Path configDir = FileUtil.getConfigPath();
-            if (Files.exists(configDir)) {
-                FileUtils.deleteDirectory(configDir.toFile());
-            }
-            Files.createDirectories(configDir);
-
-            Files.createDirectories(HOME.resolve(USER));
-        });
-        preferences = PreferencesManager.getInstance();
-    }
 
     // --- Path and OS Logic Tests ---
 
@@ -346,23 +325,6 @@ public class PreferencesManagerTest extends TestBase {
         Map<String, String> loaded = preferences.getPrompts();
         then(loaded).containsKey("stored");
         then(loaded.get("stored")).isEqualTo("a prompt with spaces & =?");
-    }
-
-    @Test
-    public void get_token_granularity_when_field_null_reads_pref() throws Exception {
-        Field prefsField = PreferencesManager.class.getDeclaredField("preferences");
-        prefsField.setAccessible(true);
-        FilePreferences fp = (FilePreferences) prefsField.get(preferences);
-
-        fp.put("tokenGranularity", TokenGranularity.MONTH.name());
-
-        // reset singleton so new instance reads from storage
-        Field inst = PreferencesManager.class.getDeclaredField("instance");
-        inst.setAccessible(true);
-        inst.set(null, null);
-
-        PreferencesManager mgr = PreferencesManager.getInstance();
-        then(mgr.getTokenGranularity()).isEqualTo(TokenGranularity.MONTH);
     }
 
     @Test

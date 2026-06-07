@@ -45,10 +45,10 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>17</maven.compiler.release>
-        <langchain4j.version>1.15.1</langchain4j.version>
-        <langchain4j.beta>beta25</langchain4j.beta>
+        <langchain4j.version>1.16.1</langchain4j.version>
+        <langchain4j.beta>beta26</langchain4j.beta>
         <netbeans.version>RELEASE290</netbeans.version>
-        <javafx-toolkit.version>0.0.4</javafx-toolkit.version>
+        <javafx-toolkit.version>0.0.6-SNAPSHOT</javafx-toolkit.version>
         <testfx.version>4.0.18</testfx.version>
     </properties>
 
@@ -397,16 +397,14 @@
         <dependency>
             <groupId>com.github.stefanofornari</groupId>
             <artifactId>nb-javafx-toolkit</artifactId>
-            <version>0.0.3</version>
-            <!--type>nbm</type-->
+            <version>${javafx-toolkit.version}</version>
         </dependency>
+
         <!--dependency>
             <groupId>io.github.palexdev</groupId>
             <artifactId>scenicview</artifactId>
             <version>17.0.2</version>
         </dependency-->
-
-        <!-- -->
 
         <!--
             Netbeans

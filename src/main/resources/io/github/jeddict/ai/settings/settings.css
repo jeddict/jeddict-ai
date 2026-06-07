@@ -47,3 +47,13 @@
     -fx-pref-height: 350px;
 }
 
+.simple-control:invalid .text-field,
+.simple-control:invalid .text-area,
+.simple-boolean-control:invalid > VBox,
+.simple-select-control:invalid .arrow-button,
+.simple-radio-control:invalid > VBox,
+.simple-checkbox-control:invalid > VBox,
+.simple-listview-control:invalid .list-view {
+    -fx-control-inner-background: #ffe5e5;
+    -fx-border-color: yellow #EB4C4C yellow yellow !important;
+}

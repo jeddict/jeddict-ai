@@ -111,7 +111,6 @@ public class ModelManagerView extends HBox {
             return;
         }
         final FormRenderer formRenderer = new FormRenderer(modelForm);
-        formRenderer.getStylesheets().add("/com/dlsc/preferencesfx/formsfx/view/renderer/style.css");
         VBox.setVgrow(formRenderer, javafx.scene.layout.Priority.ALWAYS);
 
         Button save = new Button("Save");
@@ -152,6 +151,15 @@ public class ModelManagerView extends HBox {
         paneParent.setManaged(false);
 
         new ZoomIn(formContainer).setSpeed(3.0).play();
+
+        // Prints explicitly loaded style sheets on the scene
+        System.out.println("Active stylesheets: " + nameField.getRenderer().getScene().getStylesheets());
+
+        // Prints the style classes (.button, .my-custom-panel, etc.) attached to this specific node
+        System.out.println("Active style classes: " + nameField.getRenderer().getStyleClass());
+
+        // Prints any inline code-driven styles applied directly via .setStyle()
+        System.out.println("Active inline styles: " + nameField.getRenderer().getStyle());
     }
 
     private void returnToParent(Node form, Node parent, Pane container) {

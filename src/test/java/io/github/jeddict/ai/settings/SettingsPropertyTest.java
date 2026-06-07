@@ -19,18 +19,17 @@ package io.github.jeddict.ai.settings;
 import static org.assertj.core.api.BDDAssertions.then;
 
 import javafx.beans.property.BooleanProperty;
-import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ListProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleDoubleProperty;
-import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.collections.ObservableList;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import ste.commons.javafx.property.IntegerProperty;
 
 public class SettingsPropertyTest {
 
@@ -147,7 +146,7 @@ public class SettingsPropertyTest {
         then(mapProperty.get("booleanKey")).isExactlyInstanceOf(SimpleBooleanProperty.class);
 
         mapProperty.set("integerKey", 123);
-        then(mapProperty.get("integerKey")).isExactlyInstanceOf(SimpleIntegerProperty.class);
+        then(mapProperty.get("integerKey")).isExactlyInstanceOf(IntegerProperty.class);
 
         mapProperty.set("doubleKey", 1.23);
         then(mapProperty.get("doubleKey")).isExactlyInstanceOf(SimpleDoubleProperty.class);

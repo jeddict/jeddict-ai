@@ -201,6 +201,8 @@ public class PreferencesManager {
         final Path configPath = FileUtil.getConfigPath();
         final Path configFile = configPath.resolve(JEDDICT_CONFIG);
 
+        LOG.finest(() -> "new PreferenesManager for " + configFile.toAbsolutePath());
+
         preferences = new FilePreferences(configFile);
     }
 
@@ -602,11 +604,11 @@ public class PreferencesManager {
 
     public int getConversationContext() {
         // Default = 3 (Last 3 replies)
-        return preferences.getInt("conversationContext", 3);
+        return preferences.getInteger("conversationContext", 3);
     }
 
     public void setConversationContext(int contextValue) {
-        preferences.putInt("conversationContext", contextValue);
+        preferences.putInteger("conversationContext", contextValue);
     }
 
     public void setFileExtensionToInclude(String exts) {
@@ -912,11 +914,11 @@ public class PreferencesManager {
     }
 
     public Integer getTimeout() {
-        return preferences.getInt(TIMEOUT_PREFERENCE, Defaults.TIMEOUT);
+        return preferences.getInteger(TIMEOUT_PREFERENCE, Defaults.TIMEOUT);
     }
 
     public void setTimeout(Integer timeout) {
-        preferences.putInt(TIMEOUT_PREFERENCE, timeout);
+        preferences.putInteger(TIMEOUT_PREFERENCE, timeout);
     }
 
     public boolean isLogRequestsEnabled() {
@@ -962,35 +964,35 @@ public class PreferencesManager {
     }
 
     public Integer getTopK() {
-        return preferences.getInt(TOP_K_PREFERENCE, Defaults.TOP_K);
+        return preferences.getInteger(TOP_K_PREFERENCE, Defaults.TOP_K);
     }
 
     public void setTopK(Integer topK) {
-        preferences.putInt(TOP_K_PREFERENCE, topK);
+        preferences.putInteger(TOP_K_PREFERENCE, topK);
     }
 
     public Integer getMaxTokens() {
-        return preferences.getInt(MAX_TOKENS_PREFERENCE, Defaults.MAX_TOKEN);
+        return preferences.getInteger(MAX_TOKENS_PREFERENCE, Defaults.MAX_TOKEN);
     }
 
     public void setMaxTokens(Integer maxTokens) {
-        preferences.putInt(MAX_TOKENS_PREFERENCE, maxTokens);
+        preferences.putInteger(MAX_TOKENS_PREFERENCE, maxTokens);
     }
 
     public Integer getMaxCompletionTokens() {
-        return preferences.getInt(MAX_COMPLETION_TOKENS_PREFERENCE, Defaults.MAX_TOKEN);
+        return preferences.getInteger(MAX_COMPLETION_TOKENS_PREFERENCE, null);
     }
 
     public void setMaxCompletionTokens(Integer maxCompletionTokens) {
-        preferences.putInt(MAX_COMPLETION_TOKENS_PREFERENCE, maxCompletionTokens);
+        preferences.putInteger(MAX_COMPLETION_TOKENS_PREFERENCE, maxCompletionTokens);
     }
 
     public Integer getMaxOutputTokens() {
-        return preferences.getInt(MAX_OUTPUT_TOKENS_PREFERENCE, Defaults.MAX_TOKEN);
+        return preferences.getInteger(MAX_OUTPUT_TOKENS_PREFERENCE, Defaults.MAX_TOKEN);
     }
 
     public void setMaxOutputTokens(Integer maxOutputTokens) {
-        preferences.putInt(MAX_OUTPUT_TOKENS_PREFERENCE, maxOutputTokens);
+        preferences.putInteger(MAX_OUTPUT_TOKENS_PREFERENCE, maxOutputTokens);
     }
 
     public Double getPresencePenalty() {
@@ -1010,11 +1012,11 @@ public class PreferencesManager {
     }
 
     public Integer getSeed() {
-        return preferences.getInt(SEED_PREFERENCE, Defaults.SEED);
+        return preferences.getInteger(SEED_PREFERENCE, Defaults.SEED);
     }
 
     public void setSeed(Integer seed) {
-        preferences.putInt(SEED_PREFERENCE, seed);
+        preferences.putInteger(SEED_PREFERENCE, seed);
     }
 
     public boolean isAllowCodeExecution() {
@@ -1034,11 +1036,11 @@ public class PreferencesManager {
     }
 
     public Integer getMaxRetries() {
-        return preferences.getInt(MAX_RETRIES_PREFERENCE, 2);
+        return preferences.getInteger(MAX_RETRIES_PREFERENCE, 2);
     }
 
     public void setMaxRetries(Integer maxRetries) {
-        preferences.putInt(MAX_RETRIES_PREFERENCE, maxRetries);
+        preferences.putInteger(MAX_RETRIES_PREFERENCE, maxRetries);
     }
 
     public TokenGranularity getTokenGranularity() {

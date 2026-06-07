@@ -15,7 +15,6 @@
  */
 package io.github.jeddict.ai.util;
 
-import atlantafx.base.theme.NordLight;
 import io.github.jeddict.ai.components.AssistantChat;
 import java.awt.Color;
 import java.awt.Component;
@@ -45,7 +44,6 @@ public class UIUtil {
     // AtlantaFX stylesheet
     //
     public static final String[] GLOBAL_STYLESHEETS = {
-        new NordLight().getUserAgentStylesheet(),
         "/ste/netbeans/javafx/bridge.css"
     };
 

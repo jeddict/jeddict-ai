@@ -18,14 +18,12 @@ package io.github.jeddict.ai.settings;
 
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.DoubleProperty;
-import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ListProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.Property;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleFloatProperty;
-import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleListProperty;
 import javafx.beans.property.SimpleLongProperty;
 import javafx.beans.property.SimpleMapProperty;
@@ -35,6 +33,8 @@ import javafx.beans.property.StringProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+
+import ste.commons.javafx.property.IntegerProperty;
 
 /**
  * A property representing a map where individual keys are stored as JavaFX properties.
@@ -62,11 +62,11 @@ public class SettingsProperty extends SimpleMapProperty<String, Property<?>> {
     }
 
     public IntegerProperty integer(String key) {
-        return integer(key, 0);
+        return integer(key, null);
     }
 
-    public IntegerProperty integer(String key, int defaultValue) {
-        return (IntegerProperty) computeIfAbsent(key, k -> init(new SimpleIntegerProperty(defaultValue)));
+    public IntegerProperty integer(String key, Integer defaultValue) {
+        return (IntegerProperty) computeIfAbsent(key, k -> init(new IntegerProperty(defaultValue)));
     }
 
     public DoubleProperty decimal(String key) {
@@ -157,7 +157,7 @@ public class SettingsProperty extends SimpleMapProperty<String, Property<?>> {
             } else if (value instanceof Boolean aBoolean) {
                 newProperty = new SimpleBooleanProperty(aBoolean);
             } else if (value instanceof Integer integer) {
-                newProperty = new SimpleIntegerProperty(integer);
+                newProperty = new IntegerProperty(integer);
             } else if (value instanceof Long aLong) {
                 newProperty = new SimpleLongProperty(aLong);
             } else if (value instanceof Double aDouble) {

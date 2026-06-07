@@ -7,6 +7,7 @@ import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.util.List;
 import java.util.Map;
+import javafx.beans.property.StringProperty;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -58,9 +59,9 @@ public class JeddictPreferencesTest extends TestBase {
         ui.settings.set("presencePenalty", 0.1);
         ui.settings.set("frequencyPenalty", 0.2);
         ui.settings.set("seed", 42);
-        ui.settings.set("maxTokens", 1111);
-        ui.settings.set("maxCompletionTokens", 2222);
-        ui.settings.set("maxOutputTokens", 3333);
+        ui.settings.set("maxTokens", "1111");
+        ui.settings.set("maxCompletionTokens", "2222");
+        ui.settings.set("maxOutputTokens", "3333");
         ui.settings.set("topK", 5);
 
         // Stream / timeout / retries / org
@@ -135,5 +136,24 @@ public class JeddictPreferencesTest extends TestBase {
 
         Map<String,String> headers = pm.getCustomHeaders();
         then(headers).containsEntry("A","1").containsEntry("B","2");
+    }
+
+
+    @Test
+    public void mormalize_directory_to_exclude() {
+        final JeddictPreferences ui = new JeddictPreferences();
+        preferences.setApiKey("x"); // to be removed once the check of existance of api key will be moved out of PreferencesManager
+        preferences.setExcludeDirs("a,b,c");
+
+        ui.refresh();
+
+        final StringProperty p = ui.settings.string("excludeDirs");
+        then(p.getValue()).isEqualTo("a\nb\nc");
+
+        p.setValue(",a, b , ,\n c\nd , ");
+
+        ui.save();
+
+        then(preferences.getExcludeDirs()).containsExactly("a", "b", "c", "d");
     }
 }

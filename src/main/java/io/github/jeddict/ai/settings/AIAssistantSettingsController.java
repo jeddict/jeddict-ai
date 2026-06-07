@@ -40,12 +40,14 @@ public final class AIAssistantSettingsController extends OptionsPanelController 
 
     @Override
     public void update() {
-        LOG.info("option panel controller - update");
+        LOG.info("option panel controller - showing option panel");
+
         preferences.refresh();
     }
 
     @Override
     public void applyChanges() {
+        LOG.info("option panel controller - applying changes");
         SwingUtilities.invokeLater(() -> {
             preferences.save();
         });
@@ -53,11 +55,12 @@ public final class AIAssistantSettingsController extends OptionsPanelController 
 
     @Override
     public void cancel() {
+        LOG.finest("option panel controller - cancel");
     }
 
     @Override
     public boolean isValid() {
-        return true;
+        return (preferences.preferences != null ) && preferences.preferences.preferencesFxModel.isValid();
     }
 
     @Override
@@ -75,7 +78,14 @@ public final class AIAssistantSettingsController extends OptionsPanelController 
 
     @Override
     public JComponent getComponent(Lookup masterLookup) {
-        return preferences.getPanel();
+        LOG.info("option panel controller - getComponent");
+        return preferences.getPanel(() -> {
+            preferences.preferences.preferencesFxModel.validProperty().addListener(valid -> {
+                LOG.finest(() -> "option panel controller - valdity has changed to " + valid);
+                pcs.firePropertyChange(OptionsPanelController.PROP_VALID, null, null);
+            });
+            LOG.finest("validity listener installed");
+        });
     }
 
     @Override

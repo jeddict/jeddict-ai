@@ -317,11 +317,15 @@ public class JeddictPreferencesUITest extends ApplicationTest {
         //
         clickOn(preferences.asset("AIAssistancePanel.settings.inference.title")); waitForFxEvents();
         on(
-            "AIAssistancePanel.topKLabel.text", "AIAssistancePanel.seedLabel.text",
+            "AIAssistancePanel.topKLabel.text", "AIAssistancePanel.seedLabel.text"
+        ).loop((k) ->
+            then(getFieldText(k)).isEqualTo("0")
+        );
+        on(
             "AIAssistancePanel.maxTokensLabel.text", "AIAssistancePanel.maxOutputTokensLabel.text",
             "AIAssistancePanel.maxCompletionTokensLabel.text"
         ).loop((k) ->
-            then(getFieldText(k)).isEqualTo("0")
+            then(getFieldText(k)).isEqualTo("")
         );
         then(getFieldText("AIAssistancePanel.organizationIdLabel.text")).isEqualTo("");
 
@@ -388,12 +392,13 @@ public class JeddictPreferencesUITest extends ApplicationTest {
         then(getFieldText("AIAssistancePanel.seedLabel.text")).isEqualTo("123");
         then(getFieldText("AIAssistancePanel.maxTokensLabel.text")).isEqualTo("4096");
         then(getFieldText("AIAssistancePanel.maxOutputTokensLabel.text")).isEqualTo("4096");
-        then(getFieldText("AIAssistancePanel.maxCompletionTokensLabel.text")).isEqualTo("4096");
+        then(getFieldText("AIAssistancePanel.maxCompletionTokensLabel.text")).isEqualTo("");
 
         clickOn(preferences.asset("AIAssistancePanel.providerSettingsPane.TabConstraints.tabTitle")); waitForFxEvents();
         then(getFieldText("AIAssistancePanel.maxRetriesLabel.text")).isEqualTo("2");
         then(getFieldText("AIAssistancePanel.timeoutLabel.text")).isEqualTo("60");
     }
+
 
     // --------------------------------------------------------- private methods
 
@@ -510,7 +515,7 @@ public class JeddictPreferencesUITest extends ApplicationTest {
                 on(group.getSettings()).loop(setting -> {
                     if (setting.valueProperty() != null) {
                         setting.valueProperty().setValue(null);
-                    };
+                    }
                 });
             });
         });

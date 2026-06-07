@@ -15,6 +15,7 @@
  */
 package io.github.jeddict.ai.settings;
 
+import atlantafx.base.theme.NordLight;
 import atlantafx.base.theme.Styles;
 import atlantafx.base.util.BBCodeParser;
 import com.dlsc.formsfx.model.structure.BooleanField;
@@ -24,6 +25,7 @@ import com.dlsc.formsfx.model.structure.IntegerField;
 import com.dlsc.formsfx.model.structure.PasswordField;
 import com.dlsc.formsfx.model.structure.SingleSelectionField;
 import com.dlsc.formsfx.model.structure.StringField;
+import com.dlsc.formsfx.model.validators.IntegerValidator;
 import com.dlsc.formsfx.view.util.FieldTooltip;
 import com.dlsc.formsfx.view.util.VisibilityProperty;
 import com.dlsc.preferencesfx.PreferencesFx;
@@ -59,7 +61,6 @@ import java.util.Set;
 import javafx.application.Platform;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.DoubleProperty;
-import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
@@ -87,10 +88,14 @@ import org.openide.awt.HtmlBrowser.URLDisplayer;
 import org.openide.util.Exceptions;
 import ste.netbeans.javafx.JFXPanel;
 import static io.github.jeddict.ai.util.UIUtil.GLOBAL_STYLESHEETS;
+import java.util.ArrayList;
+import javafx.application.Application;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
+//import org.scenicview.ScenicView;
 import static ste.lloop.Loop.on;
-import ste.netbeans.javafx.collections.MappedList;
+import ste.commons.javafx.collections.MappedList;
+import ste.commons.javafx.property.IntegerProperty;
 
 
 /**
@@ -179,8 +184,11 @@ public class JeddictPreferences {
 
     public final JFXPanel panel = new JFXPanel();
 
-
     public JComponent getPanel() {
+        return getPanel(() -> {});
+    }
+
+    public JComponent getPanel(final Runnable whenDone) {
         //
         // With JafaFX keyboards events bubble up to the parent component;
         // this is a problem because for example if the user press ENTER in
@@ -222,6 +230,8 @@ public class JeddictPreferences {
 
         Platform.runLater(() -> {
             final Scene scene = new Scene(new StackPane(getView()));
+
+            Application.setUserAgentStylesheet(new NordLight().getUserAgentStylesheet());
 
             scene.getStylesheets().addAll(GLOBAL_STYLESHEETS);
             scene.getStylesheets().add("/io/github/jeddict/ai/settings/settings.css");
@@ -281,16 +291,16 @@ public class JeddictPreferences {
         settings.decimal("presencePenalty").set(pm.getPresencePenalty());
         settings.decimal("frequencyPenalty").set(pm.getFrequencyPenalty());
         settings.integer("seed").set(pm.getSeed());
-        settings.integer("maxTokens").set(pm.getMaxTokens());
-        settings.integer("maxCompletionTokens").set(pm.getMaxCompletionTokens());
-        settings.integer("maxOutputTokens").set(pm.getMaxOutputTokens());
+        settings.string("maxTokens").set(emptyIfNull(pm.getMaxTokens()));
+        settings.string("maxCompletionTokens").set(emptyIfNull(pm.getMaxCompletionTokens()));
+        settings.string("maxOutputTokens").set(emptyIfNull(pm.getMaxOutputTokens()));
         settings.integer("topK").set(pm.getTopK());
         settings.bool("stream").set(pm.isStreamEnabled());
         settings.integer("timeout").set(pm.getTimeout());
         settings.integer("maxRetries").set(pm.getMaxRetries());
         settings.string("organizationId").set(pm.getOrganizationId());
         settings.string("fileExtensionToInclude").set(String.join(",", pm.getFileExtensionListToInclude()));
-        settings.string("excludeDirs").set(String.join(",", pm.getExcludeDirs()));
+        settings.string("excludeDirs").set(String.join("\n", pm.getExcludeDirs()));
         // map conversation context int -> label
         int convo = pm.getConversationContext();
         String convoLabel = switch (convo) {
@@ -655,7 +665,9 @@ public class JeddictPreferences {
                 FXCollections.observableArrayList(java.util.Arrays.asList(GenAIProvider.sortedValues())),
                 settings.object("provider", pm.getProvider())
             );
-        providerSetting.getElement().tooltip(asset("AIAssistancePanel.providerComboBox.toolTipText"));
+        providerSetting.getElement()
+            .tooltip(asset("AIAssistancePanel.providerComboBox.toolTipText"))
+            .labelSpan(2);
 
         //
         // API Key
@@ -667,7 +679,8 @@ public class JeddictPreferences {
         );
         apiKeySetting.getElement()
             .tooltip(asset("AIAssistancePanel.apiKeyLabel.toolTipText"))
-            .format(CONVERTER_STRING_STRING);
+            .format(CONVERTER_STRING_STRING)
+            .labelSpan(2);
 
         //
         // Endpoint
@@ -692,7 +705,8 @@ public class JeddictPreferences {
             );
         providerLocationSetting.getElement()
             .tooltip(asset("AIAssistancePanel.providerLocationLabel.toolTipText"))
-            .format(CONVERTER_STRING_STRING);
+            .format(CONVERTER_STRING_STRING)
+            .labelSpan(2);
 
         //
         // Model(s)
@@ -706,6 +720,7 @@ public class JeddictPreferences {
             );
         modelSetting.getElement()
             .tooltip(asset("AIAssistancePanel.gptModelLabel.toolTipText"))
+            .labelSpan(2)
             .itemsProperty().get().addListener((ListChangeListener.Change<? extends String> change) -> {
                 //
                 // select the newly added element
@@ -791,34 +806,36 @@ public class JeddictPreferences {
         //
         // Seed
         //
-        final Setting<IntegerField, IntegerProperty> seedSetting
+        final Setting<IntegerField, ObjectProperty<Integer>> seedSetting
             = Setting.of(asset("AIAssistancePanel.seedLabel.text"), settings.integer("seed"));
         seedSetting.getElement().tooltip(asset("AIAssistancePanel.seedLabel.toolTipText"))
                 .format(CONVERTER_STRING_INT);
 
-        //
         // Max tokens
         //
-        final Setting<IntegerField, IntegerProperty> maxTokensSetting
-            = Setting.of(asset("AIAssistancePanel.maxTokensLabel.text"), settings.integer("maxTokens"));
+        final Setting<StringField, StringProperty> maxTokensSetting
+            = Setting.of(asset("AIAssistancePanel.maxTokensLabel.text"), settings.string("maxTokens"));
         maxTokensSetting.getElement().tooltip(asset("AIAssistancePanel.maxTokensLabel.toolTipText"))
-                .format(CONVERTER_STRING_INT);
+            .validate(new IntegerValidator("not an integer number", true))
+            .format(CONVERTER_STRING_STRING);
 
         //
         // Max output tokens
         //
-        final Setting<IntegerField, IntegerProperty> maxOutputTokensSetting
-            = Setting.of(asset("AIAssistancePanel.maxOutputTokensLabel.text"), settings.integer("maxOutputTokens"));
+        final Setting<StringField, StringProperty> maxOutputTokensSetting
+            = Setting.of(asset("AIAssistancePanel.maxOutputTokensLabel.text"), settings.string("maxOutputTokens"));
         maxOutputTokensSetting.getElement().tooltip(asset("AIAssistancePanel.maxOutputTokensLabel.toolTipText"))
-                .format(CONVERTER_STRING_INT);
+            .validate(new IntegerValidator("not an integer number", true))
+            .format(CONVERTER_STRING_STRING);
 
         //
         // Max completion tokens
         //
-        final Setting<IntegerField, IntegerProperty> maxCompletionTokensSetting
-            = Setting.of(asset("AIAssistancePanel.maxCompletionTokensLabel.text"), settings.integer("maxCompletionTokens"));
+        final Setting<StringField, StringProperty> maxCompletionTokensSetting
+            = Setting.of(asset("AIAssistancePanel.maxCompletionTokensLabel.text"), settings.string("maxCompletionTokens"));
         maxCompletionTokensSetting.getElement().tooltip(asset("AIAssistancePanel.maxCompletionTokensLabel.toolTipText"))
-                .format(CONVERTER_STRING_INT);
+            .validate(new IntegerValidator("not an integer number", true))
+            .format(CONVERTER_STRING_STRING);
 
         //
         // Presence penalty
@@ -847,7 +864,7 @@ public class JeddictPreferences {
         //
         // Connection timeout
         //
-        final Setting<IntegerField, IntegerProperty> timeoutSetting
+        final Setting<IntegerField, ObjectProperty<Integer>> timeoutSetting
             = Setting.of(asset("AIAssistancePanel.timeoutLabel.text"), settings.integer("timeout"));
         timeoutSetting.getElement().tooltip(asset("AIAssistancePanel.timeoutLabel.toolTipText"))
                 .format(CONVERTER_STRING_INT);
@@ -855,7 +872,7 @@ public class JeddictPreferences {
         //
         // Max retries
         //
-        final Setting<IntegerField, IntegerProperty> maxRetriesSetting
+        final Setting<IntegerField, ObjectProperty<Integer>> maxRetriesSetting
             = Setting.of(asset("AIAssistancePanel.maxRetriesLabel.text"), settings.integer("maxRetries"));
         maxRetriesSetting.getElement().tooltip(asset("AIAssistancePanel.maxRetriesLabel.toolTipText"))
                 .format(CONVERTER_STRING_INT);
@@ -984,9 +1001,9 @@ public class JeddictPreferences {
         v = settings.getValue("presencePenalty"); if (v != null) pm.setPresencePenalty(((Number) v).doubleValue());
         v = settings.getValue("frequencyPenalty"); if (v != null) pm.setFrequencyPenalty(((Number) v).doubleValue());
         v = settings.getValue("seed"); if (v != null) pm.setSeed(((Number) v).intValue());
-        v = settings.getValue("maxTokens"); if (v != null) pm.setMaxTokens(((Number) v).intValue());
-        v = settings.getValue("maxCompletionTokens"); if (v != null) pm.setMaxCompletionTokens(((Number) v).intValue());
-        v = settings.getValue("maxOutputTokens"); if (v != null) pm.setMaxOutputTokens(((Number) v).intValue());
+        v = settings.getValue("maxTokens"); pm.setMaxTokens(!StringUtils.isBlank((String)v) ? Integer.parseInt((String)v) : null);
+        v = settings.getValue("maxCompletionTokens"); pm.setMaxCompletionTokens(!StringUtils.isBlank((String)v) ? Integer.parseInt((String)v) : null);
+        v = settings.getValue("maxOutputTokens"); pm.setMaxOutputTokens(!StringUtils.isBlank((String)v) ? Integer.parseInt((String)v) : null);
         v = settings.getValue("topK"); if (v != null) pm.setTopK(((Number) v).intValue());
 
         // Stream / timeout / retries
@@ -997,7 +1014,7 @@ public class JeddictPreferences {
 
         // File extensions and excludes
         v = settings.getValue("fileExtensionToInclude"); if (v != null) pm.setFileExtensionToInclude((String) v);
-        v = settings.getValue("excludeDirs"); if (v != null) pm.setExcludeDirs((String) v);
+        v = settings.getValue("excludeDirs"); if (v != null) pm.setExcludeDirs(normalizeExcludeDirs((String) v));
 
         // Conversation context mapping (string -> int)
         Object convo = settings.getValue("conversationContext");
@@ -1098,5 +1115,22 @@ public class JeddictPreferences {
         dialog.lookupButton(okType).getStyleClass().addAll(Styles.SMALL);
 
         alert.showAndWait();
+    }
+
+    private String emptyIfNull(final Object value) {
+        return (value == null) ? "" : String.valueOf(value);
+    }
+
+    private String normalizeExcludeDirs(final String text) {
+        final List<String> lines = new ArrayList();
+
+        on(text.split(",|\r?\n")).loop(s -> {
+           final String line = s.trim();
+           if (!line.isEmpty()) {
+               lines.add(line);
+           }
+        });
+
+        return String.join(",", lines);
     }
 }
