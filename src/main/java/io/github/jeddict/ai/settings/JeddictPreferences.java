@@ -423,8 +423,8 @@ public class JeddictPreferences {
             }
         });
 
-        configPathLabel.setOnAction((action) -> {
-            if (action.getSource() instanceof Hyperlink link) {
+        configPathLabel.setOnAction(event -> {
+            if (event.getSource() instanceof Hyperlink link) {
                 browse(configPath().toAbsolutePath().toString());
                 link.setVisited(false); // Forces the link back to its unclicked default color
             }
