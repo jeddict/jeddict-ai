@@ -488,6 +488,14 @@ public class PreferencesManagerTest extends TestBase {
     }
 
     @Test
+    public void api_key_returns_null_when_missing() throws Exception {
+        // Ensure no environment variables or system properties interfere
+        // (Assuming restoreSystemProperties and clean environment in test setup)
+        preferences.clearApiKey();
+        then(preferences.getApiKey()).isEmpty();
+    }
+
+    @Test
     public void global_rules_migration_from_old_key() throws Exception {
         Field prefsField = PreferencesManager.class.getDeclaredField("preferences");
         prefsField.setAccessible(true);

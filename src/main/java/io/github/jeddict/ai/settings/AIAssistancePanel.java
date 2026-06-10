@@ -1710,13 +1710,13 @@ final class AIAssistancePanel extends javax.swing.JPanel {
                 || selectedProvider == GenAIProvider.DEEPSEEK
                 || selectedProvider == GenAIProvider.GROQ
                 || selectedProvider == GenAIProvider.PERPLEXITY) {
-            apiKeyField.setText(preferencesManager.getApiKey(true));
+            apiKeyField.setText(preferencesManager.getApiKey());
             providerLocationField.setText(preferencesManager.getProviderLocation());
         } else if (selectedProvider == GenAIProvider.GOOGLE
                 || selectedProvider == GenAIProvider.OPEN_AI
                 || selectedProvider == GenAIProvider.MISTRAL
                 || selectedProvider == GenAIProvider.ANTHROPIC) {
-            apiKeyField.setText(preferencesManager.getApiKey(true));
+            apiKeyField.setText(preferencesManager.getApiKey());
         } else if (selectedProvider == GenAIProvider.OLLAMA
                 || selectedProvider == GenAIProvider.LM_STUDIO
                 || selectedProvider == GenAIProvider.GPT4ALL) {

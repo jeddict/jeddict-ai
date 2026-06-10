@@ -157,6 +157,26 @@ public class UIUtil {
         return initialMessage;
     }
 
+    public static String askForApiKey(io.github.jeddict.ai.models.registry.GenAIProvider provider, String modelName) {
+        String title = provider.name() + ":" + modelName + " API Key Required";
+        String message = provider.name() + ":" + modelName + " API key is not configured. Please enter it now.";
+        
+        String apiKey = JOptionPane.showInputDialog(null,
+                message,
+                title,
+                JOptionPane.WARNING_MESSAGE);
+        
+        if (apiKey == null || apiKey.trim().isEmpty()) {
+            JOptionPane.showMessageDialog(null,
+                    provider.name() + ":" + modelName + " API key setup is incomplete. Please provide a valid key.",
+                    provider.name() + ":" + modelName + " API Key Not Configured",
+                    JOptionPane.ERROR_MESSAGE);
+            return null;
+        }
+        
+        return apiKey.trim();
+    }
+
     public static <T extends JComponent> List<T> find(final JComponent parent, final Class<T> ofType) {
         if (parent == null) {
             throw new IllegalArgumentException("parent can not be null");

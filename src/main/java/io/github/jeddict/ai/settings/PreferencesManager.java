@@ -233,20 +233,7 @@ public class PreferencesManager {
         preferences.remove(getProvider().name() + API_KEY_PREFERENCES);
     }
 
-    public void setApiKey(String key) {
-        preferences.put(getProvider().name() + API_KEY_PREFERENCES, key);
-    }
-
     public String getApiKey() {
-        return getApiKey(false);
-    }
-
-    public String getApiKey(GenAIProvider provider) {
-        return preferences.get(provider.name() + API_KEY_PREFERENCES, "");
-    }
-
-    // TODO: P3 - PreferencesManger should not provide UI
-    public String getApiKey(boolean headless) {
         // First, try to get the API key from the environment variable
         String apiKey = System.getenv(API_KEY_ENV_VAR);
         if (apiKey == null || apiKey.isEmpty()) {
@@ -255,36 +242,22 @@ public class PreferencesManager {
         }
         if (apiKey == null || apiKey.isEmpty()) {
             // If not found in environment or system properties, check Preferences
-            apiKey = preferences.get(getProvider().name() + API_KEY_PREFERENCES, null);
+            apiKey = getApiKey(getProvider());
         }
-
-        if (apiKey == null || apiKey.isEmpty()) {
-            // If still not found, show input dialog to enter API key
-            if (!headless) {
-                apiKey = JOptionPane.showInputDialog(null,
-                        getProvider().name() + ":" + getModelName() + " API key is not configured. Please enter it now.",
-                        getProvider().name() + ":" + getModelName() + " API Key Required",
-                        JOptionPane.WARNING_MESSAGE);
-            }
-
-            if (apiKey != null && !apiKey.isEmpty()) {
-                // Save the entered API key in Preferences for future use
-                preferences.put(getProvider().name() + API_KEY_PREFERENCES, apiKey);
-            } else {
-                if (!headless) {
-                    // If user didn't provide a valid key, show error and throw exception
-                    JOptionPane.showMessageDialog(null,
-                            getProvider().name() + ":" + getModelName() + " API key setup is incomplete. Please provide a valid key.",
-                            getProvider().name() + ":" + getModelName() + " API Key Not Configured",
-                            JOptionPane.ERROR_MESSAGE);
-                    throw new IllegalStateException("A valid OpenAI API key is necessary for this feature.");
-                } else {
-                    return null;
-                }
-            }
-        }
-
         return apiKey;
+    }
+
+    public String getApiKey(GenAIProvider provider) {
+        return preferences.get(provider.name() + API_KEY_PREFERENCES, "");
+    }
+
+    public void setApiKey(String apiKey) {
+        setApiKey(getProvider(), apiKey);
+    }
+
+    public void setApiKey(GenAIProvider provider, String apiKey) {
+        preferences.put(provider.name() + API_KEY_PREFERENCES, apiKey);
+        preferences.save();
     }
 
     public void setProviderLocation(String providerLocation) {
@@ -421,7 +394,16 @@ public class PreferencesManager {
             modelJson.put("outputPrice", model.outputPrice());
             jsonArray.put(modelJson);
         }
-        preferences.put(MODEL_PREFERENCE_LIST+"_"+providerName, jsonArray.toString());
+        setGenAIModelList(providerName, jsonArray.toString());
+    }
+
+    public void setGenAIModelList(String providerName, String json) {
+        preferences.put(MODEL_PREFERENCE_LIST + "_" + providerName, json);
+        preferences.save();
+    }
+
+    public boolean hasModelPreferenceList(String providerName) {
+        return preferences.get(MODEL_PREFERENCE_LIST + "_" + providerName, null) != null;
     }
 
     public List<GenAIModel> getGenAIModelList(String providerName) {
