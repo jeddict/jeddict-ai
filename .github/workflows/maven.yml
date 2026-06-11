@@ -33,8 +33,8 @@ jobs:
         cache: maven
     - name: Build with Maven
       env:
-        JAVA_TOOL_OPTIONS: -Djava.awt.headless=true
-      run: mvn -B package --file pom.xml
+        JAVA_TOOL_OPTIONS: -Djava.awt.headless=false
+      run: xvfb-run mvn -B package --file pom.xml
 
   deploy:
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.release == 'true'
