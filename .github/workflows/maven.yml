@@ -31,10 +31,16 @@ jobs:
         java-version: '21'
         distribution: 'temurin'
         cache: maven
-    - name: Build with Maven
+    - name: Build with Maven (Linux)
+      if: runner.os == 'Linux'
       env:
         JAVA_TOOL_OPTIONS: -Djava.awt.headless=false
       run: xvfb-run mvn -B package --file pom.xml
+    - name: Build with Maven (Windows)
+      if: runner.os == 'Windows'
+      env:
+        JAVA_TOOL_OPTIONS: -Djava.awt.headless=false
+      run: mvn -B package --file pom.xml
 
   deploy:
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.release == 'true'
