@@ -254,7 +254,7 @@
                         <jdk.module.access>open</jdk.module.access>
                         <awt.toolkit>com.github.caciocavallosilano.cacio.ctc.CTCToolkit</awt.toolkit>
                         <java.awt.graphicsenv>com.github.caciocavallosilano.cacio.ctc.CTCGraphicsEnvironment</java.awt.graphicsenv>
-                        <java.awt.headless>false</java.awt.headless>
+                        <java.awt.headless>true</java.awt.headless>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
