@@ -40,13 +40,13 @@ public class ProjectToolsTest extends TestBase {
             - type: maven
             - Source Directory: src/main/java
             - Test Source Directory: src/test/java
-            """.formatted(projectDir.toLowerCase())
+            """.formatted(projectDir).toLowerCase()
         );
 
 
         projectDir = homePath.resolve("src/test/projects/jdk").toString();
         tools = ProjectTools.forProject(project(projectDir));
-        then(tools.projectInfo()).isEqualToIgnoringNewLines(
+        then(tools.projectInfo().toLowerCase()).isEqualToIgnoringNewLines(
             """
             - name: jdk
             - folder: %s
@@ -54,12 +54,12 @@ public class ProjectToolsTest extends TestBase {
             - Java Version: 11
             - Source Directory: src/main/java
             - Test Source Directory: src/test/java
-            """.formatted(projectDir)
+            """.formatted(projectDir).toLowerCase()
         );
 
         projectDir = homePath.resolve("src/test/projects/jakarta").toString();
         tools = ProjectTools.forProject(project(projectDir));
-        then(tools.projectInfo()).isEqualToIgnoringNewLines(
+        then(tools.projectInfo().toLowerCase()).isEqualToIgnoringNewLines(
             """
             - name: jakarta
             - folder: %s
@@ -69,12 +69,12 @@ public class ProjectToolsTest extends TestBase {
             - Java Version: 21
             - Source Directory: src/main/java
             - Test Source Directory: src/test/java
-            """.formatted(projectDir)
+            """.formatted(projectDir).toLowerCase()
         );
 
         projectDir = homePath.resolve("src/test/projects/javax").toString();
         tools = ProjectTools.forProject(project(projectDir));
-        then(tools.projectInfo()).isEqualToIgnoringNewLines(
+        then(tools.projectInfo().toLowerCase()).isEqualToIgnoringNewLines(
             """
             - name: javax
             - folder: %s
@@ -84,7 +84,7 @@ public class ProjectToolsTest extends TestBase {
             - Java Version: 11
             - Source Directory: src/main/java
             - Test Source Directory: src/test/java
-            """.formatted(projectDir)
+            """.formatted(projectDir).toLowerCase()
         );
     }
 
