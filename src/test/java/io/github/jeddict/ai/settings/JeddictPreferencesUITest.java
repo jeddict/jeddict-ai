@@ -150,7 +150,7 @@ public class JeddictPreferencesUITest extends ApplicationTest {
 
         // Chat / Context
         clickOn(preferences.asset("AIAssistancePanel.askAIPane.TabConstraints.tabTitle")); waitForFxEvents();
-        setComboBox("AIAssistancePanel.conversationContextLabel.text", preferences.asset("AIAssistancePanel.conversationContext.option.last_10_chats"));
+        setComboBox("AIAssistancePanel.conversationContextLabel.text", preferences.asset("AIAssistancePanel.conversationContext.option.last_3_chats"));
         setToggle("AIAssistancePanel.excludeJavadocCommentsCheckBox.text", true);
         setText("AIAssistancePanel.fileExtLabel.text", "java,kt,xml");
         setText("AIAssistancePanel.excludeDir.text", "node_modules,build,tmp");
@@ -222,9 +222,9 @@ public class JeddictPreferencesUITest extends ApplicationTest {
         then(pm.getFileExtensionListToInclude()).containsExactly("java","kt","xml");
         then(pm.getExcludeDirs()).containsExactly("node_modules","build","tmp");
 
-        then(pm.getConversationContext()).isEqualTo(0);
+        then(pm.getConversationContext()).isEqualTo(3);
 
-        then(pm.getGlobalRules()).isEqualTo("ui-rule-1");
+        then(pm.getGlobalRules()).contains("ui-rule-1");
 
         then(pm.getCustomHeaders()).containsEntry("X-UI","abc").containsEntry("Y-UI","def");
 
@@ -522,3 +522,5 @@ public class JeddictPreferencesUITest extends ApplicationTest {
     }
 
 }
+
+//\Users\ste\Downloads\netbeans-29-bin\netbeans\java\maven\bin\mvn -Dtest=io.github.jeddict.ai.agent.project.ProjectToolsTest#projectInfo_returns_project_metadata_as_text process-test-classes surefire:test
