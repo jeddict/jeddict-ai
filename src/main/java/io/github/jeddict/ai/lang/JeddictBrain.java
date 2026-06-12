@@ -27,6 +27,8 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
@@ -146,8 +148,8 @@ public class JeddictBrain implements PropertyChangeEmitter {
                     if (defaultInteraction != null) {
                         this.defaultInteraction = defaultInteraction;
                     }
-                    final HumanInTheMiddleWrapper wrapper =
-                        new HumanInTheMiddleWrapper(this.defaultInteraction);
+                    final HumanInTheMiddleWrapper wrapper
+                        = new HumanInTheMiddleWrapper(this.defaultInteraction);
 
                     this.tools = new ArrayList();
                     on(tools).loop(
@@ -212,24 +214,23 @@ public class JeddictBrain implements PropertyChangeEmitter {
             }
         }
 
-        final ChatModelListener modelListener = (specialist != PairProgrammer.Specialist.HACKER_WITHOUT_TOOLS) ?
-            new ChatModelListener() {
-                    @Override
-                    public void onRequest(ChatModelRequestContext ctx) {
-                        on(listeners).loop((l) -> l.onRequest(ctx.chatRequest()));
-                    }
+        final ChatModelListener modelListener = (specialist != PairProgrammer.Specialist.HACKER_WITHOUT_TOOLS)
+            ? new ChatModelListener() {
+            @Override
+            public void onRequest(ChatModelRequestContext ctx) {
+                on(listeners).loop((l) -> l.onRequest(ctx.chatRequest()));
+            }
 
-                    @Override
-                    public void onResponse(ChatModelResponseContext ctx) {
-                        on(listeners).loop((l) -> l.onResponse(ctx.chatRequest(), ctx.chatResponse()));
-                    }
-                }
+            @Override
+            public void onResponse(ChatModelResponseContext ctx) {
+                on(listeners).loop((l) -> l.onResponse(ctx.chatRequest(), ctx.chatResponse()));
+            }
+        }
             : new HackerWithoutTools.JeddictListenerAdapter(listeners);
-
 
         final AiServices builder = AiServices.builder(specialist.specialistClass);
         if (streaming) {
-            builder.streamingChatModel(model(modelListener));
+            builder.streamingChatModel(streamingModel(modelListener));
         } else {
             builder.chatModel(model(modelListener));
         }
@@ -239,7 +240,7 @@ public class JeddictBrain implements PropertyChangeEmitter {
         if (specialist == PairProgrammer.Specialist.HACKER) {
             builder.tools(tools.toArray());
             builder.hallucinatedToolNameStrategy((exec) -> {
-                final ToolExecutionRequest ter = (ToolExecutionRequest)exec;
+                final ToolExecutionRequest ter = (ToolExecutionRequest) exec;
 
                 LOG.finest(() -> "tool hallucination: " + ter.name());
                 return ToolExecutionResultMessage.from(
@@ -263,7 +264,6 @@ public class JeddictBrain implements PropertyChangeEmitter {
     }
 
     // -------------------------------------------------------- ToolErrorHandler
-
     public ToolErrorHandlerResult toolExecutionErrorHandler(final Throwable error, final ToolErrorContext context) {
         LOG.finest("tool execution error: %s (%s)".formatted(String.valueOf(error), String.valueOf(context)));
 
@@ -272,7 +272,7 @@ public class JeddictBrain implements PropertyChangeEmitter {
         //
         Throwable target = error;
         if (error instanceof InvocationTargetException) {
-            target = ((InvocationTargetException)error).getTargetException();
+            target = ((InvocationTargetException) error).getTargetException();
             if (target == null) {
                 target = error;
             }
@@ -285,15 +285,12 @@ public class JeddictBrain implements PropertyChangeEmitter {
     }
 
     // -------------------------------------------------------- ToolErrorHandler
-
-    public ToolErrorHandlerResult toolArgumentsErrorHandler(Throwable error,  ToolErrorContext context) {
+    public ToolErrorHandlerResult toolArgumentsErrorHandler(Throwable error, ToolErrorContext context) {
         LOG.finest("tool arguments error: %s (%s)".formatted(error, String.valueOf(context)));
         return ToolErrorHandlerResult.text(String.valueOf(error));
     }
 
-
     // --------------------------------------------------------- private methods
-
     protected boolean probeToolSupport() {
         final String LOG_MSG = "model %s %s tools execution";
 
@@ -302,8 +299,8 @@ public class JeddictBrain implements PropertyChangeEmitter {
         //
         if (probedModels.containsKey(modelName)) {
             final boolean toolsSupport = probedModels.get(modelName);
-            LOG.info(() ->
-                (LOG_MSG + " (cached)").formatted(modelName, (toolsSupport) ? "supports" : "does not support")
+            LOG.info(()
+                -> (LOG_MSG + " (cached)").formatted(modelName, (toolsSupport) ? "supports" : "does not support")
             );
             return toolsSupport;
         }
@@ -317,10 +314,9 @@ public class JeddictBrain implements PropertyChangeEmitter {
         try {
             final ToolsProbingTool probeTool = new ToolsProbingTool();
             final ToolsProber prober = AgenticServices.agentBuilder(ToolsProber.class)
-                .chatModel(model(false, null))
+                .chatModel(model(null))
                 .tools(probeTool)
                 .build();
-
 
             final boolean toolsSupport = prober.probe(probeTool.probeText);
 
@@ -332,8 +328,8 @@ public class JeddictBrain implements PropertyChangeEmitter {
 
             return toolsSupport;
         } catch (final Throwable t) {
-            LOG.severe(() ->
-                "error probing tool support, returning false %s\n%s".formatted(
+            LOG.severe(()
+                -> "error probing tool support, returning false %s\n%s".formatted(
                     t.toString(),
                     Arrays.toString(t.getStackTrace())
                 )
@@ -343,30 +339,9 @@ public class JeddictBrain implements PropertyChangeEmitter {
         return false;
     }
 
-
     // --------------------------------------------------------- private methods
 
-    /**
-     * Returns a streaming or not streaming model based on preferred type provided
-     * in the constructor (and saved in {@code streaming}
-     *
-     * @param <T>
-     *
-     * @return the model
-     */
-    private <T> T model(final ChatModelListener listener) {
-        return model(streaming, listener);
-    }
-
-    /**
-     * Returns a new streaming or not streaming model based on {@code useStreaming}
-     *
-     * @param <T>
-     * @param useStreaming
-     *
-     * @return the model
-     */
-    private <T> T model(final boolean useStreaming, final ChatModelListener listener) {
+    private StreamingChatModel streamingModel(final ChatModelListener listener)  {
         //
         // At the moment lanchain4j provides the chat request at an higher level
         // with the event AiServicesResponseEvent. This is fired only once the
@@ -374,78 +349,89 @@ public class JeddictBrain implements PropertyChangeEmitter {
         // and the response (see https://github.com/langchain4j/langchain4j/issues/4365)
         // However, we want to know when a request starts, so have to use a ChatModelListener
         //
-        final JeddictChatModelBuilder builder =
-            new JeddictChatModelBuilder(
-                this.modelName,
-                listener
-            );
+        final JeddictChatModelBuilder builder
+            = new JeddictChatModelBuilder(this.modelName, listener);
 
-        return (useStreaming) ? (T)builder.buildStreaming() : (T)builder.build();
+        return builder.buildStreaming();
     }
+
+    private ChatModel model(final ChatModelListener listener) {
+        //
+        // At the moment lanchain4j provides the chat request at an higher level
+        // with the event AiServicesResponseEvent. This is fired only once the
+        // request has been processed by the model and provides both the request
+        // and the response (see https://github.com/langchain4j/langchain4j/issues/4365)
+        // However, we want to know when a request starts, so have to use a ChatModelListener
+        //
+        final JeddictChatModelBuilder builder
+            = new JeddictChatModelBuilder(this.modelName, listener);
+
+        return builder.build();
+    }
+
 
     private List<AiServiceListener> allListeners() {
         return List.of(
             new AiServiceCompletedListener() {
-                @Override
-                public void onEvent(AiServiceCompletedEvent e) {
-                    //
-                    // e.resul() can be a ChatResponse or other objects (e.g.
-                    // a String). If not the former, let's convert it taking
-                    // the toString() of the object so that the listener can
-                    // rely on receive always the same object
-                    //
-                    e.result().ifPresentOrElse(obj -> {
-                        final ChatResponse result = (obj instanceof ChatResponse)
-                                                  ? (ChatResponse)obj
-                                                  : ChatResponse.builder().aiMessage(AiMessage.from(String.valueOf(obj))).build();
-                        LOG.finest(() ->
-                            "%s\n%s".formatted(String.valueOf(e.eventClass()), String.valueOf(result))
-                        );
-                        on(listeners).loop((l) -> l.onChatCompleted(result));
-                    }, () -> {
-                        LOG.finest(() ->
-                            "no result from the model..."
-                        );
-                    });
-                }
-            },
-            new AiServiceErrorListener() {
-                @Override
-                public void onEvent(final AiServiceErrorEvent e) {
-                    final Throwable t = e.error();
-                    LOG.finest(() -> e.eventClass() + "\n" + t);
-                    on(listeners).loop((l) -> l.onError(t));
-                }
-            },
-            new AiServiceStartedListener() {
-                @Override
-                public void onEvent(final AiServiceStartedEvent e) {
-                    final SystemMessage system = e.systemMessage().get();
-                    final UserMessage user = e.userMessage();
-                    LOG.finest(() ->
-                        "%s\n%s\n%s".formatted(String.valueOf(e.eventClass()), String.valueOf(system), String.valueOf(user))
+            @Override
+            public void onEvent(AiServiceCompletedEvent e) {
+                //
+                // e.resul() can be a ChatResponse or other objects (e.g.
+                // a String). If not the former, let's convert it taking
+                // the toString() of the object so that the listener can
+                // rely on receive always the same object
+                //
+                e.result().ifPresentOrElse(obj -> {
+                    final ChatResponse result = (obj instanceof ChatResponse)
+                        ? (ChatResponse) obj
+                        : ChatResponse.builder().aiMessage(AiMessage.from(String.valueOf(obj))).build();
+                    LOG.finest(()
+                        -> "%s\n%s".formatted(String.valueOf(e.eventClass()), String.valueOf(result))
                     );
-
-                    on(listeners).loop((l) -> l.onChatStarted(system, user));
-                }
-            },
-            new ToolExecutedEventListener() {
-                @Override
-                public void onEvent(final ToolExecutedEvent e) {
-                    final ToolExecutionRequest request = e.request();
-                    final String result = e.resultText();
-                    LOG.finest(() ->
-                        "%s\n%s\n%s".formatted(String.valueOf(e.eventClass()), String.valueOf(request), String.valueOf(result))
+                    on(listeners).loop((l) -> l.onChatCompleted(result));
+                }, () -> {
+                    LOG.finest(()
+                        -> "no result from the model..."
                     );
-
-                    on(listeners).loop((l) -> l.onToolExecuted(request, result));
-                }
+                });
             }
+        },
+            new AiServiceErrorListener() {
+            @Override
+            public void onEvent(final AiServiceErrorEvent e) {
+                final Throwable t = e.error();
+                LOG.finest(() -> e.eventClass() + "\n" + t);
+                on(listeners).loop((l) -> l.onError(t));
+            }
+        },
+            new AiServiceStartedListener() {
+            @Override
+            public void onEvent(final AiServiceStartedEvent e) {
+                final SystemMessage system = e.systemMessage().get();
+                final UserMessage user = e.userMessage();
+                LOG.finest(()
+                    -> "%s\n%s\n%s".formatted(String.valueOf(e.eventClass()), String.valueOf(system), String.valueOf(user))
+                );
+
+                on(listeners).loop((l) -> l.onChatStarted(system, user));
+            }
+        },
+            new ToolExecutedEventListener() {
+            @Override
+            public void onEvent(final ToolExecutedEvent e) {
+                final ToolExecutionRequest request = e.request();
+                final String result = e.resultText();
+                LOG.finest(()
+                    -> "%s\n%s\n%s".formatted(String.valueOf(e.eventClass()), String.valueOf(request), String.valueOf(result))
+                );
+
+                on(listeners).loop((l) -> l.onToolExecuted(request, result));
+            }
+        }
         );
     }
 
     // -------------------------------------------------- JeddictListenerAdapter
-
     static public class JeddictListenerAdapter implements ChatModelListener {
 
         final public JeddictBrainListener listener;

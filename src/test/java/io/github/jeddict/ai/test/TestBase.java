@@ -87,9 +87,9 @@ public class TestBase {
             HOME.resolve("jeddict.json"),
             StandardCopyOption.REPLACE_EXISTING
         );
-        
+
         //
-        // Now that we have the project dir as a real file, we can get the real 
+        // Now that we have the project dir as a real file, we can get the real
         // path. This is needed to make sure all links are followed. For example
         // on MacOS /var (where temp files are created) is a link to /private/var;
         // on Windows, Path by default uses the short version of the pathname
@@ -99,12 +99,12 @@ public class TestBase {
 
         //
         // Making sure the singleton is initilazed with a testing configuration
-        // file under a temporary directory
+        // file under a temporary directory and it's a new one before each test
         //
         restoreSystemProperties(() -> {
             System.setProperty("user.home", HOME.toAbsolutePath().toString());
 
-            preferences = PreferencesManager.getInstance();
+            preferences = PreferencesManager.getInstance(true);
         });
     }
 

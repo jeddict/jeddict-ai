@@ -17,6 +17,7 @@ package io.github.jeddict.ai.settings;
 
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
+import java.util.logging.Logger;
 import javax.swing.JComponent;
 import javax.swing.SwingUtilities;
 import org.netbeans.spi.options.OptionsPanelController;
@@ -30,39 +31,44 @@ import org.openide.util.Lookup;
         keywords = "#OptionsCategory_Keywords_JeddictAIAssistant",
         keywordsCategory = "JeddictAIAssistant"
 )
-public final class AIAssistanceOptionsPanelController extends OptionsPanelController {
+public final class AIAssistantSettingsController extends OptionsPanelController {
 
-    private AIAssistancePanel panel;
+    private final JeddictPreferences preferences = new JeddictPreferences();
     private final PropertyChangeSupport pcs = new PropertyChangeSupport(this);
-    private boolean changed;
+
+    private final Logger LOG = Logger.getLogger(AIAssistantSettingsController.class.getName());
 
     @Override
     public void update() {
-        getPanel().load();
-        changed = false;
+        LOG.info("option panel controller - showing option panel");
+
+        preferences.refresh();
     }
 
     @Override
     public void applyChanges() {
+        LOG.info("option panel controller - applying changes");
         SwingUtilities.invokeLater(() -> {
-            getPanel().store();
-            changed = false;
+            preferences.save();
         });
     }
 
     @Override
     public void cancel() {
-        // need not do anything special, if no changes have been persisted yet
+        LOG.finest("option panel controller - cancel");
     }
 
     @Override
     public boolean isValid() {
-        return getPanel().valid();
+        return (preferences.preferences != null ) && preferences.preferences.preferencesFxModel.isValid();
     }
 
     @Override
     public boolean isChanged() {
-        return changed;
+        //
+        // if preferences is null, the UI is not yet initialized
+        //
+        return (preferences.preferences != null) && preferences.preferences.isContainingChanges();
     }
 
     @Override
@@ -72,7 +78,14 @@ public final class AIAssistanceOptionsPanelController extends OptionsPanelContro
 
     @Override
     public JComponent getComponent(Lookup masterLookup) {
-        return getPanel();
+        LOG.info("option panel controller - getComponent");
+        return preferences.getPanel(() -> {
+            preferences.preferences.preferencesFxModel.validProperty().addListener(valid -> {
+                LOG.finest(() -> "option panel controller - valdity has changed to " + valid);
+                pcs.firePropertyChange(OptionsPanelController.PROP_VALID, null, null);
+            });
+            LOG.finest("validity listener installed");
+        });
     }
 
     @Override
@@ -84,20 +97,4 @@ public final class AIAssistanceOptionsPanelController extends OptionsPanelContro
     public void removePropertyChangeListener(PropertyChangeListener l) {
         pcs.removePropertyChangeListener(l);
     }
-
-    private AIAssistancePanel getPanel() {
-        if (panel == null) {
-            panel = new AIAssistancePanel();
-        }
-        return panel;
-    }
-
-    void changed() {
-        if (!changed) {
-            changed = true;
-            pcs.firePropertyChange(OptionsPanelController.PROP_CHANGED, false, true);
-        }
-        pcs.firePropertyChange(OptionsPanelController.PROP_VALID, null, null);
-    }
-
 }

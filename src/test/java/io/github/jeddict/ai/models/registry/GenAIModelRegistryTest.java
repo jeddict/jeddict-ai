@@ -57,7 +57,7 @@ class GenAIModelRegistryTest {
     }
 
     @Test
-    void fetch_model_names_returns_models_sorted_by_created_descending() {
+    void fetch_model_names_returns_models_sorted_by_created_descending() throws Exception {
         GenAIModelRegistry registry = new GenAIModelRegistry();
         java.util.List<String> names = registry.fetchModelNames(fileUrl());
 
@@ -70,7 +70,7 @@ class GenAIModelRegistryTest {
     }
 
     @Test
-    void fetch_gen_ai_models_returns_map_with_correct_entries() {
+    void fetch_gen_ai_models_returns_map_with_correct_entries() throws Exception {
         GenAIModelRegistry registry = new GenAIModelRegistry();
         Map<String, GenAIModel> models = registry.fetchGenAIModels(fileUrl());
 

@@ -19,10 +19,14 @@ package io.github.jeddict.ai.settings;
  *
  * @author Gaurav Gupta, Shiwani Gupta
  */
+import static io.github.jeddict.ai.models.Constant.CUSTOM_OPEN_AI_URL;
+import static io.github.jeddict.ai.models.Constant.DEEPINFRA_URL;
+import static io.github.jeddict.ai.models.Constant.DEEPSEEK_URL;
+import static io.github.jeddict.ai.models.Constant.GPT4ALL_URL;
+import io.github.jeddict.ai.models.GroqModelFetcher;
 import io.github.jeddict.ai.models.registry.GenAIModel;
 import io.github.jeddict.ai.models.registry.GenAIProvider;
 import io.github.jeddict.ai.response.TokenGranularity;
-import static io.github.jeddict.ai.models.registry.GenAIModel.DEFAULT_MODEL;
 import io.github.jeddict.ai.util.FileUtil;
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -48,6 +52,8 @@ import org.netbeans.api.project.Project;
 import java.nio.file.Path;
 import java.io.IOException;
 import java.util.logging.Logger;
+import static ste.lloop.Loop._break_;
+import static ste.lloop.Loop.on;
 
 public class PreferencesManager {
 
@@ -81,6 +87,7 @@ public class PreferencesManager {
     private static final String TIMEOUT_PREFERENCE = "timeout";
     private static final String LOG_REQUESTS_PREFERENCE = "logRequests";
     private static final String LOG_RESPONSES_PREFERENCE = "logResponses";
+    private static final String DEVELOPMENT_PREFERENCE = "development";
     private static final String REPEAT_PENALTY_PREFERENCE = "repeatPenalty";
     private static final String ORGANIZATION_ID_PREFERENCE = "organizationId";
     private static final String TOP_K_PREFERENCE = "topK";
@@ -178,22 +185,37 @@ public class PreferencesManager {
     private Map<String, String> headerKeyValueMap = new HashMap<>();
     private TokenGranularity tokenGranularity;
 
+
+    private interface Defaults {
+        public double TEMPERATURE = 0.0,
+                      TOP_P       = 0.95,
+                      PENALTY     = 0.0;
+        public int    TOP_K       = 40,
+                      MAX_TOKEN   = 4096,
+                      SEED        = 123,
+                      TIMEOUT     = 60;
+
+    }
+
     private PreferencesManager() {
         final Path configPath = FileUtil.getConfigPath();
         final Path configFile = configPath.resolve(JEDDICT_CONFIG);
 
-        preferences = new FilePreferences(configFile);
+        LOG.finest(() -> "new PreferenesManager for " + configFile.toAbsolutePath());
 
+        preferences = new FilePreferences(configFile);
     }
 
     private static PreferencesManager instance;
 
     public static PreferencesManager getInstance() {
-        if (instance == null) {
-            synchronized (PreferencesManager.class) {
-                if (instance == null) {
-                    instance = new PreferencesManager();
-                }
+        return getInstance(false);
+    }
+
+    public static PreferencesManager getInstance(boolean reset) {
+        synchronized (PreferencesManager.class) {
+            if (reset || (instance == null)) {
+                instance = new PreferencesManager();
             }
         }
         return instance;
@@ -211,20 +233,7 @@ public class PreferencesManager {
         preferences.remove(getProvider().name() + API_KEY_PREFERENCES);
     }
 
-    public void setApiKey(String key) {
-        preferences.put(getProvider().name() + API_KEY_PREFERENCES, key);
-    }
-
     public String getApiKey() {
-        return getApiKey(false);
-    }
-
-    public String getApiKey(GenAIProvider provider) {
-        return preferences.get(provider.name() + API_KEY_PREFERENCES, null);
-    }
-
-    // TODO: P3 - PreferencesManger should not provide UI
-    public String getApiKey(boolean headless) {
         // First, try to get the API key from the environment variable
         String apiKey = System.getenv(API_KEY_ENV_VAR);
         if (apiKey == null || apiKey.isEmpty()) {
@@ -233,36 +242,22 @@ public class PreferencesManager {
         }
         if (apiKey == null || apiKey.isEmpty()) {
             // If not found in environment or system properties, check Preferences
-            apiKey = preferences.get(getProvider().name() + API_KEY_PREFERENCES, null);
+            apiKey = getApiKey(getProvider());
         }
-
-        if (apiKey == null || apiKey.isEmpty()) {
-            // If still not found, show input dialog to enter API key
-            if (!headless) {
-                apiKey = JOptionPane.showInputDialog(null,
-                        getProvider().name() + ":" + getModelName() + " API key is not configured. Please enter it now.",
-                        getProvider().name() + ":" + getModelName() + " API Key Required",
-                        JOptionPane.WARNING_MESSAGE);
-            }
-
-            if (apiKey != null && !apiKey.isEmpty()) {
-                // Save the entered API key in Preferences for future use
-                preferences.put(getProvider().name() + API_KEY_PREFERENCES, apiKey);
-            } else {
-                if (!headless) {
-                    // If user didn't provide a valid key, show error and throw exception
-                    JOptionPane.showMessageDialog(null,
-                            getProvider().name() + ":" + getModelName() + " API key setup is incomplete. Please provide a valid key.",
-                            getProvider().name() + ":" + getModelName() + " API Key Not Configured",
-                            JOptionPane.ERROR_MESSAGE);
-                    throw new IllegalStateException("A valid OpenAI API key is necessary for this feature.");
-                } else {
-                    return null;
-                }
-            }
-        }
-
         return apiKey;
+    }
+
+    public String getApiKey(GenAIProvider provider) {
+        return preferences.get(provider.name() + API_KEY_PREFERENCES, "");
+    }
+
+    public void setApiKey(String apiKey) {
+        setApiKey(getProvider(), apiKey);
+    }
+
+    public void setApiKey(GenAIProvider provider, String apiKey) {
+        preferences.put(provider.name() + API_KEY_PREFERENCES, apiKey);
+        preferences.save();
     }
 
     public void setProviderLocation(String providerLocation) {
@@ -274,7 +269,26 @@ public class PreferencesManager {
     }
 
      public String getProviderLocation(GenAIProvider provider) {
-        return preferences.get(provider.name() + PROVIDER_LOCATION_PREFERENCES, null);
+        return switch (provider) {
+            case DEEPINFRA -> {
+                yield DEEPINFRA_URL;
+            }
+            case DEEPSEEK -> {
+                yield DEEPSEEK_URL;
+            }
+            case GROQ -> {
+                yield GroqModelFetcher.API_URL;
+            }
+            case GPT4ALL -> {
+                yield GPT4ALL_URL;
+            }
+            case CUSTOM_OPEN_AI -> {
+                yield CUSTOM_OPEN_AI_URL;
+            }
+            default -> {
+                yield preferences.get(provider.name() + PROVIDER_LOCATION_PREFERENCES, "");
+            }
+        };
     }
 
     public String getModelName() {
@@ -286,7 +300,7 @@ public class PreferencesManager {
         }
         if (modelName == null || modelName.isEmpty()) {
             // Fallback to default model name
-            modelName = getModel();
+            modelName = preferences.get(MODEL_PREFERENCE, null);
         }
         return modelName;
     }
@@ -347,8 +361,14 @@ public class PreferencesManager {
         preferences.put("varContext", context != null ? context.name() : null);
     }
 
-    public String getModel() {
-        return preferences.get(MODEL_PREFERENCE, DEFAULT_MODEL);
+    public GenAIModel getModel() {
+        final List<GenAIModel> models = getGenAIModelList(getProvider().name());
+        final String modelName = getModelName();
+        return on(models).loop((model) -> {
+            if (model.name().equals(modelName)) {
+                _break_(model);
+            }
+        });
     }
 
     public void setModel(String model) {
@@ -368,13 +388,22 @@ public class PreferencesManager {
         for (GenAIModel model : models) {
             JSONObject modelJson = new JSONObject();
             modelJson.put("provider", model.provider().name());
-            modelJson.put("name", model.name());
+            modelJson.put("name", model.fullName());
             modelJson.put("description", model.description());
             modelJson.put("inputPrice", model.inputPrice());
             modelJson.put("outputPrice", model.outputPrice());
             jsonArray.put(modelJson);
         }
-        preferences.put(MODEL_PREFERENCE_LIST+"_"+providerName, jsonArray.toString());
+        setGenAIModelList(providerName, jsonArray.toString());
+    }
+
+    public void setGenAIModelList(String providerName, String json) {
+        preferences.put(MODEL_PREFERENCE_LIST + "_" + providerName, json);
+        preferences.save();
+    }
+
+    public boolean hasModelPreferenceList(String providerName) {
+        return preferences.get(MODEL_PREFERENCE_LIST + "_" + providerName, null) != null;
     }
 
     public List<GenAIModel> getGenAIModelList(String providerName) {
@@ -403,7 +432,7 @@ public class PreferencesManager {
     public GenAIModel getGenAIModelByName(String providerName, String modelName) {
         List<GenAIModel> models = getGenAIModelList(providerName);
         return models.stream()
-                .filter(model -> model.name().equals(modelName))
+                .filter(model -> model.fullName().equals(modelName))
                 .findFirst()
                 .orElse(null);
     }
@@ -423,7 +452,7 @@ public class PreferencesManager {
                 double outputPrice = modelJson.getDouble("outputPrice");
 
                 GenAIModel model = new GenAIModel(provider, name, description, inputPrice, outputPrice);
-                models.put(model.name(),model);
+                models.put(model.fullName(),model);
             } catch (Exception e) {
                 System.err.println("Error loading model: " + e.getMessage());
             }
@@ -442,7 +471,7 @@ public class PreferencesManager {
     }
 
     public String getChatModel() {
-        return preferences.get(CHAT_MODEL_PREFERENCE, getModel());
+        return preferences.get(CHAT_MODEL_PREFERENCE, getModelName());
     }
 
     public void setChatModel(String model) {
@@ -557,11 +586,11 @@ public class PreferencesManager {
 
     public int getConversationContext() {
         // Default = 3 (Last 3 replies)
-        return preferences.getInt("conversationContext", 3);
+        return preferences.getInteger("conversationContext", 3);
     }
 
     public void setConversationContext(int contextValue) {
-        preferences.putInt("conversationContext", contextValue);
+        preferences.putInteger("conversationContext", contextValue);
     }
 
     public void setFileExtensionToInclude(String exts) {
@@ -851,7 +880,7 @@ public class PreferencesManager {
     }
 
     public Double getTemperature() {
-        return preferences.getDouble(TEMPERATURE_PREFERENCE, Double.MIN_VALUE);
+        return preferences.getDouble(TEMPERATURE_PREFERENCE, Defaults.TEMPERATURE);
     }
 
     public void setTemperature(Double temperature) {
@@ -859,7 +888,7 @@ public class PreferencesManager {
     }
 
     public Double getTopP() {
-        return preferences.getDouble(TOP_P_PREFERENCE, Double.MIN_VALUE);
+        return preferences.getDouble(TOP_P_PREFERENCE, Defaults.TOP_P);
     }
 
     public void setTopP(Double topP) {
@@ -867,11 +896,11 @@ public class PreferencesManager {
     }
 
     public Integer getTimeout() {
-        return preferences.getInt(TIMEOUT_PREFERENCE, Integer.MIN_VALUE);
+        return preferences.getInteger(TIMEOUT_PREFERENCE, Defaults.TIMEOUT);
     }
 
     public void setTimeout(Integer timeout) {
-        preferences.putInt(TIMEOUT_PREFERENCE, timeout);
+        preferences.putInteger(TIMEOUT_PREFERENCE, timeout);
     }
 
     public boolean isLogRequestsEnabled() {
@@ -890,8 +919,18 @@ public class PreferencesManager {
         preferences.putBoolean(LOG_RESPONSES_PREFERENCE, enabled);
     }
 
+    public boolean isDevelopment() {
+        return preferences.getBoolean(DEVELOPMENT_PREFERENCE, false);
+    }
+
+    public void setDevelopment(boolean enabled) {
+        preferences.putBoolean(DEVELOPMENT_PREFERENCE, enabled);
+        setLogRequestsEnabled(enabled);
+        setLogResponsesEnabled(enabled);
+    }
+
     public Double getRepeatPenalty() {
-        return preferences.getDouble(REPEAT_PENALTY_PREFERENCE, Double.MIN_VALUE);
+        return preferences.getDouble(REPEAT_PENALTY_PREFERENCE, Defaults.PENALTY);
     }
 
     public void setRepeatPenalty(Double repeatPenalty) {
@@ -907,39 +946,39 @@ public class PreferencesManager {
     }
 
     public Integer getTopK() {
-        return preferences.getInt(TOP_K_PREFERENCE, Integer.MIN_VALUE);
+        return preferences.getInteger(TOP_K_PREFERENCE, Defaults.TOP_K);
     }
 
     public void setTopK(Integer topK) {
-        preferences.putInt(TOP_K_PREFERENCE, topK);
+        preferences.putInteger(TOP_K_PREFERENCE, topK);
     }
 
     public Integer getMaxTokens() {
-        return preferences.getInt(MAX_TOKENS_PREFERENCE, Integer.MIN_VALUE);
+        return preferences.getInteger(MAX_TOKENS_PREFERENCE, Defaults.MAX_TOKEN);
     }
 
     public void setMaxTokens(Integer maxTokens) {
-        preferences.putInt(MAX_TOKENS_PREFERENCE, maxTokens);
+        preferences.putInteger(MAX_TOKENS_PREFERENCE, maxTokens);
     }
 
     public Integer getMaxCompletionTokens() {
-        return preferences.getInt(MAX_COMPLETION_TOKENS_PREFERENCE, Integer.MIN_VALUE);
+        return preferences.getInteger(MAX_COMPLETION_TOKENS_PREFERENCE, null);
     }
 
     public void setMaxCompletionTokens(Integer maxCompletionTokens) {
-        preferences.putInt(MAX_COMPLETION_TOKENS_PREFERENCE, maxCompletionTokens);
+        preferences.putInteger(MAX_COMPLETION_TOKENS_PREFERENCE, maxCompletionTokens);
     }
 
     public Integer getMaxOutputTokens() {
-        return preferences.getInt(MAX_OUTPUT_TOKENS_PREFERENCE, Integer.MIN_VALUE);
+        return preferences.getInteger(MAX_OUTPUT_TOKENS_PREFERENCE, Defaults.MAX_TOKEN);
     }
 
     public void setMaxOutputTokens(Integer maxOutputTokens) {
-        preferences.putInt(MAX_OUTPUT_TOKENS_PREFERENCE, maxOutputTokens);
+        preferences.putInteger(MAX_OUTPUT_TOKENS_PREFERENCE, maxOutputTokens);
     }
 
     public Double getPresencePenalty() {
-        return preferences.getDouble(PRESENCE_PENALTY_PREFERENCE, Double.MIN_VALUE);
+        return preferences.getDouble(PRESENCE_PENALTY_PREFERENCE, Defaults.PENALTY);
     }
 
     public void setPresencePenalty(Double presencePenalty) {
@@ -947,7 +986,7 @@ public class PreferencesManager {
     }
 
     public Double getFrequencyPenalty() {
-        return preferences.getDouble(FREQUENCY_PENALTY_PREFERENCE, Double.MIN_VALUE);
+        return preferences.getDouble(FREQUENCY_PENALTY_PREFERENCE, Defaults.PENALTY);
     }
 
     public void setFrequencyPenalty(Double frequencyPenalty) {
@@ -955,11 +994,11 @@ public class PreferencesManager {
     }
 
     public Integer getSeed() {
-        return preferences.getInt(SEED_PREFERENCE, Integer.MIN_VALUE);
+        return preferences.getInteger(SEED_PREFERENCE, Defaults.SEED);
     }
 
     public void setSeed(Integer seed) {
-        preferences.putInt(SEED_PREFERENCE, seed);
+        preferences.putInteger(SEED_PREFERENCE, seed);
     }
 
     public boolean isAllowCodeExecution() {
@@ -979,11 +1018,11 @@ public class PreferencesManager {
     }
 
     public Integer getMaxRetries() {
-        return preferences.getInt(MAX_RETRIES_PREFERENCE, Integer.MIN_VALUE);
+        return preferences.getInteger(MAX_RETRIES_PREFERENCE, 2);
     }
 
     public void setMaxRetries(Integer maxRetries) {
-        preferences.putInt(MAX_RETRIES_PREFERENCE, maxRetries);
+        preferences.putInteger(MAX_RETRIES_PREFERENCE, maxRetries);
     }
 
     public TokenGranularity getTokenGranularity() {

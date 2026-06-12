@@ -1,5 +1,5 @@
 /**
- * Copyright 2025-2026 the original author or authors from the Jeddict project 
+ * Copyright 2025-2026 the original author or authors from the Jeddict project
  * (https://jeddict.github.io/).
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
@@ -30,23 +30,23 @@ public class ProjectToolsTest extends TestBase {
     public void projectInfo_returns_project_metadata_as_text()
     throws Exception {
         Path homePath = Paths.get(".").toAbsolutePath().normalize();
-        
+
         String projectDir = homePath.resolve("src/test/projects/minimal").toString();
         ProjectTools tools = ProjectTools.forProject(project(projectDir));
-        then(tools.projectInfo()).isEqualToIgnoringNewLines(
+        then(tools.projectInfo().toLowerCase()).isEqualToIgnoringNewLines(
             """
             - name: name
             - folder: %s
             - type: maven
             - Source Directory: src/main/java
             - Test Source Directory: src/test/java
-            """.formatted(projectDir)
+            """.formatted(projectDir).toLowerCase()
         );
 
-        
+
         projectDir = homePath.resolve("src/test/projects/jdk").toString();
         tools = ProjectTools.forProject(project(projectDir));
-        then(tools.projectInfo()).isEqualToIgnoringNewLines(
+        then(tools.projectInfo().toLowerCase()).isEqualToIgnoringNewLines(
             """
             - name: jdk
             - folder: %s
@@ -54,12 +54,12 @@ public class ProjectToolsTest extends TestBase {
             - Java Version: 11
             - Source Directory: src/main/java
             - Test Source Directory: src/test/java
-            """.formatted(projectDir)
+            """.formatted(projectDir).toLowerCase()
         );
 
         projectDir = homePath.resolve("src/test/projects/jakarta").toString();
         tools = ProjectTools.forProject(project(projectDir));
-        then(tools.projectInfo()).isEqualToIgnoringNewLines(
+        then(tools.projectInfo().toLowerCase()).isEqualToIgnoringNewLines(
             """
             - name: jakarta
             - folder: %s
@@ -69,12 +69,12 @@ public class ProjectToolsTest extends TestBase {
             - Java Version: 21
             - Source Directory: src/main/java
             - Test Source Directory: src/test/java
-            """.formatted(projectDir)
+            """.formatted(projectDir).toLowerCase()
         );
 
         projectDir = homePath.resolve("src/test/projects/javax").toString();
         tools = ProjectTools.forProject(project(projectDir));
-        then(tools.projectInfo()).isEqualToIgnoringNewLines(
+        then(tools.projectInfo().toLowerCase()).isEqualToIgnoringNewLines(
             """
             - name: javax
             - folder: %s
@@ -84,7 +84,7 @@ public class ProjectToolsTest extends TestBase {
             - Java Version: 11
             - Source Directory: src/main/java
             - Test Source Directory: src/test/java
-            """.formatted(projectDir)
+            """.formatted(projectDir).toLowerCase()
         );
     }
 

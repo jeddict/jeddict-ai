@@ -22,6 +22,8 @@ import io.github.jeddict.ai.components.ToolExecutionConfirmationPane;
 import io.github.jeddict.ai.components.ToolExecutionPane;
 import io.github.jeddict.ai.components.ToolInvocationPane;
 import io.github.jeddict.ai.components.diff.DiffPane;
+import io.github.jeddict.ai.settings.JeddictPreferences;
+import static io.github.jeddict.ai.util.UIUtil.GLOBAL_STYLESHEETS;
 import static java.awt.BorderLayout.SOUTH;
 import java.awt.Color;
 import java.awt.Container;
@@ -32,6 +34,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.BoxLayout;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
@@ -39,6 +42,11 @@ import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
+import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.scene.Scene;
+import javafx.scene.layout.StackPane;
+import javafx.stage.Stage;
 import org.netbeans.api.project.Project;
 import org.netbeans.api.project.ProjectUtils;
 import org.openide.DialogDisplayer;
@@ -50,12 +58,10 @@ import org.openide.filesystems.FileObject;
  */
 public class UIRunner {
 
-    private ToolExecutionConfirmationPane confirmationPane;
-    private ToolInvocationPane invocationPane;
-    private ToolExecutionPane executionPane;
+    private final ToolExecutionConfirmationPane confirmationPane;
     private DiffPane diffPane;
     private JPopupMenu contextMenu;
-    
+
     private final Logger LOG = Logger.getLogger(UIRunner.class.getName());
 
     public static void main(final String[] args) {
@@ -76,6 +82,8 @@ public class UIRunner {
         // Create menu items
         JMenuItem toolsExecutionUIItem = new JMenuItem("Tools execution UI");
         JMenuItem diffToolItem = new JMenuItem("Diff tool");
+        JMenuItem settingsItem = new JMenuItem("Settings panel");
+        JMenuItem settingsAppItem = new JMenuItem("Settings application");
         JMenuItem exitItem = new JMenuItem("Exit");
 
         // Add action listeners to menu items
@@ -85,8 +93,21 @@ public class UIRunner {
         });
 
         diffToolItem.addActionListener(e -> {
-            // Action for Diff tool
             showDiffPane(frame);
+        });
+
+        settingsItem.addActionListener(e -> {
+            showSettingsDialog(frame);
+        });
+
+        settingsAppItem.addActionListener(e -> {
+            Platform.runLater(() -> {
+                try {
+                    new SettingsApp().start(new Stage());
+                } catch (Exception ex) {
+                    LOG.log(Level.SEVERE, null, ex);
+                }
+            });
         });
 
         exitItem.addActionListener(e -> {
@@ -96,6 +117,8 @@ public class UIRunner {
         // Add menu items to the menu
         menu.add(toolsExecutionUIItem);
         menu.add(diffToolItem);
+        menu.add(settingsItem);
+        menu.add(settingsAppItem);
         menu.add(exitItem);
 
         // Add the menu to the menu bar
@@ -108,18 +131,20 @@ public class UIRunner {
         contextMenu = new JPopupMenu();
         contextMenu.add(toolsExecutionUIItem);
         contextMenu.add(diffToolItem);
+        contextMenu.add(settingsItem);
+        contextMenu.add(settingsAppItem);
         contextMenu.add(exitItem);
 
         final Container content = frame.getContentPane();
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
-        
+
         // Add mouse listener for context menu
         content.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
                 showContextMenu(e, contextMenu);
             }
-            
+
             @Override
             public void mouseReleased(MouseEvent e) {
                 showContextMenu(e, contextMenu);
@@ -129,22 +154,22 @@ public class UIRunner {
         final ToolExecutionRequest execution = ToolExecutionRequest.builder()
             .name("helloTool").arguments("{\"argument1\":\"value1\",\"argument2\":\"value2\"}").build();
         content.add(confirmationPane = new ToolExecutionConfirmationPane());
-        content.add(invocationPane = new ToolInvocationPane());
-        content.add(executionPane = new ToolExecutionPane(execution, "This is the result\n1\n2\n3\n4\n5"));
+        content.add(new ToolInvocationPane());
+        content.add(new ToolExecutionPane(execution, "This is the result\n1\n2\n3\n4\n5"));
         content.setBackground(Color.white);
 
         frame.setVisible(true);
-        
+
         final JPanel controls = new JPanel();
-        
+
         confirmationPane.setBackground(Color.white);
 
         confirmationPane.showMessage(execution);
-        
+
         confirmationPane.addPropertyChangeListener(JOptionPane.VALUE_PROPERTY, (e) -> {
             JOptionPane.showConfirmDialog(content, "Hello");
         });
-        
+
         content.add(controls, SOUTH);
     }
 
@@ -155,7 +180,7 @@ public class UIRunner {
                 JOptionPane.showMessageDialog(frame, "Could not determine project for SayHello.java", "Error", JOptionPane.ERROR_MESSAGE);
                 return;
             }
-            
+
             String relativePath = "src/test/java/io/github/jeddict/ai/test/SayHello.java";
             // Convert to FileObject
             FileObject fileObject = project.getProjectDirectory().getFileObject(relativePath);
@@ -187,10 +212,35 @@ public class UIRunner {
         frame.revalidate();
         frame.repaint();
     }
-    
+
     private void showContextMenu(MouseEvent e, JPopupMenu contextMenu) {
         if (e.isPopupTrigger()) {
             contextMenu.show(e.getComponent(), e.getX(), e.getY());
+        }
+    }
+
+    private void showSettingsDialog(JFrame frame) {
+        final JeddictPreferences p = new JeddictPreferences();
+        final JComponent panel = p.getPanel();
+
+        frame.getContentPane().removeAll();
+        frame.getContentPane().add(panel);
+
+        frame.revalidate();
+        frame.repaint();
+    }
+
+    private static class SettingsApp extends Application {
+
+        @Override
+        public void start(Stage stage) throws Exception {
+            JeddictPreferences p = new JeddictPreferences();
+            Scene scene = new Scene(new StackPane(p.getView()), 1000, 800);
+            scene.getStylesheets().addAll(GLOBAL_STYLESHEETS);
+            scene.getStylesheets().add("/io/github/jeddict/ai/settings/settings.css");
+            stage.setTitle("Jeddict AI Settings (Standalone App)");
+            stage.setScene(scene);
+            stage.show();
         }
     }
 

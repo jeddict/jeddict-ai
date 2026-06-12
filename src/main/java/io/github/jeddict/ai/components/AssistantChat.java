@@ -64,7 +64,6 @@ import io.github.jeddict.ai.util.SourceUtil;
 import static io.github.jeddict.ai.util.StringUtil.convertToCapitalized;
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Component;
 import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -286,7 +285,7 @@ public abstract class AssistantChat extends TopComponent {
    public String getModelName() {
         String modelName = (String) models.getSelectedItem();
         if (modelName == null || modelName.isEmpty()) {
-            return pm.getModel();
+            return pm.getModelName();
         }
         return modelName;
     }

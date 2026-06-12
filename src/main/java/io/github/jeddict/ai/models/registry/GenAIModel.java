@@ -15,6 +15,8 @@
  */
 package io.github.jeddict.ai.models.registry;
 
+import java.util.Objects;
+
 /**
  * Immutable record representing a GenAI model used in AI analysis.
  *
@@ -28,6 +30,8 @@ package io.github.jeddict.ai.models.registry;
  * are set to <code>0.0</code> and described accordingly.</li>
  * </ul>
  *
+ *
+ *
  * Author: Shiwani Gupta, Gaurav Gupta
  */
 public record GenAIModel(
@@ -37,15 +41,21 @@ public record GenAIModel(
         double inputPrice,
         double outputPrice) {
 
-    public static String DEFAULT_MODEL = "gpt-5-nano";
+    /**
+     * Returns the normalized model name (without provider prefix).
+     * Examples: "openai/gpt-5-nano" → "gpt-5-nano"
+     */
+    @Override
+    public String name() {
+        return normalizeName(name);
+    }
 
     /**
-     * Compact constructor that normalizes the model name by removing the
-     * provider prefix. Examples: openai/gpt-5-nano → gpt-5-nano,
-     * mistralai/devstral-2512 → devstral-2512
+     * Returns the original full name as provided to the constructor.
+     * For example: "openai/gpt-5-nano" or "gpt-5-nano"
      */
-    public GenAIModel {
-        name = normalizeName(name);
+    public String fullName() {
+        return name;
     }
 
     private static String normalizeName(String rawName) {
@@ -58,6 +68,21 @@ public record GenAIModel(
 
     @Override
     public String toString() {
-        return name;
+        return fullName();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+
+        if (obj == null || getClass() != obj.getClass()) return false;
+
+        return name.equals(((GenAIModel)obj).fullName());
+    }
+
+    @Override
+    public int hashCode() {
+        // Always override hashCode when overriding equals
+        return Objects.hash(name);
     }
 }
