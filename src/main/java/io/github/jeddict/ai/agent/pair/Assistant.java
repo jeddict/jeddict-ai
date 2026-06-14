@@ -125,6 +125,10 @@ public interface Assistant extends PairProgrammer {
         return chat(prompt, "", imageContent(images), project, globalRules, projectRules);
     }
 
+    default boolean streamingSupport() {
+        return true;
+    }
+
     // ----------------------------------------------------- streaming interface
 
     default void chat(

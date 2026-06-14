@@ -33,4 +33,7 @@ public interface Hacker extends PairProgrammer {
         final String projectInfo
     );
 
+    default boolean streamingSupport() {
+        return true;
+    }
 }

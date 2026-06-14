@@ -53,7 +53,6 @@ import io.github.jeddict.ai.components.ContextDialog;
 import io.github.jeddict.ai.components.CustomScrollBarUI;
 import static io.github.jeddict.ai.components.MarkdownPane.getHtmlWrapWidth;
 import io.github.jeddict.ai.lang.InteractionMode;
-import static io.github.jeddict.ai.lang.InteractionMode.INTERACTIVE;
 import io.github.jeddict.ai.lang.JeddictBrain;
 import io.github.jeddict.ai.lang.JeddictBrainListener;
 import io.github.jeddict.ai.response.TextBlock;
@@ -706,7 +705,7 @@ public class AssistantChatManager extends JavaFix {
                             projectInfo = ProjectMetadataInfo.get(selectedProject);
                         }
                         final Hacker h = hacker(listener, modelName, ac.interactiveMode());
-                        if (pm.isStreamEnabled()) {
+                        if (pm.isStreamEnabled() && h.streamingSupport()) {
                             h.hack(listener, question, projectInfo, pm.getGlobalRules(), sessionRules);
                         } else {
                             response = h.hack(question, projectInfo, pm.getGlobalRules(), sessionRules);
@@ -963,9 +962,7 @@ public class AssistantChatManager extends JavaFix {
             //
             // Tools for interactive mode
             //
-            if (mode == INTERACTIVE) {
-                toolsList.add(new InteractiveFileEditor(basedir, ac));
-            }
+            toolsList.add(new InteractiveFileEditor(basedir, ac));
 
             //
             // Tools commmon to both AGENT and INTERACTIVE mode
@@ -997,9 +994,13 @@ public class AssistantChatManager extends JavaFix {
             toolsList.add(new RefactoringTools(basedir));
 
             //
-            // The handler wants to know about tool execution
+            // The handler wants to know about tool execution.
+            // The tools want to know about interaction mode
             //
-            toolsList.forEach((tool) -> tool.addListener(listener));
+            toolsList.forEach((tool) -> {
+                tool.addListener(listener);
+                tool.interaction(mode);
+            });
 
             return toolsList;
         } catch (IOException x) {

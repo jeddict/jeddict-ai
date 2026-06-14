@@ -228,11 +228,7 @@ public class JeddictBrain implements PropertyChangeEmitter {
 
 
         final AiServices builder = AiServices.builder(specialist.specialistClass);
-        if (streaming) {
-            builder.streamingChatModel(model(modelListener));
-        } else {
-            builder.chatModel(model(modelListener));
-        }
+
         if (memorySize > 0) {
             builder.chatMemory(MessageWindowChatMemory.withMaxMessages(memorySize));
         }
@@ -253,12 +249,18 @@ public class JeddictBrain implements PropertyChangeEmitter {
         builder.toolArgumentsErrorHandler(this::toolArgumentsErrorHandler);
 
         if (specialist == PairProgrammer.Specialist.HACKER_WITHOUT_TOOLS) {
-            final HackerWithoutTools hacker = new HackerWithoutTools(model(modelListener), builder, tools);
+            final HackerWithoutTools hacker = new HackerWithoutTools(model(false, modelListener), builder, tools);
             hacker.maxIterations(25);
 
             return (T) hacker;
         }
 
+        if (streaming) {
+            builder.streamingChatModel(model(modelListener));
+        } else {
+            builder.chatModel(model(modelListener));
+        }
+        
         return (T) builder.build();
     }
 
