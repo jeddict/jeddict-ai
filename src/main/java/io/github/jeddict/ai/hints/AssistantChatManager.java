@@ -705,7 +705,7 @@ public class AssistantChatManager extends JavaFix {
                             projectInfo = ProjectMetadataInfo.get(selectedProject);
                         }
                         final Hacker h = hacker(listener, modelName, ac.interactiveMode());
-                        if (pm.isStreamEnabled()) {
+                        if (pm.isStreamEnabled() && h.streamingSupport()) {
                             h.hack(listener, question, projectInfo, pm.getGlobalRules(), sessionRules);
                         } else {
                             response = h.hack(question, projectInfo, pm.getGlobalRules(), sessionRules);

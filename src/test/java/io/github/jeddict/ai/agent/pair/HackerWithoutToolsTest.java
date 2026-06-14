@@ -76,7 +76,6 @@ public class HackerWithoutToolsTest {
         // properly simulate the chain of events of models supporting tools.
         // We want to pass it in the constructor to avoid that HackerWithoutTools
         // manipulates the listeners by its own in the constructor.
-        // It must be the only one otherwise we may end up with
         //
 
         //
@@ -147,6 +146,11 @@ public class HackerWithoutToolsTest {
         then(system.text()).isEqualToIgnoringNewLines(expectedSystem);
 
         then(answer).isEqualToIgnoringNewLines("hello world");
+    }
+
+    @Test
+    public void does_not_support_streaming() {
+        then(new HackerWithoutTools(MODEL, BUILDER, List.of()).streamingSupport()).isFalse();
     }
 
     @Test
