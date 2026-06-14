@@ -253,7 +253,7 @@ public class JeddictBrain implements PropertyChangeEmitter {
         builder.toolArgumentsErrorHandler(this::toolArgumentsErrorHandler);
 
         if (specialist == PairProgrammer.Specialist.HACKER_WITHOUT_TOOLS) {
-            final HackerWithoutTools hacker = new HackerWithoutTools(model(modelListener), builder, tools);
+            final HackerWithoutTools hacker = new HackerWithoutTools(model(false, modelListener), builder, tools);
             hacker.maxIterations(25);
 
             return (T) hacker;
