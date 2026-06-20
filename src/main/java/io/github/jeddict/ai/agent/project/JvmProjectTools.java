@@ -33,6 +33,8 @@ import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READWRITE;
  */
 public abstract class JvmProjectTools extends ProjectTools {
 
+    public static final int TIMEOUT_MIN = 15;
+
     protected JvmProjectTools(final Project project) throws IOException {
         super(project);
     }

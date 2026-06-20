@@ -82,7 +82,6 @@
                             <id>org.netbeans.api:org-netbeans-modules-java-sourceui</id>
                             <type>impl</type>
                         </dependency>
-
                         <dependency>
                             <id>org.netbeans.api:org-netbeans-api-progress-nb</id>
                             <type>impl</type>
@@ -515,7 +514,11 @@
             <artifactId>org-netbeans-modules-editor</artifactId>
             <version>${netbeans.version}</version>
         </dependency>
-
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-openide-execution</artifactId>
+            <version>${netbeans.version}</version>
+        </dependency>
         <dependency>
             <groupId>org.netbeans.api</groupId>
             <artifactId>org-openide-windows</artifactId>

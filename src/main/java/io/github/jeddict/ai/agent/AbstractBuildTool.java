@@ -16,8 +16,6 @@
 package io.github.jeddict.ai.agent;
 
 import java.io.IOException;
-import org.openide.filesystems.FileObject;
-import org.openide.filesystems.FileUtil;
 
 public abstract class AbstractBuildTool extends AbstractTool {
 
@@ -28,18 +26,5 @@ public abstract class AbstractBuildTool extends AbstractTool {
         this.buildFile = buildFile;
     }
 
-    protected FileObject buildFile() throws Exception {
-        //
-        // Note that this cannot be put in the constructor because we accept
-        // the project pom is not there at instatiation time; what's important
-        // is that he pom is there when the tool is invoked
-        //
-        final FileObject projectDir = FileUtil.toFileObject(basepath);
-        final FileObject pomFile = projectDir.getFileObject(buildFile);
-        if (pomFile == null || !pomFile.isValid()) {
-            throw new Exception("pom.xml not found in project directory");
-        }
-
-        return pomFile;
-    }
+    
 }

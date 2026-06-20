@@ -48,7 +48,7 @@ public class DummyProject implements Project {
             throw new IllegalArgumentException("project directory can not be null or invalid");
         }
         this.projectDirectory = fo;
-        
+
         try {
             this.realProjectDirectory = Paths.get(fo.getPath()).toRealPath().toString();
         } catch (IOException x) {
@@ -63,15 +63,15 @@ public class DummyProject implements Project {
         if (projectDir == null) {
             throw new IllegalArgumentException("projectDir can not be null");
         }
-        
+
         //
         // We need to deal with different file systems here...
         // - on Windows long paths have a "link" to a short path; toRealPath()
         //   makes sure we have always the one provided (i.e. long)
         // - on Mac, temporary files are created in a directory which is simlinked
-        //   from /private; toRealPath() makes sure we have always the real 
+        //   from /private; toRealPath() makes sure we have always the real
         //   path under /private
-        // - on Linux, all is pretty much as expected; toRealPath() is basically 
+        // - on Linux, all is pretty much as expected; toRealPath() is basically
         //   transparent
         // - on a memory file system toRealPath() fails ... :|
         //

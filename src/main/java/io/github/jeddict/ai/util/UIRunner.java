@@ -18,6 +18,7 @@
 package io.github.jeddict.ai.util;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import io.github.jeddict.ai.agent.project.MavenProjectTools;
 import io.github.jeddict.ai.components.ToolExecutionConfirmationPane;
 import io.github.jeddict.ai.components.ToolExecutionPane;
 import io.github.jeddict.ai.components.ToolInvocationPane;
@@ -41,21 +42,25 @@ import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import org.netbeans.api.project.Project;
 import org.netbeans.api.project.ProjectUtils;
+import org.netbeans.api.project.ui.OpenProjects;
 import org.openide.DialogDisplayer;
 import org.openide.NotifyDescriptor;
 import org.openide.filesystems.FileObject;
+import org.openide.util.RequestProcessor;
 
 /**
  *
  */
 public class UIRunner {
 
+    private static final RequestProcessor RP = new RequestProcessor(UIRunner.class);
+
     private ToolExecutionConfirmationPane confirmationPane;
     private ToolInvocationPane invocationPane;
     private ToolExecutionPane executionPane;
     private DiffPane diffPane;
     private JPopupMenu contextMenu;
-    
+
     private final Logger LOG = Logger.getLogger(UIRunner.class.getName());
 
     public static void main(final String[] args) {
@@ -76,6 +81,7 @@ public class UIRunner {
         // Create menu items
         JMenuItem toolsExecutionUIItem = new JMenuItem("Tools execution UI");
         JMenuItem diffToolItem = new JMenuItem("Diff tool");
+        JMenuItem runProjectItem = new JMenuItem("Run Project");
         JMenuItem exitItem = new JMenuItem("Exit");
 
         // Add action listeners to menu items
@@ -89,6 +95,10 @@ public class UIRunner {
             showDiffPane(frame);
         });
 
+        runProjectItem.addActionListener(e -> {
+            buildSelectedProject(frame);
+        });
+
         exitItem.addActionListener(e -> {
             frame.dispose();
         });
@@ -96,6 +106,7 @@ public class UIRunner {
         // Add menu items to the menu
         menu.add(toolsExecutionUIItem);
         menu.add(diffToolItem);
+        menu.add(runProjectItem);
         menu.add(exitItem);
 
         // Add the menu to the menu bar
@@ -108,18 +119,19 @@ public class UIRunner {
         contextMenu = new JPopupMenu();
         contextMenu.add(toolsExecutionUIItem);
         contextMenu.add(diffToolItem);
+        contextMenu.add(runProjectItem);
         contextMenu.add(exitItem);
 
         final Container content = frame.getContentPane();
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
-        
+
         // Add mouse listener for context menu
         content.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
                 showContextMenu(e, contextMenu);
             }
-            
+
             @Override
             public void mouseReleased(MouseEvent e) {
                 showContextMenu(e, contextMenu);
@@ -134,18 +146,45 @@ public class UIRunner {
         content.setBackground(Color.white);
 
         frame.setVisible(true);
-        
+
         final JPanel controls = new JPanel();
-        
+
         confirmationPane.setBackground(Color.white);
 
         confirmationPane.showMessage(execution);
-        
+
         confirmationPane.addPropertyChangeListener(JOptionPane.VALUE_PROPERTY, (e) -> {
             JOptionPane.showConfirmDialog(content, "Hello");
         });
-        
+
         content.add(controls, SOUTH);
+    }
+
+    private void buildSelectedProject(JFrame frame) {
+        try {
+            Project project = selectProject();
+            if (project == null) {
+                return;
+            }
+
+            String projectName = ProjectUtils.getInformation(project).getDisplayName();
+            LOG.info(() -> "Run Project selected for: " + projectName);
+
+            RP.post(() -> {
+                try {
+                    MavenProjectTools tools = new MavenProjectTools(project);
+                    final String result = tools.runMavenGaols(new String[]{"install"}, null, null);
+                    LOG.info(result);
+                } catch (Exception ex) {
+                    LOG.log(Level.SEVERE, "Error running project: " + projectName, ex);
+                    JOptionPane.showMessageDialog(frame, "Error running project: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            });
+
+        } catch (Exception ex) {
+            LOG.log(Level.SEVERE, "Error running selected project", ex);
+            JOptionPane.showMessageDialog(frame, "Error running project: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private void showDiffPane(JFrame frame) {
@@ -155,7 +194,7 @@ public class UIRunner {
                 JOptionPane.showMessageDialog(frame, "Could not determine project for SayHello.java", "Error", JOptionPane.ERROR_MESSAGE);
                 return;
             }
-            
+
             String relativePath = "src/test/java/io/github/jeddict/ai/test/SayHello.java";
             // Convert to FileObject
             FileObject fileObject = project.getProjectDirectory().getFileObject(relativePath);
@@ -187,7 +226,7 @@ public class UIRunner {
         frame.revalidate();
         frame.repaint();
     }
-    
+
     private void showContextMenu(MouseEvent e, JPopupMenu contextMenu) {
         if (e.isPopupTrigger()) {
             contextMenu.show(e.getComponent(), e.getX(), e.getY());
@@ -195,7 +234,7 @@ public class UIRunner {
     }
 
     private Project selectProject() {
-        final Project[] openProjects = org.netbeans.api.project.ui.OpenProjects.getDefault().getOpenProjects();
+        final Project[] openProjects = OpenProjects.getDefault().getOpenProjects();
         if (openProjects.length == 1) {
             return openProjects[0];
         } else if (openProjects.length > 1) {

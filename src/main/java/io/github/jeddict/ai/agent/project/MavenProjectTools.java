@@ -15,6 +15,7 @@
  */
 package io.github.jeddict.ai.agent.project;
 
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import io.github.jeddict.ai.scanner.ProjectMetadataInfo;
 import io.github.jeddict.ai.scanner.ProjectMetadataInfo.BuildMetadataResolver;
@@ -34,7 +35,24 @@ import org.netbeans.api.project.Project;
 import io.github.jeddict.ai.agent.ToolPolicy;
 import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READONLY;
 import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READWRITE;
+import io.github.jeddict.ai.util.CaptureOutputInputOutput;
+import java.util.ArrayList;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import org.apache.commons.lang3.StringUtils;
+import org.netbeans.api.project.ProjectInformation;
+import org.netbeans.api.project.ProjectUtils;
+import org.netbeans.modules.maven.api.execute.RunConfig;
+import org.netbeans.modules.maven.api.execute.RunUtils;
+import org.netbeans.modules.maven.execute.MavenCommandLineExecutor;
+import org.openide.execution.ExecutionEngine;
+import org.openide.execution.ExecutorTask;
 import org.openide.filesystems.FileObject;
+import org.openide.filesystems.FileUtil;
+import org.openide.util.NotImplementedException;
+import org.openide.util.Task;
+import org.openide.util.TaskListener;
 
 /**
  * Project-tool specialisation for Maven projects.
@@ -209,13 +227,8 @@ public class MavenProjectTools extends JvmProjectTools implements BuildMetadataR
     }
 
     @Override
-    @Tool(
-        name = "buildProject",
-        value = "Build the Maven project using 'mvn clean install' (or the Maven wrapper) and return the full log"
-    )
-    @ToolPolicy(READWRITE)
     public String buildProject() {
-        return runCommand(resolveBuildCommand(), "Building");
+        throw new NotImplementedException();
     }
 
     /**
@@ -236,6 +249,99 @@ public class MavenProjectTools extends JvmProjectTools implements BuildMetadataR
     public String testProject() {
         return runCommand(resolveTestCommand(), "Testing");
     }
+
+    @Tool("""
+        Run a list of maven goals with given profiles and properties and returns
+        the outputproduced by the build as:
+
+        OUT: <the std out>
+        \n\n
+        ERR: <the std err>
+        """
+    )
+    @ToolPolicy(READWRITE)
+    public String runMavenGaols(
+        @P("a space separated list of maven goals to run")
+        final String[] goals,
+        @P("a space separated list of maven profiles to activate")
+        final String[] profiles,
+        @P("a space separated list of properties (e.g. -Dpro=value) or argumentsto (e.g. -x) to pass to the build command")
+        final String properties
+    ) {
+        progress("running project action %s".formatted(goals));
+
+        final ProjectInformation info = ProjectUtils.getInformation(project);
+
+        List<String> arguments = new ArrayList(List.of(goals));
+        if (!StringUtils.isBlank(properties)) {
+            arguments.addAll(List.of(properties));
+        }
+
+        final RunConfig runConfig = RunUtils.createRunConfig(
+                FileUtil.toFile(project.getProjectDirectory()),
+                project,
+                "%s (%s)".formatted(String.join(" ", goals), info.getDisplayName()),
+                arguments
+        );
+        if (profiles != null) {
+            runConfig.setActivatedProfiles(List.of(profiles)); // if empty, deactivate the ones already set
+        }
+
+        if (runConfig == null) {
+            final String msg = "unable to run goals provided on " + info.getDisplayName();
+            progress(msg);
+            return msg;
+        }
+
+        final CaptureOutputInputOutput io = new CaptureOutputInputOutput(org.openide.windows.IOProvider.getDefault().getIO(runConfig.getTaskDisplayName(), true));
+        final MavenCommandLineExecutor executor = new MavenCommandLineExecutor(runConfig, io, null);
+
+        final ExecutorTask task = ExecutionEngine.getDefault().execute(
+            runConfig.getTaskDisplayName(),
+            executor,
+            io
+        );
+        executor.setTask(task);
+
+        progress("task launched, wating for it to finish...");
+
+        CompletableFuture<Integer> future = new CompletableFuture<>();
+        task.addTaskListener(new TaskListener() {
+            int taskResult = -1; // Default to error
+
+            @Override
+            public void taskFinished(Task task) {
+                if (task instanceof ExecutorTask completedTask) {
+                    taskResult = completedTask.result();
+                    future.complete(taskResult);
+                    task.removeTaskListener(this);
+                }
+            }
+        });
+
+        Integer exitCode = null;
+
+        String err = "";
+
+        try {
+            exitCode = future.get(TIMEOUT_MIN, TimeUnit.MINUTES);
+        } catch (TimeoutException e) {
+            task.stop();
+            err = "build action not completed in %d minutes".formatted(TIMEOUT_MIN);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            task.stop();
+            err = "build action interrupted";
+        } catch (Exception x) {
+            task.stop();
+            exitCode = -1; // Generic error code
+            err = "build not completed because of " + x;
+            progress(err);
+        }        progress("build action finished with exit code %d".formatted(exitCode));
+
+        return "OUT: %s\n\nERR: %s %s".formatted(io.out(), err, io.err());
+    }
+
 
     /**
      * Returns the Maven command to run the project's tests ({@code mvn[w] test}).

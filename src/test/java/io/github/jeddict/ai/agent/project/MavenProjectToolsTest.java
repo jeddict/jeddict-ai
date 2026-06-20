@@ -204,5 +204,4 @@ public class MavenProjectToolsTest extends TestBase {
         final MavenProjectTools tool = new MavenProjectTools(project(projectDir));
         then(tool.resolveTestCommand()).isEqualTo("./mvnw test");
     }
-
 }

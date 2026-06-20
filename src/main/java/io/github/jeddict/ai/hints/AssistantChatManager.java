@@ -29,7 +29,6 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import io.github.jeddict.ai.JeddictUpdateManager;
 import io.github.jeddict.ai.agent.AbstractTool;
 import io.github.jeddict.ai.agent.InteractiveFileEditor;
-import io.github.jeddict.ai.agent.ExecutionTools;
 import io.github.jeddict.ai.agent.ExplorationTools;
 import io.github.jeddict.ai.agent.FileSystemTools;
 import io.github.jeddict.ai.agent.GradleTools;
@@ -968,12 +967,7 @@ public class AssistantChatManager extends JavaFix {
             // Tools commmon to both AGENT and INTERACTIVE mode
             //
             toolsList.add(new FileSystemTools(basedir));
-            toolsList.add(
-                new ExecutionTools(
-                    basedir, project.getProjectDirectory().getName(),
-                    pm.getBuildCommand(project), pm.getTestCommand(project)
-                )
-            );
+            toolsList.add(new MavenTools(project));
             toolsList.add(new ExplorationTools(basedir, project.getLookup()));
             // Add the project-type-specific tool (Maven, Gradle, or generic)
             // so the agent can query project metadata via @Tool methods.
@@ -990,7 +984,6 @@ public class AssistantChatManager extends JavaFix {
                 }
             }
             toolsList.add(new GradleTools(basedir));
-            toolsList.add(new MavenTools(basedir));
             toolsList.add(new RefactoringTools(basedir));
 
             //
