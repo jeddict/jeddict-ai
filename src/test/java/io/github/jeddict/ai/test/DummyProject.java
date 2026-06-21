@@ -31,13 +31,13 @@ import org.openide.util.lookup.InstanceContent;
  */
 public class DummyProject implements Project {
 
+    public final InstanceContent instances = new InstanceContent();;
+    public final String realProjectDirectory;
+
     private final FileObject projectDirectory;
-    private final Lookup lookup;
+    private final Lookup lookup = new AbstractLookup(instances);
 
     private String name, type;
-
-    public final InstanceContent instances;
-    public final String realProjectDirectory;
 
     public DummyProject(final File projectDir) {
         if (projectDir == null) {
@@ -55,8 +55,7 @@ public class DummyProject implements Project {
             x.printStackTrace();
             throw new IllegalArgumentException("unexpected error in getting the real path: " + x);
         }
-        this.instances = new InstanceContent();
-        this.lookup = new AbstractLookup(instances);
+        lookupSetup();
     }
 
     public DummyProject(final FileObject projectDir) {
@@ -84,8 +83,9 @@ public class DummyProject implements Project {
             throw new IllegalArgumentException("unexpected error in getting the real path: " + x);
         }
         this.projectDirectory = projectDir;
-        this.instances = new InstanceContent();
-        this.lookup = new AbstractLookup(instances);
+
+        lookupSetup();
+
     }
 
     public DummyProject(final Path projectDir) {
@@ -120,5 +120,11 @@ public class DummyProject implements Project {
 
     public String type() {
         return type;
+    }
+
+    private void lookupSetup() {
+        instances.add(this);
+        instances.add(new DummyProjectSources(this));
+        instances.add(new DummyMultipleRootsUnitTestForSourceQueryImplementation(this));
     }
 }

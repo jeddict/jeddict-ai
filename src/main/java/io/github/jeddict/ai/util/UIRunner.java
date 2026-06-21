@@ -173,7 +173,7 @@ public class UIRunner {
             RP.post(() -> {
                 try {
                     MavenProjectTools tools = new MavenProjectTools(project);
-                    final String result = tools.runMavenGaols(new String[]{"install"}, null, null);
+                    final String result = tools.runMavenGoals(new String[]{"install"}, null, null);
                     LOG.info(result);
                 } catch (Exception ex) {
                     LOG.log(Level.SEVERE, "Error running project: " + projectName, ex);

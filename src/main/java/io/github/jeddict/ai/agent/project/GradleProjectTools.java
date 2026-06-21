@@ -40,7 +40,7 @@ import org.openide.filesystems.FileObject;
  * {@link BuildMetadataResolver} so that {@link ProjectMetadataInfo} can obtain
  * this data without parsing build files directly.</p>
  */
-public class GradleProjectTools extends JvmProjectTools implements BuildMetadataResolver {
+public class GradleProjectTools extends ProjectTools implements BuildMetadataResolver {
 
     /**
      * Matches Groovy DSL dependency declarations (unparenthesised):
@@ -86,21 +86,6 @@ public class GradleProjectTools extends JvmProjectTools implements BuildMetadata
     }
 
     // -----------------------------------------------------------------------
-    // ProjectTools overrides
-    // -----------------------------------------------------------------------
-
-    @Override
-    @Tool(
-        name = "projectInfo",
-        value = "Return information about the project: jdk version"
-    )
-    @ToolPolicy(READONLY)
-    public String projectInfo() throws Exception {
-        progress("Gathering Gradle project info: " + project());
-        return appendSourceDirs(ProjectMetadataInfo.get(project(), this));
-    }
-
-    // -----------------------------------------------------------------------
     // BuildMetadataResolver implementation
     // -----------------------------------------------------------------------
 
@@ -134,10 +119,19 @@ public class GradleProjectTools extends JvmProjectTools implements BuildMetadata
     // -----------------------------------------------------------------------
     // Additional @Tool methods exposed to the LLM agent
     // -----------------------------------------------------------------------
-
-    @Override
     @Tool(
-        name = "jdkVersion",
+        name = "gradleProjectInfo",
+        value = "Return information about the project: jdk version"
+    )
+    @ToolPolicy(READONLY)
+    public String projectInfo() throws Exception {
+        progress("Gathering Gradle project info: " + project());
+        return appendSourceDirs(ProjectMetadataInfo.get(project(), this));
+    }
+
+
+    @Tool(
+        name = "gradleJdkVersion",
         value = "Return the Java source compatibility version configured in this Gradle project's build file"
     )
     @ToolPolicy(READONLY)
@@ -147,9 +141,8 @@ public class GradleProjectTools extends JvmProjectTools implements BuildMetadata
         return v != null ? v : "No sourceCompatibility / jvmTarget found in Gradle build file";
     }
 
-    @Override
     @Tool(
-        name = "projectDependencies",
+        name = "gradleProjectDependencies",
         value = "Return the list of dependencies declared in this Gradle project's build file, one per line as configuration groupId:artifactId:version"
     )
     @ToolPolicy(READONLY)
@@ -167,9 +160,8 @@ public class GradleProjectTools extends JvmProjectTools implements BuildMetadata
                 : sb.toString().trim();
     }
 
-    @Override
     @Tool(
-        name = "runJavaClass",
+        name = "gradleRunJavaClass",
         value = "Run a Java class by its fully qualified class name using the Gradle application "
             + "plugin and return the full output"
     )
@@ -190,9 +182,8 @@ public class GradleProjectTools extends JvmProjectTools implements BuildMetadata
         return resolveWrapper() + " run --main-class=" + mainClass;
     }
 
-    @Override
     @Tool(
-        name = "buildProject",
+        name = "gradleBuildProject",
         value = "Build the Gradle project using 'gradle build' (or the Gradle wrapper) and return the full log"
     )
     @ToolPolicy(READWRITE)
@@ -209,9 +200,8 @@ public class GradleProjectTools extends JvmProjectTools implements BuildMetadata
         return resolveWrapper() + " build";
     }
 
-    @Override
     @Tool(
-        name = "testProject",
+        name = "gradleTestProject",
         value = "Run the Gradle project's test suite using 'gradle test' (or the Gradle wrapper) and return the full log"
     )
     @ToolPolicy(READWRITE)

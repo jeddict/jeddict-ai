@@ -19,7 +19,6 @@ import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import io.github.jeddict.ai.scanner.ProjectMetadataInfo;
 import io.github.jeddict.ai.scanner.ProjectMetadataInfo.BuildMetadataResolver;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.LinkedHashMap;
@@ -50,7 +49,6 @@ import org.openide.execution.ExecutionEngine;
 import org.openide.execution.ExecutorTask;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
-import org.openide.util.NotImplementedException;
 import org.openide.util.Task;
 import org.openide.util.TaskListener;
 
@@ -63,7 +61,9 @@ import org.openide.util.TaskListener;
  * so that {@link ProjectMetadataInfo} can obtain this data without parsing
  * build files itself.</p>
  */
-public class MavenProjectTools extends JvmProjectTools implements BuildMetadataResolver {
+public class MavenProjectTools extends ProjectTools implements BuildMetadataResolver {
+
+    private final static int TIMEOUT_MIN = 15;
 
     private final FileObject pomFile;
 
@@ -74,21 +74,6 @@ public class MavenProjectTools extends JvmProjectTools implements BuildMetadataR
     public MavenProjectTools(final Project project) throws IOException {
         super(project);
         this.pomFile = project.getProjectDirectory().getFileObject("pom.xml");
-    }
-
-    // -----------------------------------------------------------------------
-    // ProjectTools overrides
-    // -----------------------------------------------------------------------
-
-    @Override
-    @Tool(
-        name = "projectInfo",
-        value = "Return information about the project: jdk version, j2ee version"
-    )
-    @ToolPolicy(READONLY)
-    public String projectInfo() throws Exception {
-        progress("Gathering Maven project info: " + project());
-        return appendSourceDirs(ProjectMetadataInfo.get(project(), this));
     }
 
     // -----------------------------------------------------------------------
@@ -145,12 +130,18 @@ public class MavenProjectTools extends JvmProjectTools implements BuildMetadataR
         return metadata;
     }
 
-    // -----------------------------------------------------------------------
-    // Additional @Tool methods exposed to the LLM agent
-    // -----------------------------------------------------------------------
+    @Tool(
+        name = "mavenProjectInfo",
+        value = "Return information about the project: jdk version, j2ee version"
+    )
+    @ToolPolicy(READONLY)
+    public String projectInfo() throws Exception {
+        progress("Gathering Maven project info: " + project);
+        return appendSourceDirs(ProjectMetadataInfo.get(project, this));
+    }
 
     @Tool(
-        name = "frameworkVersion",
+        name = "mavenFrameworkVersion",
         value = "Return the primary framework or platform used by this Maven project (e.g. 'jakarta', 'javax', 'spring-boot', 'quarkus', 'micronaut', 'helidon')"
     )
     @ToolPolicy(READONLY)
@@ -161,9 +152,8 @@ public class MavenProjectTools extends JvmProjectTools implements BuildMetadataR
         return v != null ? v : "No known framework dependency found in pom.xml";
     }
 
-    @Override
     @Tool(
-        name = "jdkVersion",
+        name = "mavenJdkVersion",
         value = "Return the Java compiler source version configured in this Maven project's pom.xml"
     )
     @ToolPolicy(READONLY)
@@ -176,7 +166,7 @@ public class MavenProjectTools extends JvmProjectTools implements BuildMetadataR
 
     @Override
     @Tool(
-        name = "projectDependencies",
+        name = "mavenProjectDependencies",
         value = "Return the list of Maven dependencies declared in pom.xml, one per line as groupId:artifactId:version (scope)"
     )
     @ToolPolicy(READONLY)
@@ -203,54 +193,9 @@ public class MavenProjectTools extends JvmProjectTools implements BuildMetadataR
         return sb.toString().trim();
     }
 
-    @Override
     @Tool(
-        name = "runJavaClass",
-        value = "Run a Java class by its fully qualified class name using the Maven exec plugin "
-            + "and return the full output"
-    )
-    @ToolPolicy(READWRITE)
-    public String runJavaClass(final String mainClass) {
-        return runCommand(resolveRunCommand(mainClass), "Running " + mainClass);
-    }
-
-    /**
-     * Builds the Maven command to run {@code mainClass}, preferring the Maven
-     * wrapper ({@code mvnw} / {@code mvnw.cmd}) when it is present in the
-     * project directory.
-     *
-     * @param mainClass the fully qualified name of the class to run
-     * @return the shell command string (never {@code null})
-     */
-    String resolveRunCommand(final String mainClass) {
-        return resolveWrapper() + " exec:java -Dexec.mainClass=" + mainClass;
-    }
-
-    @Override
-    public String buildProject() {
-        throw new NotImplementedException();
-    }
-
-    /**
-     * Returns the Maven command to build the project ({@code mvn[w] clean install}).
-     *
-     * @return the shell command string (never {@code null})
-     */
-    String resolveBuildCommand() {
-        return resolveWrapper() + " clean install";
-    }
-
-    @Override
-    @Tool(
-        name = "testProject",
-        value = "Run the Maven project's test suite using 'mvn test' (or the Maven wrapper) and return the full log"
-    )
-    @ToolPolicy(READWRITE)
-    public String testProject() {
-        return runCommand(resolveTestCommand(), "Testing");
-    }
-
-    @Tool("""
+        name = "runMavenGoals",
+        value = """
         Run a list of maven goals with given profiles and properties and returns
         the outputproduced by the build as:
 
@@ -260,7 +205,7 @@ public class MavenProjectTools extends JvmProjectTools implements BuildMetadataR
         """
     )
     @ToolPolicy(READWRITE)
-    public String runMavenGaols(
+    public String runMavenGoals(
         @P("a space separated list of maven goals to run")
         final String[] goals,
         @P("a space separated list of maven profiles to activate")
@@ -340,32 +285,6 @@ public class MavenProjectTools extends JvmProjectTools implements BuildMetadataR
         }        progress("build action finished with exit code %d".formatted(exitCode));
 
         return "OUT: %s\n\nERR: %s %s".formatted(io.out(), err, io.err());
-    }
-
-
-    /**
-     * Returns the Maven command to run the project's tests ({@code mvn[w] test}).
-     *
-     * @return the shell command string (never {@code null})
-     */
-    String resolveTestCommand() {
-        return resolveWrapper() + " test";
-    }
-
-    /**
-     * Returns the Maven executable to use: the Maven wrapper ({@code ./mvnw}
-     * or {@code mvnw.cmd}) when present, otherwise the system {@code mvn}.
-     */
-    protected String resolveWrapper() {
-        final boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
-        final File basedirFile = new File(basedir);
-        if (isWindows) {
-            if (new File(basedirFile, "mvnw.cmd").exists()) return "mvnw.cmd";
-            if (new File(basedirFile, "mvnw").exists()) return "./mvnw";
-            return "mvn";
-        } else {
-            return new File(basedirFile, "mvnw").exists() ? "./mvnw" : "mvn";
-        }
     }
 
     // -----------------------------------------------------------------------

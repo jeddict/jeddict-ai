@@ -16,6 +16,8 @@
 package io.github.jeddict.ai.test;
 
 import com.github.caciocavallosilano.cacio.ctc.junit.CacioTest;
+import static io.github.jeddict.ai.test.DummyProjectSources.SOURCES_TYPE_JAVA;
+import static io.github.jeddict.ai.test.DummyProjectSources.SOURCES_TYPE_TEST;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -23,6 +25,10 @@ import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.BDDAssertions.thenThrownBy;
 
 import org.junit.jupiter.api.Test;
+import org.netbeans.api.java.project.JavaProjectConstants;
+import org.netbeans.api.project.Project;
+import org.netbeans.api.project.ProjectUtils;
+import org.netbeans.api.project.SourceGroup;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileSystem;
 import org.openide.filesystems.FileUtil;
@@ -93,14 +99,14 @@ public class DummyProjectTest extends TestBase {
         project.name("test project");
         then(project.name()).isEqualTo("test project");
     }
-    
+
     @Test
     public void real_project_dir() throws IOException {
         final DummyProject project = new DummyProject(projectDir);
-        
+
         then(project.realProjectDirectory)
             .isEqualTo(Paths.get(project.getProjectDirectory().getPath()).toRealPath().toString());
-    } 
+    }
 
     @Test
     public void type() throws IOException {
@@ -116,5 +122,50 @@ public class DummyProjectTest extends TestBase {
         project.name("test project");
         then(project.name()).isEqualTo("test project");
 */
+    }
+    
+    @Test
+    public void main_and_test_sources() throws Exception {
+        final FileSystem fs = FileUtil.createMemoryFileSystem();
+        final FileObject root = fs.getRoot().createFolder("test-project");
+
+        // 1. Arrange: Create mock structure in memory
+        FileObject src = root.createFolder("src");
+        FileObject mainSrc = src.createFolder("main").createFolder("java");
+        FileObject testSrc = src.createFolder("test").createFolder("java");
+
+        Project project = new DummyProject(root);
+
+        // 2. Act: Fetch Java Sources
+        SourceGroup[] javaGroups = ProjectUtils.getSources(project)
+                .getSourceGroups(SOURCES_TYPE_JAVA);
+
+        // 3. Assert: Verify main sources match
+        then(javaGroups).hasSize(1);
+        then(javaGroups[0].getRootFolder()).isEqualTo(mainSrc);
+
+        // 4. Act: Fetch Test Sources
+        SourceGroup[] testGroups = ProjectUtils.getSources(project)
+                .getSourceGroups(SOURCES_TYPE_TEST);
+
+        // 5. Assert: Verify test sources match
+        then(testGroups).hasSize(1);
+        then(testGroups[0].getRootFolder()).isEqualTo(testSrc);
+    }
+
+    @Test
+    public void main_and_test_sources_are_empty_if_missing_dirs() throws Exception {
+        final FileSystem fs = FileUtil.createMemoryFileSystem();
+        final FileObject folder = fs.getRoot().createFolder("test-project");
+
+        Project project = new DummyProject(folder);
+
+        SourceGroup[] javaGroups = ProjectUtils.getSources(project)
+                .getSourceGroups(JavaProjectConstants.SOURCES_TYPE_JAVA);
+        SourceGroup[] testGroups = ProjectUtils.getSources(project)
+                .getSourceGroups("test");
+
+        then(javaGroups).hasSize(0);
+        then(testGroups).hasSize(0);
     }
 }
