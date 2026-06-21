@@ -95,6 +95,8 @@ public class PreferencesManager {
     private static final String MAX_RETRIES_PREFERENCE = "maxRetries";
     private static final String TOKEN_GRANULARITY_KEY = "tokenGranularity";
     private static final String LAST_BROWSE_DIRECTORY_PREFERENCE = "lastBrowseDirectory";
+    private static final String PLAY_SOUND_PREFERENCE = "playSound";
+    private static final String PLAY_SOUND_FILE_PREFERENCE = "playSoundFile";
 
     private final List<String> DEFAULT_ACCEPTED_EXTENSIONS = Arrays.asList(
             "java", "php", "jsf", "kt", "groovy", "scala", "xml", "json", "yaml", "yml",
@@ -848,6 +850,22 @@ public class PreferencesManager {
 
     public void setStreamEnabled(boolean enabled) {
         preferences.putBoolean(STREAM_PREFERENCE, enabled);
+    }
+
+    public boolean isPlaySoundEnabled() {
+        return preferences.getBoolean(PLAY_SOUND_PREFERENCE, true); // Default value is true
+    }
+
+    public void setPlaySoundEnabled(boolean enabled) {
+        preferences.putBoolean(PLAY_SOUND_PREFERENCE, enabled);
+    }
+
+    public String getPlaySoundFile() {
+        return preferences.get(PLAY_SOUND_FILE_PREFERENCE, "0012.wav");
+    }
+
+    public void setPlaySoundFile(String fileName) {
+        preferences.put(PLAY_SOUND_FILE_PREFERENCE, fileName);
     }
 
     public Double getTemperature() {

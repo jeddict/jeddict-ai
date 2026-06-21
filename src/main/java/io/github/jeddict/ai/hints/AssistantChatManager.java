@@ -68,6 +68,7 @@ import static io.github.jeddict.ai.util.ContextHelper.getFilesContextList;
 import static io.github.jeddict.ai.util.ContextHelper.getImageFilesContext;
 import static io.github.jeddict.ai.util.ContextHelper.getProjectContext;
 import static io.github.jeddict.ai.util.ContextHelper.getTextFilesContext;
+import io.github.jeddict.ai.util.AudioUtil;
 import io.github.jeddict.ai.util.EditorUtil;
 import static io.github.jeddict.ai.util.EditorUtil.getBackgroundColorFromMimeType;
 import static io.github.jeddict.ai.util.EditorUtil.getHTMLContent;
@@ -75,6 +76,7 @@ import static io.github.jeddict.ai.util.MimeUtil.MIME_PLAIN_TEXT;
 import static io.github.jeddict.ai.util.ProjectUtil.getSourceFiles;
 import io.github.jeddict.ai.util.RandomTweetSelector;
 import io.github.jeddict.ai.util.StringUtil;
+import io.github.jeddict.ai.util.UIUtil;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.EventQueue;
@@ -779,6 +781,9 @@ public class AssistantChatManager extends JavaFix {
             mode,
             (execution)-> {
                 try {
+                    if (pm.isPlaySoundEnabled() && UIUtil.isWindowInBackground()) {
+                        AudioUtil.playNotificationSound();
+                    }
                     return ac.promptConfirmation(execution).get();
                 } catch (InterruptedException | ExecutionException x) {
                     return false;
