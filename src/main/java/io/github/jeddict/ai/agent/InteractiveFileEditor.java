@@ -23,6 +23,8 @@ import io.github.jeddict.ai.components.AssistantChat;
 import io.github.jeddict.ai.components.diff.DiffPane;
 import io.github.jeddict.ai.components.diff.DiffPaneController;
 import io.github.jeddict.ai.lang.InteractionMode;
+import io.github.jeddict.ai.util.AudioUtil;
+import io.github.jeddict.ai.util.UIUtil;
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -87,6 +89,10 @@ public class InteractiveFileEditor extends AbstractTool {
         progress("∆ Editing " + path);
 
         checkPath(path);
+
+        if (assistantChat.pm.isPlaySoundEnabled() && UIUtil.isWindowInBackground()) {
+            AudioUtil.playNotificationSound();
+        }
 
         final CountDownLatch done = new CountDownLatch(1);
         final AtomicReference<String> newContent = new AtomicReference();

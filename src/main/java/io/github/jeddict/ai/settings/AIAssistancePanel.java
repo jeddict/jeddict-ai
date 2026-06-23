@@ -109,6 +109,10 @@ final class AIAssistancePanel extends javax.swing.JPanel {
 
     AIAssistancePanel() {
         initComponents();
+        playSoundCheckBox = new javax.swing.JCheckBox();
+        org.openide.awt.Mnemonics.setLocalizedText(playSoundCheckBox, org.openide.util.NbBundle.getMessage(AIAssistancePanel.class, "AIAssistancePanel.playSoundCheckBox.text")); // NOI18N
+        playSoundCheckBox.setToolTipText(org.openide.util.NbBundle.getMessage(AIAssistancePanel.class, "AIAssistancePanel.playSoundCheckBox.toolTipText")); // NOI18N
+        activationPane.add(playSoundCheckBox);
         addModelManagementContextMenu();
         populateContextCombo(conversationContext, "Last 3 replies");
         int index = jTabbedPane1.indexOfComponent(backupPane);
@@ -1320,19 +1324,23 @@ final class AIAssistancePanel extends javax.swing.JPanel {
             enableSmartCodeCheckBox.setEnabled(false);
             enableInlineHintCheckBox.setEnabled(false);
             enableInlinePromptHintCheckBox.setEnabled(false);
+            playSoundCheckBox.setEnabled(false);
             enableHintsCheckBox.setSelected(false);
             enableSmartCodeCheckBox.setSelected(false);
             enableInlineHintCheckBox.setSelected(false);
             enableInlinePromptHintCheckBox.setSelected(false);
+            playSoundCheckBox.setSelected(false);
         } else {
             enableHintsCheckBox.setEnabled(true);
             enableSmartCodeCheckBox.setEnabled(true);
             enableInlineHintCheckBox.setEnabled(true);
             enableInlinePromptHintCheckBox.setEnabled(true);
+            playSoundCheckBox.setEnabled(true);
             enableHintsCheckBox.setSelected(true);
             enableSmartCodeCheckBox.setSelected(true);
             enableInlineHintCheckBox.setSelected(true);
             enableInlinePromptHintCheckBox.setSelected(true);
+            playSoundCheckBox.setSelected(true);
         }
     }//GEN-LAST:event_aiAssistantActivationCheckBoxActionPerformed
 
@@ -1606,6 +1614,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
         enableInlinePromptHintCheckBox.setSelected(preferencesManager.isInlinePromptHintEnabled());
         enableHintsCheckBox.setSelected(preferencesManager.isHintsEnabled());
         enableSmartCodeCheckBox.setSelected(preferencesManager.isSmartCodeEnabled());
+        playSoundCheckBox.setSelected(preferencesManager.isPlaySoundEnabled());
 
         if (preferencesManager.getTemperature() != Double.MIN_VALUE) {
             temperature.setText(String.valueOf(preferencesManager.getTemperature()));
@@ -1659,11 +1668,13 @@ final class AIAssistancePanel extends javax.swing.JPanel {
             enableInlinePromptHintCheckBox.setEnabled(false);
             enableHintsCheckBox.setEnabled(false);
             enableSmartCodeCheckBox.setEnabled(false);
+            playSoundCheckBox.setEnabled(false);
         } else {
             enableInlineHintCheckBox.setEnabled(true);
             enableInlinePromptHintCheckBox.setEnabled(true);
             enableHintsCheckBox.setEnabled(true);
             enableSmartCodeCheckBox.setEnabled(true);
+            playSoundCheckBox.setEnabled(true);
         }
 
         providerComboBox.setSelectedItem(preferencesManager.getProvider());
@@ -1733,6 +1744,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
         preferencesManager.setInlinePromptHintEnabled(enableInlinePromptHintCheckBox.isSelected());
         preferencesManager.setHintsEnabled(enableHintsCheckBox.isSelected());
         preferencesManager.setSmartCodeEnabled(enableSmartCodeCheckBox.isSelected());
+        preferencesManager.setPlaySoundEnabled(playSoundCheckBox.isSelected());
         preferencesManager.setCompletionAllQueryType(ctrlAltSpaceRadioButton.isSelected());
         preferencesManager.setDescriptionEnabled(showDescriptionCheckBox.isSelected());
         preferencesManager.setFileExtensionToInclude(fileExtField.getText());
@@ -2627,6 +2639,8 @@ final class AIAssistancePanel extends javax.swing.JPanel {
                 JOptionPane.ERROR_MESSAGE);
         }
     }
+
+    private javax.swing.JCheckBox playSoundCheckBox;
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel JPanel2;
