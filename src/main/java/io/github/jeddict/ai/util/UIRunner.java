@@ -18,6 +18,7 @@
 package io.github.jeddict.ai.util;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import io.github.jeddict.ai.agent.project.GradleProjectTools;
 import io.github.jeddict.ai.agent.project.MavenProjectTools;
 import io.github.jeddict.ai.components.ToolExecutionConfirmationPane;
 import io.github.jeddict.ai.components.ToolExecutionPane;
@@ -81,7 +82,8 @@ public class UIRunner {
         // Create menu items
         JMenuItem toolsExecutionUIItem = new JMenuItem("Tools execution UI");
         JMenuItem diffToolItem = new JMenuItem("Diff tool");
-        JMenuItem runProjectItem = new JMenuItem("Run Project");
+        JMenuItem buildMavenItem = new JMenuItem("Build Maven Project");
+        JMenuItem buildGradleItem = new JMenuItem("Build Gradle Project");
         JMenuItem exitItem = new JMenuItem("Exit");
 
         // Add action listeners to menu items
@@ -95,8 +97,11 @@ public class UIRunner {
             showDiffPane(frame);
         });
 
-        runProjectItem.addActionListener(e -> {
-            buildSelectedProject(frame);
+        buildMavenItem.addActionListener(e -> {
+            buildMavenProject(frame);
+        });
+        buildGradleItem.addActionListener(e -> {
+            buildGradleProject(frame);
         });
 
         exitItem.addActionListener(e -> {
@@ -106,7 +111,8 @@ public class UIRunner {
         // Add menu items to the menu
         menu.add(toolsExecutionUIItem);
         menu.add(diffToolItem);
-        menu.add(runProjectItem);
+        menu.add(buildMavenItem);
+        menu.add(buildGradleItem);
         menu.add(exitItem);
 
         // Add the menu to the menu bar
@@ -119,7 +125,8 @@ public class UIRunner {
         contextMenu = new JPopupMenu();
         contextMenu.add(toolsExecutionUIItem);
         contextMenu.add(diffToolItem);
-        contextMenu.add(runProjectItem);
+        contextMenu.add(buildMavenItem);
+        contextMenu.add(buildGradleItem);
         contextMenu.add(exitItem);
 
         final Container content = frame.getContentPane();
@@ -160,7 +167,7 @@ public class UIRunner {
         content.add(controls, SOUTH);
     }
 
-    private void buildSelectedProject(JFrame frame) {
+    private void buildMavenProject(JFrame frame) {
         try {
             Project project = selectProject();
             if (project == null) {
@@ -174,6 +181,33 @@ public class UIRunner {
                 try {
                     MavenProjectTools tools = new MavenProjectTools(project);
                     final String result = tools.runMavenGoals(new String[]{"install"}, null, null);
+                    LOG.info(result);
+                } catch (Exception ex) {
+                    LOG.log(Level.SEVERE, "Error running project: " + projectName, ex);
+                    JOptionPane.showMessageDialog(frame, "Error running project: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            });
+
+        } catch (Exception ex) {
+            LOG.log(Level.SEVERE, "Error running selected project", ex);
+            JOptionPane.showMessageDialog(frame, "Error running project: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void buildGradleProject(JFrame frame) {
+        try {
+            Project project = selectProject();
+            if (project == null) {
+                return;
+            }
+
+            String projectName = ProjectUtils.getInformation(project).getDisplayName();
+            LOG.info(() -> "Run Project selected for: " + projectName);
+
+            RP.post(() -> {
+                try {
+                    GradleProjectTools tools = new GradleProjectTools(project);
+                    final String result = tools.runGradleTasks(new String[] {"build"} );
                     LOG.info(result);
                 } catch (Exception ex) {
                     LOG.log(Level.SEVERE, "Error running project: " + projectName, ex);

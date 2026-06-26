@@ -213,9 +213,10 @@ public class MavenProjectTools extends ProjectTools implements BuildMetadataReso
         @P("a space separated list of properties (e.g. -Dpro=value) or argumentsto (e.g. -x) to pass to the build command")
         final String properties
     ) {
-        progress("running project action %s".formatted(goals));
-
         final ProjectInformation info = ProjectUtils.getInformation(project);
+        final String displayName = "%s (%s)".formatted(String.join(" ", goals), info.getDisplayName());
+
+        progress("running project action %s".formatted(goals));
 
         List<String> arguments = new ArrayList(List.of(goals));
         if (!StringUtils.isBlank(properties)) {
@@ -225,7 +226,7 @@ public class MavenProjectTools extends ProjectTools implements BuildMetadataReso
         final RunConfig runConfig = RunUtils.createRunConfig(
                 FileUtil.toFile(project.getProjectDirectory()),
                 project,
-                "%s (%s)".formatted(String.join(" ", goals), info.getDisplayName()),
+                displayName,
                 arguments
         );
         if (profiles != null) {

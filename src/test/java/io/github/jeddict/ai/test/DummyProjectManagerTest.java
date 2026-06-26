@@ -6,7 +6,6 @@ import java.util.Set;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.Test;
 import org.netbeans.api.project.Project;
-import org.netbeans.api.project.ProjectManager;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileSystem;
 import org.openide.filesystems.FileUtil;
@@ -38,22 +37,6 @@ public class DummyProjectManagerTest {
 
         then(manager.findProject(projectDir)).isNull();
         then(manager.isProject(projectDir)).isNull();
-    }
-
-    @Test
-    public void findProject_detects_maven_project_from_child_file() throws IOException {
-        FileSystem fs = FileUtil.createMemoryFileSystem();
-        FileObject projectDir = fs.getRoot().createFolder("maven-project");
-        projectDir.createData("pom.xml");
-        FileObject src = projectDir.createFolder("src");
-        FileObject main = src.createFolder("main");
-        FileObject java = main.createFolder("java");
-        FileObject child = java.createData("Example.java");
-
-        DummyProjectManager manager = new DummyProjectManager();
-
-        then(manager.findProject(child)).isInstanceOf(DummyProject.class);
-        then(manager.isProject(child)).isNotNull();
     }
 
     @Test

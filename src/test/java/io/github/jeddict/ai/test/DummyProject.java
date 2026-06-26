@@ -15,16 +15,21 @@
  */
 package io.github.jeddict.ai.test;
 
+import static io.github.jeddict.ai.util.ProjectUtil.isGradleProject;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Set;
 import org.netbeans.api.project.Project;
+import org.netbeans.modules.gradle.api.GradleBaseProject;
+import org.netbeans.modules.gradle.api.NbGradleProject;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
 import org.openide.util.Lookup;
 import org.openide.util.lookup.AbstractLookup;
 import org.openide.util.lookup.InstanceContent;
+import static org.mockito.Mockito.*;
 
 /**
  *
@@ -126,5 +131,24 @@ public class DummyProject implements Project {
         instances.add(this);
         instances.add(new DummyProjectSources(this));
         instances.add(new DummyMultipleRootsUnitTestForSourceQueryImplementation(this));
+
+        if (isGradleProject(projectDirectory)) {
+            instances.add(new DummyGradleConfigurationProvider());
+
+            NbGradleProject mockNbGradle = mock(NbGradleProject.class);
+
+            // 2. Create a mock of the actual GradleBaseProject configuration
+            GradleBaseProject mockBaseProject = mock(GradleBaseProject.class);
+            // Stubs commonly accessed fields by RunUtils
+            when(mockBaseProject.getRootDir()).thenReturn(FileUtil.toFile(projectDirectory));
+            when(mockBaseProject.getTaskNames()).thenReturn(Set.of());
+
+            // 3. Stub the internal projectLookup method that failed previously
+            when(mockNbGradle.projectLookup(GradleBaseProject.class)).thenReturn(mockBaseProject);
+
+            // 4. Inject BOTH elements into the project's lookup registry
+            instances.add(mockNbGradle);
+            instances.add(mockBaseProject); // Often looked up directly as well
+        }
     }
 }

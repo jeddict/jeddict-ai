@@ -15,63 +15,82 @@
  */
 package io.github.jeddict.ai.agent.project;
 
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
+import io.github.jeddict.ai.agent.ToolPolicy;
 import io.github.jeddict.ai.scanner.ProjectMetadataInfo;
 import io.github.jeddict.ai.scanner.ProjectMetadataInfo.BuildMetadataResolver;
-import java.io.File;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.netbeans.api.project.Project;
-import io.github.jeddict.ai.agent.ToolPolicy;
 import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READONLY;
 import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READWRITE;
+import java.util.List;
+import java.util.Properties;
+import java.util.Set;
+import org.apache.commons.lang3.StringUtils;
+import org.openide.execution.ExecutorTask;
+import org.netbeans.modules.gradle.api.execute.RunUtils;
+import org.netbeans.modules.gradle.api.execute.RunConfig;
 import org.openide.filesystems.FileObject;
 
 /**
  * Project-tool specialisation for Gradle projects.
  *
- * <p>Extends the generic {@link ProjectTools} with Gradle-specific metadata
+ * <p>
+ * Extends the generic {@link ProjectTools} with Gradle-specific metadata
  * (currently: JDK/compiler version) by inspecting the {@code build.gradle} or
- * {@code build.gradle.kts} file.  It also implements
+ * {@code build.gradle.kts} file. It also implements
  * {@link BuildMetadataResolver} so that {@link ProjectMetadataInfo} can obtain
  * this data without parsing build files directly.</p>
  */
 public class GradleProjectTools extends ProjectTools implements BuildMetadataResolver {
 
+    private static final int TIMEOUT_MIN = 15;
+
     /**
      * Matches Groovy DSL dependency declarations (unparenthesised):
      * <ul>
-     *   <li>{@code implementation 'com.example:lib:1.0'}</li>
-     *   <li>{@code implementation "com.example:lib:1.0"}</li>
+     * <li>{@code implementation 'com.example:lib:1.0'}</li>
+     * <li>{@code implementation "com.example:lib:1.0"}</li>
      * </ul>
      */
-    private static final Pattern DEP_GROOVY =
-            Pattern.compile("^\\s*(\\w+)\\s+[\"']([^\"']+)[\"']", Pattern.MULTILINE);
+    private static final Pattern DEP_GROOVY
+        = Pattern.compile("^\\s*(\\w+)\\s+[\"']([^\"']+)[\"']", Pattern.MULTILINE);
 
     /**
      * Matches Kotlin DSL dependency declarations (parenthesised):
      * <ul>
-     *   <li>{@code implementation("com.example:lib:1.0")}</li>
-     *   <li>{@code implementation('com.example:lib:1.0')}</li>
+     * <li>{@code implementation("com.example:lib:1.0")}</li>
+     * <li>{@code implementation('com.example:lib:1.0')}</li>
      * </ul>
      */
-    private static final Pattern DEP_KOTLIN =
-            Pattern.compile("^\\s*(\\w+)\\s*\\([\"']([^\"']+)[\"']\\)", Pattern.MULTILINE);
+    private static final Pattern DEP_KOTLIN
+        = Pattern.compile("^\\s*(\\w+)\\s*\\([\"']([^\"']+)[\"']\\)", Pattern.MULTILINE);
 
-    /** Matches {@code sourceCompatibility = '11'} / {@code = JavaVersion.VERSION_11} etc. */
-    private static final Pattern SOURCE_COMPAT =
-            Pattern.compile("sourceCompatibility\\s*=\\s*['\"]?([\\w.]+)['\"]?");
-    /** Matches the Kotlin-DSL style {@code jvmTarget = "17"}. */
-    private static final Pattern JVM_TARGET =
-            Pattern.compile("jvmTarget\\s*=\\s*['\"]([\\w.]+)['\"]");
+    /**
+     * Matches
+     * {@code sourceCompatibility = '11'} / {@code = JavaVersion.VERSION_11}
+     * etc.
+     */
+    private static final Pattern SOURCE_COMPAT
+        = Pattern.compile("sourceCompatibility\\s*=\\s*['\"]?([\\w.]+)['\"]?");
+    /**
+     * Matches the Kotlin-DSL style {@code jvmTarget = "17"}.
+     */
+    private static final Pattern JVM_TARGET
+        = Pattern.compile("jvmTarget\\s*=\\s*['\"]([\\w.]+)['\"]");
 
     private final FileObject gradleFile;
 
-    /** Lazily read content of the build file; {@code null} until first access. */
+    /**
+     * Lazily read content of the build file; {@code null} until first access.
+     */
     private String buildFileContent;
     private boolean contentRead = false;
 
@@ -88,12 +107,25 @@ public class GradleProjectTools extends ProjectTools implements BuildMetadataRes
     // -----------------------------------------------------------------------
     // BuildMetadataResolver implementation
     // -----------------------------------------------------------------------
-
     @Override
     public String getProjectName() {
-        // Gradle does not have a canonical project name in the build file in a
-        // predictable location; return null so the directory name is used.
-        return null;
+        final String DEFAULT = "gradle project";
+
+        final FileObject settings = project.getProjectDirectory().getFileObject("graddle", "properties");
+        if (settings == null) {
+            return DEFAULT;
+        }
+
+        final Properties p = new Properties();
+        try {
+            p.load(settings.getInputStream());
+
+            return StringUtils.defaultIfBlank(p.getProperty("project_description"), DEFAULT);
+        } catch (IOException x) {
+            log.log(Level.WARNING, "no project name found", x);
+        }
+
+        return DEFAULT;
     }
 
     @Override
@@ -129,7 +161,6 @@ public class GradleProjectTools extends ProjectTools implements BuildMetadataRes
         return appendSourceDirs(ProjectMetadataInfo.get(project(), this));
     }
 
-
     @Tool(
         name = "gradleJdkVersion",
         value = "Return the Java source compatibility version configured in this Gradle project's build file"
@@ -156,88 +187,79 @@ public class GradleProjectTools extends ProjectTools implements BuildMetadataRes
         collectDeps(sb, DEP_GROOVY.matcher(content));
         collectDeps(sb, DEP_KOTLIN.matcher(content));
         return sb.length() == 0
-                ? "No dependencies declared in Gradle build file"
-                : sb.toString().trim();
+            ? "No dependencies declared in Gradle build file"
+            : sb.toString().trim();
     }
 
     @Tool(
-        name = "gradleRunJavaClass",
-        value = "Run a Java class by its fully qualified class name using the Gradle application "
-            + "plugin and return the full output"
+        name = "runGradleAction",
+        value = "Run gradle tasks with optional arguments"
     )
     @ToolPolicy(READWRITE)
-    public String runJavaClass(final String mainClass) {
-        return runCommand(resolveRunCommand(mainClass), "Running " + mainClass);
+    public String runGradleTasks(
+        @P("gradle tasks and arguments") final String... args
+    ) {
+        return runGradle(args);
     }
 
-    /**
-     * Builds the Gradle command to run {@code mainClass}, preferring the
-     * Gradle wrapper ({@code gradlew} / {@code gradlew.bat}) when it is
-     * present in the project directory.
-     *
-     * @param mainClass the fully qualified name of the class to run
-     * @return the shell command string (never {@code null})
-     */
-    String resolveRunCommand(final String mainClass) {
-        return resolveWrapper() + " run --main-class=" + mainClass;
-    }
+    private String runGradle(final String[] args) {
+        if ((args == null) || (args.length == 0)) {
+            throw new IllegalArgumentException("args can not be null or empty");
+        }
+        progress(
+            "run %s on Gradle project: %s".formatted(
+                List.of(args).toString(), getProjectName()
+            )
+        );
 
-    @Tool(
-        name = "gradleBuildProject",
-        value = "Build the Gradle project using 'gradle build' (or the Gradle wrapper) and return the full log"
-    )
-    @ToolPolicy(READWRITE)
-    public String buildProject() {
-        return runCommand(resolveBuildCommand(), "Building");
-    }
+        final String displayName = "%s (%s)".formatted(
+            (args.length == 1) ? args[0] : (args[0] + "..."),
+            getProjectName()
+        );
 
-    /**
-     * Returns the Gradle command to build the project ({@code gradle[w] build}).
-     *
-     * @return the shell command string (never {@code null})
-     */
-    String resolveBuildCommand() {
-        return resolveWrapper() + " build";
-    }
+        try {
+            final RunConfig config = RunUtils.createRunConfig(
+                project(),
+                "runGradleTasks",
+                displayName,
+                Set.of(),
+                args
+            );
 
-    @Tool(
-        name = "gradleTestProject",
-        value = "Run the Gradle project's test suite using 'gradle test' (or the Gradle wrapper) and return the full log"
-    )
-    @ToolPolicy(READWRITE)
-    public String testProject() {
-        return runCommand(resolveTestCommand(), "Testing");
-    }
+            if (config == null) {
+                return "Unable to create Gradle run configuration context.";
+            }
 
-    /**
-     * Returns the Gradle command to run the project's tests ({@code gradle[w] test}).
-     *
-     * @return the shell command string (never {@code null})
-     */
-    String resolveTestCommand() {
-        return resolveWrapper() + " test";
-    }
+            final ExecutorTask task = RunUtils.executeGradle(config, displayName);
 
-    /**
-     * Returns the Gradle executable to use: the Gradle wrapper ({@code ./gradlew}
-     * or {@code gradlew.bat}) when present, otherwise the system {@code gradle}.
-     */
-    private String resolveWrapper() {
-        final boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
-        final File basedirFile = new File(basedir);
-        if (isWindows) {
-            if (new File(basedirFile, "gradlew.bat").exists()) return "gradlew.bat";
-            if (new File(basedirFile, "gradlew").exists()) return "./gradlew";
-            return "gradle";
-        } else {
-            return new File(basedirFile, "gradlew").exists() ? "./gradlew" : "gradle";
+            if (task != null) {
+                // Block the agent tool thread synchronously until the Gradle process finishes
+                task.waitFinished(TimeUnit.MINUTES.toMillis(TIMEOUT_MIN));
+
+                // Optional check: Ensure the task process ended successfully
+                int exitStatus = task.result();
+                if (exitStatus == 0) {
+                    return displayName + " task finished processing successfully.";
+                } else {
+                    return displayName + " task failed with exit code: " + exitStatus;
+                }
+            }
+
+            return displayName + " task failed to dispatch properly.";
+
+        } catch (Exception x) {
+            log.severe("Failed executing Gradle action" + x);
+            x.printStackTrace();
+            return "Gradle error: " + x.getMessage();
         }
     }
+
+
+
 
     // -----------------------------------------------------------------------
     // Internal helpers
     // -----------------------------------------------------------------------
-
     private String getJdkVersion() {
         final String content = content();
         if (content == null) {
@@ -269,13 +291,13 @@ public class GradleProjectTools extends ProjectTools implements BuildMetadataRes
     }
 
     /**
-     * Normalises a Gradle version token to a plain numeric string.
-     * {@code "VERSION_11"}, {@code "JavaVersion.VERSION_11"}, {@code "11"},
+     * Normalises a Gradle version token to a plain numeric string. null     {@code "VERSION_11"}, {@code "JavaVersion.VERSION_11"}, {@code "11"},
      * {@code "'11'"} are all turned into {@code "11"}.
      */
     private static String normalizeVersion(String raw) {
-        if (raw == null) return null;
-        // Strip JavaVersion. prefix
+        if (raw == null) {
+            return null;
+        }
         raw = raw.replaceFirst("(?i)JavaVersion\\.VERSION_", "").replaceFirst("(?i)VERSION_", "");
         // Strip surrounding quotes
         raw = raw.replaceAll("['\"]", "").trim();
@@ -283,8 +305,8 @@ public class GradleProjectTools extends ProjectTools implements BuildMetadataRes
     }
 
     /**
-     * Appends entries matched by {@code matcher} to {@code sb}.
-     * Only coordinates containing at least one {@code :} (i.e. real
+     * Appends entries matched by {@code matcher} to {@code sb}. Only
+     * coordinates containing at least one {@code :} (i.e. real
      * {@code groupId:artifactId[:version]} strings) are included so that
      * unrelated string literals are silently skipped.
      */

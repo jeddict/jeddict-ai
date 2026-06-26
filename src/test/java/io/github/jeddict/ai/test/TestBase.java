@@ -33,8 +33,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
 import org.netbeans.api.project.Project;
-import org.netbeans.modules.maven.NbMavenProjectFactory;
-import org.netbeans.spi.project.ProjectState;
+import org.netbeans.api.project.ProjectManager;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
 
@@ -87,9 +86,9 @@ public class TestBase {
             HOME.resolve("jeddict.json"),
             StandardCopyOption.REPLACE_EXISTING
         );
-        
+
         //
-        // Now that we have the project dir as a real file, we can get the real 
+        // Now that we have the project dir as a real file, we can get the real
         // path. This is needed to make sure all links are followed. For example
         // on MacOS /var (where temp files are created) is a link to /private/var;
         // on Windows, Path by default uses the short version of the pathname
@@ -141,18 +140,23 @@ public class TestBase {
     }
 
     protected Project project(final String projectFile) throws IOException {
-        final NbMavenProjectFactory projectFactory = new NbMavenProjectFactory();
+        // 1. Locate and normalize the test directory target
+        File file = FileUtil.normalizeFile(new File(projectFile));
+        FileObject fo = FileUtil.toFileObject(file);
 
-        final FileObject fo = FileUtil.toFileObject(FileUtil.normalizeFile(new File(projectFile)));
-        return projectFactory.loadProject(
-            fo,
-            new ProjectState() {
-                @Override
-                public void markModified() {}
+        if (fo == null) {
+            throw new IOException("Directory target does not exist: " + projectFile);
+        }
 
-                @Override
-                public void notifyDeleted() throws IllegalStateException {}
-            }
-        );
+        // 2. Leverage NetBeans standard lookup factory router.
+        // This will natively return a Gradle Project instance if 'build.gradle' is present,
+        // or a Maven Project instance if 'pom.xml' is present.
+        Project project = ProjectManager.getDefault().findProject(fo);
+
+        if (project == null) {
+            throw new IOException("No valid NetBeans project provider recognized for directory: " + projectFile);
+        }
+
+        return project;
     }
 }

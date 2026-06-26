@@ -17,7 +17,6 @@ package io.github.jeddict.ai.test;
 
 import com.github.caciocavallosilano.cacio.ctc.junit.CacioTest;
 import static io.github.jeddict.ai.test.DummyProjectSources.SOURCES_TYPE_JAVA;
-import static io.github.jeddict.ai.test.DummyProjectSources.SOURCES_TYPE_TEST;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -123,7 +122,7 @@ public class DummyProjectTest extends TestBase {
         then(project.name()).isEqualTo("test project");
 */
     }
-    
+
     @Test
     public void main_and_test_sources() throws Exception {
         final FileSystem fs = FileUtil.createMemoryFileSystem();
@@ -141,16 +140,9 @@ public class DummyProjectTest extends TestBase {
                 .getSourceGroups(SOURCES_TYPE_JAVA);
 
         // 3. Assert: Verify main sources match
-        then(javaGroups).hasSize(1);
+        then(javaGroups).hasSize(2);
         then(javaGroups[0].getRootFolder()).isEqualTo(mainSrc);
-
-        // 4. Act: Fetch Test Sources
-        SourceGroup[] testGroups = ProjectUtils.getSources(project)
-                .getSourceGroups(SOURCES_TYPE_TEST);
-
-        // 5. Assert: Verify test sources match
-        then(testGroups).hasSize(1);
-        then(testGroups[0].getRootFolder()).isEqualTo(testSrc);
+        then(javaGroups[1].getRootFolder()).isEqualTo(testSrc);
     }
 
     @Test

@@ -17,12 +17,15 @@
 
 package io.github.jeddict.ai.test;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.netbeans.api.project.Project;
 import org.netbeans.api.project.SourceGroup;
 import org.netbeans.api.project.Sources;
 import org.netbeans.spi.project.support.GenericSources;
 import org.openide.filesystems.FileObject;
 import javax.swing.event.ChangeListener;
+import org.netbeans.api.java.project.JavaProjectConstants;
 
 public class DummyProjectSources implements Sources {
 
@@ -37,28 +40,26 @@ public class DummyProjectSources implements Sources {
 
     @Override
     public SourceGroup[] getSourceGroups(String type) {
+        final List<SourceGroup> groups = new ArrayList();
         // Intercept requests for Java sources
         FileObject projectDir = project.getProjectDirectory();
 
         // 1. Handle Main Java Files (e.g., src/main/java or src)
-        if (SOURCES_TYPE_JAVA.equals(type)) {
+        if (JavaProjectConstants.SOURCES_TYPE_JAVA.equals(type)) {
             FileObject srcDir = projectDir.getFileObject("src/main/java");
             if (srcDir == null) {
                 srcDir = projectDir.getFileObject("src"); // Fallback check
             }
-            return createGroupArray(srcDir, "src", "Java Sources");
-        }
+            groups.addAll(List.of(createGroupArray(srcDir, "src", "Java Sources")));
 
-        // 2. Handle Test Java Files (e.g., src/test/java or src/test)
-        if ("test".equals(type)) {
             FileObject testDir = projectDir.getFileObject("src/test/java");
             if (testDir == null) {
                 testDir = projectDir.getFileObject("src/test"); // Fallback check
             }
-            return createGroupArray(testDir, "test", "Test Sources");
+            groups.addAll(List.of(createGroupArray(testDir, "test", "Test Sources")));
         }
 
-        return new SourceGroup[0];
+        return groups.toArray(SourceGroup[]::new);
     }
 
     @Override

@@ -345,10 +345,10 @@
             <version>20251224</version>
         </dependency>
         <dependency>
-        <!--
-            TOON
-        -->
-        <groupId>tools.jackson.core</groupId>
+            <!--
+                TOON
+            -->
+            <groupId>tools.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
             <version>3.1.0</version>
         </dependency>
@@ -647,6 +647,16 @@
         </dependency>
         <dependency>
             <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-modules-gradle</artifactId>
+            <version>${netbeans.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-modules-gradle-java</artifactId>
+            <version>${netbeans.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
             <artifactId>org-netbeans-modules-java-project</artifactId>
             <version>${netbeans.version}</version>
         </dependency>
@@ -793,6 +803,13 @@
             <artifactId>system-lambda</artifactId>
             <version>1.2.1</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
+            <version>5.17.0</version>
+            <scope>test</scope>
+            <type>jar</type>
         </dependency>
     </dependencies>
 

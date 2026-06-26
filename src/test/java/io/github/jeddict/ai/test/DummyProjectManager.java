@@ -1,30 +1,26 @@
 package io.github.jeddict.ai.test;
 
+import static io.github.jeddict.ai.util.ProjectUtil.isGradleProject;
+import static io.github.jeddict.ai.util.ProjectUtil.isMavenProject;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Set;
-import javax.swing.Icon;
 import org.netbeans.api.annotations.common.CheckForNull;
 import org.netbeans.api.annotations.common.NonNull;
 import org.netbeans.api.project.Project;
 import org.netbeans.api.project.ProjectManager;
 import org.netbeans.spi.project.ProjectManagerImplementation;
 import org.openide.filesystems.FileObject;
-import org.openide.util.ImageUtilities;
 import org.openide.util.Mutex;
 
 /**
- * Minimal test-only project manager that recognizes Maven projects.
+ * A native test SPI Project Manager capable of accurately matching
+ * and routing both Maven and Gradle workspaces based on folder contents.
  */
 public class DummyProjectManager implements ProjectManagerImplementation {
 
-    private static final String PROJECT_TYPE = "maven";
-    private static final Icon PROJECT_ICON = ImageUtilities.loadImageIcon("org/netbeans/modules/maven/resources/Maven2Icon.gif", true);
-
     @Override
-    public void init(@NonNull ProjectManagerCallBack pmcb) {
-        // no-op for tests
-    }
+    public void init(@NonNull ProjectManagerCallBack pmcb) {}
 
     @Override
     public @NonNull Mutex getMutex() {
@@ -38,23 +34,24 @@ public class DummyProjectManager implements ProjectManagerImplementation {
 
     @Override
     public @CheckForNull Project findProject(@NonNull FileObject fo) throws IOException, IllegalArgumentException {
-        final FileObject projectDir = locateMavenProjectDirectory(fo);
-        return projectDir != null ? new DummyProject(projectDir) : null;
+        if (isGradleProject(fo) || isMavenProject(fo)) {
+            return new DummyProject(fo);
+        }
+        return null;
     }
 
     @Override
     public @CheckForNull ProjectManager.Result isProject(@NonNull FileObject fo) throws IllegalArgumentException {
-        final FileObject projectDir = locateMavenProjectDirectory(fo);
-        if (projectDir == null) {
-            return null;
+        if (isGradleProject(fo)) {
+            return new ProjectManager.Result(fo.getNameExt(), "gradle", null);
+        } else if (isMavenProject(fo)) {
+            return new ProjectManager.Result(fo.getNameExt(), "maven", null);
         }
-        return new ProjectManager.Result(projectDir.getNameExt(), PROJECT_TYPE, PROJECT_ICON);
+        return null;
     }
 
     @Override
-    public void clearNonProjectCache() {
-        // no-op
-    }
+    public void clearNonProjectCache() {}
 
     @Override
     public @NonNull Set<Project> getModifiedProjects() {
@@ -68,27 +65,12 @@ public class DummyProjectManager implements ProjectManagerImplementation {
 
     @Override
     public boolean isValid(@NonNull Project project) {
-        return project != null && project.getProjectDirectory() != null;
+        return (project != null) && (project.getProjectDirectory() != null);
     }
 
     @Override
-    public void saveProject(@NonNull Project project) throws IOException {
-        // no-op
-    }
+    public void saveProject(@NonNull Project project) throws IOException {}
 
     @Override
-    public void saveAllProjects() throws IOException {
-        // no-op
-    }
-
-    private static FileObject locateMavenProjectDirectory(FileObject fo) {
-        FileObject current = fo;
-        while (current != null) {
-            if (current.getFileObject("pom.xml") != null) {
-                return current;
-            }
-            current = current.getParent();
-        }
-        return null;
-    }
+    public void saveAllProjects() throws IOException {}
 }
