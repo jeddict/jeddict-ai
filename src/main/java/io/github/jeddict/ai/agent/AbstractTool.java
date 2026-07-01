@@ -16,6 +16,7 @@
 package io.github.jeddict.ai.agent;
 
 import dev.langchain4j.exception.ToolExecutionException;
+import io.github.jeddict.ai.lang.InteractionMode;
 import io.github.jeddict.ai.lang.JeddictBrainListener;
 import java.io.BufferedReader;
 import java.io.File;
@@ -44,6 +45,8 @@ public abstract class AbstractTool {
     protected final Logger log;
 
     private final List<JeddictBrainListener> listeners = new CopyOnWriteArrayList<>();
+
+    protected InteractionMode interaction = InteractionMode.ASK;
 
     // TODO: add comment
     private Optional<UnaryOperator<String>> humanInTheMiddle = Optional.empty();
@@ -87,7 +90,7 @@ public abstract class AbstractTool {
                 "trying to reach a file outside the project folder");
         }
     }
-    
+
     public Path fullPath(final String path) {
         return basepath.resolve(path).normalize();
     }
@@ -152,5 +155,13 @@ public abstract class AbstractTool {
             fullLog.append(label).append(" failed: ").append(e.getMessage()).append('\n');
         }
         return fullLog.toString();
+    }
+
+    public void interaction(final InteractionMode interaction) {
+        this.interaction = interaction;
+    }
+
+    public InteractionMode interaction() {
+        return this.interaction;
     }
 }

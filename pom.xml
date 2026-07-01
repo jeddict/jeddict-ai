@@ -46,7 +46,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>17</maven.compiler.release>
         <langchain4j.version>1.11.0</langchain4j.version>
-        <netbeans.version>RELEASE290</netbeans.version>
+        <netbeans.version>RELEASE300</netbeans.version>
     </properties>
 
     <build>

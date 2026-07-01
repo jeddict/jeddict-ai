@@ -53,7 +53,6 @@ import io.github.jeddict.ai.components.ContextDialog;
 import io.github.jeddict.ai.components.CustomScrollBarUI;
 import static io.github.jeddict.ai.components.MarkdownPane.getHtmlWrapWidth;
 import io.github.jeddict.ai.lang.InteractionMode;
-import static io.github.jeddict.ai.lang.InteractionMode.INTERACTIVE;
 import io.github.jeddict.ai.lang.JeddictBrain;
 import io.github.jeddict.ai.lang.JeddictBrainListener;
 import io.github.jeddict.ai.response.TextBlock;
@@ -69,6 +68,7 @@ import static io.github.jeddict.ai.util.ContextHelper.getFilesContextList;
 import static io.github.jeddict.ai.util.ContextHelper.getImageFilesContext;
 import static io.github.jeddict.ai.util.ContextHelper.getProjectContext;
 import static io.github.jeddict.ai.util.ContextHelper.getTextFilesContext;
+import io.github.jeddict.ai.util.AudioUtil;
 import io.github.jeddict.ai.util.EditorUtil;
 import static io.github.jeddict.ai.util.EditorUtil.getBackgroundColorFromMimeType;
 import static io.github.jeddict.ai.util.EditorUtil.getHTMLContent;
@@ -76,6 +76,7 @@ import static io.github.jeddict.ai.util.MimeUtil.MIME_PLAIN_TEXT;
 import static io.github.jeddict.ai.util.ProjectUtil.getSourceFiles;
 import io.github.jeddict.ai.util.RandomTweetSelector;
 import io.github.jeddict.ai.util.StringUtil;
+import io.github.jeddict.ai.util.UIUtil;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.EventQueue;
@@ -362,27 +363,35 @@ public class AssistantChatManager extends JavaFix {
                     }
                 } else {
                     result = null;
-                    String question = getQuestionPane().getText();
-                    Map<String, String> prompts = PreferencesManager.getInstance().getPrompts();
+                    final Map<String, String> prompts = PreferencesManager.getInstance().getPrompts();
 
                     //
                     // To make sure the longest matching shortcut matches (i.e.
                     // 'shortcutlong' is 'shortcut' is defined as well) let's
                     // sort the shurtcuts in descending order; this guarantees
                     // 'shortcut2' is matched before "shortcut" in the for loop
+                    // Replace only placeholders as delimited world to avoid
+                    // to detect a placeholder when it is part of a text (e.g.
+                    // a url)
                     //
-                    ArrayList<String> promptKeys = new ArrayList();
+                    final ArrayList<String> promptKeys = new ArrayList();
                     promptKeys.addAll(prompts.keySet());
                     promptKeys.sort(Comparator.reverseOrder());
 
+                    String question = getQuestionPane().getText();
                     for (String key : promptKeys) {
-                        String prompt = prompts.get(key);
-
-                        String toReplace = "/" + key;
-
-                        if (question.contains(toReplace)) {
-                            question = question.replace(toReplace, prompt);
-                        }
+                        //
+                        // - (?<!\S)/ : A negative lookbehind that ensures the
+                        //              character before /diff is not a non-whitespace
+                        //              character (meaning it must be a space, a tab,
+                        //              or the beginning of the string).
+                        // - key : the prompt to match
+                        // - (?!\S) : A negative lookahead that ensures the character
+                        //            after /diff is not a non-whitespace character
+                        //            (meaning it must be a space, a tab, or the
+                        //            end of the string).
+                        //
+                        question = question.replaceAll("(?<!\\S)/" + key + "(?!\\S)", prompts.get(key));
                     }
                     if (!question.isEmpty()) {
                         handlePrompt(question, true);
@@ -698,7 +707,7 @@ public class AssistantChatManager extends JavaFix {
                             projectInfo = ProjectMetadataInfo.get(selectedProject);
                         }
                         final Hacker h = hacker(listener, modelName, ac.interactiveMode());
-                        if (pm.isStreamEnabled()) {
+                        if (pm.isStreamEnabled() && h.streamingSupport()) {
                             h.hack(listener, question, projectInfo, pm.getGlobalRules(), sessionRules);
                         } else {
                             response = h.hack(question, projectInfo, pm.getGlobalRules(), sessionRules);
@@ -772,6 +781,9 @@ public class AssistantChatManager extends JavaFix {
             mode,
             (execution)-> {
                 try {
+                    if (pm.isPlaySoundEnabled() && UIUtil.isWindowInBackground()) {
+                        AudioUtil.playNotificationSound();
+                    }
                     return ac.promptConfirmation(execution).get();
                 } catch (InterruptedException | ExecutionException x) {
                     return false;
@@ -955,9 +967,7 @@ public class AssistantChatManager extends JavaFix {
             //
             // Tools for interactive mode
             //
-            if (mode == INTERACTIVE) {
-                toolsList.add(new InteractiveFileEditor(basedir, ac));
-            }
+            toolsList.add(new InteractiveFileEditor(basedir, ac));
 
             //
             // Tools commmon to both AGENT and INTERACTIVE mode
@@ -989,9 +999,13 @@ public class AssistantChatManager extends JavaFix {
             toolsList.add(new RefactoringTools(basedir));
 
             //
-            // The handler wants to know about tool execution
+            // The handler wants to know about tool execution.
+            // The tools want to know about interaction mode
             //
-            toolsList.forEach((tool) -> tool.addListener(listener));
+            toolsList.forEach((tool) -> {
+                tool.addListener(listener);
+                tool.interaction(mode);
+            });
 
             return toolsList;
         } catch (IOException x) {

@@ -172,4 +172,17 @@ public class UIUtil {
             }
         }
     }
+
+    /**
+     * Checks if the window (application) is in the background.
+     *
+     * @return true if the window is in the background, false if it is in the foreground.
+     */
+    public static boolean isWindowInBackground() {
+        try {
+            return java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().getActiveWindow() == null;
+        } catch (Throwable t) {
+            return true;
+        }
+    }
 }

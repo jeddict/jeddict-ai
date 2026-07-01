@@ -117,6 +117,7 @@ public class HackerWithoutTools implements Hacker {
         }
         this.parser = Parser.builder().build();
         builder.systemMessageProvider(this::systemPrompt);
+        builder.chatModel(model);
 
         toolify = builder.build();
     }
@@ -249,6 +250,11 @@ public class HackerWithoutTools implements Hacker {
         final String globalRules, final String projectRules
     ) {
         throw new IllegalArgumentException(ERROR_NO_STREAMING);
+    }
+
+    @Override
+    public boolean streamingSupport() {
+        return false;
     }
 
     // --------------------------------------------------------- private methods
