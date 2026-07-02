@@ -52,7 +52,7 @@ public class ProjectTools extends AbstractTool {
 
     private static final Logger LOG = Logger.getLogger(ProjectTools.class.getName());
 
-    private final Project project;
+    protected final Project project;
 
     public ProjectTools(final Project project) throws IOException  {
         super(project.getProjectDirectory().getPath());

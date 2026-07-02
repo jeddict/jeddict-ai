@@ -58,7 +58,7 @@ public class PayaraServerMavenProjectTools extends MavenProjectTools {
     )
     @ToolPolicy(READWRITE)
     public String startServer() {
-        return runCommand(resolveWrapper() + " payara-server:start", "Starting Payara Server");
+        return runMavenGoals(new String[] {"payara-server:start"}, null, null);
     }
 
     @Tool(
@@ -68,7 +68,7 @@ public class PayaraServerMavenProjectTools extends MavenProjectTools {
     )
     @ToolPolicy(READWRITE)
     public String stopServer() {
-        return runCommand(resolveWrapper() + " payara-server:stop", "Stopping Payara Server");
+        return runMavenGoals(new String[] {"payara-server:stop"}, null, null);
     }
 
     /**
@@ -86,6 +86,6 @@ public class PayaraServerMavenProjectTools extends MavenProjectTools {
     )
     @ToolPolicy(READWRITE)
     public String devMode() {
-        return runCommand(resolveWrapper() + " payara-server:dev", "Dev mode Payara Server");
+        return runMavenGoals(new String[] {"payara-server:dev"}, null, null);
     }
 }
