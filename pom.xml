@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.github.jeddict</groupId>
     <artifactId>jeddict-ai</artifactId>
-    <version>3.4.0</version>
+    <version>3.5.0</version>
     <packaging>nbm</packaging>
     <name>Jeddict AI Assistant</name>
     <description>Jeddict AI Assistant is a powerful and intuitive plugin designed for Apache NetBeans IDE.
@@ -798,7 +798,6 @@
             <id>release</id>
             <properties>
                 <gpg.executable>gpg</gpg.executable>
-                <gpg.passphrase>${gpg.passphrase}</gpg.passphrase>
             </properties>
             <build>
                 <plugins>
@@ -829,6 +828,7 @@
                         </executions>
                         <configuration>
                             <source>17</source>
+                            <doclint>none</doclint>
                         </configuration>
                     </plugin>
                     <plugin>
