@@ -82,7 +82,6 @@
                             <id>org.netbeans.api:org-netbeans-modules-java-sourceui</id>
                             <type>impl</type>
                         </dependency>
-
                         <dependency>
                             <id>org.netbeans.api:org-netbeans-api-progress-nb</id>
                             <type>impl</type>
@@ -346,10 +345,10 @@
             <version>20251224</version>
         </dependency>
         <dependency>
-        <!--
-            TOON
-        -->
-        <groupId>tools.jackson.core</groupId>
+            <!--
+                TOON
+            -->
+            <groupId>tools.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
             <version>3.1.0</version>
         </dependency>
@@ -515,7 +514,11 @@
             <artifactId>org-netbeans-modules-editor</artifactId>
             <version>${netbeans.version}</version>
         </dependency>
-
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-openide-execution</artifactId>
+            <version>${netbeans.version}</version>
+        </dependency>
         <dependency>
             <groupId>org.netbeans.api</groupId>
             <artifactId>org-openide-windows</artifactId>
@@ -641,6 +644,16 @@
                     <artifactId>asm</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-modules-gradle</artifactId>
+            <version>${netbeans.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-modules-gradle-java</artifactId>
+            <version>${netbeans.version}</version>
         </dependency>
         <dependency>
             <groupId>org.netbeans.api</groupId>
@@ -790,6 +803,13 @@
             <artifactId>system-lambda</artifactId>
             <version>1.2.1</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
+            <version>5.17.0</version>
+            <scope>test</scope>
+            <type>jar</type>
         </dependency>
     </dependencies>
 

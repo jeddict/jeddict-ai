@@ -15,10 +15,10 @@
  */
 package io.github.jeddict.ai.agent.project;
 
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import io.github.jeddict.ai.scanner.ProjectMetadataInfo;
 import io.github.jeddict.ai.scanner.ProjectMetadataInfo.BuildMetadataResolver;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.LinkedHashMap;
@@ -34,7 +34,23 @@ import org.netbeans.api.project.Project;
 import io.github.jeddict.ai.agent.ToolPolicy;
 import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READONLY;
 import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READWRITE;
+import io.github.jeddict.ai.util.CaptureOutputInputOutput;
+import java.util.ArrayList;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import org.apache.commons.lang3.StringUtils;
+import org.netbeans.api.project.ProjectInformation;
+import org.netbeans.api.project.ProjectUtils;
+import org.netbeans.modules.maven.api.execute.RunConfig;
+import org.netbeans.modules.maven.api.execute.RunUtils;
+import org.netbeans.modules.maven.execute.MavenCommandLineExecutor;
+import org.openide.execution.ExecutionEngine;
+import org.openide.execution.ExecutorTask;
 import org.openide.filesystems.FileObject;
+import org.openide.filesystems.FileUtil;
+import org.openide.util.Task;
+import org.openide.util.TaskListener;
 
 /**
  * Project-tool specialisation for Maven projects.
@@ -45,7 +61,9 @@ import org.openide.filesystems.FileObject;
  * so that {@link ProjectMetadataInfo} can obtain this data without parsing
  * build files itself.</p>
  */
-public class MavenProjectTools extends JvmProjectTools implements BuildMetadataResolver {
+public class MavenProjectTools extends ProjectTools implements BuildMetadataResolver {
+
+    private final static int TIMEOUT_MIN = 15;
 
     private final FileObject pomFile;
 
@@ -56,21 +74,6 @@ public class MavenProjectTools extends JvmProjectTools implements BuildMetadataR
     public MavenProjectTools(final Project project) throws IOException {
         super(project);
         this.pomFile = project.getProjectDirectory().getFileObject("pom.xml");
-    }
-
-    // -----------------------------------------------------------------------
-    // ProjectTools overrides
-    // -----------------------------------------------------------------------
-
-    @Override
-    @Tool(
-        name = "projectInfo",
-        value = "Return information about the project: jdk version, j2ee version"
-    )
-    @ToolPolicy(READONLY)
-    public String projectInfo() throws Exception {
-        progress("Gathering Maven project info: " + project());
-        return appendSourceDirs(ProjectMetadataInfo.get(project(), this));
     }
 
     // -----------------------------------------------------------------------
@@ -127,12 +130,18 @@ public class MavenProjectTools extends JvmProjectTools implements BuildMetadataR
         return metadata;
     }
 
-    // -----------------------------------------------------------------------
-    // Additional @Tool methods exposed to the LLM agent
-    // -----------------------------------------------------------------------
+    @Tool(
+        name = "mavenProjectInfo",
+        value = "Return information about the project: jdk version, j2ee version"
+    )
+    @ToolPolicy(READONLY)
+    public String projectInfo() throws Exception {
+        progress("Gathering Maven project info: " + project);
+        return appendSourceDirs(ProjectMetadataInfo.get(project, this));
+    }
 
     @Tool(
-        name = "frameworkVersion",
+        name = "mavenFrameworkVersion",
         value = "Return the primary framework or platform used by this Maven project (e.g. 'jakarta', 'javax', 'spring-boot', 'quarkus', 'micronaut', 'helidon')"
     )
     @ToolPolicy(READONLY)
@@ -143,9 +152,8 @@ public class MavenProjectTools extends JvmProjectTools implements BuildMetadataR
         return v != null ? v : "No known framework dependency found in pom.xml";
     }
 
-    @Override
     @Tool(
-        name = "jdkVersion",
+        name = "mavenJdkVersion",
         value = "Return the Java compiler source version configured in this Maven project's pom.xml"
     )
     @ToolPolicy(READONLY)
@@ -158,7 +166,7 @@ public class MavenProjectTools extends JvmProjectTools implements BuildMetadataR
 
     @Override
     @Tool(
-        name = "projectDependencies",
+        name = "mavenProjectDependencies",
         value = "Return the list of Maven dependencies declared in pom.xml, one per line as groupId:artifactId:version (scope)"
     )
     @ToolPolicy(READONLY)
@@ -185,81 +193,99 @@ public class MavenProjectTools extends JvmProjectTools implements BuildMetadataR
         return sb.toString().trim();
     }
 
-    @Override
     @Tool(
-        name = "runJavaClass",
-        value = "Run a Java class by its fully qualified class name using the Maven exec plugin "
-            + "and return the full output"
+        name = "runMavenGoals",
+        value = """
+        Run a list of maven goals with given profiles and properties and returns
+        the outputproduced by the build as:
+
+        OUT: <the std out>
+        \n\n
+        ERR: <the std err>
+        """
     )
     @ToolPolicy(READWRITE)
-    public String runJavaClass(final String mainClass) {
-        return runCommand(resolveRunCommand(mainClass), "Running " + mainClass);
-    }
+    public String runMavenGoals(
+        @P("a space separated list of maven goals to run")
+        final String[] goals,
+        @P("a space separated list of maven profiles to activate")
+        final String[] profiles,
+        @P("a space separated list of properties (e.g. -Dpro=value) or argumentsto (e.g. -x) to pass to the build command")
+        final String properties
+    ) {
+        final ProjectInformation info = ProjectUtils.getInformation(project);
+        final String displayName = "%s (%s)".formatted(String.join(" ", goals), info.getDisplayName());
 
-    /**
-     * Builds the Maven command to run {@code mainClass}, preferring the Maven
-     * wrapper ({@code mvnw} / {@code mvnw.cmd}) when it is present in the
-     * project directory.
-     *
-     * @param mainClass the fully qualified name of the class to run
-     * @return the shell command string (never {@code null})
-     */
-    String resolveRunCommand(final String mainClass) {
-        return resolveWrapper() + " exec:java -Dexec.mainClass=" + mainClass;
-    }
+        progress("running project action %s".formatted(goals));
 
-    @Override
-    @Tool(
-        name = "buildProject",
-        value = "Build the Maven project using 'mvn clean install' (or the Maven wrapper) and return the full log"
-    )
-    @ToolPolicy(READWRITE)
-    public String buildProject() {
-        return runCommand(resolveBuildCommand(), "Building");
-    }
-
-    /**
-     * Returns the Maven command to build the project ({@code mvn[w] clean install}).
-     *
-     * @return the shell command string (never {@code null})
-     */
-    String resolveBuildCommand() {
-        return resolveWrapper() + " clean install";
-    }
-
-    @Override
-    @Tool(
-        name = "testProject",
-        value = "Run the Maven project's test suite using 'mvn test' (or the Maven wrapper) and return the full log"
-    )
-    @ToolPolicy(READWRITE)
-    public String testProject() {
-        return runCommand(resolveTestCommand(), "Testing");
-    }
-
-    /**
-     * Returns the Maven command to run the project's tests ({@code mvn[w] test}).
-     *
-     * @return the shell command string (never {@code null})
-     */
-    String resolveTestCommand() {
-        return resolveWrapper() + " test";
-    }
-
-    /**
-     * Returns the Maven executable to use: the Maven wrapper ({@code ./mvnw}
-     * or {@code mvnw.cmd}) when present, otherwise the system {@code mvn}.
-     */
-    protected String resolveWrapper() {
-        final boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
-        final File basedirFile = new File(basedir);
-        if (isWindows) {
-            if (new File(basedirFile, "mvnw.cmd").exists()) return "mvnw.cmd";
-            if (new File(basedirFile, "mvnw").exists()) return "./mvnw";
-            return "mvn";
-        } else {
-            return new File(basedirFile, "mvnw").exists() ? "./mvnw" : "mvn";
+        List<String> arguments = new ArrayList(List.of(goals));
+        if (!StringUtils.isBlank(properties)) {
+            arguments.addAll(List.of(properties));
         }
+
+        final RunConfig runConfig = RunUtils.createRunConfig(
+                FileUtil.toFile(project.getProjectDirectory()),
+                project,
+                displayName,
+                arguments
+        );
+        if (profiles != null) {
+            runConfig.setActivatedProfiles(List.of(profiles)); // if empty, deactivate the ones already set
+        }
+
+        if (runConfig == null) {
+            final String msg = "unable to run goals provided on " + info.getDisplayName();
+            progress(msg);
+            return msg;
+        }
+
+        final CaptureOutputInputOutput io = new CaptureOutputInputOutput(org.openide.windows.IOProvider.getDefault().getIO(runConfig.getTaskDisplayName(), true));
+        final MavenCommandLineExecutor executor = new MavenCommandLineExecutor(runConfig, io, null);
+
+        final ExecutorTask task = ExecutionEngine.getDefault().execute(
+            runConfig.getTaskDisplayName(),
+            executor,
+            io
+        );
+        executor.setTask(task);
+
+        progress("task launched, wating for it to finish...");
+
+        CompletableFuture<Integer> future = new CompletableFuture<>();
+        task.addTaskListener(new TaskListener() {
+            int taskResult = -1; // Default to error
+
+            @Override
+            public void taskFinished(Task task) {
+                if (task instanceof ExecutorTask completedTask) {
+                    taskResult = completedTask.result();
+                    future.complete(taskResult);
+                    task.removeTaskListener(this);
+                }
+            }
+        });
+
+        Integer exitCode = null;
+
+        String err = "";
+
+        try {
+            exitCode = future.get(TIMEOUT_MIN, TimeUnit.MINUTES);
+        } catch (TimeoutException e) {
+            task.stop();
+            err = "build action not completed in %d minutes".formatted(TIMEOUT_MIN);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            task.stop();
+            err = "build action interrupted";
+        } catch (Exception x) {
+            task.stop();
+            exitCode = -1; // Generic error code
+            err = "build not completed because of " + x;
+            progress(err);
+        }        progress("build action finished with exit code %d".formatted(exitCode));
+
+        return "OUT: %s\n\nERR: %s %s".formatted(io.out(), err, io.err());
     }
 
     // -----------------------------------------------------------------------

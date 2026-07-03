@@ -291,11 +291,19 @@ public class ProjectUtil {
         return projectDir.getFileObject("pom.xml") != null;
     }
 
+    public static boolean isMavenProject(final FileObject root) {
+        return (root != null) && (root.getFileObject("pom.xml") != null);
+    }
+
     public static boolean isGradleProject(Project project) {
         if (project == null) {
             return false;
         }
         FileObject projectDir = project.getProjectDirectory();
         return projectDir.getFileObject("build.gradle") != null || projectDir.getFileObject("build.gradle.kts") != null;
+    }
+
+    public static boolean isGradleProject(final FileObject root) {
+        return (root != null) && (root.getFileObject("build.gradle") != null) || (root.getFileObject("build.gradle.kts")) != null;
     }
 }

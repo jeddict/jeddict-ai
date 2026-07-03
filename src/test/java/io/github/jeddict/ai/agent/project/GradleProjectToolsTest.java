@@ -28,7 +28,7 @@ public class GradleProjectToolsTest extends TestBase {
     private static final String BUILD_GRADLE_CONTENT =
         """
         plugins {
-            id 'java'
+            java
         }
         sourceCompatibility = '17'
         dependencies {
@@ -37,7 +37,7 @@ public class GradleProjectToolsTest extends TestBase {
         }
         """;
 
-    private static final String BUILD_GRADLE_KTS_CONTENT =
+    private static final String BUILD_GRADLE_KOTLIN_CONTENT =
         """
         plugins {
             kotlin("jvm") version "1.9.0"
@@ -62,10 +62,10 @@ public class GradleProjectToolsTest extends TestBase {
     }
 
     @Test
-    public void getProjectName_returns_null()
+    public void getProjectName_returns_default()
     throws Exception {
         final GradleProjectTools tool = new GradleProjectTools(project(projectDir));
-        then(tool.getProjectName()).isNull();
+        then(tool.getProjectName()).isEqualTo("gradle project");
     }
 
     @Test
@@ -94,7 +94,7 @@ public class GradleProjectToolsTest extends TestBase {
     @Test
     public void getProjectMetadata_includes_java_version_from_jvm_target_in_kts()
     throws Exception {
-        Files.writeString(projectPath.resolve("build.gradle.kts"), BUILD_GRADLE_KTS_CONTENT);
+        Files.writeString(projectPath.resolve("build.gradle.kts"), BUILD_GRADLE_KOTLIN_CONTENT);
         final GradleProjectTools tool = new GradleProjectTools(project(projectDir));
         then(tool.getProjectMetadata()).containsEntry("Java Version", "17");
     }
@@ -142,7 +142,7 @@ public class GradleProjectToolsTest extends TestBase {
     @Test
     public void projectDependencies_returns_kotlin_dsl_dependencies()
     throws Exception {
-        Files.writeString(projectPath.resolve("build.gradle.kts"), BUILD_GRADLE_KTS_CONTENT);
+        Files.writeString(projectPath.resolve("build.gradle.kts"), BUILD_GRADLE_KOTLIN_CONTENT);
         final GradleProjectTools tool = new GradleProjectTools(project(projectDir));
         then(tool.projectDependencies()).contains("org.jetbrains.kotlin:kotlin-stdlib:1.9.0");
     }
@@ -164,54 +164,16 @@ public class GradleProjectToolsTest extends TestBase {
     }
 
     // -----------------------------------------------------------------------
-    // Wrapper / command resolution
+    // Execution contract
     // -----------------------------------------------------------------------
 
     @Test
-    public void resolveRunCommand_uses_gradle_when_no_wrapper_present()
+    public void buildProject_returns_output_and_error_contract()
     throws Exception {
+        Files.writeString(projectPath.resolve("build.gradle"), BUILD_GRADLE_CONTENT);
         final GradleProjectTools tool = new GradleProjectTools(project(projectDir));
-        then(tool.resolveRunCommand("com.example.Main"))
-            .isEqualTo("gradle run --main-class=com.example.Main");
-    }
-
-    @Test
-    public void resolveRunCommand_uses_gradlew_when_wrapper_present()
-    throws Exception {
-        Files.createFile(projectPath.resolve("gradlew"));
-        final GradleProjectTools tool = new GradleProjectTools(project(projectDir));
-        then(tool.resolveRunCommand("com.example.App"))
-            .isEqualTo("./gradlew run --main-class=com.example.App");
-    }
-
-    @Test
-    public void resolveBuildCommand_uses_gradle_when_no_wrapper_present()
-    throws Exception {
-        final GradleProjectTools tool = new GradleProjectTools(project(projectDir));
-        then(tool.resolveBuildCommand()).isEqualTo("gradle build");
-    }
-
-    @Test
-    public void resolveBuildCommand_uses_gradlew_when_wrapper_present()
-    throws Exception {
-        Files.createFile(projectPath.resolve("gradlew"));
-        final GradleProjectTools tool = new GradleProjectTools(project(projectDir));
-        then(tool.resolveBuildCommand()).isEqualTo("./gradlew build");
-    }
-
-    @Test
-    public void resolveTestCommand_uses_gradle_when_no_wrapper_present()
-    throws Exception {
-        final GradleProjectTools tool = new GradleProjectTools(project(projectDir));
-        then(tool.resolveTestCommand()).isEqualTo("gradle test");
-    }
-
-    @Test
-    public void resolveTestCommand_uses_gradlew_when_wrapper_present()
-    throws Exception {
-        Files.createFile(projectPath.resolve("gradlew"));
-        final GradleProjectTools tool = new GradleProjectTools(project(projectDir));
-        then(tool.resolveTestCommand()).isEqualTo("./gradlew test");
+        final String result = tool.runGradleTasks("build");
+        then(result).contains("build (gradle project) task failed with exit code: -1"); // executed although faling
     }
 
 }

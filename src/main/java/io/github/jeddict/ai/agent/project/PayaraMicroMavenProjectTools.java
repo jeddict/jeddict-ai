@@ -54,7 +54,7 @@ public class PayaraMicroMavenProjectTools extends MavenProjectTools {
     )
     @ToolPolicy(READWRITE)
     public String bundleMicro() {
-        return runCommand(resolveWrapper() + " payara-micro:bundle", "Bundling Payara Micro Uber JAR");
+        return runMavenGoals(new String[] {"payara-micro:bundle"}, null, null);
     }
 
     @Tool(
@@ -65,7 +65,7 @@ public class PayaraMicroMavenProjectTools extends MavenProjectTools {
     )
     @ToolPolicy(READWRITE)
     public String startMicro() {
-        return runCommand(resolveWrapper() + " payara-micro:start", "Starting Payara Micro");
+        return runMavenGoals(new String[] {"payara-micro:start"}, null, null);
     }
 
     @Tool(
@@ -75,7 +75,7 @@ public class PayaraMicroMavenProjectTools extends MavenProjectTools {
     )
     @ToolPolicy(READWRITE)
     public String stopMicro() {
-        return runCommand(resolveWrapper() + " payara-micro:stop", "Stopping Payara Micro");
+        return runMavenGoals(new String[] {"payara-micro:stop"}, null, null);
     }
 
     @Tool(
@@ -85,7 +85,7 @@ public class PayaraMicroMavenProjectTools extends MavenProjectTools {
     )
     @ToolPolicy(READWRITE)
     public String reloadApplication() {
-        return runCommand(resolveWrapper() + " payara-micro:reload", "Reloading Payara Micro");
+        return runMavenGoals(new String[] {"payara-micro:reload"} , null, null);
     }
 
     /**
@@ -103,6 +103,6 @@ public class PayaraMicroMavenProjectTools extends MavenProjectTools {
     )
     @ToolPolicy(READWRITE)
     public String devMode() {
-        return runCommand(resolveWrapper() + " payara-micro:dev", "Dev mode Payara Micro");
+        return runMavenGoals(new String[] {"payara-micro:dev"}, null, null);
     }
 }
