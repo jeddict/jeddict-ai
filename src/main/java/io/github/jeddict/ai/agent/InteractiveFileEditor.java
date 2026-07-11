@@ -22,6 +22,9 @@ import static io.github.jeddict.ai.agent.ToolPolicy.Policy.INTERACTIVE;
 import io.github.jeddict.ai.components.AssistantChat;
 import io.github.jeddict.ai.components.diff.DiffPane;
 import io.github.jeddict.ai.components.diff.DiffPaneController;
+import io.github.jeddict.ai.lang.InteractionMode;
+import io.github.jeddict.ai.util.AudioUtil;
+import io.github.jeddict.ai.util.UIUtil;
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -67,9 +70,29 @@ public class InteractiveFileEditor extends AbstractTool {
         if (content == null) {
             throw new ToolExecutionException("path can not be null");
         }
+
+        //
+        // If the tool is invoched in iteraction modes different than INTERACTIVE,
+        // create the file right away with the createBinaryTool. The design is
+        // not great but it is what we can do given current Jeddict and langchain4j
+        // design.
+        //
+        if (interaction != InteractionMode.INTERACTIVE) {
+            try {
+                final FileSystemTools delegate = new FileSystemTools(basedir);
+                return delegate.createBinaryFile(path, content.getBytes());
+            } catch (IOException x) {
+                throw new ToolExecutionException("error in getting the content: " + x.getMessage());
+            }
+        }
+
         progress("∆ Editing " + path);
 
         checkPath(path);
+
+        if (assistantChat.pm.isPlaySoundEnabled() && UIUtil.isWindowInBackground()) {
+            AudioUtil.playNotificationSound();
+        }
 
         final CountDownLatch done = new CountDownLatch(1);
         final AtomicReference<String> newContent = new AtomicReference();

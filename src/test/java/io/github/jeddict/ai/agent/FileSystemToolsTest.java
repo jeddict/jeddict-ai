@@ -87,16 +87,16 @@ public class FileSystemToolsTest extends TestBase {
     }
 
     @Test
-    public void createFile_with_and_without_existing_file() throws Exception {
+    public void createBinaryFile_with_and_without_existing_file() throws Exception {
         final String path = "folder/newfile.txt";
         final String content = "Sample content.";
 
-        then(tools.createFile(path, content)).isEqualTo("File created");
+        then(tools.createBinaryFile(path, content.getBytes())).isEqualTo("File created");
 
         thenProgressContains(listener.collector.get(0), "\n📄 Creating file " + path);
 
         listener.collector.clear();
-        thenThrownBy(() -> tools.createFile(path, content))
+        thenThrownBy(() -> tools.createBinaryFile(path, content.getBytes()))
             .isInstanceOf(ToolExecutionException.class)
             .hasMessage("❌ " + path + " already exists");
 
@@ -105,14 +105,14 @@ public class FileSystemToolsTest extends TestBase {
     }
 
     @Test
-    public void createFile_outside_project_dir() {
+    public void createBinaryFile_outside_project_dir() {
         //
         // absolute path
         //
         final String abs = HOME.resolve("jeddict-config.json").toAbsolutePath().toString();
         final String content = "Sample content.";
 
-        thenTriedFileOutsideProjectFolder(() -> tools.createFile(abs, content));
+        thenTriedFileOutsideProjectFolder(() -> tools.createBinaryFile(abs, content.getBytes()));
 
         //
         // relative path
@@ -121,7 +121,7 @@ public class FileSystemToolsTest extends TestBase {
 
         final String rel = projectDir + File.separator + "../outside.txt";
 
-        thenTriedFileOutsideProjectFolder(() -> tools.createFile(rel, content));
+        thenTriedFileOutsideProjectFolder(() -> tools.createBinaryFile(rel, content.getBytes()));
 
         thenProgressContains(listener.collector.get(0), "\n📄 Creating file " + rel);
     }
@@ -250,7 +250,7 @@ public class FileSystemToolsTest extends TestBase {
         //
         final String path = "folder/multiline.txt";
         final String content = "line one\nline two\nline three\nline four\nline five";
-        tools.createFile(path, content);
+        tools.createBinaryFile(path, content.getBytes());
         listener.collector.clear();
 
         //

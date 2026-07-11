@@ -27,6 +27,8 @@ import io.github.jeddict.ai.lang.JeddictBrainListener;
 import io.github.jeddict.ai.response.Response;
 import io.github.jeddict.ai.response.TokenHandler;
 import io.github.jeddict.ai.settings.PreferencesManager;
+import io.github.jeddict.ai.util.AudioUtil;
+import io.github.jeddict.ai.util.UIUtil;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
@@ -233,5 +235,8 @@ public class AssistantJeddictBrainListener
         assistantChat.getQuestionPane().setText("");
         assistantChat.updateHeight();
         assistantChat.clearFileTab();
+        if (pm.isPlaySoundEnabled() && UIUtil.isWindowInBackground()) {
+            AudioUtil.playNotificationSound();
+        }
     }
 }

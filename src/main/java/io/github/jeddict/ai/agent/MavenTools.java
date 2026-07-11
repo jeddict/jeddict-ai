@@ -19,176 +19,115 @@ import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.transform.OutputKeys;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
+import org.apache.maven.model.Dependency;
+import org.apache.maven.model.Model;
+import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
+import org.apache.maven.model.io.xpp3.MavenXpp3Writer;
+import org.netbeans.api.project.Project;
+import org.netbeans.modules.maven.api.NbMavenProject;
 import org.openide.filesystems.FileObject;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
-import org.xml.sax.SAXException;
+import org.openide.filesystems.FileUtil;
+
 import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READONLY;
 import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READWRITE;
+import java.io.File;
 
-/**
- * Tool to manage dependencies in the pom.xml file.
- * Allows adding, removing, updating, and listing dependencies in the project's pom.xml.
- *
- * Author: Assistant
- */
-public class MavenTools extends AbstractBuildTool {
+public class MavenTools extends AbstractTool {
 
-    public MavenTools(final String basedir) throws IOException {
-        super(basedir, "pom.xml");
+    private static final int TIMEOUT_MIN = 2;
+    private final Project project;
+
+    public MavenTools(final Project project) throws IOException {
+        super(FileUtil.toFile(project.getProjectDirectory()).toString());
+        this.project = project;
     }
 
-    @Tool(
-        name = "addMavenDependency",
-        value = "Add a dependency to the pom.xml file"
-    )
+    @Tool(name = "addMavenDependency", value = "Add a dependency to a maven project")
     @ToolPolicy(READWRITE)
     public String addDependency(
-        @P("group id")
-        final String groupId,
-        @P("artifact id")
-        final String artifactId,
-        @P("version")
-        final String version
-    ) throws Exception {
-        progress("Adding dependency: " + groupId + ":" + artifactId + ":" + version);
-        return addDependency(groupId, artifactId, version, null);
-    }
-
-    @Tool(
-        name = "addMavenDependencyWithScope",
-        value = "Add a dependency with scope to the pom.xml file"
-    )
-    @ToolPolicy(READWRITE)
-    public String addDependencyWithScope(
-        @P("group id")
-        final String groupId,
-        @P("artifact id")
-        final String artifactId,
-        @P("version")
-        final String version,
-        @P("scope")
-        final String scope
+        @P("group id") final String groupId,
+        @P("artifact id") final String artifactId,
+        @P("version") final String version,
+        @P("scope") final String scope,
+        @P("type") final String type,
+        @P("classifier") final String classifier
     ) throws Exception {
         progress("Adding dependency with scope: " + groupId + ":" + artifactId + ":" + version + ":" + scope);
-        return addDependency(groupId, artifactId, version, scope);
-    }
-
-    private String addDependency(String groupId, String artifactId, String version, String scope)
-    throws Exception {
         try {
             final FileObject pomFile = buildFile();
-            final Document pom = pomDocument(pomFile.getInputStream());
+            Model model = readModel(pomFile);
 
-            final NodeList dependenciesNodes = pom.getElementsByTagName("dependencies");
-            Element dependenciesElement;
-            if (dependenciesNodes.getLength() == 0) {
-                dependenciesElement = pom.createElement("dependencies");
-                pom.getDocumentElement().appendChild(dependenciesElement);
-            } else {
-                dependenciesElement = (Element) dependenciesNodes.item(0);
-            }
-
-            // Check if dependency already exists
-            NodeList dependencyList = dependenciesElement.getElementsByTagName("dependency");
-            for (int i = 0; i < dependencyList.getLength(); i++) {
-                Element dep = (Element) dependencyList.item(i);
-                String g = dep.getElementsByTagName("groupId").item(0).getTextContent();
-                String a = dep.getElementsByTagName("artifactId").item(0).getTextContent();
-                if (g.equals(groupId) && a.equals(artifactId)) {
-                    progress("Dependency already exists: " + groupId + ":" + artifactId);
-                    return "Dependency already exists in pom.xml";
+            boolean exists = false;
+            for (Dependency dep : model.getDependencies()) {
+                if (groupId.equals(dep.getGroupId()) && artifactId.equals(dep.getArtifactId())) {
+                    exists = true;
+                    break;
                 }
             }
 
-            Element dependency = pom.createElement("dependency");
-
-            Element gId = pom.createElement("groupId");
-            gId.setTextContent(groupId);
-            Element aId = pom.createElement("artifactId");
-            aId.setTextContent(artifactId);
-            Element ver = pom.createElement("version");
-            ver.setTextContent(version);
-
-            dependency.appendChild(gId);
-            dependency.appendChild(aId);
-            dependency.appendChild(ver);
-
-            if (scope != null && !scope.isEmpty()) {
-                Element scopeElement = pom.createElement("scope");
-                scopeElement.setTextContent(scope);
-                dependency.appendChild(scopeElement);
+            if (exists) {
+                progress("Dependency already exists: " + groupId + ":" + artifactId);
+                return "Dependency already exists in pom.xml";
             }
 
-            dependenciesElement.appendChild(dependency);
+            Dependency dependency = new Dependency();
+            dependency.setGroupId(groupId);
+            dependency.setArtifactId(artifactId);
 
-            // Write changes back to pom.xml
-            TransformerFactory transformerFactory = TransformerFactory.newInstance();
-            Transformer transformer = transformerFactory.newTransformer();
-            transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-            DOMSource source = new DOMSource(pom);
-            StreamResult result = new StreamResult(pomFile.getOutputStream());
-            transformer.transform(source, result);
+            if (version != null && !version.isBlank()) {
+                dependency.setVersion(version);
+            }
+            if (scope != null && !scope.isBlank()) {
+                dependency.setScope(scope);
+            }
+            if (type != null && !type.isBlank()) {
+                dependency.setType(type);
+            }
+            if (classifier != null && !classifier.isBlank()) {
+                dependency.setClassifier(classifier);
+            }
+
+            model.addDependency(dependency);
+            writeModel(model, pomFile);
+            refreshIdeState();
 
             progress("Dependency added successfully: " + groupId + ":" + artifactId + ":" + version);
             return "Dependency added successfully to pom.xml";
         } catch (Exception e) {
             progress("Failed to add dependency: " + e.getMessage());
-
             throw e;
         }
     }
 
-    @Tool(
-        name = "removeMavenDependency",
-        value = "Remove a dependency from the pom.xml file"
-    )
+    @Tool(name = "removeMavenDependency", value = "Remove a dependency from the pom.xml file")
     @ToolPolicy(READWRITE)
     public String removeDependency(
-        @P("group id")
-        final String groupId,
-        @P("artifact id")
-        final String artifactId
+        @P("group id") final String groupId,
+        @P("artifact id") final String artifactId
     ) throws Exception {
         progress("Removing dependency " + groupId + ": " + artifactId);
         try {
             final FileObject pomFile = buildFile();
-            final Document pom = pomDocument(pomFile.getInputStream());
-            final NodeList dependenciesNodes = expectedDependencies(pom);
+            Model model = readModel(pomFile);
 
-            Element dependenciesElement = (Element) dependenciesNodes.item(0);
-            NodeList dependencyList = dependenciesElement.getElementsByTagName("dependency");
-            for (int i = 0; i < dependencyList.getLength(); i++) {
-                Element dep = (Element) dependencyList.item(i);
-                String g = dep.getElementsByTagName("groupId").item(0).getTextContent();
-                String a = dep.getElementsByTagName("artifactId").item(0).getTextContent();
-                if (g.equals(groupId) && a.equals(artifactId)) {
-                    dependenciesElement.removeChild(dep);
-
-                    // Write changes back to pom.xml
-                    TransformerFactory transformerFactory = TransformerFactory.newInstance();
-                    Transformer transformer = transformerFactory.newTransformer();
-                    transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-                    DOMSource source = new DOMSource(pom);
-                    StreamResult result = new StreamResult(pomFile.getOutputStream());
-                    transformer.transform(source, result);
-
-                    progress("Dependency removed successfully " + groupId + ":" + artifactId);
-                    return "Dependency removed successfully from pom.xml";
+            Dependency target = null;
+            for (Dependency dep : model.getDependencies()) {
+                if (groupId.equals(dep.getGroupId()) && artifactId.equals(dep.getArtifactId())) {
+                    target = dep;
+                    break;
                 }
             }
 
+            if (target != null) {
+                model.removeDependency(target);
+                writeModel(model, pomFile);
+                refreshIdeState();
+                progress("Dependency removed successfully " + groupId + ":" + artifactId);
+                return "Dependency removed successfully from pom.xml";
+            }
             throw new Exception("Dependency not found " + groupId + ":" + artifactId);
         } catch (Exception e) {
             progress("Failed to remove dependency: " + e.getMessage());
@@ -196,164 +135,117 @@ public class MavenTools extends AbstractBuildTool {
         }
     }
 
-    @Tool(
-        name = "MavenListDependenciesTool_listDependencies",
-        value = "List all dependencies in the pom.xml file"
-    )
+    @Tool(name = "MavenListDependenciesTool_listDependencies", value = "List all dependencies in the pom.xml file")
     @ToolPolicy(READWRITE)
     public String listDependencies() throws Exception {
         progress("Listing dependencies");
         try {
-            FileObject pomFile = buildFile();
-            Document doc = pomDocument(pomFile.getInputStream());
-
-            NodeList dependenciesNodes = doc.getElementsByTagName("dependencies");
-            if (dependenciesNodes.getLength() == 0) {
-                progress("No dependencies section found in pom.xml");
-                return "No dependencies section found in pom.xml";
-            }
-
-            Element dependenciesElement = (Element) dependenciesNodes.item(0);
-            NodeList dependencyList = dependenciesElement.getElementsByTagName("dependency");
+            final FileObject pomFile = buildFile();
+            Model model = readModel(pomFile);
 
             List<String> dependencies = new ArrayList<>();
-            for (int i = 0; i < dependencyList.getLength(); i++) {
-                Element dep = (Element) dependencyList.item(i);
-                String g = dep.getElementsByTagName("groupId").item(0).getTextContent();
-                String a = dep.getElementsByTagName("artifactId").item(0).getTextContent();
-                String v = dep.getElementsByTagName("version").item(0).getTextContent();
-                String scope = "";
-                NodeList scopeNodes = dep.getElementsByTagName("scope");
-                if (scopeNodes.getLength() > 0) {
-                    scope = scopeNodes.item(0).getTextContent();
-                }
+            for (Dependency dep : model.getDependencies()) {
+                String g = dep.getGroupId();
+                String a = dep.getArtifactId();
+                String v = dep.getVersion() != null ? dep.getVersion() : "";
+                String scope = dep.getScope() != null ? dep.getScope() : "";
+
                 dependencies.add(String.format("%s:%s:%s%s", g, a, v, scope.isEmpty() ? "" : ":" + scope));
             }
-
             return String.join("\n", dependencies);
         } catch (Exception e) {
             progress("Failed to list dependencies: " + e.getMessage());
-
             throw e;
         }
     }
 
-    @Tool(
-        name = "updateMavenDependencyVersion",
-        value = "Update the version of an existing dependency in the pom.xml file"
-    )
+    @Tool(name = "updateMavenDependencyVersion", value = "Update the version of an existing dependency in the pom.xml file")
     @ToolPolicy(READWRITE)
     public String updateDependencyVersion(
-        @P("group id")
-        final String groupId,
-        @P("artifact id")
-        final String artifactId,
-        @P("new version")
-        final String newVersion
+        @P("group id") final String groupId,
+        @P("artifact id") final String artifactId,
+        @P("new version") final String newVersion
     ) throws Exception {
         progress("Updating dependency version: " + groupId + ":" + artifactId + ":" + newVersion);
         try {
             final FileObject pomFile = buildFile();
-            final Document pom = pomDocument(pomFile.getInputStream());
-            final NodeList dependenciesNodes = expectedDependencies(pom);
+            Model model = readModel(pomFile);
 
-            Element dependenciesElement = (Element) dependenciesNodes.item(0);
-            NodeList dependencyList = dependenciesElement.getElementsByTagName("dependency");
-            for (int i = 0; i < dependencyList.getLength(); i++) {
-                Element dep = (Element) dependencyList.item(i);
-                String g = dep.getElementsByTagName("groupId").item(0).getTextContent();
-                String a = dep.getElementsByTagName("artifactId").item(0).getTextContent();
-                if (g.equals(groupId) && a.equals(artifactId)) {
-                    dep.getElementsByTagName("version").item(0).setTextContent(newVersion);
-
-                    // Write changes back to pom.xml
-                    TransformerFactory transformerFactory = TransformerFactory.newInstance();
-                    Transformer transformer = transformerFactory.newTransformer();
-                    transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-                    DOMSource source = new DOMSource(pom);
-                    StreamResult result = new StreamResult(pomFile.getOutputStream());
-                    transformer.transform(source, result);
-
-                    progress("Dependency version updated successfully: " + groupId + ":" + artifactId + ":" + newVersion);
-                    return "Dependency version updated successfully in pom.xml";
+            Dependency target = null;
+            for (Dependency dep : model.getDependencies()) {
+                if (groupId.equals(dep.getGroupId()) && artifactId.equals(dep.getArtifactId())) {
+                    target = dep;
+                    break;
                 }
             }
 
+            if (target != null) {
+                target.setVersion(newVersion);
+                writeModel(model, pomFile);
+                refreshIdeState();
+                progress("Dependency version updated successfully: " + groupId + ":" + artifactId + ":" + newVersion);
+                return "Dependency version updated successfully in pom.xml";
+            }
             throw new Exception("Dependency " + groupId + ":" + artifactId + " not found");
         } catch (Exception e) {
             progress("Failed to update dependency: " + e.getMessage());
-
             throw e;
         }
     }
 
-    @Tool(
-        name= "mavenDependencyExists",
-        value= "Check if a dependency exists in the pom.xml file"
-    )
+    @Tool(name = "mavenDependencyExists", value = "Check if a dependency exists in the pom.xml file")
     @ToolPolicy(READONLY)
     public boolean dependencyExists(
-        @P("group id")
-        final String groupId,
-        @P("artifact id")
-        final String artifactId
+        @P("group id") final String groupId,
+        @P("artifact id") final String artifactId
     ) throws Exception {
         progress("Checking dependency existence: " + groupId + ":" + artifactId);
         try {
             final FileObject pomFile = buildFile();
-            final Document doc = pomDocument(pomFile.getInputStream());
+            Model model = readModel(pomFile);
 
-            NodeList dependenciesNodes = doc.getElementsByTagName("dependencies");
-            if (dependenciesNodes.getLength() > 0) {
-                Element dependenciesElement = (Element) dependenciesNodes.item(0);
-                NodeList dependencyList = dependenciesElement.getElementsByTagName("dependency");
-                for (int i = 0; i < dependencyList.getLength(); i++) {
-                    Element dep = (Element) dependencyList.item(i);
-                    String g = dep.getElementsByTagName("groupId").item(0).getTextContent();
-                    String a = dep.getElementsByTagName("artifactId").item(0).getTextContent();
-                    if (g.equals(groupId) && a.equals(artifactId)) {
-                        progress("Dependency exists: " + groupId + ":" + artifactId);
-                        return true;
-                    }
+            boolean exists = false;
+            for (Dependency dep : model.getDependencies()) {
+                if (groupId.equals(dep.getGroupId()) && artifactId.equals(dep.getArtifactId())) {
+                    exists = true;
+                    break;
                 }
             }
-
-            progress("Dependency does not exist: " + groupId + ":" + artifactId);
-            return false;
+            progress(exists ? "Dependency exists: " + groupId + ":" + artifactId : "Dependency does not exist: " + groupId + ":" + artifactId);
+            return exists;
         } catch (Exception e) {
             progress("Failed to check dependency existence: " + e.getMessage());
-
             throw e;
         }
     }
 
-    private org.w3c.dom.Document pomDocument(final InputStream is)
-        throws IOException, SAXException, ParserConfigurationException {
-        DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-        DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-        org.w3c.dom.Document doc = dBuilder.parse(is);
-        doc.getDocumentElement().normalize();
-
-        return doc;
+    private void refreshIdeState() {
+        NbMavenProject.fireMavenProjectReload(project);
     }
 
-    /**
-     * Checks if the <dependencies> section exists and returns the list of
-     * dependencies. If the section does not exist, or no there dependencies are
-     * there, an exception is thrown.
-     *
-     * @param pom the pom document
-     *
-     * @return the list of exceptions if any
-     *
-     * @throws Exception if the section does not exist
-     */
-    private NodeList expectedDependencies(final org.w3c.dom.Document pom) throws Exception {
-        final NodeList dependencies = pom.getElementsByTagName("dependencies");
-        if (dependencies.getLength() == 0) {
-            throw new Exception("No dependencies section found in pom.xml");
+    private Model readModel(FileObject pomFile) throws Exception {
+        try (InputStream is = pomFile.getInputStream()) {
+            MavenXpp3Reader reader = new MavenXpp3Reader();
+            return reader.read(is);
         }
+    }
 
-        return dependencies;
+    private void writeModel(Model model, FileObject pomFile) throws Exception {
+        try (OutputStream os = pomFile.getOutputStream()) {
+            MavenXpp3Writer writer = new MavenXpp3Writer();
+            writer.write(os, model);
+        }
+    }
+
+
+    private FileObject buildFile() throws Exception {
+        final File file = ((java.nio.file.Path) basepath).toFile();
+
+        final FileObject projectDir = FileUtil.toFileObject(file);
+        final FileObject pomFile = projectDir.getFileObject("pom.xml");
+        if (pomFile == null || !pomFile.isValid()) {
+            throw new Exception("pom.xml not found in project directory");
+        }
+        return pomFile;
     }
 }

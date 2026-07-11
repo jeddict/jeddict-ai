@@ -26,6 +26,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.AiServices;
 import io.github.jeddict.ai.agent.AbstractTool;
 import io.github.jeddict.ai.agent.FileSystemTools;
+import io.github.jeddict.ai.agent.InteractiveFileEditor;
 import io.github.jeddict.ai.agent.UtilTools;
 import static io.github.jeddict.ai.agent.pair.HackerWithToolsTest.GLOBAL_RULES;
 import static io.github.jeddict.ai.agent.pair.HackerWithToolsTest.PROJECT_INFO;
@@ -52,10 +53,6 @@ import static ste.lloop.Loop.on;
  */
 public class HackerWithoutToolsTest {
 
-    private static final String KEY_NAME = "name";
-    private static final String KEY_DESCRIPTION = "description";
-    private static final String KEY_ARGUMENTS = "arguments";
-
     @TempDir
     Path basedir;
 
@@ -79,7 +76,6 @@ public class HackerWithoutToolsTest {
         // properly simulate the chain of events of models supporting tools.
         // We want to pass it in the constructor to avoid that HackerWithoutTools
         // manipulates the listeners by its own in the constructor.
-        // It must be the only one otherwise we may end up with
         //
 
         //
@@ -150,6 +146,11 @@ public class HackerWithoutToolsTest {
         then(system.text()).isEqualToIgnoringNewLines(expectedSystem);
 
         then(answer).isEqualToIgnoringNewLines("hello world");
+    }
+
+    @Test
+    public void does_not_support_streaming() {
+        then(new HackerWithoutTools(MODEL, BUILDER, List.of()).streamingSupport()).isFalse();
     }
 
     @Test
@@ -384,9 +385,10 @@ public class HackerWithoutToolsTest {
 
     @Test
     public void create_calculator_application() throws Exception {
-        final FileSystemTools tools = new FileSystemTools(basedir.toAbsolutePath().toString());
-
-        final HackerWithoutTools hacker = new HackerWithoutTools(MODEL, BUILDER,  List.of(tools));
+        final HackerWithoutTools hacker = new HackerWithoutTools(MODEL, BUILDER,  List.of(
+            new FileSystemTools(basedir.toAbsolutePath().toString()),
+            new InteractiveFileEditor(basedir.toAbsolutePath().toString(), null)
+        ));
 
         hacker.hack("use mock 'create calculator.txt'");
 

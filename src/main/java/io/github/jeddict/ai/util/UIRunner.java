@@ -18,6 +18,8 @@
 package io.github.jeddict.ai.util;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import io.github.jeddict.ai.agent.project.GradleProjectTools;
+import io.github.jeddict.ai.agent.project.MavenProjectTools;
 import io.github.jeddict.ai.components.ToolExecutionConfirmationPane;
 import io.github.jeddict.ai.components.ToolExecutionPane;
 import io.github.jeddict.ai.components.ToolInvocationPane;
@@ -49,16 +51,22 @@ import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 import org.netbeans.api.project.Project;
 import org.netbeans.api.project.ProjectUtils;
+import org.netbeans.api.project.ui.OpenProjects;
 import org.openide.DialogDisplayer;
 import org.openide.NotifyDescriptor;
 import org.openide.filesystems.FileObject;
+import org.openide.util.RequestProcessor;
 
 /**
  *
  */
 public class UIRunner {
 
-    private final ToolExecutionConfirmationPane confirmationPane;
+    private static final RequestProcessor RP = new RequestProcessor(UIRunner.class);
+
+    private ToolExecutionConfirmationPane confirmationPane;
+    private ToolInvocationPane invocationPane;
+    private ToolExecutionPane executionPane;
     private DiffPane diffPane;
     private JPopupMenu contextMenu;
 
@@ -82,8 +90,8 @@ public class UIRunner {
         // Create menu items
         JMenuItem toolsExecutionUIItem = new JMenuItem("Tools execution UI");
         JMenuItem diffToolItem = new JMenuItem("Diff tool");
-        JMenuItem settingsItem = new JMenuItem("Settings panel");
-        JMenuItem settingsAppItem = new JMenuItem("Settings application");
+        JMenuItem buildMavenItem = new JMenuItem("Build Maven Project");
+        JMenuItem buildGradleItem = new JMenuItem("Build Gradle Project");
         JMenuItem exitItem = new JMenuItem("Exit");
 
         // Add action listeners to menu items
@@ -96,18 +104,11 @@ public class UIRunner {
             showDiffPane(frame);
         });
 
-        settingsItem.addActionListener(e -> {
-            showSettingsDialog(frame);
+        buildMavenItem.addActionListener(e -> {
+            buildMavenProject(frame);
         });
-
-        settingsAppItem.addActionListener(e -> {
-            Platform.runLater(() -> {
-                try {
-                    new SettingsApp().start(new Stage());
-                } catch (Exception ex) {
-                    LOG.log(Level.SEVERE, null, ex);
-                }
-            });
+        buildGradleItem.addActionListener(e -> {
+            buildGradleProject(frame);
         });
 
         exitItem.addActionListener(e -> {
@@ -117,8 +118,8 @@ public class UIRunner {
         // Add menu items to the menu
         menu.add(toolsExecutionUIItem);
         menu.add(diffToolItem);
-        menu.add(settingsItem);
-        menu.add(settingsAppItem);
+        menu.add(buildMavenItem);
+        menu.add(buildGradleItem);
         menu.add(exitItem);
 
         // Add the menu to the menu bar
@@ -131,8 +132,8 @@ public class UIRunner {
         contextMenu = new JPopupMenu();
         contextMenu.add(toolsExecutionUIItem);
         contextMenu.add(diffToolItem);
-        contextMenu.add(settingsItem);
-        contextMenu.add(settingsAppItem);
+        contextMenu.add(buildMavenItem);
+        contextMenu.add(buildGradleItem);
         contextMenu.add(exitItem);
 
         final Container content = frame.getContentPane();
@@ -171,6 +172,60 @@ public class UIRunner {
         });
 
         content.add(controls, SOUTH);
+    }
+
+    private void buildMavenProject(JFrame frame) {
+        try {
+            Project project = selectProject();
+            if (project == null) {
+                return;
+            }
+
+            String projectName = ProjectUtils.getInformation(project).getDisplayName();
+            LOG.info(() -> "Run Project selected for: " + projectName);
+
+            RP.post(() -> {
+                try {
+                    MavenProjectTools tools = new MavenProjectTools(project);
+                    final String result = tools.runMavenGoals(new String[]{"install"}, null, null);
+                    LOG.info(result);
+                } catch (Exception ex) {
+                    LOG.log(Level.SEVERE, "Error running project: " + projectName, ex);
+                    JOptionPane.showMessageDialog(frame, "Error running project: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            });
+
+        } catch (Exception ex) {
+            LOG.log(Level.SEVERE, "Error running selected project", ex);
+            JOptionPane.showMessageDialog(frame, "Error running project: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void buildGradleProject(JFrame frame) {
+        try {
+            Project project = selectProject();
+            if (project == null) {
+                return;
+            }
+
+            String projectName = ProjectUtils.getInformation(project).getDisplayName();
+            LOG.info(() -> "Run Project selected for: " + projectName);
+
+            RP.post(() -> {
+                try {
+                    GradleProjectTools tools = new GradleProjectTools(project);
+                    final String result = tools.runGradleTasks(new String[] {"build"} );
+                    LOG.info(result);
+                } catch (Exception ex) {
+                    LOG.log(Level.SEVERE, "Error running project: " + projectName, ex);
+                    JOptionPane.showMessageDialog(frame, "Error running project: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            });
+
+        } catch (Exception ex) {
+            LOG.log(Level.SEVERE, "Error running selected project", ex);
+            JOptionPane.showMessageDialog(frame, "Error running project: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private void showDiffPane(JFrame frame) {
@@ -245,7 +300,7 @@ public class UIRunner {
     }
 
     private Project selectProject() {
-        final Project[] openProjects = org.netbeans.api.project.ui.OpenProjects.getDefault().getOpenProjects();
+        final Project[] openProjects = OpenProjects.getDefault().getOpenProjects();
         if (openProjects.length == 1) {
             return openProjects[0];
         } else if (openProjects.length > 1) {

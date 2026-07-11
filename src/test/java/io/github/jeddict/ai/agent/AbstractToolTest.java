@@ -4,6 +4,7 @@ import dev.langchain4j.exception.ToolExecutionException;
 import io.github.jeddict.ai.test.TestBase;
 import io.github.jeddict.ai.test.DummyTool;
 import io.github.jeddict.ai.lang.DummyJeddictBrainListener;
+import io.github.jeddict.ai.lang.InteractionMode;
 import java.io.IOException;
 import java.util.function.UnaryOperator;
 import org.junit.jupiter.api.Test;
@@ -128,6 +129,16 @@ public class AbstractToolTest extends TestBase {
         thenThrownBy(() -> tool.checkPath(projectDir + "/../outside"))
             .isInstanceOf(ToolExecutionException.class)
             .hasMessageStartingWith("trying to reach a file");;
+    }
+
+    @Test
+    public void set_interactive_mode() throws IOException{
+        final DummyTool tool = new DummyTool(projectDir);
+
+        then(tool.interaction()).isEqualTo(InteractionMode.ASK); // default
+
+        tool.interaction(InteractionMode.INTERACTIVE);
+        then(tool.interaction()).isEqualTo(InteractionMode.INTERACTIVE);
     }
 
 }

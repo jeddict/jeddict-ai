@@ -381,13 +381,13 @@ public class FileSystemTools extends AbstractCodeTool {
      * @param content optional content to write into the file
      * @return a status message
      */
-    @Tool("Create a new file at the given path with optional content with no user interaction")
+    @Tool("Create a new binary file at the given path with optional content. Not for text files like code source, text, json, etc.")
     @ToolPolicy(READWRITE)
-    public String createFile(
+    public String createBinaryFile(
         @P("the pathname of the file to create")
         final String path,
         @P("the file content")
-        final String content
+        final byte[] content
     ) throws ToolExecutionException {
         progress("📄 Creating file " + path);
 
@@ -402,7 +402,9 @@ public class FileSystemTools extends AbstractCodeTool {
             }
 
             Files.createDirectories(filePath.getParent());
-            Files.writeString(filePath, content != null ? content : "");
+            if (content != null) {
+                Files.write(filePath, content);
+            }
 
             progress("✅ File created: " + path);
             return "File created";

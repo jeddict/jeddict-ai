@@ -1,4 +1,4 @@
-/**
+ /**
  * Copyright 2025-2026 the original author or authors from the Jeddict project
  * (https://jeddict.github.io/).
  *

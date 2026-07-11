@@ -28,6 +28,8 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 import org.controlsfx.control.ToggleSwitch;
+import org.junit.jupiter.api.condition.EnabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 import org.testfx.framework.junit5.ApplicationTest;
 import static org.testfx.util.WaitForAsyncUtils.waitForFxEvents;
@@ -41,6 +43,7 @@ import ste.netbeans.javafx.JFXPanel;
  * This replaces the previous settings-backed approach and performs real UI interactions
  * to set values as a user would, then calls save() and verifies PreferencesManager.
  */
+@EnabledOnOs(OS.LINUX) // neded because on WINDOWS the temp directory can not be deleted...
 public class JeddictPreferencesUITest extends ApplicationTest {
 
     private final Duration D500 = Duration.ofMillis(500);

@@ -11,7 +11,10 @@ import javafx.beans.property.StringProperty;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 
+@EnabledOnOs(OS.LINUX) // neded because on WINDOWS the temp directory can not be deleted...
 public class JeddictPreferencesTest extends TestBase {
 
     @BeforeEach
