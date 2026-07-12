@@ -35,13 +35,10 @@ import org.apache.commons.lang3.StringUtils;
 /**
  * A tool for performing diff operations.
  */
-public class InteractiveFileEditor extends AbstractTool {
+public class InteractiveFileEditor extends AbstractInteractiveTool {
 
-    private final AssistantChat assistantChat;
-
-    public InteractiveFileEditor(String basedir, AssistantChat assistantChat) throws IOException {
-        super(basedir);
-        this.assistantChat = assistantChat;
+    public InteractiveFileEditor(final String basedir, final AssistantChat assistantChat) throws IOException {
+        super(basedir, assistantChat);
     }
 
     @Tool("""
@@ -79,7 +76,8 @@ public class InteractiveFileEditor extends AbstractTool {
         //
         if (interaction != InteractionMode.INTERACTIVE) {
             try {
-                final FileSystemTools delegate = new FileSystemTools(basedir);
+                final FileSystemTools delegate = new FileSystemTools(basedir, assistantChat);
+                delegate.interaction(interaction);
                 return delegate.createBinaryFile(path, content.getBytes());
             } catch (IOException x) {
                 throw new ToolExecutionException("error in getting the content: " + x.getMessage());

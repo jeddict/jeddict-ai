@@ -18,6 +18,7 @@ package io.github.jeddict.ai.agent;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.exception.ToolExecutionException;
+import static io.github.jeddict.ai.agent.ToolPolicy.Policy.INTERACTIVE;
 import io.github.jeddict.ai.settings.PreferencesManager;
 import java.io.File;
 import java.io.IOException;
@@ -32,6 +33,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READONLY;
 import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READWRITE;
+import io.github.jeddict.ai.components.AssistantChat;
+import io.github.jeddict.ai.lang.InteractionMode;
 import org.apache.commons.lang3.StringUtils;
 
 /**
@@ -41,10 +44,10 @@ import org.apache.commons.lang3.StringUtils;
  * These tools allow language models to read, modify, and manage project files
  * in a controlled and safe way.
  */
-public class FileSystemTools extends AbstractCodeTool {
+public class FileSystemTools extends AbstractInteractiveTool {
 
-    public FileSystemTools(final String basedir) throws IOException {
-        super(basedir);
+    public FileSystemTools(final String basedir, final AssistantChat assistantChat) throws IOException {
+        super(basedir, assistantChat);
     }
 
     /**
@@ -287,8 +290,9 @@ public class FileSystemTools extends AbstractCodeTool {
      */
     @Tool(
     """
-    Replace parts of a file content matching a literal string with replacement text
-    with no user interaction. Special regex characters are escaped.
+    Replace parts of a file content matching a literal string with replacement text.
+    If the user modifies the content before saving, teh new content is returned.
+    Otherwise, `File updated` is returned.
     """)
     @ToolPolicy(READWRITE)
     public String replaceSnippetByLiteral(
@@ -311,7 +315,11 @@ public class FileSystemTools extends AbstractCodeTool {
      * @param replacement the replacement text
      * @return a status message
      */
-    @Tool("Replace parts of a file content matching a regex pattern with replacement text  with no user interaction")
+    @Tool("""
+        Replace parts of a file content matching a regex pattern with replacement text.
+        If the user modifies the content before saving, teh new content is returned.
+        Otherwise, `File updated` is returned.
+        """)
     @ToolPolicy(READWRITE)
     public String replaceSnippetByRegex(
         @P("the file pathname")
@@ -321,24 +329,39 @@ public class FileSystemTools extends AbstractCodeTool {
         @P("replacement text")
         final String replacement
     ) throws ToolExecutionException {
-        progress("🔄 Replacing text matching regex '" + regexPattern + "' in " + path);
+        final String FILE_UPDATED = "File updated";
 
+        progress("🔄 Replacing text matching regex '" + regexPattern + "' in " + path);
+        
         checkPath(path);
 
         try {
             final Path filePath = fullPath(path).toRealPath();
 
-            String original = Files.readString(filePath);
-            String modified = original.replaceAll(regexPattern, replacement);
+            final String original = Files.readString(filePath);
+            final String modified = original.replaceAll(regexPattern, replacement);
 
             if (original.equals(modified)) {
                 progress("❌ No matches found for regex '" + regexPattern + "' in " + path);
                 return "No matches found for pattern";
             }
 
+            //
+            // If the tool is invoched in iteraction mode INTERACTIVE, use the
+            // interactive tool instead.
+            //
+
+            if ((interaction == InteractionMode.INTERACTIVE) && (assistantChat != null)) {
+                InteractiveFileEditor delegate = new InteractiveFileEditor(basedir, assistantChat);
+                delegate.interaction(interaction);
+                final String modifiedContent = delegate.editFile(path, modified);
+                return modified.equals(modifiedContent) ? FILE_UPDATED : modifiedContent;
+            }
+
             Files.writeString(filePath, modified, StandardOpenOption.TRUNCATE_EXISTING);
             progress("✅ Snippet replaced");
-            return "Snippet replaced";
+
+            return FILE_UPDATED;
         } catch (IOException e) {
             progress("❌ Replacement failed: " + e);
             throw new ToolExecutionException("replacement failed: " + e);
@@ -352,14 +375,35 @@ public class FileSystemTools extends AbstractCodeTool {
      * @param newContent the new content to write
      * @return a status message
      */
-    @Tool("Replace the full content of a file by path with new text with no user interaction")
-    @ToolPolicy(READWRITE)
+    @Tool("""
+        Replace the full content of a file by path with new text.
+        If the user modifies the content before saving, teh new content is returned.
+        Otherwise, `File updated` is returned.
+    """)
+    @ToolPolicy(INTERACTIVE)
     public String replaceFileContent(
         @P("the file pathname")
         final String path,
         @P("new content")
         final String newContent
     ) throws ToolExecutionException {
+        final String FILE_UPDATED = "File updated";
+
+        //
+        // If the tool is invoched in iteraction mode INTERACTIVE, use the
+        // interactive tool instead.
+        //
+        if ((interaction == InteractionMode.INTERACTIVE) && (assistantChat != null)) {
+            try {
+                InteractiveFileEditor delegate = new InteractiveFileEditor(basedir, assistantChat);
+                delegate.interaction(interaction);
+                final String modifiedContent = delegate.editFile(path, newContent);
+                return newContent.equals(modifiedContent) ? FILE_UPDATED : modifiedContent;
+            } catch (IOException x) {
+                throw new ToolExecutionException("error in getting the content: " + x.getMessage());
+            }
+        }
+
         progress("🔄 Replacing content in " + path);
 
         checkPath(path);
@@ -367,7 +411,7 @@ public class FileSystemTools extends AbstractCodeTool {
         try {
             Files.writeString(fullPath(path), newContent, StandardOpenOption.TRUNCATE_EXISTING);
             progress("✅ File content replaced");
-            return "File updated";
+            return FILE_UPDATED;
         } catch (IOException e) {
             progress("❌ Replacement failed: " + e);
             throw new ToolExecutionException("replacement failed: " + e);
