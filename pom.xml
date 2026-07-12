@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.github.jeddict</groupId>
     <artifactId>jeddict-ai</artifactId>
-    <version>3.4.0</version>
+    <version>3.5.0</version>
     <packaging>nbm</packaging>
     <name>Jeddict AI Assistant</name>
     <description>Jeddict AI Assistant is a powerful and intuitive plugin designed for Apache NetBeans IDE.
@@ -45,9 +45,8 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>21</maven.compiler.release>
-        <langchain4j.version>1.16.1</langchain4j.version>
-        <langchain4j.beta>beta26</langchain4j.beta>
-        <netbeans.version>RELEASE290</netbeans.version>
+        <langchain4j.version>1.11.0</langchain4j.version>
+        <netbeans.version>RELEASE300</netbeans.version>
         <javafx-toolkit.version>0.0.9</javafx-toolkit.version>
         <testfx.version>4.0.18</testfx.version>
     </properties>
@@ -312,7 +311,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-local-ai</artifactId>
-            <version>${langchain4j.version}-${langchain4j.beta}</version>
+            <version>${langchain4j.version}-beta19</version>
         </dependency>
         <dependency>
             <groupId>dev.langchain4j</groupId>
@@ -332,7 +331,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-agentic</artifactId>
-            <version>${langchain4j.version}-${langchain4j.beta}</version>
+            <version>${langchain4j.version}-beta19</version>
             <type>jar</type>
         </dependency>
         <dependency>
@@ -546,6 +545,11 @@
         </dependency>
         <dependency>
             <groupId>org.netbeans.api</groupId>
+            <artifactId>org-openide-execution</artifactId>
+            <version>${netbeans.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
             <artifactId>org-openide-windows</artifactId>
             <version>${netbeans.version}</version>
         </dependency>
@@ -671,6 +675,16 @@
         </dependency>
         <dependency>
             <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-modules-gradle</artifactId>
+            <version>${netbeans.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-modules-gradle-java</artifactId>
+            <version>${netbeans.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
             <artifactId>org-netbeans-modules-java-project</artifactId>
             <version>${netbeans.version}</version>
         </dependency>
@@ -755,6 +769,11 @@
             <groupId>net.bytebuddy</groupId>
             <artifactId>byte-buddy</artifactId>
             <version>1.18.8</version>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.ws.rs</groupId>
+            <artifactId>jakarta.ws.rs-api</artifactId>
+            <version>4.0.0</version>
         </dependency>
 
         <!--
@@ -843,6 +862,13 @@
             <version>4.0.0</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
+            <version>5.17.0</version>
+            <scope>test</scope>
+            <type>jar</type>
+        </dependency>
     </dependencies>
 
     <profiles>
@@ -850,7 +876,6 @@
             <id>release</id>
             <properties>
                 <gpg.executable>gpg</gpg.executable>
-                <gpg.passphrase>${gpg.passphrase}</gpg.passphrase>
             </properties>
             <build>
                 <plugins>
@@ -881,6 +906,7 @@
                         </executions>
                         <configuration>
                             <source>21</source>
+                             <doclint>none</doclint>
                         </configuration>
                     </plugin>
                     <plugin>
