@@ -20,7 +20,6 @@ import static io.github.jeddict.ai.agent.AbstractToolTest.TESTFILE;
 import io.github.jeddict.ai.test.TestBase;
 import io.github.jeddict.ai.lang.DummyJeddictBrainListener;
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -38,8 +37,9 @@ public class FileSystemToolsTest extends TestBase {
     protected DummyJeddictBrainListener listener = null;
 
     @BeforeEach
-    public void beforeEac() throws IOException {
-        tools = tools = new FileSystemTools(projectDir);
+    public void beforeEach() throws Exception {
+        super.beforeEach();
+        tools = new FileSystemTools(projectDir, null);
         listener = new DummyJeddictBrainListener();
         tools.addListener(listener);
     }
@@ -519,7 +519,7 @@ public class FileSystemToolsTest extends TestBase {
         final Path fullPath = projectPath.resolve(TESTFILE).normalize().toRealPath();
 
         then(tools.replaceSnippetByRegex(TESTFILE, "for.*ing", "for testing"))
-            .isEqualTo("Snippet replaced");
+            .isEqualTo("File updated");
         then(fullPath).content().isEqualTo("This is a test file content for testing.");
         thenProgressContains(listener.collector.get(0), "\n🔄 Replacing text matching regex 'for.*ing' in " + TESTFILE);
         thenProgressContains(listener.collector.get(1), "\n✅ Snippet replaced");

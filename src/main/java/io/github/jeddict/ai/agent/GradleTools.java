@@ -32,10 +32,10 @@ import org.openide.filesystems.FileUtil;
  *
  * Author: Assistant
  */
-public class GradleTools extends AbstractBuildTool {
+public class GradleTools extends AbstractTool {
 
     public GradleTools(final String basedir) throws IOException {
-        super(basedir, "build.gradle");
+        super(basedir);
     }
 
     @Tool(
