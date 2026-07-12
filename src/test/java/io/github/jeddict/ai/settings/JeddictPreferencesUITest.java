@@ -265,7 +265,7 @@ public class JeddictPreferencesUITest extends ApplicationTest {
         then(getUrlText("#modelsUrl")).isEqualTo(GenAIProvider.ANTHROPIC.getModelInfoUrl());
         then(getUrlText("#apiKeyUrl")).isEqualTo(GenAIProvider.ANTHROPIC.getApiKeyUrl());
 
-        node = findFieldControl(preferences.asset("AIAssistantPanel.gptModelLabel.text"), ".combo-box"); waitForFxEvents();
+        node = findFieldControl(preferences.asset("AIAssistancePanel.gptModelLabel.text"), ".combo-box");
         then(((ComboBox)node).getValue()).isEqualTo("anthropic-1.0-mini");
 
         // select CUSTOM_OPEN_AI and verify endpoint updated
@@ -279,7 +279,7 @@ public class JeddictPreferencesUITest extends ApplicationTest {
         then(lookup("#modelsUrl").query().isVisible()).isFalse();
         then(lookup("#apiKeyUrl").query().isVisible()).isFalse();
 
-        node = findFieldControl(preferences.asset("AIAssistantPanel.gptModelLabel.text"), ".combo-box");
+        node = findFieldControl(preferences.asset("AIAssistancePanel.gptModelLabel.text"), ".combo-box");
         then(((ComboBox)node).getValue()).isEqualTo(null);
     }
 
@@ -310,7 +310,7 @@ public class JeddictPreferencesUITest extends ApplicationTest {
         //
         clickOn(preferences.asset("AIAssistancePanel.providersPane.TabConstraints.tabTitle"));
         on(
-            "AIAssistancePanel.providerLocationLabel.text", "AIAssistantPanel.apiKeyLabel.text"
+            "AIAssistancePanel.providerLocationLabel.text", "AIAssistancePanel.apiKeyLabel.text"
         ).loop(k ->
             then(getFieldText(k)).isEqualTo("")
         );
