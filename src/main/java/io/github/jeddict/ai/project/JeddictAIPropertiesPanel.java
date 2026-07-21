@@ -33,8 +33,6 @@ public class JeddictAIPropertiesPanel extends JPanel {
         this.project = project;
         initComponents();
         projectRulesTextArea.setText(pm.getProjectRules(project));
-        buildCommandTextArea.setText(pm.getBuildCommand(project));
-        testCommandTextArea.setText(pm.getTestCommand(project));
     }
 
 
@@ -46,15 +44,6 @@ public class JeddictAIPropertiesPanel extends JPanel {
         projectRulesLabel = new javax.swing.JLabel();
         projectRulesScrollPane = new javax.swing.JScrollPane();
         projectRulesTextArea = new javax.swing.JTextArea();
-        commandsPane = new javax.swing.JLayeredPane();
-        buildCommandPane = new javax.swing.JLayeredPane();
-        buildCommandLabel = new javax.swing.JLabel();
-        buildCommandScrollPane = new javax.swing.JScrollPane();
-        buildCommandTextArea = new javax.swing.JTextArea();
-        testCommandPane = new javax.swing.JLayeredPane();
-        testCommandLabel = new javax.swing.JLabel();
-        testCommandScrollPane = new javax.swing.JScrollPane();
-        testCommandTextArea = new javax.swing.JTextArea();
 
         setLayout(new java.awt.GridLayout(0, 1));
 
@@ -86,105 +75,22 @@ public class JeddictAIPropertiesPanel extends JPanel {
                 .addContainerGap()
                 .addComponent(projectRulesLabel)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(projectRulesScrollPane, javax.swing.GroupLayout.DEFAULT_SIZE, 78, Short.MAX_VALUE)
+                .addComponent(projectRulesScrollPane, javax.swing.GroupLayout.DEFAULT_SIZE, 187, Short.MAX_VALUE)
                 .addContainerGap())
         );
 
         add(projectRulesLayeredPane);
-
-        commandsPane.setLayout(new java.awt.GridLayout(0, 1));
-
-        org.openide.awt.Mnemonics.setLocalizedText(buildCommandLabel, org.openide.util.NbBundle.getMessage(JeddictAIPropertiesPanel.class, "JeddictAIPropertiesPanel.buildCommandLabel.text")); // NOI18N
-
-        buildCommandTextArea.setColumns(20);
-        buildCommandTextArea.setRows(5);
-        buildCommandScrollPane.setViewportView(buildCommandTextArea);
-
-        buildCommandPane.setLayer(buildCommandLabel, javax.swing.JLayeredPane.DEFAULT_LAYER);
-        buildCommandPane.setLayer(buildCommandScrollPane, javax.swing.JLayeredPane.DEFAULT_LAYER);
-
-        javax.swing.GroupLayout buildCommandPaneLayout = new javax.swing.GroupLayout(buildCommandPane);
-        buildCommandPane.setLayout(buildCommandPaneLayout);
-        buildCommandPaneLayout.setHorizontalGroup(
-            buildCommandPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(buildCommandPaneLayout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(buildCommandPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(buildCommandScrollPane, javax.swing.GroupLayout.DEFAULT_SIZE, 559, Short.MAX_VALUE)
-                    .addGroup(buildCommandPaneLayout.createSequentialGroup()
-                        .addComponent(buildCommandLabel)
-                        .addGap(0, 0, Short.MAX_VALUE)))
-                .addContainerGap())
-        );
-        buildCommandPaneLayout.setVerticalGroup(
-            buildCommandPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(buildCommandPaneLayout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(buildCommandLabel)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(buildCommandScrollPane, javax.swing.GroupLayout.DEFAULT_SIZE, 22, Short.MAX_VALUE)
-                .addContainerGap())
-        );
-
-        commandsPane.add(buildCommandPane);
-
-        org.openide.awt.Mnemonics.setLocalizedText(testCommandLabel, org.openide.util.NbBundle.getMessage(JeddictAIPropertiesPanel.class, "JeddictAIPropertiesPanel.testCommandLabel.text")); // NOI18N
-
-        testCommandTextArea.setColumns(20);
-        testCommandTextArea.setRows(5);
-        testCommandScrollPane.setViewportView(testCommandTextArea);
-
-        testCommandPane.setLayer(testCommandLabel, javax.swing.JLayeredPane.DEFAULT_LAYER);
-        testCommandPane.setLayer(testCommandScrollPane, javax.swing.JLayeredPane.DEFAULT_LAYER);
-
-        javax.swing.GroupLayout testCommandPaneLayout = new javax.swing.GroupLayout(testCommandPane);
-        testCommandPane.setLayout(testCommandPaneLayout);
-        testCommandPaneLayout.setHorizontalGroup(
-            testCommandPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(testCommandPaneLayout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(testCommandPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(testCommandScrollPane)
-                    .addGroup(testCommandPaneLayout.createSequentialGroup()
-                        .addComponent(testCommandLabel)
-                        .addGap(0, 0, Short.MAX_VALUE)))
-                .addContainerGap())
-        );
-        testCommandPaneLayout.setVerticalGroup(
-            testCommandPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(testCommandPaneLayout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(testCommandLabel)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(testCommandScrollPane, javax.swing.GroupLayout.DEFAULT_SIZE, 22, Short.MAX_VALUE)
-                .addContainerGap())
-        );
-
-        commandsPane.add(testCommandPane);
-
-        add(commandsPane);
     }// </editor-fold>//GEN-END:initComponents
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JLabel buildCommandLabel;
-    private javax.swing.JLayeredPane buildCommandPane;
-    private javax.swing.JScrollPane buildCommandScrollPane;
-    private javax.swing.JTextArea buildCommandTextArea;
-    private javax.swing.JLayeredPane commandsPane;
     private javax.swing.JLabel projectRulesLabel;
     private javax.swing.JLayeredPane projectRulesLayeredPane;
     private javax.swing.JScrollPane projectRulesScrollPane;
     private javax.swing.JTextArea projectRulesTextArea;
-    private javax.swing.JLabel testCommandLabel;
-    private javax.swing.JLayeredPane testCommandPane;
-    private javax.swing.JScrollPane testCommandScrollPane;
-    private javax.swing.JTextArea testCommandTextArea;
     // End of variables declaration//GEN-END:variables
 
     public void applyChanges() {
         pm.setProjectRules(project, projectRulesTextArea.getText());
-        pm.setBuildCommand(project, buildCommandTextArea.getText());
-        pm.setTestCommand(project, testCommandTextArea.getText());
     }
 
 }

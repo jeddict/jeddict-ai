@@ -1,5 +1,5 @@
-/**
- * Copyright 2025-2026 the original author or authors from the Jeddict project 
+ /**
+ * Copyright 2025-2026 the original author or authors from the Jeddict project
  * (https://jeddict.github.io/).
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
@@ -30,7 +30,7 @@ public class ProjectToolsTest extends TestBase {
     public void projectInfo_returns_project_metadata_as_text()
     throws Exception {
         Path homePath = Paths.get(".").toAbsolutePath().normalize();
-        
+
         String projectDir = homePath.resolve("src/test/projects/minimal").toString();
         ProjectTools tools = ProjectTools.forProject(project(projectDir));
         then(tools.projectInfo()).isEqualToIgnoringNewLines(
@@ -43,7 +43,7 @@ public class ProjectToolsTest extends TestBase {
             """.formatted(projectDir)
         );
 
-        
+
         projectDir = homePath.resolve("src/test/projects/jdk").toString();
         tools = ProjectTools.forProject(project(projectDir));
         then(tools.projectInfo()).isEqualToIgnoringNewLines(

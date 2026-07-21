@@ -39,7 +39,7 @@ import org.netbeans.api.project.ProjectUtils;
 import org.netbeans.api.project.SourceGroup;
 import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READONLY;
 import org.openide.filesystems.FileObject;
-import org.openide.filesystems.URLMapper;
+import org.openide.filesystems.FileUtil;
 
 /**
  * Tool to return information about the project: jdk version, j2ee version,
@@ -52,7 +52,7 @@ public class ProjectTools extends AbstractTool {
 
     private static final Logger LOG = Logger.getLogger(ProjectTools.class.getName());
 
-    private final Project project;
+    protected final Project project;
 
     public ProjectTools(final Project project) throws IOException  {
         super(project.getProjectDirectory().getPath());
@@ -396,7 +396,7 @@ public class ProjectTools extends AbstractTool {
             }
             try {
                 for (final URL url : UnitTestForSourceQuery.findUnitTests(sg.getRootFolder())) {
-                    final FileObject fo = URLMapper.findFileObject(url);
+                    final FileObject fo = FileUtil.toFileObject(new File(url.getFile()));
                     if (fo != null && folderIndex.containsKey(fo)) {
                         testRoots.add(fo);
                     }

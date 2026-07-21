@@ -24,6 +24,7 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import org.openide.filesystems.FileObject;
+import org.openide.filesystems.FileUtil;
 
 /**
  * Tool to manage dependencies in the build.gradle file.
@@ -31,10 +32,10 @@ import org.openide.filesystems.FileObject;
  *
  * Author: Assistant
  */
-public class GradleTools extends AbstractBuildTool {
+public class GradleTools extends AbstractTool {
 
     public GradleTools(final String basedir) throws IOException {
-        super(basedir, "build.gradle");
+        super(basedir);
     }
 
     @Tool(
@@ -256,4 +257,20 @@ public class GradleTools extends AbstractBuildTool {
         }
     }
 
+    // --------------------------------------------------------- private methods
+
+    private FileObject buildFile() throws Exception {
+        //
+        // Note that this cannot be put in the constructor because we accept
+        // the project pom is not there at instatiation time; what's important
+        // is that he pom is there when the tool is invoked
+        //
+        final FileObject projectDir = FileUtil.toFileObject(basepath);
+        final FileObject gradle = projectDir.getFileObject("build.gradle");
+        if (gradle == null || !gradle.isValid()) {
+            throw new Exception("uild.gradle not found in project directory");
+        }
+
+        return gradle;
+    }
 }

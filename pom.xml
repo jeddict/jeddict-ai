@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.github.jeddict</groupId>
     <artifactId>jeddict-ai</artifactId>
-    <version>3.4.0</version>
+    <version>3.5.0</version>
     <packaging>nbm</packaging>
     <name>Jeddict AI Assistant</name>
     <description>Jeddict AI Assistant is a powerful and intuitive plugin designed for Apache NetBeans IDE.
@@ -45,8 +45,9 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>17</maven.compiler.release>
-        <langchain4j.version>1.11.0</langchain4j.version>
-        <netbeans.version>RELEASE290</netbeans.version>
+        <langchain4j.version>1.17.2</langchain4j.version>
+        <langchain4j.beta>beta27</langchain4j.beta>
+        <netbeans.version>RELEASE300</netbeans.version>
     </properties>
 
     <build>
@@ -82,7 +83,6 @@
                             <id>org.netbeans.api:org-netbeans-modules-java-sourceui</id>
                             <type>impl</type>
                         </dependency>
-
                         <dependency>
                             <id>org.netbeans.api:org-netbeans-api-progress-nb</id>
                             <type>impl</type>
@@ -297,7 +297,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-local-ai</artifactId>
-            <version>${langchain4j.version}-beta19</version>
+            <version>${langchain4j.version}-${langchain4j.beta}</version>
         </dependency>
         <dependency>
             <groupId>dev.langchain4j</groupId>
@@ -317,7 +317,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-agentic</artifactId>
-            <version>${langchain4j.version}-beta19</version>
+            <version>${langchain4j.version}-${langchain4j.beta}</version>
             <type>jar</type>
         </dependency>
         <dependency>
@@ -346,10 +346,10 @@
             <version>20251224</version>
         </dependency>
         <dependency>
-        <!--
-            TOON
-        -->
-        <groupId>tools.jackson.core</groupId>
+            <!--
+                TOON
+            -->
+            <groupId>tools.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
             <version>3.1.0</version>
         </dependency>
@@ -515,7 +515,11 @@
             <artifactId>org-netbeans-modules-editor</artifactId>
             <version>${netbeans.version}</version>
         </dependency>
-
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-openide-execution</artifactId>
+            <version>${netbeans.version}</version>
+        </dependency>
         <dependency>
             <groupId>org.netbeans.api</groupId>
             <artifactId>org-openide-windows</artifactId>
@@ -641,6 +645,16 @@
                     <artifactId>asm</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-modules-gradle</artifactId>
+            <version>${netbeans.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-modules-gradle-java</artifactId>
+            <version>${netbeans.version}</version>
         </dependency>
         <dependency>
             <groupId>org.netbeans.api</groupId>
@@ -791,6 +805,13 @@
             <version>1.2.1</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
+            <version>5.17.0</version>
+            <scope>test</scope>
+            <type>jar</type>
+        </dependency>
     </dependencies>
 
     <profiles>
@@ -798,7 +819,6 @@
             <id>release</id>
             <properties>
                 <gpg.executable>gpg</gpg.executable>
-                <gpg.passphrase>${gpg.passphrase}</gpg.passphrase>
             </properties>
             <build>
                 <plugins>
@@ -829,6 +849,7 @@
                         </executions>
                         <configuration>
                             <source>17</source>
+                            <doclint>none</doclint>
                         </configuration>
                     </plugin>
                     <plugin>

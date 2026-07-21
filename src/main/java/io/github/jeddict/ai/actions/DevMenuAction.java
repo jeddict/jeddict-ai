@@ -52,8 +52,8 @@ public final class DevMenuAction extends AbstractAction implements ContextAwareA
     //
     // TODO: use a setting instead
     //
-    private static final boolean ENABLED = false; // Change this condition as needed
-    
+    private static final boolean ENABLED = true; // Change this condition as needed
+
     /**
      * This method is never called directly. The action is handled by the
      * context-aware instance.
@@ -74,13 +74,13 @@ public final class DevMenuAction extends AbstractAction implements ContextAwareA
     public Action createContextAwareInstance(Lookup actionContext) {
         return new DevMenuAction.ContextAction(ENABLED);
     }
-    
-    private static final class ContextAction 
+
+    private static final class ContextAction
         extends BaseProjectContextAction
         implements Presenter.Menu {
-        
+
         private JMenuItem menuItem = null;
-        
+
         private ContextAction(final boolean isEnabled) {
             super(Bundle.CTL_JeddictDevToolsAction(), null, isEnabled);
         }
