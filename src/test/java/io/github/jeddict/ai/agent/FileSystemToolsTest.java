@@ -519,7 +519,7 @@ public class FileSystemToolsTest extends TestBase {
         final Path fullPath = projectPath.resolve(TESTFILE).normalize().toRealPath();
 
         then(tools.replaceSnippetByRegex(TESTFILE, "for.*ing", "for testing"))
-            .isEqualTo("File updated");
+            .isEqualTo(ModificationStatus.DONE.value);
         then(fullPath).content().isEqualTo("This is a test file content for testing.");
         thenProgressContains(listener.collector.get(0), "\n🔄 Replacing text matching regex 'for.*ing' in " + TESTFILE);
         thenProgressContains(listener.collector.get(1), "\n✅ Snippet replaced");
@@ -527,9 +527,9 @@ public class FileSystemToolsTest extends TestBase {
         listener.collector.clear();
         then(
             tools.replaceSnippetByRegex(TESTFILE, "none", "do not change me")
-        ).isEqualTo("No matches found for pattern");
+        ).isEqualTo(ModificationStatus.UNCHANGED.value);
         thenProgressContains(listener.collector.get(0), "\n🔄 Replacing text matching regex 'none' in " + TESTFILE);
-        thenProgressContains(listener.collector.get(1), "\n❌ No matches found for regex 'none' in " + TESTFILE);
+        thenProgressContains(listener.collector.get(1), "\n❌ No matches found or applied for regex 'none' in " + TESTFILE);
 
         listener.collector.clear();
         Path notExistingPath =  projectPath.resolve("notexisting.txt").normalize();
@@ -573,7 +573,7 @@ public class FileSystemToolsTest extends TestBase {
         final Path fullPath = projectPath.resolve(TESTFILE).normalize().toRealPath();
 
         then(tools.replaceFileContent(TESTFILE, "new text"))
-            .isEqualTo("File updated");
+            .isEqualTo(ModificationStatus.DONE.value);
         then(fullPath).content().isEqualTo("new text");
         thenProgressContains(listener.collector.get(0), "\n🔄 Replacing content in " + TESTFILE);
         thenProgressContains(listener.collector.get(1), "\n✅ File content replaced");

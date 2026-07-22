@@ -42,16 +42,29 @@ public class InteractiveFileEditor extends AbstractInteractiveTool {
     }
 
     @Tool("""
-    Interactive editor to create and edit text content and source code.
+        **Interactively create or edit a file**
+        Use this tool to edit or creating a file by providing the content that
+        the user can accept, modify or reject.
+        This presents a visual diff UI to the user, allowing them to review,
+        modify, or reject the proposed content interactively.
 
-    Inputs:
-    - 'path': the filesystem path of the file to be changed; this path may be for
-      a file that does not yet exist.
-    - 'content': the proposed new content for the file.
+        ### Returns
 
-    Output:
-    - The final content as accepted by the user
-    - The string 'REJECTED' if the user rejected the changes
+        A string structured as:
+        ```
+        [STATUS]
+        [FINAL_CONTENT]
+        ```
+
+        Where `[STATUS]` is one of:
+        * `DONE`: Content fully accepted and saved; no [FINAL_CONTENT] is provided.
+        * `UPDATED`: Content saved with user changes (e.g., modifying part of the text).
+          Treat `[FINAL_CONTENT]` as the new source of truth.
+        * `REJECTED`: the user rejected the changes
+
+        ### Notes
+        * Always consider `[FINAL_CONTENT]` as the definitive state after a `DONE`
+          or `UPDATED` status.
     """
     )
     @ToolPolicy(INTERACTIVE)
@@ -116,7 +129,14 @@ public class InteractiveFileEditor extends AbstractInteractiveTool {
             // throw a ToolExecutionException
             //
             if (accepted.get()) {
-                return newContent.get();
+                String finalStr = newContent.get();
+
+                // Check if user changed the content during interactive review
+                if (content.equals(finalStr)) {
+                    return ModificationStatus.DONE.value; // Or omit finalStr if preferred
+                } else {
+                    return ModificationStatus.UPDATED.value + '\n' + finalStr;
+                }
             }
 
             throw new ToolExecutionRejected();
