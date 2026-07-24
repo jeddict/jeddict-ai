@@ -303,6 +303,7 @@ public class FileSystemTools extends AbstractInteractiveTool {
         * `DONE`: Replacement applied as requested; no [FINAL_CONTENT] is provided.
         * `UPDATED`: Replacement applied, but additional system changes (e.g., auto-formatting)
           were automatically incorporated. Treat `[FINAL_CONTENT]` as the new source of truth.
+        * `UNCHANGED': if no match was found
         * `REJECTED`: the user rejected the changes
 
         ### Notes
