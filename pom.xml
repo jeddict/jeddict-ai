@@ -45,7 +45,8 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>21</maven.compiler.release>
-        <langchain4j.version>1.11.0</langchain4j.version>
+        <langchain4j.version>1.17.2</langchain4j.version>
+        <langchain4j.beta>beta27</langchain4j.beta>
         <netbeans.version>RELEASE300</netbeans.version>
         <javafx-toolkit.version>0.0.9</javafx-toolkit.version>
         <testfx.version>4.0.18</testfx.version>
@@ -166,10 +167,6 @@
                         </dependency>
                         <dependency>
                             <id>org.netbeans.api:org-netbeans-api-java-classpath</id>
-                            <type>impl</type>
-                        </dependency>
-                        <dependency>
-                            <id>org.netbeans.api:org-netbeans-libs-flexmark</id>
                             <type>impl</type>
                         </dependency>
                     </moduleDependencies>
@@ -311,7 +308,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-local-ai</artifactId>
-            <version>${langchain4j.version}-beta19</version>
+            <version>${langchain4j.version}-${langchain4j.beta}</version>
         </dependency>
         <dependency>
             <groupId>dev.langchain4j</groupId>
@@ -331,7 +328,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-agentic</artifactId>
-            <version>${langchain4j.version}-beta19</version>
+            <version>${langchain4j.version}-${langchain4j.beta}</version>
             <type>jar</type>
         </dependency>
         <dependency>

@@ -15,16 +15,15 @@
  */
 package io.github.jeddict.ai.agent;
 
+import io.github.jeddict.ai.components.AssistantChat;
 import java.io.IOException;
 
-public abstract class AbstractBuildTool extends AbstractTool {
+public abstract class AbstractInteractiveTool extends AbstractTool {
 
-    private final String buildFile;
+     final AssistantChat assistantChat;
 
-    public AbstractBuildTool(final String basedir, final String buildFile) throws IOException {
+    public AbstractInteractiveTool(final String basedir, final AssistantChat assistantChat) throws IOException {
         super(basedir);
-        this.buildFile = buildFile;
+        this.assistantChat = assistantChat;
     }
-
-    
 }

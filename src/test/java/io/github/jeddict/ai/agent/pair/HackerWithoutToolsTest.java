@@ -386,7 +386,7 @@ public class HackerWithoutToolsTest {
     @Test
     public void create_calculator_application() throws Exception {
         final HackerWithoutTools hacker = new HackerWithoutTools(MODEL, BUILDER,  List.of(
-            new FileSystemTools(basedir.toAbsolutePath().toString()),
+            new FileSystemTools(basedir.toAbsolutePath().toString(), null),
             new InteractiveFileEditor(basedir.toAbsolutePath().toString(), null)
         ));
 

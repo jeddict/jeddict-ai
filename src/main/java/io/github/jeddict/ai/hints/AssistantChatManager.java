@@ -28,10 +28,10 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import io.github.jeddict.ai.JeddictUpdateManager;
 import io.github.jeddict.ai.agent.AbstractTool;
-import io.github.jeddict.ai.agent.InteractiveFileEditor;
 import io.github.jeddict.ai.agent.ExplorationTools;
 import io.github.jeddict.ai.agent.FileSystemTools;
 import io.github.jeddict.ai.agent.GradleTools;
+import io.github.jeddict.ai.agent.InteractiveFileEditor;
 import io.github.jeddict.ai.agent.MavenTools;
 import io.github.jeddict.ai.agent.project.JakartaEEAdvisorMavenPluginTools;
 import io.github.jeddict.ai.agent.project.ProjectTools;
@@ -963,15 +963,8 @@ public class AssistantChatManager extends JavaFix {
         try {
             final List<AbstractTool> toolsList = new ArrayList();
 
-            //
-            // Tools for interactive mode
-            //
             toolsList.add(new InteractiveFileEditor(basedir, ac));
-
-            //
-            // Tools commmon to both AGENT and INTERACTIVE mode
-            //
-            toolsList.add(new FileSystemTools(basedir));
+            toolsList.add(new FileSystemTools(basedir, ac));
             toolsList.add(new MavenTools(project));
             toolsList.add(new ExplorationTools(basedir, project.getLookup()));
             // Add the project-type-specific tool (Maven, Gradle, or generic)
