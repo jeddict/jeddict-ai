@@ -274,7 +274,7 @@ public class JeddictPreferencesUITest extends ApplicationTest {
         node = findFieldControl(preferences.asset("AIAssistancePanel.providerLocationLabel.text"), ".text-field");
         then(node).isNotNull();
         then(node.isVisible()).isTrue();
-        then(((TextInputControl) node).getText()).isEqualTo("http://localhost/v1/openai");
+        then(((TextInputControl) node).getText()).isEqualTo("http://localhost:7777"); // the value in src/test/resources/settings/jeddict.json
 
         then(lookup("#modelsUrl").query().isVisible()).isFalse();
         then(lookup("#apiKeyUrl").query().isVisible()).isFalse();

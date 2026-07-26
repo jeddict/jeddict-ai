@@ -18,6 +18,7 @@ package io.github.jeddict.ai.settings;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.util.logging.Logger;
+import javafx.application.Platform;
 import javax.swing.JComponent;
 import javax.swing.SwingUtilities;
 import org.netbeans.spi.options.OptionsPanelController;
@@ -42,7 +43,7 @@ public final class AIAssistantSettingsController extends OptionsPanelController 
     public void update() {
         LOG.info("option panel controller - showing option panel");
 
-        preferences.refresh();
+        Platform.runLater(() -> preferences.refresh());
     }
 
     @Override

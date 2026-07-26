@@ -334,6 +334,14 @@ public class PreferencesManagerTest extends TestBase {
         then(preferences.getProviderLocation()).isEqualTo("http://example.com");
         then(preferences.getProviderLocation(GenAIProvider.GOOGLE)).isEqualTo("http://example.com");
 
+        //
+        // custom open AI setting
+        //
+        preferences.setProvider(GenAIProvider.CUSTOM_OPEN_AI);
+        preferences.setProviderLocation("http://example.com");
+        then(preferences.getProviderLocation()).isEqualTo("http://example.com");
+        then(preferences.getProviderLocation(GenAIProvider.CUSTOM_OPEN_AI)).isEqualTo("http://example.com");
+
         // Simulate invalid provider stored
         Field prefsField = PreferencesManager.class.getDeclaredField("preferences");
         prefsField.setAccessible(true);

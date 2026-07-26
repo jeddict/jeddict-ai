@@ -43,7 +43,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.prefs.Preferences;
 import java.util.stream.Collectors;
-import javax.swing.JOptionPane;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.netbeans.api.editor.mimelookup.MimeLookup;
@@ -285,10 +284,10 @@ public class PreferencesManager {
                 yield GPT4ALL_URL;
             }
             case CUSTOM_OPEN_AI -> {
-                yield CUSTOM_OPEN_AI_URL;
+                yield preferences.get(provider.name() + PROVIDER_LOCATION_PREFERENCES, CUSTOM_OPEN_AI_URL);
             }
             default -> {
-                yield preferences.get(provider.name() + PROVIDER_LOCATION_PREFERENCES, "");
+                yield preferences.get(provider.name() + PROVIDER_LOCATION_PREFERENCES,"");
             }
         };
     }
