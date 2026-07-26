@@ -35,7 +35,9 @@ import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READONLY;
 import static io.github.jeddict.ai.agent.ToolPolicy.Policy.READWRITE;
 import io.github.jeddict.ai.components.AssistantChat;
 import io.github.jeddict.ai.lang.InteractionMode;
+import java.util.ArrayList;
 import org.apache.commons.lang3.StringUtils;
+import static ste.lloop.Loop.on;
 
 /**
  * Collection of tools that expose file system and editor operations inside
@@ -149,38 +151,43 @@ public class FileSystemTools extends AbstractInteractiveTool {
         checkPath(path);
 
         if (fromLine < 1) {
-            throw new ToolExecutionException(
-                    "fromLine must be >= 1, got: " + fromLine);
+            throw new ToolExecutionException("fromLine must be >= 1, got: " + fromLine);
         }
         if (toLine < 1) {
-            throw new ToolExecutionException(
-                    "toLine must be >= 1, got: " + toLine);
+            throw new ToolExecutionException("toLine must be >= 1, got: " + toLine);
         }
         if (fromLine > toLine) {
-            throw new ToolExecutionException(
-                    "fromLine (" + fromLine + ") must be <= toLine (" + toLine + ")");
+            throw new ToolExecutionException("fromLine (" + fromLine + ") must be <= toLine (" + toLine + ")");
         }
 
+        final Path fullPath = fullPath(path);
+
+        final List<String> lines = new ArrayList();
+        final int[] count = new int[] { 0 };
         try {
-            final Path fullPath = fullPath(path);
-            //
-            // Stream line by line: skip to fromLine then take only the needed
-            // lines. Files.lines() is lazy so we never load the whole file;
-            // limit() naturally stops at EOF when toLine exceeds the file length.
-            //
-            try (Stream<String> stream = Files.lines(fullPath, Charset.defaultCharset())) {
-                // (long) cast ensures the arithmetic is done in 64-bit so there is no
-                // int overflow; fromLine >= 1 and toLine >= fromLine so count >= 1.
-                final long count = (long) toLine - fromLine + 1;
-                return stream
-                        .skip(fromLine - 1)
-                        .limit(count)
-                        .collect(Collectors.joining("\n"));
-            }
-        } catch (IOException e) {
-            progress("❌ Failed to read file: " + e);
-            throw new ToolExecutionException("failed to read file: " + e);
+            on(fullPath).to(toLine-1).loop((i, line) -> {
+                // (note: we can't use from because we want to get the line number)
+                count[0] = i+1;
+                if ((count[0]) >= fromLine) {
+                    lines.add(line);
+                }
+            });
+        } catch (IllegalArgumentException x) { // invalid Path
+            progress("❌ Failed to read file: " + x);
+            throw new ToolExecutionException("failed to read file: " + x);
         }
+
+        //
+        // if not lines have been added it'sbecause fromLine is after the
+        // end of the file
+        //
+        if (lines.isEmpty()) {
+            throw new ToolExecutionException(
+                "fromLine must be <= %d, got: %d".formatted(count[0], fromLine)
+            );
+        }
+
+        return String.join("\n", lines.toArray(new String[0]));
     }
 
     /**

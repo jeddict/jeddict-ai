@@ -274,10 +274,13 @@ public class FileSystemToolsTest extends TestBase {
         thenProgressContains(listener.collector.get(0), "\n📖 Reading file " + path + " lines 4 to 100");
 
         //
-        // success: fromLine beyond end of file returns empty (valid params, file just too short)
+        // failure: fromLine beyond end of file returns empty an error message
+        // containing the file lines count
         //
         listener.collector.clear();
-        then(tools.readFileLines(path, 10, 20)).isEqualTo("");
+        thenThrownBy(() -> tools.readFileLines(path, 10, 20))
+            .isInstanceOf(ToolExecutionException.class)
+            .hasMessageContaining("fromLine must be <= 5, got: 10");
 
         //
         // failure: fromLine < 1 (must not be silently clamped)
@@ -318,7 +321,7 @@ public class FileSystemToolsTest extends TestBase {
         listener.collector.clear();
         thenThrownBy(() -> tools.readFileLines(pathKO, 1, 3))
             .isInstanceOf(ToolExecutionException.class)
-            .hasMessageContaining("failed to read file: java.nio.file.NoSuchFileException: ");
+            .hasMessageContaining("Path does not exist:");
         then(listener.collector).hasSize(2);
         thenProgressContains(listener.collector.get(0), "\n📖 Reading file " + pathKO + " lines 1 to 3");
         thenProgressContains(listener.collector.get(1), "\n❌ Failed to read file:");
