@@ -149,7 +149,7 @@ public class JeddictChatModelBuilder {
         setIfPredicate(builder::customHeaders, pm.getCustomHeaders(), Map::isEmpty);
         boolean headless = pm.getProviderLocation() != null;
         builder
-            .apiKey(pm.getApiKey(headless))
+            .apiKey(pm.getApiKey())
             .modelName(modelName);
 
         setIfValid(builder::temperature, pm.getTemperature(), Double.MIN_VALUE);

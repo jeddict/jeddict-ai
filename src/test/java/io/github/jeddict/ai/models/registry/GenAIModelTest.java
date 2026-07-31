@@ -55,7 +55,7 @@ class GenAIModelTest {
     }
 
     @Test
-    void to_string_returns_model_name_only() {
+    void to_string_returns_model_full_name_only() {
         GenAIModel model = new GenAIModel(
                 GenAIProvider.OPEN_AI,
                 "openai/gpt-5",
@@ -64,11 +64,11 @@ class GenAIModelTest {
                 0
         );
 
-        then(model.toString()).isEqualTo("gpt-5");
+        then(model.toString()).isEqualTo("openai/gpt-5");
     }
 
     @Test
-    void constructor_normalizes_model_name() {
+    void fullName_returns_original_name_with_provider_prefix() {
         GenAIModel model = new GenAIModel(
                 GenAIProvider.OPEN_AI,
                 "openai/gpt-5-nano",
@@ -77,7 +77,34 @@ class GenAIModelTest {
                 2.0
         );
 
-        then(model.name()).isEqualTo("gpt-5-nano");
+        then(model.fullName()).isEqualTo("openai/gpt-5-nano");
+    }
+
+    @Test
+    void fullName_returns_original_name_without_provider_prefix() {
+        GenAIModel model = new GenAIModel(
+                GenAIProvider.OPEN_AI,
+                "gpt-5-nano",
+                "desc",
+                1.0,
+                2.0
+        );
+
+        then(model.fullName()).isEqualTo("gpt-5-nano");
+    }
+
+    @Test
+    void name_returns_normalized_name() {
+        GenAIModel model = new GenAIModel(
+                GenAIProvider.GOOGLE,
+                "google/gemini-pro",
+                "Gemini Pro model",
+                1.5,
+                3.0
+        );
+
+        then(model.name()).isEqualTo("gemini-pro");
+        then(model.fullName()).isEqualTo("google/gemini-pro");
     }
 
     @Test
@@ -92,16 +119,21 @@ class GenAIModelTest {
 
         then(model.provider()).isEqualTo(GenAIProvider.GOOGLE);
         then(model.name()).isEqualTo("gemini-pro");
+        then(model.fullName()).isEqualTo("google/gemini-pro");
         then(model.description()).isEqualTo("Gemini Pro model");
         then(model.inputPrice()).isEqualTo(1.5);
         then(model.outputPrice()).isEqualTo(3.0);
     }
 
     @Test
-    void records_with_same_values_are_equal() {
+    void records_with_same_full_name_values_are_equal() {
         GenAIModel model1 = new GenAIModel(GenAIProvider.OPEN_AI, "openai/gpt-4", "desc", 10.0, 30.0);
         GenAIModel model2 = new GenAIModel(GenAIProvider.OPEN_AI, "gpt-4", "desc", 10.0, 30.0);
+        GenAIModel model3 = new GenAIModel(GenAIProvider.OPEN_AI, "openai/gpt-4", "desc", 1.0, 1.0);
 
-        then(model1).isEqualTo(model2);
+        then(model1).isNotEqualTo(model2);
+        then(model1).isEqualTo(model3); then(model3).isEqualTo(model1);
+        then(model1.name()).isEqualTo(model2.name());
+        then(model1.fullName()).isNotEqualTo(model2.fullName());
     }
 }

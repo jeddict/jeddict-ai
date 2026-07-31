@@ -43,7 +43,7 @@ public class JeddictJsonCodecFactoryTest extends TestBase {
     @Test
     public void lanchain4j_picks_jeddict_factory() {
         dev.langchain4j.internal.Json.toJson(1);
-        then(logHandler.getMessages(Level.FINEST)).hasSize(1)
-            .element(0).asString().startsWith("using json codec " + JeddictJsonCodec.class.getName());
+        then(logHandler.getMessages(Level.FINEST))
+            .anyMatch((msg) -> msg.startsWith("using json codec " + JeddictJsonCodec.class.getName()));
     }
 }

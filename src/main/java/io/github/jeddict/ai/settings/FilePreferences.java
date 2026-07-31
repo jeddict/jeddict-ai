@@ -108,7 +108,7 @@ public class FilePreferences {
         save();
     }
 
-    public boolean getBoolean(String key, boolean def) {
+    public Boolean getBoolean(String key, boolean def) {
         return data.optBoolean(key, def);
     }
 
@@ -117,19 +117,17 @@ public class FilePreferences {
         save();
     }
 
-// new int methods
-    public int getInt(String key, int def) {
-        return data.optInt(key, def);
+    public Integer getInteger(String key, Integer def) {
+        return data.optIntegerObject(key, def);
     }
 
-    public void putInt(String key, int value) {
+    public void putInteger(String key, Integer value) {
         data.put(key, value);
         save();
     }
 
-// new double methods
-    public double getDouble(String key, double def) {
-        return data.optDouble(key, def);
+    public Double getDouble(String key, double def) {
+        return data.optDoubleObject(key, def);
     }
 
     public void putDouble(String key, double value) {
@@ -203,7 +201,7 @@ public class FilePreferences {
         save();
     }
 
-    public boolean getChildBoolean(String nodeKey, String key, boolean def) {
+    public Boolean getChildBoolean(String nodeKey, String key, boolean def) {
         JSONObject node = data.optJSONObject(nodeKey);
         if (node != null) {
             return node.optBoolean(key, def);
@@ -211,7 +209,7 @@ public class FilePreferences {
         return def;
     }
 
-    public void putChildInt(String nodeKey, String key, int value) {
+    public void putChildInt(String nodeKey, String key, Integer value) {
         JSONObject node = data.optJSONObject(nodeKey);
         if (node == null) {
             node = new JSONObject();
@@ -221,10 +219,10 @@ public class FilePreferences {
         save();
     }
 
-    public int getChildInt(String nodeKey, String key, int def) {
+    public Integer getChildInt(String nodeKey, String key, Integer def) {
         JSONObject node = data.optJSONObject(nodeKey);
         if (node != null) {
-            return node.optInt(key, def);
+            return node.optIntegerObject(key, def);
         }
         return def;
     }

@@ -24,6 +24,8 @@ import io.github.jeddict.ai.components.ToolExecutionConfirmationPane;
 import io.github.jeddict.ai.components.ToolExecutionPane;
 import io.github.jeddict.ai.components.ToolInvocationPane;
 import io.github.jeddict.ai.components.diff.DiffPane;
+import io.github.jeddict.ai.settings.JeddictPreferences;
+import static io.github.jeddict.ai.util.UIUtil.GLOBAL_STYLESHEETS;
 import static java.awt.BorderLayout.SOUTH;
 import java.awt.Color;
 import java.awt.Container;
@@ -34,6 +36,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.BoxLayout;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
@@ -41,6 +44,11 @@ import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
+import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.scene.Scene;
+import javafx.scene.layout.StackPane;
+import javafx.stage.Stage;
 import org.netbeans.api.project.Project;
 import org.netbeans.api.project.ProjectUtils;
 import org.netbeans.api.project.ui.OpenProjects;
@@ -93,7 +101,6 @@ public class UIRunner {
         });
 
         diffToolItem.addActionListener(e -> {
-            // Action for Diff tool
             showDiffPane(frame);
         });
 
@@ -148,8 +155,8 @@ public class UIRunner {
         final ToolExecutionRequest execution = ToolExecutionRequest.builder()
             .name("helloTool").arguments("{\"argument1\":\"value1\",\"argument2\":\"value2\"}").build();
         content.add(confirmationPane = new ToolExecutionConfirmationPane());
-        content.add(invocationPane = new ToolInvocationPane());
-        content.add(executionPane = new ToolExecutionPane(execution, "This is the result\n1\n2\n3\n4\n5"));
+        content.add(new ToolInvocationPane());
+        content.add(new ToolExecutionPane(execution, "This is the result\n1\n2\n3\n4\n5"));
         content.setBackground(Color.white);
 
         frame.setVisible(true);
@@ -264,6 +271,31 @@ public class UIRunner {
     private void showContextMenu(MouseEvent e, JPopupMenu contextMenu) {
         if (e.isPopupTrigger()) {
             contextMenu.show(e.getComponent(), e.getX(), e.getY());
+        }
+    }
+
+    private void showSettingsDialog(JFrame frame) {
+        final JeddictPreferences p = new JeddictPreferences();
+        final JComponent panel = p.getPanel();
+
+        frame.getContentPane().removeAll();
+        frame.getContentPane().add(panel);
+
+        frame.revalidate();
+        frame.repaint();
+    }
+
+    private static class SettingsApp extends Application {
+
+        @Override
+        public void start(Stage stage) throws Exception {
+            JeddictPreferences p = new JeddictPreferences();
+            Scene scene = new Scene(new StackPane(p.getView()), 1000, 800);
+            scene.getStylesheets().addAll(GLOBAL_STYLESHEETS);
+            scene.getStylesheets().add("/io/github/jeddict/ai/settings/settings.css");
+            stage.setTitle("Jeddict AI Settings (Standalone App)");
+            stage.setScene(scene);
+            stage.show();
         }
     }
 

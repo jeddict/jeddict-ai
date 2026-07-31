@@ -286,7 +286,7 @@ public abstract class AssistantChat extends TopComponent {
    public String getModelName() {
         String modelName = (String) models.getSelectedItem();
         if (modelName == null || modelName.isEmpty()) {
-            return pm.getModel();
+            return pm.getModelName();
         }
         return modelName;
     }

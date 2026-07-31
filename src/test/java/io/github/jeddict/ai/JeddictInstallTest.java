@@ -229,6 +229,54 @@ public class JeddictInstallTest extends TestBase {
     }
 
     @Test
+    public void presets_models_on_fresh_installation() throws Exception {
+        final Path USERHOME = HOME.resolve(USER);
+        SystemLambda.restoreSystemProperties(() -> {
+            System.setProperty("os.name", LINUX);
+            System.setProperty("user.name", USER);
+            System.setProperty("user.home", USERHOME.toString());
+
+            Path newConfigFile = FileUtil.getConfigPath().resolve(JEDDICT_CONFIG);
+            then(newConfigFile).doesNotExist();
+
+            // Reset PreferencesManager to ensure it uses the correct user.home
+            io.github.jeddict.ai.settings.PreferencesManager.getInstance(true);
+
+            // Load expected values from JSON file
+            org.json.JSONObject expectedJson;
+            try (java.io.InputStream is = JeddictInstall.class.getResourceAsStream("/io/github/jeddict/ai/settings/model-preferences.json")) {
+                then(is).describedAs("model-preferences.json should exist").isNotNull();
+                java.util.Scanner s = new java.util.Scanner(is).useDelimiter("\\\\A");
+                expectedJson = new org.json.JSONObject(s.hasNext() ? s.next() : "");
+            }
+
+            // Execute
+            new JeddictInstall().restored();
+
+            // Assert
+            then(newConfigFile).exists();
+            
+            // Reset PreferencesManager to ensure it reads from the newly created file
+            io.github.jeddict.ai.settings.PreferencesManager pm = io.github.jeddict.ai.settings.PreferencesManager.getInstance(true);
+            
+            for (String key : expectedJson.keySet()) {
+                String providerName = key.replace("modelPreferenceList_", "");
+                java.util.List<io.github.jeddict.ai.models.registry.GenAIModel> actualModels = pm.getGenAIModelList(providerName);
+                
+                org.json.JSONArray expectedArray = expectedJson.getJSONArray(key);
+                then(actualModels).describedAs("Models for " + providerName).hasSize(expectedArray.length());
+                
+                for (int i = 0; i < expectedArray.length(); i++) {
+                    org.json.JSONObject expectedModel = expectedArray.getJSONObject(i);
+                    io.github.jeddict.ai.models.registry.GenAIModel actualModel = actualModels.get(i);
+                    then(actualModel.fullName()).isEqualTo(expectedModel.getString("name"));
+                    then(actualModel.provider().name()).isEqualTo(expectedModel.getString("provider"));
+                }
+            }
+        });
+    }
+
+    @Test
     public void logging_setup() {
         final String logPrefix = JeddictInstall.class.getPackageName();
         final Map<Handler, Formatter> formatters = new HashMap();

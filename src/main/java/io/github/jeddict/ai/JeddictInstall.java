@@ -16,6 +16,7 @@
 package io.github.jeddict.ai;
 
 import io.github.jeddict.ai.settings.FilePreferences;
+import io.github.jeddict.ai.settings.PreferencesManager;
 import static io.github.jeddict.ai.settings.PreferencesManager.JEDDICT_CONFIG;
 import static io.github.jeddict.ai.settings.ReportManager.DAILY_INPUT_TOKEN_STATS_KEY;
 import static io.github.jeddict.ai.settings.ReportManager.DAILY_OUTPUT_TOKEN_STATS_KEY;
@@ -23,9 +24,11 @@ import static io.github.jeddict.ai.settings.ReportManager.JEDDICT_STATS;
 import io.github.jeddict.ai.util.FileUtil;
 import io.github.jeddict.ai.util.JeddictLogFormatter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Properties;
 import java.util.logging.Formatter;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -50,6 +53,13 @@ public class JeddictInstall extends ModuleInstall {
         final Path configFile = configPath.resolve(JEDDICT_CONFIG);
 
         configureLogging();
+
+        /*
+        Platform.setImplicitExit(false);
+        Platform.startup(() -> {
+            Application.setUserAgentStylesheet(new PrimerLight().getUserAgentStylesheet());
+        });
+        */
 
         //
         // Old versions of Jeddict used to store the configuration in $HOME/jeddict.json,
@@ -90,13 +100,15 @@ public class JeddictInstall extends ModuleInstall {
         } catch (IOException e) {
             LOG.log(Level.SEVERE, "Failed to migrate old config file", e);
         }
+
+        presetModels();
     }
 
     protected void configureLogging() {
         final Formatter f = new JeddictLogFormatter();
 
         //
-        // go backward to wach parent
+        // go backward to watch parent
         //
         Logger logger = Logger.getLogger(JeddictInstall.class.getPackageName());
         do {
@@ -106,5 +118,35 @@ public class JeddictInstall extends ModuleInstall {
             logger = logger.getParent();
         } while (logger != null);
         LOG.info("Jeddict logging configured");
+    }
+
+    private void presetModels() {
+        PreferencesManager pm = PreferencesManager.getInstance();
+        if (!pm.hasModelPreferenceList("OPEN_AI")) {
+            LOG.info("Presetting models for the first time...");
+            try (InputStream is = getClass().getResourceAsStream("/io/github/jeddict/ai/settings/model-preferences.json")) {
+                if (is == null) {
+                    LOG.warning("model-preferences.json not found");
+                    return;
+                }
+                
+                // Read input stream to string
+                java.util.Scanner s = new java.util.Scanner(is).useDelimiter("\\\\A");
+                String content = s.hasNext() ? s.next() : "";
+                
+                org.json.JSONObject presetJson = new org.json.JSONObject(content);
+                for (String key : presetJson.keySet()) {
+                    if (key.startsWith("modelPreferenceList_")) {
+                        String providerName = key.replace("modelPreferenceList_", "");
+                        String jsonModels = presetJson.getJSONArray(key).toString();
+                        pm.setGenAIModelList(providerName, jsonModels);
+                        LOG.info(() -> String.format("Preset models for %s", providerName));
+                    }
+                }
+                LOG.info("Successfully preset models.");
+            } catch (IOException | org.json.JSONException e) {
+                LOG.log(Level.SEVERE, "Failed to preset models", e);
+            }
+        }
     }
 }
