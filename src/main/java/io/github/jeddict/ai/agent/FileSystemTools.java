@@ -288,13 +288,28 @@ public class FileSystemTools extends AbstractInteractiveTool {
      * @param replacement the replacement text
      * @return a status message
      */
-    @Tool(
-    """
-    Replace parts of a file content matching a literal string with replacement text.
-    If the user modifies the content before saving, teh new content is returned.
-    Otherwise, `File updated` is returned.
+    @Tool("""
+        **Replace a literal text snippet within a file.**
+        Use this tool to edit a file by providing exact target text and replacement text.
+        ### Returns
+
+        A string structured as:
+        ```
+        [STATUS]
+        [FINAL_CONTENT]
+        ```
+
+        Where `[STATUS]` is one of:
+        * `DONE`: Replacement applied as requested; no [FINAL_CONTENT] is provided.
+        * `UPDATED`: Replacement applied, but additional system changes (e.g., auto-formatting)
+          were automatically incorporated. Treat `[FINAL_CONTENT]` as the new source of truth.
+        * `UNCHANGED': if no match was found
+        * `REJECTED`: the user rejected the changes
+
+        ### Notes
+        * Always consider `[FINAL_CONTENT]` as the definitive state after a `DONE` or `UPDATED` status.
     """)
-    @ToolPolicy(READWRITE)
+    @ToolPolicy(INTERACTIVE)
     public String replaceSnippetByLiteral(
         @P("the file pathname")
         final String path,
@@ -316,11 +331,27 @@ public class FileSystemTools extends AbstractInteractiveTool {
      * @return a status message
      */
     @Tool("""
-        Replace parts of a file content matching a regex pattern with replacement text.
-        If the user modifies the content before saving, teh new content is returned.
-        Otherwise, `File updated` is returned.
-        """)
-    @ToolPolicy(READWRITE)
+        **Replace a regex pattern snippet within a file.**
+        Use this tool to edit a file by providing exact target text and replacement text.
+        ### Returns
+
+        A string structured as:
+        ```
+        [STATUS]
+        [FINAL_CONTENT]
+        ```
+
+        Where `[STATUS]` is one of:
+        * `DONE`: Replacement applied as requested; no [FINAL_CONTENT] is provided.
+        * `UPDATED`: Replacement applied, but additional system changes (e.g., auto-formatting)
+          were automatically incorporated. Treat `[FINAL_CONTENT]` as the new source of truth.
+        * `UNCHANGED': if no match was found
+        * `REJECTED`: the user rejected the changes
+
+        ### Notes
+        * Always consider `[FINAL_CONTENT]` as the definitive state after a `DONE` or `UPDATED` status.
+    """)
+    @ToolPolicy(INTERACTIVE)
     public String replaceSnippetByRegex(
         @P("the file pathname")
         final String path,
@@ -329,10 +360,8 @@ public class FileSystemTools extends AbstractInteractiveTool {
         @P("replacement text")
         final String replacement
     ) throws ToolExecutionException {
-        final String FILE_UPDATED = "File updated";
-
         progress("🔄 Replacing text matching regex '" + regexPattern + "' in " + path);
-        
+
         checkPath(path);
 
         try {
@@ -341,30 +370,44 @@ public class FileSystemTools extends AbstractInteractiveTool {
             final String original = Files.readString(filePath);
             final String modified = original.replaceAll(regexPattern, replacement);
 
-            if (original.equals(modified)) {
-                progress("❌ No matches found for regex '" + regexPattern + "' in " + path);
-                return "No matches found for pattern";
-            }
+            ModificationStatus status = ModificationStatus.UNCHANGED;
 
             //
-            // If the tool is invoched in iteraction mode INTERACTIVE, use the
-            // interactive tool instead.
+            // if no changes have been applied, no need to continue, otherwise
+            // let's see what happens
             //
+            String updated = null;
+            if (!original.equals(modified)) {
+                //
+                // If the tool is invoched in iteraction mode INTERACTIVE, use the
+                // interactive tool instead.
+                //
+                if ((interaction == InteractionMode.INTERACTIVE) && (assistantChat != null)) {
+                    InteractiveFileEditor delegate = new InteractiveFileEditor(basedir, assistantChat);
+                    delegate.interaction(interaction);
+                    updated = delegate.editFile(path, modified);
 
-            if ((interaction == InteractionMode.INTERACTIVE) && (assistantChat != null)) {
-                InteractiveFileEditor delegate = new InteractiveFileEditor(basedir, assistantChat);
-                delegate.interaction(interaction);
-                final String modifiedContent = delegate.editFile(path, modified);
-                return modified.equals(modifiedContent) ? FILE_UPDATED : modifiedContent;
+                    status = (!modified.equals(updated)) ?
+                        ModificationStatus.UPDATED : ModificationStatus.UPDATED;
+                } else {
+                    status = ModificationStatus.DONE;
+                    Files.writeString(filePath, modified, StandardOpenOption.TRUNCATE_EXISTING);
+                }
             }
 
-            Files.writeString(filePath, modified, StandardOpenOption.TRUNCATE_EXISTING);
-            progress("✅ Snippet replaced");
+            if (status == ModificationStatus.UNCHANGED) {
+                progress("❌ No matches found or applied for regex '" + regexPattern + "' in " + path);
+            } else {
+                progress("✅ Snippet replaced");
+            }
 
-            return FILE_UPDATED;
+            return (status == ModificationStatus.UPDATED) ? (status.value + '\n' + updated) : status.value;
         } catch (IOException e) {
             progress("❌ Replacement failed: " + e);
             throw new ToolExecutionException("replacement failed: " + e);
+        } catch (ToolExecutionRejected x) {
+            progress("❌ Replacement rejected by the user: " + x);
+            throw x;
         }
     }
 
@@ -375,10 +418,25 @@ public class FileSystemTools extends AbstractInteractiveTool {
      * @param newContent the new content to write
      * @return a status message
      */
-    @Tool("""
-        Replace the full content of a file by path with new text.
-        If the user modifies the content before saving, teh new content is returned.
-        Otherwise, `File updated` is returned.
+        @Tool("""
+        **Replace the full content of a file with the given text.**
+        ### Returns
+
+        A string structured as:
+        ```
+        [STATUS]
+        [FINAL_CONTENT]
+        ```
+
+        Where `[STATUS]` is one of:
+        * `DONE`: Replacement applied as requested; no [FINAL_CONTENT] is provided.
+        * `UPDATED`: Replacement applied, but additional system changes (e.g., auto-formatting)
+          were automatically incorporated. Treat `[FINAL_CONTENT]` as the new source of truth.
+        * `UNCHANGED`: if the new content is the same as the original content
+        * `REJECTED`: the user rejected the changes
+
+        ### Notes
+        * Always consider `[FINAL_CONTENT]` as the definitive state after an `UPDATED` status.
     """)
     @ToolPolicy(INTERACTIVE)
     public String replaceFileContent(
@@ -387,36 +445,52 @@ public class FileSystemTools extends AbstractInteractiveTool {
         @P("new content")
         final String newContent
     ) throws ToolExecutionException {
-        final String FILE_UPDATED = "File updated";
-
-        //
-        // If the tool is invoched in iteraction mode INTERACTIVE, use the
-        // interactive tool instead.
-        //
-        if ((interaction == InteractionMode.INTERACTIVE) && (assistantChat != null)) {
-            try {
-                InteractiveFileEditor delegate = new InteractiveFileEditor(basedir, assistantChat);
-                delegate.interaction(interaction);
-                final String modifiedContent = delegate.editFile(path, newContent);
-                return newContent.equals(modifiedContent) ? FILE_UPDATED : modifiedContent;
-            } catch (IOException x) {
-                throw new ToolExecutionException("error in getting the content: " + x.getMessage());
-            }
-        }
-
         progress("🔄 Replacing content in " + path);
 
         checkPath(path);
 
         try {
-            Files.writeString(fullPath(path), newContent, StandardOpenOption.TRUNCATE_EXISTING);
-            progress("✅ File content replaced");
-            return FILE_UPDATED;
+            final Path filePath = fullPath(path).toRealPath();
+            final String original = Files.readString(filePath);
+
+            ModificationStatus status = ModificationStatus.UNCHANGED;
+            String updated = null;
+
+            // Check if the requested content actually changes anything
+            if (!original.equals(newContent)) {
+                if ((interaction == InteractionMode.INTERACTIVE) && (assistantChat != null)) {
+                    InteractiveFileEditor delegate = new InteractiveFileEditor(basedir, assistantChat);
+                    delegate.interaction(interaction);
+                    updated = delegate.editFile(path, newContent);
+
+                    if (!newContent.equals(updated)) {
+                        status = ModificationStatus.UPDATED;
+                    } else {
+                        status = ModificationStatus.DONE;
+                    }
+                } else {
+                    status = ModificationStatus.DONE;
+                    Files.writeString(filePath, newContent, StandardOpenOption.TRUNCATE_EXISTING);
+                }
+            }
+
+            if (status == ModificationStatus.UNCHANGED) {
+                progress("❌ File content matches new content; unchanged " + path);
+            } else {
+                progress("✅ File content replaced");
+            }
+
+            return (status == ModificationStatus.UPDATED) ? (status.value + '\n' + updated) : status.value;
+
         } catch (IOException e) {
             progress("❌ Replacement failed: " + e);
             throw new ToolExecutionException("replacement failed: " + e);
+        } catch (ToolExecutionRejected x) {
+            progress("❌ Replacement rejected by the user: " + x);
+            throw x;
         }
     }
+
 
     /**
      * Creates a new file at the given path.
