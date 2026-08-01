@@ -102,6 +102,7 @@ import javax.swing.JScrollPane;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.event.HyperlinkEvent;
+import org.apache.commons.lang3.StringUtils;
 import org.netbeans.api.java.source.JavaSource;
 import org.netbeans.api.java.source.TreePathHandle;
 import org.netbeans.api.java.source.WorkingCopy;
@@ -735,7 +736,9 @@ public class AssistantChatManager extends JavaFix {
             public void onChatCompleted(final ChatResponse response) {
                 super.onChatCompleted(response);
 
-                final StringBuilder textResponse = new StringBuilder(response.aiMessage().text());
+                final StringBuilder textResponse = new StringBuilder(
+                    StringUtils.defaultString(response.aiMessage().text())
+                );
 
                 final Response res = chat.response();
                 res.getMessageContext().clear(); res.addContext(messageContext);
