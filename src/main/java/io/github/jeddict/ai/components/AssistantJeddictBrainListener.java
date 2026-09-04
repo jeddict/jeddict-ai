@@ -225,13 +225,15 @@ public class AssistantJeddictBrainListener implements JeddictBrainListener {
     }
 
     private void showError(final String msg) {
-        JOptionPane.showMessageDialog(
-            null,
-            "<html>AI assistant failed to generate the requested response" +
-            ((msg != null) ? (": " + msg) : "") +
-            "<br>See the chat for details.",
-            "Error in AI Assistant",
-            JOptionPane.ERROR_MESSAGE
+        SwingUtilities.invokeLater(() ->
+            JOptionPane.showMessageDialog(
+                null,
+                "<html>AI assistant failed to generate the requested response" +
+                ((msg != null) ? (": " + msg) : "") +
+                "<br>See the chat for details.",
+                "Error in AI Assistant",
+                JOptionPane.ERROR_MESSAGE
+            )
         );
     }
 
