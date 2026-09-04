@@ -15,7 +15,6 @@
  */
 package io.github.jeddict.ai.agent;
 
-import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.service.Result;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
@@ -39,7 +38,6 @@ public interface ToolsProber {
 
     @SystemMessage(SYSTEM_MESSAGE)
     @UserMessage(USER_MESSAGE)
-    @Agent("Probe if the model supports tools")
     Result<String> probe();
 
     default boolean probe(final String probeText) {
@@ -55,7 +53,7 @@ public interface ToolsProber {
             final ToolExecution toolExecution = toolExecutions.get(0);
             return probeText.equals(toolExecution.result());
         } catch (Throwable t) {
-            LOG.finest(() -> t.getMessage());
+            LOG.info(() -> "error probing the model for tool support: " + t.getMessage());
             return false;
         }
     }

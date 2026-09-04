@@ -26,3 +26,4 @@ replay_pid*
 # Build tools and IDEs #
 nb-configuration.xml
 /target/
+/prompts-fx/target/

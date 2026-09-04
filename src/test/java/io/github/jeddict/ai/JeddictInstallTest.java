@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Formatter;
 import java.util.logging.Handler;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.BeforeEach;
@@ -78,7 +79,9 @@ public class JeddictInstallTest extends TestBase {
             // 3. Assert the results
             then(oldConfigFile).doesNotExist();
             then(newConfigFile).exists();
-            then(Files.readString(newConfigFile)).isEqualTo(fileContent);
+            org.json.JSONObject root = new org.json.JSONObject(Files.readString(newConfigFile));
+            then(root.getString("key")).isEqualTo("value");
+            then(root.has("development")).isFalse();
         });
     }
 
@@ -109,7 +112,9 @@ public class JeddictInstallTest extends TestBase {
                 // 3. Assert the results
                 then(oldConfigFile).doesNotExist();
                 then(newConfigFile).exists();
-                then(Files.readString(newConfigFile)).isEqualTo(fileContent);
+                org.json.JSONObject root = new org.json.JSONObject(Files.readString(newConfigFile));
+                then(root.getString("key")).isEqualTo("value_win");
+                then(root.has("development")).isFalse();
 
             });
         });
@@ -142,7 +147,9 @@ public class JeddictInstallTest extends TestBase {
                 // 3. Assert the results
                 then(oldConfigFile).doesNotExist();
                 then(newConfigFile).exists();
-                then(Files.readString(newConfigFile)).isEqualTo(fileContent);
+                org.json.JSONObject root = new org.json.JSONObject(Files.readString(newConfigFile));
+                then(root.getString("key")).isEqualTo("value_win");
+                then(root.has("development")).isFalse();
 
             });
         });
@@ -172,7 +179,9 @@ public class JeddictInstallTest extends TestBase {
             // 3. Assert the results
             then(oldConfigFile).doesNotExist();
             then(newConfigFile).exists();
-            then(Files.readString(newConfigFile)).isEqualTo(fileContent);
+            org.json.JSONObject root = new org.json.JSONObject(Files.readString(newConfigFile));
+            then(root.getString("key")).isEqualTo("value_mac");
+            then(root.has("development")).isFalse();
         });
     }
 
@@ -225,6 +234,258 @@ public class JeddictInstallTest extends TestBase {
             then(newStats.get("key1", "")).isEmpty();
             then(newStats.getChild("dailyInputTokenStats").toString()).isEqualTo("{\"20335\":81392}");
             then(newStats.getChild("dailyOutputTokenStats").toString()).isEqualTo("{\"20355\":1206}");
+        });
+    }
+
+    @Test
+    public void migration_removes_legacy_logging_when_development_present() throws Exception {
+        final Path USERHOME = HOME.resolve(USER);
+
+        SystemLambda.restoreSystemProperties(() -> {
+            System.setProperty("os.name", LINUX);
+            System.setProperty("user.name", USER);
+            System.setProperty("user.home", USERHOME.toString());
+
+            // old config contains development and legacy logging flags
+            Path oldConfigFile = USERHOME.resolve("jeddict.json");
+            String fileContent = """
+            {
+                "development": true,
+                "logRequests": true,
+                "logResponses": true,
+                "key": "value"
+            }
+            """;
+            Files.writeString(oldConfigFile, fileContent);
+            then(oldConfigFile).exists();
+
+            Path newConfigFile = FileUtil.getConfigPath().resolve(JEDDICT_CONFIG);
+            then(newConfigFile).doesNotExist();
+
+            logHandler.flush();
+            new JeddictInstall().restored();
+
+            then(oldConfigFile).doesNotExist();
+            then(newConfigFile).exists();
+
+            org.json.JSONObject root = new org.json.JSONObject(Files.readString(newConfigFile));
+            then(root.has("development")).isTrue();
+            then(root.getBoolean("development")).isTrue();
+            // legacy logging flags must be removed when development is present
+            then(root.has("logRequests")).isFalse();
+            then(root.has("logResponses")).isFalse();
+            // unrelated keys are preserved
+            then(root.getString("key")).isEqualTo("value");
+
+            then(logHandler.getMessages(Level.INFO)).contains(
+                "Migrating legacy logRequests=true, logResponses=true to development=true"
+            );
+        });
+    }
+
+    @Test
+    public void migration_sets_development_from_legacy_logging() throws Exception {
+        final Path USERHOME = HOME.resolve(USER);
+
+        SystemLambda.restoreSystemProperties(() -> {
+            System.setProperty("os.name", LINUX);
+            System.setProperty("user.name", USER);
+            System.setProperty("user.home", USERHOME.toString());
+
+            // old config contains only legacy logging flags, no development flag
+            Path oldConfigFile = USERHOME.resolve("jeddict.json");
+            String fileContent = """
+            {
+                "logRequests": true,
+                "logResponses": false,
+                "key": "value2"
+            }
+            """;
+            Files.writeString(oldConfigFile, fileContent);
+            then(oldConfigFile).exists();
+
+            Path newConfigFile = FileUtil.getConfigPath().resolve(JEDDICT_CONFIG);
+            then(newConfigFile).doesNotExist();
+
+            logHandler.flush();
+            new JeddictInstall().restored();
+
+            then(oldConfigFile).doesNotExist();
+            then(newConfigFile).exists();
+
+            org.json.JSONObject root = new org.json.JSONObject(Files.readString(newConfigFile));
+            then(root.has("development")).isTrue();
+            then(root.getBoolean("development")).isTrue();
+            // legacy logging flags must be removed and replaced by development
+            then(root.has("logRequests")).isFalse();
+            then(root.has("logResponses")).isFalse();
+            then(root.getString("key")).isEqualTo("value2");
+
+            then(logHandler.getMessages(Level.INFO)).contains(
+                "Migrating legacy logRequests=true, logResponses=false to development=true"
+            );
+        });
+    }
+
+    @Test
+    public void migration_sets_development_false_when_both_legacy_false() throws Exception {
+        final Path USERHOME = HOME.resolve(USER);
+
+        SystemLambda.restoreSystemProperties(() -> {
+            System.setProperty("os.name", LINUX);
+            System.setProperty("user.name", USER);
+            System.setProperty("user.home", USERHOME.toString());
+
+            Path oldConfigFile = USERHOME.resolve("jeddict.json");
+            String fileContent = """
+            {
+                "logRequests": false,
+                "logResponses": false,
+                "key": "value3"
+            }
+            """;
+            Files.writeString(oldConfigFile, fileContent);
+            then(oldConfigFile).exists();
+
+            Path newConfigFile = FileUtil.getConfigPath().resolve(JEDDICT_CONFIG);
+            then(newConfigFile).doesNotExist();
+
+            logHandler.flush();
+            new JeddictInstall().restored();
+
+            then(oldConfigFile).doesNotExist();
+            then(newConfigFile).exists();
+
+            org.json.JSONObject root = new org.json.JSONObject(Files.readString(newConfigFile));
+            then(root.has("development")).isTrue();
+            then(root.getBoolean("development")).isFalse();
+            then(root.has("logRequests")).isFalse();
+            then(root.has("logResponses")).isFalse();
+            then(root.getString("key")).isEqualTo("value3");
+
+            then(logHandler.getMessages(Level.INFO)).contains(
+                "Migrating legacy logRequests=false, logResponses=false to development=false"
+            );
+        });
+    }
+
+    @Test
+    public void migration_sets_development_false_when_no_legacy_flags() throws Exception {
+        final Path USERHOME = HOME.resolve(USER);
+
+        SystemLambda.restoreSystemProperties(() -> {
+            System.setProperty("os.name", LINUX);
+            System.setProperty("user.name", USER);
+            System.setProperty("user.home", USERHOME.toString());
+
+            Path oldConfigFile = USERHOME.resolve("jeddict.json");
+            String fileContent = """
+            {
+                "key": "value4"
+            }
+            """;
+            Files.writeString(oldConfigFile, fileContent);
+            then(oldConfigFile).exists();
+
+            Path newConfigFile = FileUtil.getConfigPath().resolve(JEDDICT_CONFIG);
+            then(newConfigFile).doesNotExist();
+
+            logHandler.flush();
+            new JeddictInstall().restored();
+
+            then(oldConfigFile).doesNotExist();
+            then(newConfigFile).exists();
+
+            org.json.JSONObject root = new org.json.JSONObject(Files.readString(newConfigFile));
+            then(root.has("development")).isFalse();
+            then(root.getString("key")).isEqualTo("value4");
+
+            then(logHandler.getMessages(Level.INFO)).doesNotContain("Migrating legacy");
+        });
+    }
+
+    @Test
+    public void migration_preserves_development_when_no_legacy_flags() throws Exception {
+        final Path USERHOME = HOME.resolve(USER);
+
+        SystemLambda.restoreSystemProperties(() -> {
+            System.setProperty("os.name", LINUX);
+            System.setProperty("user.name", USER);
+            System.setProperty("user.home", USERHOME.toString());
+
+            Path oldConfigFile = USERHOME.resolve("jeddict.json");
+            String fileContent = """
+            {
+                "development": true,
+                "key": "value5"
+            }
+            """;
+            Files.writeString(oldConfigFile, fileContent);
+            then(oldConfigFile).exists();
+
+            Path newConfigFile = FileUtil.getConfigPath().resolve(JEDDICT_CONFIG);
+            then(newConfigFile).doesNotExist();
+
+            logHandler.flush();
+            new JeddictInstall().restored();
+
+            then(oldConfigFile).doesNotExist();
+            then(newConfigFile).exists();
+
+            org.json.JSONObject root = new org.json.JSONObject(Files.readString(newConfigFile));
+            then(root.has("development")).isTrue();
+            then(root.getBoolean("development")).isTrue();
+            then(root.getString("key")).isEqualTo("value5");
+
+            then(logHandler.getMessages(Level.INFO)).doesNotContain("Migrating legacy");
+        });
+    }
+
+    @Test
+    public void presets_models_on_fresh_installation() throws Exception {
+        final Path USERHOME = HOME.resolve(USER);
+        SystemLambda.restoreSystemProperties(() -> {
+            System.setProperty("os.name", LINUX);
+            System.setProperty("user.name", USER);
+            System.setProperty("user.home", USERHOME.toString());
+
+            Path newConfigFile = FileUtil.getConfigPath().resolve(JEDDICT_CONFIG);
+            then(newConfigFile).doesNotExist();
+
+            // Reset PreferencesManager to ensure it uses the correct user.home
+            io.github.jeddict.ai.settings.PreferencesManager.getInstance(true);
+
+            // Load expected values from JSON file
+            org.json.JSONObject expectedJson;
+            try (java.io.InputStream is = JeddictInstall.class.getResourceAsStream("/io/github/jeddict/ai/settings/model-preferences.json")) {
+                then(is).describedAs("model-preferences.json should exist").isNotNull();
+                java.util.Scanner s = new java.util.Scanner(is).useDelimiter("\\\\A");
+                expectedJson = new org.json.JSONObject(s.hasNext() ? s.next() : "");
+            }
+
+            // Execute
+            new JeddictInstall().restored();
+
+            // Assert
+            then(newConfigFile).exists();
+
+            // Reset PreferencesManager to ensure it reads from the newly created file
+            io.github.jeddict.ai.settings.PreferencesManager pm = io.github.jeddict.ai.settings.PreferencesManager.getInstance(true);
+
+            for (String key : expectedJson.keySet()) {
+                String providerName = key.replace("modelPreferenceList_", "");
+                java.util.List<io.github.jeddict.ai.models.registry.GenAIModel> actualModels = pm.getGenAIModelList(providerName);
+
+                org.json.JSONArray expectedArray = expectedJson.getJSONArray(key);
+                then(actualModels).describedAs("Models for " + providerName).hasSize(expectedArray.length());
+
+                for (int i = 0; i < expectedArray.length(); i++) {
+                    org.json.JSONObject expectedModel = expectedArray.getJSONObject(i);
+                    io.github.jeddict.ai.models.registry.GenAIModel actualModel = actualModels.get(i);
+                    then(actualModel.fullName()).isEqualTo(expectedModel.getString("name"));
+                    then(actualModel.provider().name()).isEqualTo(expectedModel.getString("provider"));
+                }
+            }
         });
     }
 

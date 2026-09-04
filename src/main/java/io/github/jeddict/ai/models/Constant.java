@@ -23,4 +23,6 @@ public interface Constant {
 
     String DEEPINFRA_URL = "https://api.deepinfra.com/v1/openai";
     String DEEPSEEK_URL = "https://api.deepseek.com/";
+    String CUSTOM_OPEN_AI_URL = "http://localhost/v1/openai";
+    String GPT4ALL_URL = "http://localhost:4891/v1";
 }

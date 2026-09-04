@@ -20,7 +20,6 @@ package io.github.jeddict.ai.lang;
  * @author Shiwani Gupta
  */
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -313,10 +312,10 @@ public class JeddictBrain implements PropertyChangeEmitter {
         //
         try {
             final ToolsProbingTool probeTool = new ToolsProbingTool();
-            final ToolsProber prober = AgenticServices.agentBuilder(ToolsProber.class)
-                .chatModel(model(null))
-                .tools(probeTool)
-                .build();
+            final ToolsProber prober = AiServices.builder(ToolsProber.class)
+                                       .chatModel(model(null))
+                                       .tools(probeTool)
+                                       .build();
 
             final boolean toolsSupport = prober.probe(probeTool.probeText);
 

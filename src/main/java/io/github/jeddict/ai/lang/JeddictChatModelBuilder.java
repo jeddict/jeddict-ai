@@ -149,7 +149,7 @@ public class JeddictChatModelBuilder {
         setIfPredicate(builder::customHeaders, pm.getCustomHeaders(), Map::isEmpty);
         boolean headless = pm.getProviderLocation() != null;
         builder
-            .apiKey(pm.getApiKey(headless))
+            .apiKey(pm.getApiKey())
             .modelName(modelName);
 
         setIfValid(builder::temperature, pm.getTemperature(), Double.MIN_VALUE);
@@ -168,7 +168,7 @@ public class JeddictChatModelBuilder {
         setIfValid(builder::listeners, listeners, new ArrayList());
         setIfPredicate(builder::organizationId, pm.getOrganizationId(), String::isEmpty);
 
-        builder.logRequestsResponses(pm.isLogRequestsEnabled(), pm.isLogResponsesEnabled())
+        builder.logRequestsResponses(pm.isDevelopment(), pm.isDevelopment())
                 .includeCodeExecutionOutput(pm.isIncludeCodeExecutionOutput())
                 .allowCodeExecution(pm.isAllowCodeExecution());
 
