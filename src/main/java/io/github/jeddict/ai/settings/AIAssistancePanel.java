@@ -15,25 +15,14 @@
  */
 package io.github.jeddict.ai.settings;
 
-import io.github.jeddict.ai.models.registry.GenAIModel;
-import io.github.jeddict.ai.models.registry.GenAIProvider;
-import io.github.jeddict.ai.copilot.RunCopilotProxy;
 import static io.github.jeddict.ai.models.Constant.DEEPINFRA_URL;
 import static io.github.jeddict.ai.models.Constant.DEEPSEEK_URL;
-import io.github.jeddict.ai.models.GPT4AllModelFetcher;
-import io.github.jeddict.ai.models.GroqModelFetcher;
-import io.github.jeddict.ai.models.LMStudioModelFetcher;
-import io.github.jeddict.ai.models.OllamaModelFetcher;
-import io.github.jeddict.ai.models.registry.GenAIModelRegistry;
-import io.github.jeddict.ai.models.PerplexityModelFetcher;
-import io.github.jeddict.ai.scanner.ProjectClassScanner;
-import io.github.jeddict.ai.util.ColorUtil;
 import static io.github.jeddict.ai.util.ColorUtil.darken;
 import static io.github.jeddict.ai.util.ColorUtil.lighten;
 import static io.github.jeddict.ai.util.EditorUtil.getBackgroundColorFromMimeType;
 import static io.github.jeddict.ai.util.EditorUtil.getTextColorFromMimeType;
-import io.github.jeddict.ai.util.FileUtil;
 import static io.github.jeddict.ai.util.MimeUtil.MIME_PLAIN_TEXT;
+
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -62,6 +51,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -83,12 +73,26 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumnModel;
 import javax.swing.table.TableRowSorter;
+
 import org.apache.commons.lang3.StringUtils;
 import org.netbeans.api.progress.ProgressHandle;
 import org.openide.util.Exceptions;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 import org.openide.util.RequestProcessor;
+
+import io.github.jeddict.ai.copilot.RunCopilotProxy;
+import io.github.jeddict.ai.models.GPT4AllModelFetcher;
+import io.github.jeddict.ai.models.GroqModelFetcher;
+import io.github.jeddict.ai.models.LMStudioModelFetcher;
+import io.github.jeddict.ai.models.OllamaModelFetcher;
+import io.github.jeddict.ai.models.PerplexityModelFetcher;
+import io.github.jeddict.ai.models.registry.GenAIModel;
+import io.github.jeddict.ai.models.registry.GenAIModelRegistry;
+import io.github.jeddict.ai.models.registry.GenAIProvider;
+import io.github.jeddict.ai.scanner.ProjectClassScanner;
+import io.github.jeddict.ai.util.ColorUtil;
+import io.github.jeddict.ai.util.FileUtil;
 
 final class AIAssistancePanel extends javax.swing.JPanel {
 
@@ -2259,6 +2263,8 @@ final class AIAssistancePanel extends javax.swing.JPanel {
      */
     private void clearModelComboBox() {
        modelComboBox.removeAllItems();
+       String selectedModel = (String) ((GenAIProvider)providerComboBox.getSelectedItem()).name();
+       preferencesManager.setGenAIModelList(new ArrayList<>(), selectedModel);
     }
 
     /**
@@ -2412,7 +2418,10 @@ final class AIAssistancePanel extends javax.swing.JPanel {
             };
 
             // Popolare la tabella con i modelli disponibili
-            for (GenAIModel model : availableModels.values()) {
+            for (Map.Entry<String, GenAIModel> entry : availableModels.entrySet()) {
+                String modelFullname = entry.getKey();
+                GenAIModel model = entry.getValue();
+
                 // Verificare se il modello è già presente nella combobox
                 boolean alreadyInComboBox = false;
                 for (int i = 0; i < modelComboBox.getItemCount(); i++) {
@@ -2425,7 +2434,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
                 // Aggiungere alla tabella con selezione predefinita se non è già presente
                 tableModel.addRow(new Object[]{
                     alreadyInComboBox, // Selezionare solo i modelli presenti
-                    model.name(),
+                    modelFullname,
                     model.description(),
                     model.inputPrice()*1000000,
                     model.outputPrice()*1000000
