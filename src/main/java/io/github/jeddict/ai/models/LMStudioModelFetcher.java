@@ -21,6 +21,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -30,7 +31,9 @@ import org.json.JSONObject;
  */
 public class LMStudioModelFetcher {
 
-    private static final String API_URL = "http://localhost:1234/v1/models";
+    private static final String API_URL = "http://localhost:1234/v1";
+
+    private static final String MODELS_PATH = "/models";
 
     public String getAPIUrl() {
         return API_URL;
@@ -40,7 +43,7 @@ public class LMStudioModelFetcher {
         List<String> modelIds = new ArrayList<>();
 
         try {
-            URL url = new URL(apiUrl);
+            URL url = new URL(apiUrl + MODELS_PATH);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");
             connection.setRequestProperty("Accept", "application/json");
